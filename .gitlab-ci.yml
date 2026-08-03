@@ -1,4 +1,0 @@
-include:
-  - file: "src/templates/terraform/template.yml"
-    project: "pipoengineering/platform/templates"
-    ref: stable
