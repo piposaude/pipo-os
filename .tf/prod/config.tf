@@ -13,16 +13,3 @@ terraform {
     }
   }
 }
-
-locals {
-  environment = "prod"
-}
-
-data "terraform_remote_state" "vpc" {
-  backend = "s3"
-  config = {
-    bucket = "pipo-platform"
-    region = "sa-east-1"
-    key    = "terraform/states/vpc/${local.environment}"
-  }
-}
