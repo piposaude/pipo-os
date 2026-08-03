@@ -8,6 +8,8 @@ const PORT = 3001
 app.use(cors())
 app.use(express.json())
 
+app.get('/health', (_req, res) => res.json({ status: 'ok' }))
+
 type TicketStatus = 'open' | 'in_progress' | 'closed'
 
 interface Ticket {

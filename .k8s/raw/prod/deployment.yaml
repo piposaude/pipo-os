@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pipo-os
+  namespace: default
+  labels:
+    app: pipo-os
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pipo-os
+  template:
+    metadata:
+      labels:
+        app: pipo-os
+    spec:
+      serviceAccountName: pipo-os
+      nodeSelector:
+        serviceType: pipo-core-arm64
+      tolerations:
+        - key: dedicated
+          operator: Equal
+          value: pipo-core-arm64
+          effect: NoSchedule
+      containers:
+        - name: pipo-os
+          image: 588824502706.dkr.ecr.sa-east-1.amazonaws.com/services/pipo-os:IMAGE_TAG
+          ports:
+            - containerPort: 3001
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: APP_ENV
+              value: prod
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: pipo-os-postgres
+                  key: DATABASE_URL
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 50m
+            limits:
+              memory: 512Mi
+              cpu: 500m
