@@ -1,0 +1,14 @@
+# Esse arquivo configura um serviço da Pipo baseado no template helm: https://gitlab.com/pipoengineering/platform/charts/microservice
+# Você pode consultar os valores de configurações disponíveis em: https://gitlab.com/pipoengineering/platform/charts/microservice#referência-de-valores
+
+# -- Você pode consultar as versões do template em https://gitlab.com/pipoengineering/platform/charts/microservice/-/tags
+templateVersion: "6.3"
+
+url:
+  public: true
+
+postgres:
+  databases:
+    - name: pipo_os
+      instance: pipobusiness
+      masterUser: pipo_business
