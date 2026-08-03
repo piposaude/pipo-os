@@ -1,0 +1,66 @@
+apiVersion: postgresql.sql.crossplane.io/v1alpha1
+kind: Database
+metadata:
+  name: stag-pipo-os-pipo-os
+  annotations:
+    crossplane.io/external-name: pipo_os
+    helm.sh/resource-policy: keep
+spec:
+  deletionPolicy: Orphan
+  forProvider:
+    owner: pipo_os
+  providerConfigRef:
+    name: postgresql-stag
+---
+apiVersion: postgresql.sql.crossplane.io/v1alpha1
+kind: Role
+metadata:
+  name: stag-pipo-os-pipo-os
+  annotations:
+    crossplane.io/external-name: pipo_os
+    helm.sh/resource-policy: keep
+spec:
+  deletionPolicy: Orphan
+  forProvider:
+    passwordSecretRef:
+      namespace: default
+      name: pipo-os-postgres
+      key: POSTGRES_PASSWORD
+    privileges:
+      login: true
+      inherit: true
+      createDb: false
+      createRole: false
+      superUser: false
+  providerConfigRef:
+    name: postgresql-stag
+---
+apiVersion: postgresql.sql.crossplane.io/v1alpha1
+kind: Schema
+metadata:
+  name: stag-pipo-os-pipo-os-public
+  annotations:
+    crossplane.io/external-name: public
+    helm.sh/resource-policy: keep
+spec:
+  deletionPolicy: Orphan
+  forProvider:
+    database: pipo_os
+    role: pipo_os
+    revokePublicOnSchema: true
+  providerConfigRef:
+    name: postgresql-stag
+---
+apiVersion: postgresql.sql.crossplane.io/v1alpha1
+kind: Grant
+metadata:
+  name: stag-pipo-os-pipo-os-app-connect
+spec:
+  deletionPolicy: Orphan
+  forProvider:
+    role: pipo_os
+    database: pipo_os
+    privileges:
+      - CONNECT
+  providerConfigRef:
+    name: postgresql-stag

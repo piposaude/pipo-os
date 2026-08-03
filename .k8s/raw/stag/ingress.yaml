@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pipo-os
+  namespace: default
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - pipo-os.pipo.health
+  rules:
+    - host: pipo-os.pipo.health
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: pipo-os
+                port:
+                  number: 80
