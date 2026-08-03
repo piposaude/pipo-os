@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express'
 import cors from 'cors'
+import path from 'path'
 import { pool, migrate } from './db'
 
 const app = express()
@@ -86,6 +87,12 @@ app.delete('/api/tickets/:id', async (req: Request, res: Response) => {
 
   res.status(204).send()
 })
+
+if (process.env.NODE_ENV === 'production') {
+  const staticDir = path.join(__dirname, '../public')
+  app.use(express.static(staticDir))
+  app.get('*', (_req, res) => res.sendFile(path.join(staticDir, 'index.html')))
+}
 
 migrate()
   .then(() => {
