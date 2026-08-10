@@ -20,7 +20,7 @@ env:
 
 jobs:
   test:
-    name: Typecheck & build
+    name: Lint, typecheck, test & build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,8 +35,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm -r lint
+
       - name: Typecheck
         run: pnpm -r typecheck
+
+      - name: Test
+        run: pnpm -r test
 
       - name: Build
         run: pnpm -r build
