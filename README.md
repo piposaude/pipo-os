@@ -4,15 +4,18 @@ Serviço fullstack para gerenciamento de tickets internos.
 
 ## Stack
 
-- **Backend** — Node.js + Express + TypeScript (porta 3001)
-- **Frontend** — Vite + React + TypeScript (porta 5173)
+- **`apps/api`** — Node.js + Express + TypeScript (porta 3001)
+- **`apps/web`** — Vite + React + TypeScript (porta 5173)
 - **Banco de dados** — PostgreSQL 15
+
+Monorepo gerenciado com **pnpm workspaces**.
 
 ## Desenvolvimento local
 
 ### Pré-requisitos
 
-- Node.js 20+
+- Node.js 22+ (ver `.nvmrc`)
+- pnpm (ver `packageManager` em `package.json`)
 - Docker + Docker Compose
 
 ### Subir o banco
@@ -32,23 +35,21 @@ Isso sobe um Postgres 15 local na porta `5432` com as credenciais:
 ### Instalar dependências
 
 ```bash
-npm install
-npm install --prefix backend
-npm install --prefix frontend
+pnpm install
 ```
 
 ### Rodar
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
-Isso sobe backend e frontend simultaneamente via `concurrently`.
+Isso sobe `apps/api` e `apps/web` simultaneamente via `pnpm -r --parallel dev`.
 
-- Frontend: http://localhost:5173
-- Backend: http://localhost:3001
+- Web: http://localhost:5173
+- API: http://localhost:3001
 
-A migration da tabela `tickets` é executada automaticamente na inicialização do backend.
+A migration da tabela `tickets` é executada automaticamente na inicialização da API.
 
 ## Variáveis de ambiente
 

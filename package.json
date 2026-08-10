@@ -2,10 +2,11 @@
   "name": "pipo-os",
   "version": "1.0.0",
   "private": true,
-  "scripts": {
-    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\""
+  "packageManager": "pnpm@11.21.0",
+  "engines": {
+    "node": ">=22"
   },
-  "devDependencies": {
-    "concurrently": "^8.2.2"
+  "scripts": {
+    "dev": "pnpm -r --parallel dev"
   }
 }
