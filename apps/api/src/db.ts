@@ -1,7 +1,8 @@
 import { Pool } from 'pg'
 
 export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL ?? 'postgresql://pipo_os:pipo_os@localhost:5432/pipo_os',
+  connectionString:
+    process.env.DATABASE_URL ?? 'postgresql://pipo_os:pipo_os@localhost:5432/pipo_os',
 })
 
 export async function migrate() {

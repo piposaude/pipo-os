@@ -1,7 +1,7 @@
 {
+  "extends": "@pipo-os/typescript-config/base.json",
   "compilerOptions": {
     "composite": true,
-    "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true

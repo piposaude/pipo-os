@@ -30,10 +30,7 @@ async function fetchTickets(): Promise<Ticket[]> {
   return res.json()
 }
 
-async function createTicket(data: {
-  title: string
-  description: string
-}): Promise<Ticket> {
+async function createTicket(data: { title: string; description: string }): Promise<Ticket> {
   const res = await fetch(API, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -45,7 +42,7 @@ async function createTicket(data: {
 
 async function updateTicket(
   id: string,
-  data: Partial<Omit<Ticket, 'id' | 'createdAt'>>
+  data: Partial<Omit<Ticket, 'id' | 'createdAt'>>,
 ): Promise<Ticket> {
   const res = await fetch(`${API}/${id}`, {
     method: 'PUT',
@@ -70,20 +67,26 @@ export default function App() {
   const [description, setDescription] = useState('')
   const [creating, setCreating] = useState(false)
 
-  const load = async () => {
-    try {
-      setError(null)
-      const data = await fetchTickets()
-      setTickets(data)
-    } catch (e) {
-      setError((e as Error).message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
+    let active = true
+
+    const load = async () => {
+      try {
+        setError(null)
+        const data = await fetchTickets()
+        if (active) setTickets(data)
+      } catch (e) {
+        if (active) setError((e as Error).message)
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+
     load()
+
+    return () => {
+      active = false
+    }
   }, [])
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -177,16 +180,12 @@ export default function App() {
               </div>
               <p style={styles.cardDesc}>{ticket.description}</p>
               <div style={styles.cardFooter}>
-                <span style={styles.cardDate}>
-                  {new Date(ticket.createdAt).toLocaleString()}
-                </span>
+                <span style={styles.cardDate}>{new Date(ticket.createdAt).toLocaleString()}</span>
                 <div style={styles.cardActions}>
                   <select
                     style={styles.select}
                     value={ticket.status}
-                    onChange={(e) =>
-                      handleStatusChange(ticket.id, e.target.value as TicketStatus)
-                    }
+                    onChange={(e) => handleStatusChange(ticket.id, e.target.value as TicketStatus)}
                   >
                     {(Object.keys(STATUS_LABELS) as TicketStatus[]).map((s) => (
                       <option key={s} value={s}>
@@ -194,10 +193,7 @@ export default function App() {
                       </option>
                     ))}
                   </select>
-                  <button
-                    style={styles.deleteBtn}
-                    onClick={() => handleDelete(ticket.id)}
-                  >
+                  <button style={styles.deleteBtn} onClick={() => handleDelete(ticket.id)}>
                     Delete
                   </button>
                 </div>

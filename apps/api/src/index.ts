@@ -1,7 +1,7 @@
-import express, { Request, Response } from 'express'
+import express, { type Request, type Response } from 'express'
 import cors from 'cors'
 import path from 'path'
-import { pool, migrate } from './db'
+import { pool, migrate } from './db.js'
 
 const app = express()
 const PORT = 3001
@@ -48,7 +48,7 @@ app.post('/api/tickets', async (req: Request, res: Response) => {
     `INSERT INTO tickets (title, description, status)
      VALUES ($1, $2, $3)
      RETURNING *`,
-    [title, description, status ?? 'open']
+    [title, description, status ?? 'open'],
   )
   res.status(201).json(toTicket(result.rows[0]))
 })
@@ -65,7 +65,7 @@ app.put('/api/tickets/:id', async (req: Request, res: Response) => {
        status      = COALESCE($3, status)
      WHERE id = $4
      RETURNING *`,
-    [title ?? null, description ?? null, status ?? null, id]
+    [title ?? null, description ?? null, status ?? null, id],
   )
 
   if (result.rowCount === 0) {
@@ -89,7 +89,7 @@ app.delete('/api/tickets/:id', async (req: Request, res: Response) => {
 })
 
 if (process.env.NODE_ENV === 'production') {
-  const staticDir = path.join(__dirname, '../public')
+  const staticDir = path.join(import.meta.dirname, '../public')
   app.use(express.static(staticDir))
   app.get('*', (_req, res) => res.sendFile(path.join(staticDir, 'index.html')))
 }
