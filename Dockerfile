@@ -1,22 +1,22 @@
-FROM node:22-alpine AS frontend-builder
+FROM node:22-alpine AS base
 WORKDIR /app
-COPY frontend/package*.json ./
-RUN npm ci
-COPY frontend/ .
-RUN npm run build
+RUN corepack enable
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
+RUN pnpm install --frozen-lockfile
 
-FROM node:22-alpine AS backend-builder
-WORKDIR /app
-COPY backend/package*.json ./
-RUN npm ci
-COPY backend/ .
-RUN npm run build
+FROM base AS build
+COPY apps/api apps/api
+COPY apps/web apps/web
+RUN pnpm --filter ./apps/api build
+RUN pnpm --filter ./apps/web build
+RUN pnpm --filter ./apps/api deploy --prod --legacy /app/deploy/api
 
 FROM node:22-alpine
 WORKDIR /app
-COPY --from=backend-builder /app/dist ./dist
-COPY --from=backend-builder /app/node_modules ./node_modules
-COPY --from=frontend-builder /app/dist ./public
+COPY --from=build /app/deploy/api ./
+COPY --from=build /app/apps/web/dist ./public
 EXPOSE 3001
 ENV NODE_ENV=production
 CMD ["node", "dist/index.js"]
