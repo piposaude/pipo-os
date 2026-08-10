@@ -20,16 +20,38 @@ declare module 'fastify' {
   }
 }
 
+function isConcurrentCreateTableRace(error: unknown): boolean {
+  // CREATE TABLE IF NOT EXISTS has a documented Postgres race: two sessions can both
+  // pass the existence check and then both attempt the insert into the system catalog,
+  // so one loses with a 23505 on pg_type instead of a clean no-op. Happens whenever two
+  // processes boot concurrently against a fresh schema (parallel test files here; also
+  // possible with multiple replicas cold-starting in prod before ACE-12 migrations land).
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === '23505' &&
+    'constraint' in error &&
+    error.constraint === 'pg_type_typname_nsp_index'
+  )
+}
+
 async function ensureSchema(db: Kysely<Database>): Promise<void> {
-  await sql`
-    CREATE TABLE IF NOT EXISTS tickets (
-      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      title       TEXT NOT NULL,
-      description TEXT NOT NULL,
-      status      TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'closed')),
-      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-    )
-  `.execute(db)
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS tickets (
+        id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        title       TEXT NOT NULL,
+        description TEXT NOT NULL,
+        status      TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'closed')),
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `.execute(db)
+  } catch (error) {
+    if (!isConcurrentCreateTableRace(error)) {
+      throw error
+    }
+  }
 }
 
 export default fp(
