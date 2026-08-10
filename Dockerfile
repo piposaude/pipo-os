@@ -19,4 +19,4 @@ COPY --from=build /app/deploy/api ./
 COPY --from=build /app/apps/web/dist ./public
 EXPOSE 3001
 ENV NODE_ENV=production
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/server.js"]

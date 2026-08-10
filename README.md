@@ -4,7 +4,7 @@ Serviço fullstack para gerenciamento de tickets internos.
 
 ## Stack
 
-- **`apps/api`** — Node.js + Express + TypeScript (porta 3001)
+- **`apps/api`** — Node.js + Fastify + TypeScript, monólito modular (porta 3001)
 - **`apps/web`** — Vite + React + TypeScript (porta 5173)
 - **Banco de dados** — PostgreSQL 15
 
@@ -53,9 +53,11 @@ A migration da tabela `tickets` é executada automaticamente na inicialização 
 
 ## Variáveis de ambiente
 
-| Variável       | Padrão                                                | Descrição                     |
-| -------------- | ----------------------------------------------------- | ----------------------------- |
-| `DATABASE_URL` | `postgresql://pipo_os:pipo_os@localhost:5432/pipo_os` | Connection string do Postgres |
+| Variável       | Padrão                                                | Descrição                                 |
+| -------------- | ----------------------------------------------------- | ----------------------------------------- |
+| `PORT`         | `3001`                                                | Porta HTTP da API                         |
+| `DATABASE_URL` | `postgresql://pipo_os:pipo_os@localhost:5432/pipo_os` | Connection string do Postgres             |
+| `CORS_ORIGIN`  | `http://localhost:5173`                               | Origens permitidas, separadas por vírgula |
 
 ## API
 
