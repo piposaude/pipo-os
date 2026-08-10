@@ -6,6 +6,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run --passWithNoTests",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -13,10 +15,14 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@pipo-os/eslint-config": "workspace:*",
+    "@pipo-os/typescript-config": "workspace:*",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "catalog:",
     "typescript": "catalog:",
-    "vite": "^5.0.12"
+    "vite": "^5.0.12",
+    "vitest": "catalog:"
   }
 }

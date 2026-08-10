@@ -26,11 +26,11 @@ docker compose up -d
 
 Isso sobe um Postgres 15 local na porta `5432` com as credenciais:
 
-| Variável | Valor |
-|----------|-------|
-| `POSTGRES_USER` | `pipo_os` |
+| Variável            | Valor     |
+| ------------------- | --------- |
+| `POSTGRES_USER`     | `pipo_os` |
 | `POSTGRES_PASSWORD` | `pipo_os` |
-| `POSTGRES_DB` | `pipo_os` |
+| `POSTGRES_DB`       | `pipo_os` |
 
 ### Instalar dependências
 
@@ -53,18 +53,18 @@ A migration da tabela `tickets` é executada automaticamente na inicialização 
 
 ## Variáveis de ambiente
 
-| Variável | Padrão | Descrição |
-|----------|--------|-----------|
+| Variável       | Padrão                                                | Descrição                     |
+| -------------- | ----------------------------------------------------- | ----------------------------- |
 | `DATABASE_URL` | `postgresql://pipo_os:pipo_os@localhost:5432/pipo_os` | Connection string do Postgres |
 
 ## API
 
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| `GET` | `/api/tickets` | Lista todos os tickets |
-| `POST` | `/api/tickets` | Cria um novo ticket |
-| `PUT` | `/api/tickets/:id` | Atualiza título, descrição ou status |
-| `DELETE` | `/api/tickets/:id` | Remove um ticket |
+| Método   | Rota               | Descrição                            |
+| -------- | ------------------ | ------------------------------------ |
+| `GET`    | `/api/tickets`     | Lista todos os tickets               |
+| `POST`   | `/api/tickets`     | Cria um novo ticket                  |
+| `PUT`    | `/api/tickets/:id` | Atualiza título, descrição ou status |
+| `DELETE` | `/api/tickets/:id` | Remove um ticket                     |
 
 ### Payload de criação
 
