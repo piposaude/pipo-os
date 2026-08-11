@@ -61,10 +61,11 @@ jobs:
       - name: Typecheck
         run: pnpm -r typecheck
 
-      - name: Check openapi.json drift
+      - name: Check openapi.json and api-client drift
         run: |
           pnpm --filter pipo-os-backend openapi:export
-          git diff --exit-code openapi.json
+          pnpm --filter @pipo-os/api-client generate
+          git diff --exit-code -- openapi.json packages/api-client/src/generated
 
       - name: Test
         run: pnpm -r test
