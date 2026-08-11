@@ -4,6 +4,20 @@ import { buildApp } from './app.js'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
+async function captureRequestId(headers?: Record<string, string>): Promise<string | undefined> {
+  const testApp = buildApp()
+  let capturedId: string | undefined
+  testApp.addHook('onRequest', async (request) => {
+    capturedId = request.id
+  })
+  await testApp.ready()
+
+  await testApp.inject({ method: 'GET', url: '/health', headers })
+  await testApp.close()
+
+  return capturedId
+}
+
 describe('app', () => {
   let app: FastifyInstance
 
@@ -47,34 +61,26 @@ describe('app', () => {
   })
 
   it('generates a random UUID as request id when no x-request-id header is sent', async () => {
-    const testApp = buildApp()
-    let capturedId: string | undefined
-    testApp.addHook('onRequest', async (request) => {
-      capturedId = request.id
-    })
-    await testApp.ready()
-
-    await testApp.inject({ method: 'GET', url: '/health' })
-    await testApp.close()
+    const capturedId = await captureRequestId()
 
     expect(capturedId).toMatch(UUID_PATTERN)
   })
 
   it('reuses the incoming x-request-id header value as the request id', async () => {
-    const testApp = buildApp()
-    let capturedId: string | undefined
-    testApp.addHook('onRequest', async (request) => {
-      capturedId = request.id
-    })
-    await testApp.ready()
-
-    await testApp.inject({
-      method: 'GET',
-      url: '/health',
-      headers: { 'x-request-id': 'client-provided-id' },
-    })
-    await testApp.close()
+    const capturedId = await captureRequestId({ 'x-request-id': 'client-provided-id' })
 
     expect(capturedId).toBe('client-provided-id')
+  })
+
+  it('falls back to a random UUID when x-request-id has characters outside the allowed charset', async () => {
+    const capturedId = await captureRequestId({ 'x-request-id': 'evil\nvalue; DROP TABLE' })
+
+    expect(capturedId).toMatch(UUID_PATTERN)
+  })
+
+  it('falls back to a random UUID when x-request-id is longer than 64 characters', async () => {
+    const capturedId = await captureRequestId({ 'x-request-id': 'a'.repeat(65) })
+
+    expect(capturedId).toMatch(UUID_PATTERN)
   })
 })

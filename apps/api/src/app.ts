@@ -25,12 +25,25 @@ function corsOrigins(): string[] {
     .map((origin) => origin.trim())
 }
 
+// Fastify's requestIdHeader adopts the client's x-request-id verbatim, unvalidated,
+// straight into logs. Sizing/charset it here instead so a caller can't inject
+// control characters or unbounded strings into the log stream.
+const REQUEST_ID_HEADER = 'x-request-id'
+const REQUEST_ID_PATTERN = /^[a-zA-Z0-9-]{1,64}$/
+
+function genRequestId(request: { headers: Record<string, unknown> }): string {
+  const headerValue = request.headers[REQUEST_ID_HEADER]
+  if (typeof headerValue === 'string' && REQUEST_ID_PATTERN.test(headerValue)) {
+    return headerValue
+  }
+  return randomUUID()
+}
+
 export function buildApp(): FastifyInstance {
   const app = Fastify({
     logger: createLoggerOptions(),
-    requestIdHeader: 'x-request-id',
     logController: new LogController({ requestIdLogLabel: 'request-id' }),
-    genReqId: () => randomUUID(),
+    genReqId: genRequestId,
   })
 
   app.setValidatorCompiler(validatorCompiler)
