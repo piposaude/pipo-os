@@ -162,6 +162,7 @@ jobs:
           MANIFESTS="${{ needs.context.outputs.manifests-dir }}"
           sed -i "s|IMAGE_TAG|${{ needs.build.outputs.image-tag }}|g" \
             "$MANIFESTS/deployment-api.yaml" "$MANIFESTS/deployment-web.yaml"
+          export POSTGRES_PASSWORD_URLENC=$(jq -rn --arg v "$POSTGRES_PASSWORD" '$v|@uri')
           envsubst < "$MANIFESTS/postgres-secret.yaml.tmpl" | kubectl apply -f -
           kubectl apply -f "$MANIFESTS/"
           kubectl rollout restart deployment/pipo-os-api deployment/pipo-os-web -n default
