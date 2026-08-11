@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ErrorEvent } from '@sentry/node'
-import { initSentryNode, stripSensitiveHeaders } from './sentry-node.js'
+import { initSentryNode, shouldReportToSentry, stripSensitiveHeaders } from './sentry-node.js'
 
 describe('stripSensitiveHeaders', () => {
   it('removes authorization and cookie headers from the event request context', () => {
@@ -32,5 +32,23 @@ describe('initSentryNode', () => {
   it('does not throw when disabled (no DSN, dev/test environment)', () => {
     expect(() => initSentryNode({ environment: 'test' })).not.toThrow()
     expect(() => initSentryNode({ environment: 'development' })).not.toThrow()
+  })
+})
+
+describe('shouldReportToSentry', () => {
+  const error = new Error('boom')
+
+  it('reports 5xx responses', () => {
+    expect(shouldReportToSentry(error, {}, { statusCode: 500 })).toBe(true)
+    expect(shouldReportToSentry(error, {}, { statusCode: 503 })).toBe(true)
+  })
+
+  it('does not report 4xx responses', () => {
+    expect(shouldReportToSentry(error, {}, { statusCode: 400 })).toBe(false)
+    expect(shouldReportToSentry(error, {}, { statusCode: 404 })).toBe(false)
+  })
+
+  it('does not report successful responses', () => {
+    expect(shouldReportToSentry(error, {}, { statusCode: 200 })).toBe(false)
   })
 })

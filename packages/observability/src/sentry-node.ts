@@ -1,6 +1,4 @@
 import * as Sentry from '@sentry/node'
-import fp from 'fastify-plugin'
-import type { FastifyInstance } from 'fastify'
 import { shouldEnableSentry } from './env.js'
 
 export interface InitSentryNodeOptions {
@@ -20,6 +18,19 @@ export function stripSensitiveHeaders(event: Sentry.ErrorEvent): Sentry.ErrorEve
   return event
 }
 
+// Reporta apenas erros 5xx (não validação/erros de domínio já tratados pelo
+// error-handler da aplicação). Precisa ser passado a fastifyIntegration, não a
+// setupFastifyErrorHandler: no Fastify v5 o Sentry captura erros via
+// diagnostics channel, e setupFastifyErrorHandler sozinho ignora esse filtro
+// silenciosamente, caindo no padrão do SDK (que também reporta status <= 299).
+export function shouldReportToSentry(
+  _error: Error,
+  _request: unknown,
+  reply: { statusCode: number },
+): boolean {
+  return reply.statusCode >= 500
+}
+
 export function initSentryNode(options: InitSentryNodeOptions = {}): void {
   const environment =
     options.environment ?? process.env.APP_ENV ?? process.env.NODE_ENV ?? 'development'
@@ -35,20 +46,8 @@ export function initSentryNode(options: InitSentryNodeOptions = {}): void {
     environment,
     sendDefaultPii: false,
     beforeSend: stripSensitiveHeaders,
+    integrations: [Sentry.fastifyIntegration({ shouldHandleError: shouldReportToSentry })],
   })
 }
-
-// Reporta apenas erros 5xx (não validação/erros de domínio já tratados pelo
-// error-handler da aplicação) com contexto de request, sem PII.
-export default fp(
-  async function observabilitySentry(app: FastifyInstance) {
-    Sentry.setupFastifyErrorHandler(app, {
-      shouldHandleError(_error, _request, reply) {
-        return reply.statusCode >= 500
-      },
-    })
-  },
-  { name: 'observability-sentry' },
-)
 
 export { Sentry }
