@@ -114,23 +114,29 @@ jobs:
         run: echo "image-tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
 
       - name: Build & push (arm64)
+        env:
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
         run: |
           TAG="${{ steps.meta.outputs.image-tag }}"
           for name in api web; do
             if [[ "$name" == "api" ]]; then
               IMAGE="${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY_API }}"
+              BUILD_ARGS=()
             else
               IMAGE="${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY_WEB }}"
+              BUILD_ARGS=(--build-arg "VITE_SENTRY_DSN=$VITE_SENTRY_DSN")
             fi
             docker buildx build \
               --platform linux/arm64 \
               --file "Dockerfile.$name" \
+              "${BUILD_ARGS[@]}" \
               --tag "$IMAGE:$TAG" \
               --push .
             if [[ "${{ github.ref_type }}" == "tag" ]]; then
               docker buildx build \
                 --platform linux/arm64 \
                 --file "Dockerfile.$name" \
+                "${BUILD_ARGS[@]}" \
                 --tag "$IMAGE:${{ github.ref_name }}" \
                 --push .
             fi
@@ -158,11 +164,13 @@ jobs:
       - name: Apply manifests
         env:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: |
           MANIFESTS="${{ needs.context.outputs.manifests-dir }}"
           sed -i "s|IMAGE_TAG|${{ needs.build.outputs.image-tag }}|g" \
             "$MANIFESTS/deployment-api.yaml" "$MANIFESTS/deployment-web.yaml"
           envsubst < "$MANIFESTS/postgres-secret.yaml.tmpl" | kubectl apply -f -
+          envsubst < "$MANIFESTS/sentry-secret.yaml.tmpl" | kubectl apply -f -
           kubectl apply -f "$MANIFESTS/"
           kubectl rollout restart deployment/pipo-os-api deployment/pipo-os-web -n default
 
