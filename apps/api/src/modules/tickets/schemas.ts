@@ -1,14 +1,18 @@
 import { z } from 'zod'
 
-export const ticketStatusSchema = z.enum(['open', 'in_progress', 'closed'])
-
-export const ticketSchema = z.object({
-  id: z.uuid(),
-  title: z.string(),
-  description: z.string(),
-  status: ticketStatusSchema,
-  createdAt: z.string(),
+export const ticketStatusSchema = z.enum(['open', 'in_progress', 'closed']).meta({
+  id: 'TicketStatus',
 })
+
+export const ticketSchema = z
+  .object({
+    id: z.uuid(),
+    title: z.string(),
+    description: z.string(),
+    status: ticketStatusSchema,
+    createdAt: z.string(),
+  })
+  .meta({ id: 'Ticket' })
 
 export const ticketListResponseSchema = z.array(ticketSchema)
 
@@ -16,11 +20,13 @@ export const ticketParamsSchema = z.object({
   id: z.uuid(),
 })
 
-export const createTicketBodySchema = z.object({
-  title: z.string().min(1),
-  description: z.string().min(1),
-  status: ticketStatusSchema.optional(),
-})
+export const createTicketBodySchema = z
+  .object({
+    title: z.string().min(1),
+    description: z.string().min(1),
+    status: ticketStatusSchema.optional(),
+  })
+  .meta({ id: 'CreateTicketBody' })
 
 export const updateTicketBodySchema = z
   .object({
@@ -31,6 +37,7 @@ export const updateTicketBodySchema = z
   .refine((data) => Object.keys(data).length > 0, {
     message: 'At least one field must be provided',
   })
+  .meta({ id: 'UpdateTicketBody' })
 
 export type TicketStatus = z.infer<typeof ticketStatusSchema>
 export type Ticket = z.infer<typeof ticketSchema>

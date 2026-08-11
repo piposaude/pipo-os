@@ -12,11 +12,14 @@
     "start": "node dist/server.js",
     "db:migrate": "kysely migrate:latest",
     "db:rollback": "kysely migrate:down",
+    "openapi:export": "tsx scripts/export-openapi.ts",
     "db:codegen": "kysely-codegen --out-file src/infrastructure/db-types.ts --url \"${DATABASE_URL:-postgresql://pipo_os:pipo_os@localhost:5432/pipo_os}\""
   },
   "dependencies": {
     "@fastify/autoload": "^6.5.0",
     "@fastify/cors": "^11.3.0",
+    "@fastify/swagger": "^9.5.1",
+    "@fastify/swagger-ui": "^5.2.3",
     "@fastify/type-provider-zod": "^1.0.0",
     "fastify": "^5.11.3",
     "fastify-plugin": "^6.0.0",
