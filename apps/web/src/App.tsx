@@ -35,9 +35,10 @@ export default function App() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [dismissedQueryError, setDismissedQueryError] = useState<unknown>(null)
 
-  const invalidateTickets = () =>
-    queryClient.invalidateQueries({ queryKey: api.queryOptions('get', '/api/tickets').queryKey })
+  const ticketsQueryKey = api.queryOptions('get', '/api/tickets').queryKey
+  const invalidateTickets = () => queryClient.invalidateQueries({ queryKey: ticketsQueryKey })
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -77,7 +78,15 @@ export default function App() {
 
   const loading = ticketsQuery.isLoading
   const creating = createMutation.isPending
-  const displayError = error ?? (ticketsQuery.isError ? errorMessage(ticketsQuery.error) : null)
+
+  const queryError = ticketsQuery.error
+  const displayError =
+    error ?? (queryError && queryError !== dismissedQueryError ? errorMessage(queryError) : null)
+
+  const dismissError = () => {
+    setError(null)
+    setDismissedQueryError(queryError)
+  }
 
   return (
     <div style={styles.page}>
@@ -86,7 +95,7 @@ export default function App() {
       {displayError && (
         <div style={styles.errorBanner}>
           {displayError}
-          <button style={styles.dismissBtn} onClick={() => setError(null)}>
+          <button style={styles.dismissBtn} onClick={dismissError}>
             x
           </button>
         </div>
