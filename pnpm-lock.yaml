@@ -3,7 +3,6 @@ lockfileVersion: '9.0'
 settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
-  injectWorkspacePackages: true
 
 catalogs:
   default:
@@ -47,7 +46,7 @@ importers:
         version: 1.0.0(@fastify/swagger@9.8.1(supports-color@7.2.0))(fastify@5.11.3)(openapi-types@12.1.3)(zod@4.4.3)
       '@pipo-os/observability':
         specifier: workspace:*
-        version: file:packages/observability(fastify@5.11.3)(react@18.3.1)(supports-color@7.2.0)
+        version: link:../../packages/observability
       fastify:
         specifier: ^5.11.3
         version: 5.11.3
@@ -99,7 +98,7 @@ importers:
     dependencies:
       '@pipo-os/observability':
         specifier: workspace:*
-        version: file:packages/observability(fastify@5.11.3)(react@18.3.1)(supports-color@7.2.0)
+        version: link:../../packages/observability
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -167,6 +166,9 @@ importers:
       '@sentry/react':
         specifier: ^10.70.0
         version: 10.70.0(react@18.3.1)
+      fastify:
+        specifier: ^5.11.3
+        version: 5.11.3
       fastify-metrics:
         specifier: ^13.2.1
         version: 13.2.1(fastify@5.11.3)
@@ -201,9 +203,6 @@ importers:
       eslint:
         specifier: 'catalog:'
         version: 10.8.1(jiti@2.7.0)(supports-color@7.2.0)
-      fastify:
-        specifier: ^5.11.3
-        version: 5.11.3
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -764,17 +763,6 @@ packages:
 
   '@pinojs/redact@0.4.0':
     resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
-
-  '@pipo-os/observability@file:packages/observability':
-    resolution: {directory: packages/observability, type: directory}
-    peerDependencies:
-      fastify: ^5.0.0
-      react: ^18.2.0
-    peerDependenciesMeta:
-      fastify:
-        optional: true
-      react:
-        optional: true
 
   '@rolldown/pluginutils@1.0.0-beta.27':
     resolution: {integrity: sha512-+d0F4MKMCbeVUJwG96uQ4SgAznZNSq93I3V+9NHA4OpvqG8mRCpGdKmK8l/dl02h2CCDHwW2FqilnTyDcAnqjA==}
@@ -2781,24 +2769,6 @@ snapshots:
   '@opentelemetry/semantic-conventions@1.43.0': {}
 
   '@pinojs/redact@0.4.0': {}
-
-  '@pipo-os/observability@file:packages/observability(fastify@5.11.3)(react@18.3.1)(supports-color@7.2.0)':
-    dependencies:
-      '@sentry/node': 10.70.0(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(supports-color@7.2.0)
-      '@sentry/react': 10.70.0(react@18.3.1)
-      fastify-metrics: 13.2.1(fastify@5.11.3)
-      fastify-plugin: 6.0.0
-      pino: 10.3.1
-      pino-pretty: 13.1.3
-      prom-client: 15.1.3
-    optionalDependencies:
-      fastify: 5.11.3
-      react: 18.3.1
-    transitivePeerDependencies:
-      - '@opentelemetry/core'
-      - '@opentelemetry/exporter-trace-otlp-http'
-      - '@platformatic/prom-client'
-      - supports-color
 
   '@rolldown/pluginutils@1.0.0-beta.27': {}
 
