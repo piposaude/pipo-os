@@ -47,9 +47,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run migrations
-        run: pnpm --filter pipo-os-backend db:migrate
-
       - name: Format check
         run: pnpm format:check
 
