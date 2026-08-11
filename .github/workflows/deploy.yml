@@ -23,6 +23,22 @@ jobs:
   test:
     name: Lint, typecheck, test & build
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: pipo_os
+          POSTGRES_PASSWORD: pipo_os
+          POSTGRES_DB: pipo_os
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://pipo_os:pipo_os@localhost:5432/pipo_os
     steps:
       - uses: actions/checkout@v4
 
