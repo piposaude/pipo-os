@@ -6,6 +6,7 @@ Serviço fullstack para gerenciamento de tickets internos.
 
 - **`apps/api`** — Node.js + Fastify + TypeScript, monólito modular (porta 3001)
 - **`apps/web`** — Vite + React + TypeScript (porta 5173)
+- **`packages/api-client`** — client TypeScript gerado a partir do contrato OpenAPI, consumido pelo `apps/web`
 - **Banco de dados** — PostgreSQL 15
 
 Monorepo gerenciado com **pnpm workspaces**.
@@ -99,6 +100,33 @@ Isso sobe `apps/api` e `apps/web` simultaneamente via `pnpm -r --parallel dev`.
 ```
 
 Status possíveis: `open`, `in_progress`, `closed`.
+
+### Contrato OpenAPI
+
+O contrato REST da API é um artefato versionado: `openapi.json`, na raiz do repo.
+Ele é gerado a partir dos schemas Zod da API (via `@fastify/swagger` + `@fastify/type-provider-zod`), então nunca deve ser editado manualmente.
+
+```bash
+pnpm --filter pipo-os-backend openapi:export
+```
+
+Regenera `openapi.json`.
+Rode sempre que uma rota ou schema de `apps/api/src/modules/**` mudar.
+O CI falha se o arquivo commitado divergir do gerado (`git diff --exit-code openapi.json`).
+
+Em desenvolvimento, o Swagger UI fica disponível em [http://localhost:3001/docs](http://localhost:3001/docs).
+
+### `packages/api-client`
+
+Client TypeScript tipado derivado do `openapi.json`, usado pelo `apps/web` (e por futuros consumidores TS).
+Combina [`openapi-typescript`](https://openapi-ts.dev) (geração de tipos), [`openapi-fetch`](https://openapi-ts.dev/openapi-fetch) (client HTTP sem runtime) e [`openapi-react-query`](https://openapi-ts.dev/openapi-react-query) (hooks para o TanStack Query).
+
+```bash
+pnpm --filter @pipo-os/api-client generate
+```
+
+Regenera os tipos em `packages/api-client/src/generated/schema.d.ts` a partir do `openapi.json` da raiz.
+Rode sempre depois de `openapi:export`, quando o contrato mudar.
 
 ## Infraestrutura
 
