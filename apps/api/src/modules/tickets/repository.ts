@@ -1,16 +1,9 @@
-import type { Kysely } from 'kysely'
+import type { Kysely, Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
+import type { Tickets } from '../../infrastructure/db-types.js'
 import type { CreateTicketBody, Ticket, UpdateTicketBody } from './schemas.js'
 
-interface TicketRow {
-  id: string
-  title: string
-  description: string
-  status: string
-  created_at: Date
-}
-
-function toTicket(row: TicketRow): Ticket {
+function toTicket(row: Selectable<Tickets>): Ticket {
   return {
     id: row.id,
     title: row.title,

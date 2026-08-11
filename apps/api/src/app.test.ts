@@ -24,6 +24,10 @@ describe('app', () => {
   it('GET /health returns 503 when the database is unreachable', async () => {
     const unhealthyApp = buildApp()
     await unhealthyApp.ready()
+    // Kysely only marks its driver as destroyed if it was already initialized by a
+    // prior query, so we need one real query before destroying to make the pool
+    // unreachable instead of silently reconnecting on the next call.
+    await unhealthyApp.inject({ method: 'GET', url: '/health' })
     await unhealthyApp.db.destroy()
 
     const response = await unhealthyApp.inject({ method: 'GET', url: '/health' })

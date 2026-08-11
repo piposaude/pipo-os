@@ -1,18 +1,12 @@
-import { Kysely, PostgresDialect, sql, type ColumnType, type Generated } from 'kysely'
+import { promises as fs } from 'node:fs'
+import path from 'node:path'
+import { Kysely, PostgresDialect } from 'kysely'
+import { FileMigrationProvider, Migrator, type MigrationResult } from 'kysely/migration'
 import fp from 'fastify-plugin'
 import { Pool } from 'pg'
+import type { DB } from './db-types.js'
 
-export interface TicketsTable {
-  id: Generated<string>
-  title: string
-  description: string
-  status: string
-  created_at: ColumnType<Date, never, never>
-}
-
-export interface Database {
-  tickets: TicketsTable
-}
+export type Database = DB
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -20,37 +14,24 @@ declare module 'fastify' {
   }
 }
 
-function isConcurrentCreateTableRace(error: unknown): boolean {
-  // CREATE TABLE IF NOT EXISTS has a documented Postgres race: two sessions can both
-  // pass the existence check and then both attempt the insert into the system catalog,
-  // so one loses with a 23505 on pg_type instead of a clean no-op. Happens whenever two
-  // processes boot concurrently against a fresh schema (parallel test files here; also
-  // possible with multiple replicas cold-starting in prod before ACE-12 migrations land).
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === '23505' &&
-    'constraint' in error &&
-    error.constraint === 'pg_type_typname_nsp_index'
-  )
-}
+async function migrateToLatest(db: Kysely<Database>): Promise<void> {
+  const migrator = new Migrator({
+    db,
+    provider: new FileMigrationProvider({
+      fs,
+      path,
+      migrationFolder: path.join(import.meta.dirname, '..', 'migrations'),
+    }),
+  })
 
-async function ensureSchema(db: Kysely<Database>): Promise<void> {
-  try {
-    await sql`
-      CREATE TABLE IF NOT EXISTS tickets (
-        id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        title       TEXT NOT NULL,
-        description TEXT NOT NULL,
-        status      TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'closed')),
-        created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-      )
-    `.execute(db)
-  } catch (error) {
-    if (!isConcurrentCreateTableRace(error)) {
-      throw error
-    }
+  const { error, results } = await migrator.migrateToLatest()
+
+  const failed = results?.find((result: MigrationResult) => result.status === 'Error')
+  if (failed) {
+    throw new Error(`failed to execute migration "${failed.migrationName}"`)
+  }
+  if (error) {
+    throw error
   }
 }
 
@@ -69,7 +50,10 @@ export default fp(
       }),
     })
 
-    await ensureSchema(db)
+    // Kysely's Migrator serializes concurrent callers through the kysely_migration_lock
+    // table, so multiple app instances (or parallel vitest workers) booting against the
+    // same database migrate safely instead of racing.
+    await migrateToLatest(db)
 
     app.decorate('db', db)
     app.addHook('onClose', async () => {
