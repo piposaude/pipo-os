@@ -17,4 +17,5 @@ on:
 jobs:
   test:
     uses: ./.github/workflows/ci-checks.yml
-    secrets: inherit
+    secrets:
+      NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}

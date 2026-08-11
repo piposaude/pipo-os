@@ -22,7 +22,8 @@ env:
 jobs:
   test:
     uses: ./.github/workflows/ci-checks.yml
-    secrets: inherit
+    secrets:
+      NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
 
   # Tags mark a release cut promoted from a commit already validated on main,
   # so they always publish and deploy both images regardless of which paths
@@ -48,6 +49,7 @@ jobs:
             api:
               - 'apps/api/**'
               - 'packages/**'
+              - '.k8s/raw/**'
               - 'Dockerfile.api'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
@@ -56,6 +58,7 @@ jobs:
             web:
               - 'apps/web/**'
               - 'packages/**'
+              - '.k8s/raw/**'
               - 'Dockerfile.web'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
@@ -155,7 +158,7 @@ jobs:
 
   deploy-shared:
     name: Apply shared manifests
-    needs: [context, changes]
+    needs: [context, changes, build]
     if: needs.changes.outputs.apps != '[]'
     runs-on: ubuntu-latest
     environment: ${{ needs.context.outputs.environment }}
@@ -214,16 +217,26 @@ jobs:
             --region ${{ env.AWS_REGION }}
 
       - name: Apply deployment
+        env:
+          MANIFESTS: ${{ needs.context.outputs.manifests-dir }}
+          IMAGE_TAG: ${{ needs.context.outputs.image-tag }}
+          APP: ${{ matrix.app }}
         run: |
-          MANIFESTS="${{ needs.context.outputs.manifests-dir }}"
-          sed -i "s|IMAGE_TAG|${{ needs.context.outputs.image-tag }}|g" \
-            "$MANIFESTS/deployment-${{ matrix.app }}.yaml"
-          kubectl apply -f "$MANIFESTS/deployment-${{ matrix.app }}.yaml"
-          kubectl rollout restart "deployment/pipo-os-${{ matrix.app }}" -n default
+          sed -i "s|IMAGE_TAG|$IMAGE_TAG|g" "$MANIFESTS/deployment-$APP.yaml"
+          kubectl apply -f "$MANIFESTS/deployment-$APP.yaml"
 
+      # kubectl apply já dispara o rollout (a tag da imagem muda a cada deploy);
+      # um `rollout restart` depois disso criaria uma segunda revisão sem imagem
+      # nova, e um rollback subsequente desfaria só essa revisão vazia — não a
+      # imagem quebrada.
       - name: Wait for rollout
-        run: kubectl rollout status "deployment/pipo-os-${{ matrix.app }}" -n default --timeout=180s
+        id: rollout
+        env:
+          APP: ${{ matrix.app }}
+        run: kubectl rollout status "deployment/pipo-os-$APP" -n default --timeout=180s
 
       - name: Rollback on failure
-        if: failure()
-        run: kubectl rollout undo "deployment/pipo-os-${{ matrix.app }}" -n default
+        if: always() && steps.rollout.outcome == 'failure'
+        env:
+          APP: ${{ matrix.app }}
+        run: kubectl rollout undo "deployment/pipo-os-$APP" -n default
