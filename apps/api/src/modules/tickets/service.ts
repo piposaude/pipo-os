@@ -1,9 +1,9 @@
 import { NotFoundError } from '../../shared/errors.js'
-import type { TicketsRepository } from './repository.js'
+import type { TicketsRepositoryPort } from './repository.js'
 import type { CreateTicketBody, Ticket, UpdateTicketBody } from './schemas.js'
 
 export class TicketsService {
-  constructor(private readonly repository: TicketsRepository) {}
+  constructor(private readonly repository: TicketsRepositoryPort) {}
 
   list(): Promise<Ticket[]> {
     return this.repository.findAll()

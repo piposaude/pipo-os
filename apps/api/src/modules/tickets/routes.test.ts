@@ -148,6 +148,19 @@ describe('tickets routes', () => {
 
       expect(response.statusCode).toBe(400)
     })
+
+    it('returns 400 when the body has no fields to update', async () => {
+      const created = await createTicket()
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/api/tickets/${created.id}`,
+        payload: {},
+      })
+
+      expect(response.statusCode).toBe(400)
+      expect(response.json().error).toBe('RequestValidationError')
+    })
   })
 
   describe('DELETE /api/tickets/:id', () => {

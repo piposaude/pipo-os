@@ -7,6 +7,7 @@ import {
 } from '@fastify/type-provider-zod'
 import autoload from '@fastify/autoload'
 import Fastify, { type FastifyInstance } from 'fastify'
+import { sql } from 'kysely'
 import { z } from 'zod'
 import dbPlugin from './infrastructure/db.js'
 import errorHandlerPlugin from './infrastructure/error-handler.js'
@@ -30,13 +31,27 @@ export function buildApp(): FastifyInstance {
   app.register(dbPlugin)
   app.register(errorHandlerPlugin)
 
-  app
-    .withTypeProvider<ZodTypeProvider>()
-    .get(
-      '/health',
-      { schema: { response: { 200: z.object({ status: z.literal('ok') }) } } },
-      async () => ({ status: 'ok' as const }),
-    )
+  app.withTypeProvider<ZodTypeProvider>().get(
+    '/health',
+    {
+      schema: {
+        response: {
+          200: z.object({ status: z.literal('ok') }),
+          503: z.object({ status: z.literal('unavailable') }),
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        await sql`SELECT 1`.execute(app.db)
+        return { status: 'ok' as const }
+      } catch (error) {
+        request.log.error(error, 'health check failed: database unreachable')
+        reply.status(503)
+        return { status: 'unavailable' as const }
+      }
+    },
+  )
 
   app.register(autoload, {
     dir: path.join(import.meta.dirname, 'modules'),

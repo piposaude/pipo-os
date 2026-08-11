@@ -61,6 +61,10 @@ export default fp(
         pool: new Pool({
           connectionString:
             process.env.DATABASE_URL ?? 'postgresql://pipo_os:pipo_os@localhost:5432/pipo_os',
+          max: 10,
+          idleTimeoutMillis: 30_000,
+          connectionTimeoutMillis: 5_000,
+          statement_timeout: 10_000,
         }),
       }),
     })

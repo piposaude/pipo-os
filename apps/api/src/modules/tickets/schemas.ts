@@ -22,11 +22,15 @@ export const createTicketBodySchema = z.object({
   status: ticketStatusSchema.optional(),
 })
 
-export const updateTicketBodySchema = z.object({
-  title: z.string().min(1).optional(),
-  description: z.string().min(1).optional(),
-  status: ticketStatusSchema.optional(),
-})
+export const updateTicketBodySchema = z
+  .object({
+    title: z.string().min(1).optional(),
+    description: z.string().min(1).optional(),
+    status: ticketStatusSchema.optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'At least one field must be provided',
+  })
 
 export type TicketStatus = z.infer<typeof ticketStatusSchema>
 export type Ticket = z.infer<typeof ticketSchema>

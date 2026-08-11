@@ -20,7 +20,14 @@ function toTicket(row: TicketRow): Ticket {
   }
 }
 
-export class TicketsRepository {
+export interface TicketsRepositoryPort {
+  findAll(): Promise<Ticket[]>
+  create(data: CreateTicketBody): Promise<Ticket>
+  update(id: string, data: UpdateTicketBody): Promise<Ticket | undefined>
+  delete(id: string): Promise<boolean>
+}
+
+export class TicketsRepository implements TicketsRepositoryPort {
   constructor(private readonly db: Kysely<Database>) {}
 
   async findAll(): Promise<Ticket[]> {
