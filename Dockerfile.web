@@ -13,8 +13,8 @@ COPY packages/typescript-config packages/typescript-config
 COPY packages/eslint-config packages/eslint-config
 COPY packages/observability packages/observability
 COPY apps/web apps/web
-ARG VITE_SENTRY_DSN
-ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN
+ARG WEB_APP_SENTRY_DSN
+ENV WEB_APP_SENTRY_DSN=$WEB_APP_SENTRY_DSN
 RUN pnpm --filter "./apps/web..." build
 
 FROM nginx:1.27-alpine

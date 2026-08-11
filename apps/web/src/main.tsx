@@ -4,7 +4,7 @@ import { initSentryReact, SentryErrorBoundary } from '@pipo-os/observability/sen
 import App from './App'
 
 initSentryReact({
-  dsn: import.meta.env.VITE_SENTRY_DSN,
+  dsn: import.meta.env.WEB_APP_SENTRY_DSN,
   environment: import.meta.env.MODE,
 })
 
