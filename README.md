@@ -73,11 +73,23 @@ Isso sobe `apps/api` e `apps/web` simultaneamente via `pnpm -r --parallel dev`.
 
 ## Variáveis de ambiente
 
-| Variável       | Padrão                                                | Descrição                                 |
-| -------------- | ----------------------------------------------------- | ----------------------------------------- |
-| `PORT`         | `3001`                                                | Porta HTTP da API                         |
-| `DATABASE_URL` | `postgresql://pipo_os:pipo_os@localhost:5432/pipo_os` | Connection string do Postgres             |
-| `CORS_ORIGIN`  | `http://localhost:5173`                               | Origens permitidas, separadas por vírgula |
+| Variável             | Padrão                                                | Descrição                                                      |
+| -------------------- | ----------------------------------------------------- | -------------------------------------------------------------- |
+| `PORT`               | `3001`                                                | Porta HTTP da API                                              |
+| `DATABASE_URL`       | `postgresql://pipo_os:pipo_os@localhost:5432/pipo_os` | Connection string do Postgres                                  |
+| `CORS_ORIGIN`        | `http://localhost:5173`                               | Origens permitidas, separadas por vírgula                      |
+| `LOG_LEVEL`          | `info` em produção, `debug` nos demais ambientes      | Nível mínimo de log do pino                                    |
+| `SENTRY_DSN`         | _(vazio, Sentry desabilitado)_                        | DSN do projeto Sentry da api. Sempre desabilitado em dev/test  |
+| `WEB_APP_SENTRY_DSN` | _(vazio, Sentry desabilitado)_                        | DSN do projeto Sentry do web, injetado em build-time pelo Vite |
+
+## Observabilidade
+
+- **Logs**: pino estruturado (`apps/api`), com redaction de PII centralizada em `@pipo-os/observability`.
+  Isso cobre headers de autenticação, senhas, tokens, CPF, tax-id, e-mail e endereço.
+  Nunca interpole dados sensíveis na mensagem de log — passe-os como primeiro argumento do logger (`log.info({ ticketId }, 'ticket created')`).
+- **Métricas**: a api expõe `GET /metrics` numa porta dedicada (`8080`, separada da porta de negócio) com métricas default do Node.js e histograma/summary de duração por rota, método e status.
+  Métricas de negócio devem ser criadas nos módulos via `app.metrics.client`, seguindo a convenção `pipos_<dominio>_<metrica>_<unidade>`.
+- **Erros**: erros 5xx não tratados na api e crashes de render no web são reportados ao Sentry quando `SENTRY_DSN`/`WEB_APP_SENTRY_DSN` estão configurados, sem PII no contexto da request.
 
 ## API
 

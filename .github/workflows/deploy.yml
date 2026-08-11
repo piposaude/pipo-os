@@ -58,14 +58,16 @@ jobs:
       - name: Lint
         run: pnpm -r lint
 
+      # Build antes de typecheck/test: packages/observability precisa do seu
+      # dist/ compilado para que apps/api e apps/web resolvam seus exports.
+      - name: Build
+        run: pnpm -r build
+
       - name: Typecheck
         run: pnpm -r typecheck
 
       - name: Test
         run: pnpm -r test
-
-      - name: Build
-        run: pnpm -r build
 
   context:
     name: Resolve environment
@@ -114,23 +116,29 @@ jobs:
         run: echo "image-tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
 
       - name: Build & push (arm64)
+        env:
+          WEB_APP_SENTRY_DSN: ${{ secrets.WEB_APP_SENTRY_DSN }}
         run: |
           TAG="${{ steps.meta.outputs.image-tag }}"
           for name in api web; do
             if [[ "$name" == "api" ]]; then
               IMAGE="${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY_API }}"
+              BUILD_ARGS=()
             else
               IMAGE="${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY_WEB }}"
+              BUILD_ARGS=(--build-arg "WEB_APP_SENTRY_DSN=$WEB_APP_SENTRY_DSN")
             fi
             docker buildx build \
               --platform linux/arm64 \
               --file "Dockerfile.$name" \
+              "${BUILD_ARGS[@]}" \
               --tag "$IMAGE:$TAG" \
               --push .
             if [[ "${{ github.ref_type }}" == "tag" ]]; then
               docker buildx build \
                 --platform linux/arm64 \
                 --file "Dockerfile.$name" \
+                "${BUILD_ARGS[@]}" \
                 --tag "$IMAGE:${{ github.ref_name }}" \
                 --push .
             fi
@@ -158,12 +166,14 @@ jobs:
       - name: Apply manifests
         env:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: |
           MANIFESTS="${{ needs.context.outputs.manifests-dir }}"
           sed -i "s|IMAGE_TAG|${{ needs.build.outputs.image-tag }}|g" \
             "$MANIFESTS/deployment-api.yaml" "$MANIFESTS/deployment-web.yaml"
           export POSTGRES_PASSWORD_URLENC=$(jq -rn --arg v "$POSTGRES_PASSWORD" '$v|@uri')
           envsubst < "$MANIFESTS/postgres-secret.yaml.tmpl" | kubectl apply -f -
+          envsubst < "$MANIFESTS/sentry-secret.yaml.tmpl" | kubectl apply -f -
           kubectl apply -f "$MANIFESTS/"
           kubectl rollout restart deployment/pipo-os-api deployment/pipo-os-web -n default
 
