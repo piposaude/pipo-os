@@ -83,6 +83,21 @@ describe('createLoggerOptions', () => {
     expect(entry.user.address).toBe('[REDACTED]')
   })
 
+  it('redacts PII fields logged at the root of the log object', () => {
+    const { stream, lines } = captureLogs()
+    const logger = pino(createLoggerOptions({ nodeEnv: 'test' }), stream)
+
+    logger.info(
+      { ticketId: 'ticket-1', email: 'person@example.com', password: 'hunter2' },
+      'ticket created',
+    )
+
+    const entry = lastEntry(lines)
+    expect(entry.ticketId).toBe('ticket-1')
+    expect(entry.email).toBe('[REDACTED]')
+    expect(entry.password).toBe('[REDACTED]')
+  })
+
   it('keeps unrelated fields untouched', () => {
     const { stream, lines } = captureLogs()
     const logger = pino(createLoggerOptions({ nodeEnv: 'test' }), stream)
