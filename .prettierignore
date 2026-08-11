@@ -6,3 +6,5 @@ pnpm-lock.yaml
 docs
 .claude
 apps/api/src/infrastructure/db-types.ts
+openapi.json
+packages/api-client/src/generated

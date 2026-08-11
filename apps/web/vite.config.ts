@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
@@ -6,6 +6,9 @@ export default defineConfig({
   // WEB_APP_ além do VITE_ padrão: variáveis do observability (ex.: WEB_APP_SENTRY_DSN)
   // não usam o prefixo VITE_.
   envPrefix: ['VITE_', 'WEB_APP_'],
+  test: {
+    environment: 'jsdom',
+  },
   server: {
     port: 5173,
     proxy: {

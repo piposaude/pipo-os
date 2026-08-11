@@ -1,0 +1,44 @@
+{
+  "name": "@pipo-os/api-client",
+  "version": "1.0.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "openapi-typescript ../../openapi.json -o src/generated/schema.d.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.17.0",
+    "openapi-react-query": "^0.5.2"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.0.0",
+    "react": "^18.2.0 || ^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@tanstack/react-query": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@pipo-os/eslint-config": "workspace:*",
+    "@pipo-os/typescript-config": "workspace:*",
+    "@tanstack/react-query": "^5.62.0",
+    "@types/react": "^18.2.48",
+    "eslint": "catalog:",
+    "openapi-typescript": "^7.6.1",
+    "react": "^18.2.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

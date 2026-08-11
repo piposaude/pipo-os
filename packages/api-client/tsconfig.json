@@ -1,0 +1,10 @@
+{
+  "extends": "@pipo-os/typescript-config/base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM"],
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}
