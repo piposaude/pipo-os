@@ -1,0 +1,93 @@
+import { Writable } from 'node:stream'
+import pino from 'pino'
+import { describe, expect, it } from 'vitest'
+import { createLoggerOptions } from './logger.js'
+
+function captureLogs() {
+  const lines: string[] = []
+  const stream = new Writable({
+    write(chunk: Buffer, _encoding, callback) {
+      lines.push(chunk.toString())
+      callback()
+    },
+  })
+  return { stream, lines }
+}
+
+function lastEntry(lines: string[]) {
+  return JSON.parse(lines.at(-1) ?? '{}')
+}
+
+describe('createLoggerOptions', () => {
+  it('uses info level in production and debug elsewhere', () => {
+    expect(createLoggerOptions({ nodeEnv: 'production' }).level).toBe('info')
+    expect(createLoggerOptions({ nodeEnv: 'development' }).level).toBe('debug')
+    expect(createLoggerOptions({ nodeEnv: 'test' }).level).toBe('debug')
+  })
+
+  it('only attaches the pino-pretty transport in development', () => {
+    expect(createLoggerOptions({ nodeEnv: 'development' }).transport).toBeDefined()
+    expect(createLoggerOptions({ nodeEnv: 'production' }).transport).toBeUndefined()
+    expect(createLoggerOptions({ nodeEnv: 'test' }).transport).toBeUndefined()
+  })
+
+  it('redacts the Authorization header from request logs', () => {
+    const { stream, lines } = captureLogs()
+    const logger = pino(createLoggerOptions({ nodeEnv: 'test' }), stream)
+
+    logger.info(
+      {
+        req: {
+          method: 'GET',
+          url: '/api/tickets',
+          headers: {
+            authorization: 'Bearer super-secret-token',
+            'content-type': 'application/json',
+          },
+        },
+      },
+      'request received',
+    )
+
+    const entry = lastEntry(lines)
+    expect(entry.req.headers.authorization).toBe('[REDACTED]')
+    expect(entry.req.headers['content-type']).toBe('application/json')
+  })
+
+  it('redacts passwords, tokens, cpf and email regardless of which object holds them', () => {
+    const { stream, lines } = captureLogs()
+    const logger = pino(createLoggerOptions({ nodeEnv: 'test' }), stream)
+
+    logger.info(
+      {
+        user: {
+          id: 'user-1',
+          password: 'hunter2',
+          token: 'abc123',
+          cpf: '123.456.789-00',
+          email: 'person@example.com',
+        },
+      },
+      'user updated',
+    )
+
+    const entry = lastEntry(lines)
+    expect(entry.user.id).toBe('user-1')
+    expect(entry.user.password).toBe('[REDACTED]')
+    expect(entry.user.token).toBe('[REDACTED]')
+    expect(entry.user.cpf).toBe('[REDACTED]')
+    expect(entry.user.email).toBe('[REDACTED]')
+  })
+
+  it('keeps unrelated fields untouched', () => {
+    const { stream, lines } = captureLogs()
+    const logger = pino(createLoggerOptions({ nodeEnv: 'test' }), stream)
+
+    logger.info({ ticketId: 'ticket-1', status: 'open' }, 'ticket created')
+
+    const entry = lastEntry(lines)
+    expect(entry.ticketId).toBe('ticket-1')
+    expect(entry.status).toBe('open')
+    expect(entry.msg).toBe('ticket created')
+  })
+})
