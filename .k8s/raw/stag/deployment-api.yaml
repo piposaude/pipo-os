@@ -16,7 +16,7 @@ spec:
         app: pipo-os-api
       annotations:
         prometheus.io/scrape: 'true'
-        prometheus.io/port: '3001'
+        prometheus.io/port: '8080'
         prometheus.io/path: /metrics
     spec:
       serviceAccountName: pipo-os
@@ -32,6 +32,8 @@ spec:
           image: 588824502706.dkr.ecr.sa-east-1.amazonaws.com/services/pipo-os-api:IMAGE_TAG
           ports:
             - containerPort: 3001
+            - containerPort: 8080
+              name: metrics
           env:
             - name: NODE_ENV
               value: production
@@ -45,7 +47,7 @@ spec:
             - name: SENTRY_DSN
               valueFrom:
                 secretKeyRef:
-                  name: pipo-os-sentry
+                  name: pipo-os
                   key: SENTRY_DSN
           livenessProbe:
             httpGet:
