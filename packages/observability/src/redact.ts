@@ -10,8 +10,12 @@ export const PII_REDACT_PATHS: readonly string[] = [
   '*.apiKey',
   '*.cpf',
   '*.email',
+  '*.tax-id',
+  '*.address',
   '*.*.password',
   '*.*.token',
   '*.*.cpf',
   '*.*.email',
+  '*.*.tax-id',
+  '*.*.address',
 ]

@@ -54,7 +54,7 @@ describe('createLoggerOptions', () => {
     expect(entry.req.headers['content-type']).toBe('application/json')
   })
 
-  it('redacts passwords, tokens, cpf and email regardless of which object holds them', () => {
+  it('redacts passwords, tokens, cpf, email, tax-id and address regardless of which object holds them', () => {
     const { stream, lines } = captureLogs()
     const logger = pino(createLoggerOptions({ nodeEnv: 'test' }), stream)
 
@@ -66,6 +66,8 @@ describe('createLoggerOptions', () => {
           token: 'abc123',
           cpf: '123.456.789-00',
           email: 'person@example.com',
+          'tax-id': '12-3456789',
+          address: 'Rua Exemplo, 123',
         },
       },
       'user updated',
@@ -77,6 +79,8 @@ describe('createLoggerOptions', () => {
     expect(entry.user.token).toBe('[REDACTED]')
     expect(entry.user.cpf).toBe('[REDACTED]')
     expect(entry.user.email).toBe('[REDACTED]')
+    expect(entry.user['tax-id']).toBe('[REDACTED]')
+    expect(entry.user.address).toBe('[REDACTED]')
   })
 
   it('keeps unrelated fields untouched', () => {

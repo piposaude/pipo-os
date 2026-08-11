@@ -21,7 +21,7 @@ function requestSerializer(request: RequestLike) {
     method: request.method,
     url: request.url,
     hostname: request.hostname,
-    remoteAddress: request.ip,
+    ip: request.ip,
     headers: request.headers,
   }
 }
