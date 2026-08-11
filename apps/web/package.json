@@ -20,10 +20,12 @@
   "devDependencies": {
     "@pipo-os/eslint-config": "workspace:*",
     "@pipo-os/typescript-config": "workspace:*",
+    "@testing-library/react": "^16.0.1",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.2.1",
     "eslint": "catalog:",
+    "jsdom": "^25.0.1",
     "typescript": "catalog:",
     "vite": "^5.0.12",
     "vitest": "catalog:"
