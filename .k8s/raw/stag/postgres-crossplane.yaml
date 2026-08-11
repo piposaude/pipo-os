@@ -10,7 +10,7 @@ spec:
   forProvider:
     owner: pipo_os
   providerConfigRef:
-    name: postgresql-stag
+    name: postgresql-pipobusiness-stag
 ---
 apiVersion: postgresql.sql.crossplane.io/v1alpha1
 kind: Role
@@ -33,7 +33,7 @@ spec:
       createRole: false
       superUser: false
   providerConfigRef:
-    name: postgresql-stag
+    name: postgresql-pipobusiness-stag
 ---
 apiVersion: postgresql.sql.crossplane.io/v1alpha1
 kind: Schema
@@ -49,7 +49,7 @@ spec:
     role: pipo_os
     revokePublicOnSchema: true
   providerConfigRef:
-    name: postgresql-stag
+    name: postgresql-pipobusiness-stag
 ---
 apiVersion: postgresql.sql.crossplane.io/v1alpha1
 kind: Grant
@@ -63,4 +63,4 @@ spec:
     privileges:
       - CONNECT
   providerConfigRef:
-    name: postgresql-stag
+    name: postgresql-pipobusiness-stag
