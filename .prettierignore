@@ -5,3 +5,4 @@ pnpm-lock.yaml
 .k8s
 docs
 .claude
+apps/api/src/infrastructure/db-types.ts

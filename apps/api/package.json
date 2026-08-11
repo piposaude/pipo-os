@@ -9,7 +9,10 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run --passWithNoTests",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "db:migrate": "kysely migrate:latest",
+    "db:rollback": "kysely migrate:down",
+    "db:codegen": "kysely-codegen --out-file src/infrastructure/db-types.ts --url \"${DATABASE_URL:-postgresql://pipo_os:pipo_os@localhost:5432/pipo_os}\""
   },
   "dependencies": {
     "@fastify/autoload": "^6.5.0",
@@ -27,6 +30,8 @@
     "@types/node": "catalog:",
     "@types/pg": "^8.11.0",
     "eslint": "catalog:",
+    "kysely-codegen": "^0.20.0",
+    "kysely-ctl": "^0.21.0",
     "tsx": "^4.23.12",
     "typescript": "catalog:",
     "vitest": "catalog:"

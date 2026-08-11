@@ -38,6 +38,28 @@ Isso sobe um Postgres 15 local na porta `5432` com as credenciais:
 pnpm install
 ```
 
+### Migrations
+
+As migrations versionadas (Kysely `Migrator`, definidas em `apps/api/src/migrations/`) rodam automaticamente sempre que a API sobe — em dev (`pnpm dev`, `pnpm test`) e em produção.
+Não é preciso migrar manualmente antes de subir a API; a baseline `0001_tickets` é idempotente e segura para adotar bancos já existentes.
+
+Para operar as migrations manualmente (sem subir a API), use o CLI do `kysely-ctl`:
+
+```bash
+pnpm --filter pipo-os-backend db:migrate   # aplica as migrations pendentes
+pnpm --filter pipo-os-backend db:rollback  # desfaz a última migration
+```
+
+### Gerar os tipos do banco
+
+```bash
+pnpm --filter pipo-os-backend db:codegen
+```
+
+Introspecciona o Postgres local via `kysely-codegen` e regenera `apps/api/src/infrastructure/db-types.ts`.
+Esse arquivo é gerado — não deve ser editado manualmente.
+Rode sempre que uma migration mudar o schema.
+
 ### Rodar
 
 ```bash
@@ -48,8 +70,6 @@ Isso sobe `apps/api` e `apps/web` simultaneamente via `pnpm -r --parallel dev`.
 
 - Web: http://localhost:5173
 - API: http://localhost:3001
-
-A migration da tabela `tickets` é executada automaticamente na inicialização da API.
 
 ## Variáveis de ambiente
 
@@ -86,12 +106,11 @@ A infraestrutura AWS é gerenciada via Terraform em `.tf/`:
 
 ```
 .tf/
-├── global/   — ECR registry
-├── stag/     — RDS Postgres (t4g.medium, 20GB) + DNS pipo-os-db.pipo.health
-└── prod/     — RDS Postgres (m6g.large, 50GB, backup 7d) + DNS pipo-os-db.piposaude.com.br
+├── global/     — ECR registries + IAM roles OIDC do GitHub Actions (deploy stag/prod)
+└── eks-access/ — EKS access entries + binding do ClusterRole crossplane-edit para as roles de deploy
 ```
 
-As credenciais do banco são injetadas como variáveis de ambiente no pipeline (`TF_VAR_stag_db_user`, etc.).
+O banco de dados **não é uma instância RDS dedicada**: `pipo_os` é um database lógico provisionado via Crossplane (`.k8s/raw/{stag,prod}/postgres-crossplane.yaml`) dentro da instância PostgreSQL compartilhada da Pipo (`psql.pipo.health` em stag, `psql.piposaude.com.br` em prod). O Secret `pipo-os-postgres` (gerado a partir de `postgres-secret.yaml.tmpl` no deploy) expõe `POSTGRES_HOST/PORT/USER/PASSWORD/DB` e `DATABASE_URL` prontos para uso.
 
 ### Deploy
 
@@ -99,4 +118,4 @@ As credenciais do banco são injetadas como variáveis de ambiente no pipeline (
 
 ### Pipeline
 
-O `.gitlab-ci.yml` inclui o template terraform da Pipo, que executa `terraform plan` em MRs e `terraform apply` ao mergear na branch principal.
+O deploy roda via GitHub Actions (`.github/workflows/deploy.yml`): build & push das imagens para o ECR, autenticação no EKS via OIDC (`aws-actions/configure-aws-credentials`) e aplicação dos manifests em `.k8s/raw/{stag,prod}/`. As mudanças em `.tf/` (IAM roles, EKS access entries) são aplicadas manualmente via `terraform apply` — não há pipeline de Terraform neste repositório.
