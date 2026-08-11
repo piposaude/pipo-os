@@ -15,6 +15,7 @@
     "@fastify/autoload": "^6.5.0",
     "@fastify/cors": "^11.3.0",
     "@fastify/type-provider-zod": "^1.0.0",
+    "@pipo-os/observability": "workspace:*",
     "fastify": "^5.11.3",
     "fastify-plugin": "^6.0.0",
     "kysely": "^0.29.5",

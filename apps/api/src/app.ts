@@ -6,6 +6,9 @@ import {
   type ZodTypeProvider,
 } from '@fastify/type-provider-zod'
 import autoload from '@fastify/autoload'
+import { createLoggerOptions } from '@pipo-os/observability/logger'
+import metricsPlugin from '@pipo-os/observability/metrics'
+import sentryPlugin from '@pipo-os/observability/sentry-node'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { sql } from 'kysely'
 import { z } from 'zod'
@@ -20,7 +23,7 @@ function corsOrigins(): string[] {
 
 export function buildApp(): FastifyInstance {
   const app = Fastify({
-    logger: true,
+    logger: createLoggerOptions(),
     requestIdHeader: 'x-request-id',
   })
 
@@ -28,6 +31,8 @@ export function buildApp(): FastifyInstance {
   app.setSerializerCompiler(serializerCompiler)
 
   app.register(cors, { origin: corsOrigins() })
+  app.register(sentryPlugin)
+  app.register(metricsPlugin)
   app.register(dbPlugin)
   app.register(errorHandlerPlugin)
 

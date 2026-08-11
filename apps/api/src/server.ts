@@ -1,4 +1,7 @@
+import { initSentryNode } from '@pipo-os/observability/sentry-node'
 import { buildApp } from './app.js'
+
+initSentryNode()
 
 const PORT = Number(process.env.PORT ?? 3001)
 
