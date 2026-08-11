@@ -128,23 +128,23 @@ export interface components {
     schemas: {
         /** @enum {string} */
         TicketStatusInput: "open" | "in_progress" | "closed";
-        TicketInput: {
-            /** Format: uuid */
-            id: string;
-            title: string;
-            description: string;
-            status: components["schemas"]["TicketStatusInput"];
-            createdAt: string;
-        };
         CreateTicketBodyInput: {
             title: string;
             description: string;
             status?: components["schemas"]["TicketStatusInput"];
         };
         UpdateTicketBodyInput: {
-            title?: string;
+            title: string;
             description?: string;
             status?: components["schemas"]["TicketStatusInput"];
+        } | {
+            title?: string;
+            description: string;
+            status?: components["schemas"]["TicketStatusInput"];
+        } | {
+            title?: string;
+            description?: string;
+            status: components["schemas"]["TicketStatusInput"];
         };
         /** @enum {string} */
         TicketStatus: "open" | "in_progress" | "closed";
@@ -155,16 +155,6 @@ export interface components {
             description: string;
             status: components["schemas"]["TicketStatus"];
             createdAt: string;
-        };
-        CreateTicketBody: {
-            title: string;
-            description: string;
-            status?: components["schemas"]["TicketStatus"];
-        };
-        UpdateTicketBody: {
-            title?: string;
-            description?: string;
-            status?: components["schemas"]["TicketStatus"];
         };
     };
     responses: never;

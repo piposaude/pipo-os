@@ -28,15 +28,27 @@ export const createTicketBodySchema = z
   })
   .meta({ id: 'CreateTicketBody' })
 
+const titleField = z.string().min(1)
+const descriptionField = z.string().min(1)
+
 export const updateTicketBodySchema = z
-  .object({
-    title: z.string().min(1).optional(),
-    description: z.string().min(1).optional(),
-    status: ticketStatusSchema.optional(),
-  })
-  .refine((data) => Object.keys(data).length > 0, {
-    message: 'At least one field must be provided',
-  })
+  .union([
+    z.object({
+      title: titleField,
+      description: descriptionField.optional(),
+      status: ticketStatusSchema.optional(),
+    }),
+    z.object({
+      title: titleField.optional(),
+      description: descriptionField,
+      status: ticketStatusSchema.optional(),
+    }),
+    z.object({
+      title: titleField.optional(),
+      description: descriptionField.optional(),
+      status: ticketStatusSchema,
+    }),
+  ])
   .meta({ id: 'UpdateTicketBody' })
 
 export type TicketStatus = z.infer<typeof ticketStatusSchema>
