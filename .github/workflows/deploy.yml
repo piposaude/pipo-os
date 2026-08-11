@@ -21,53 +21,65 @@ env:
 
 jobs:
   test:
-    name: Lint, typecheck, test & build
+    uses: ./.github/workflows/ci-checks.yml
+    secrets:
+      NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+
+  # Tags mark a release cut promoted from a commit already validated on main,
+  # so they always publish and deploy both images regardless of which paths
+  # changed. Branch pushes only touch the app(s) whose paths actually changed.
+  changes:
+    name: Detect changed apps
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: pipo_os
-          POSTGRES_PASSWORD: pipo_os
-          POSTGRES_DB: pipo_os
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    env:
-      DATABASE_URL: postgresql://pipo_os:pipo_os@localhost:5432/pipo_os
+    outputs:
+      # JSON array feeding `build`/`deploy`'s matrix, e.g. '["web"]' or '[]'.
+      # A job-level `if` can't read the `matrix` context, so filtering has to
+      # happen here, upstream, by shrinking the matrix itself.
+      apps: ${{ steps.resolve.outputs.apps }}
     steps:
       - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: pnpm
+          fetch-depth: 0
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - id: filter
+        if: github.ref_type == 'branch'
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            api:
+              - 'apps/api/**'
+              - 'packages/**'
+              - '.k8s/raw/**'
+              - 'Dockerfile.api'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'package.json'
+              - '.github/workflows/deploy.yml'
+            web:
+              - 'apps/web/**'
+              - 'packages/**'
+              - '.k8s/raw/**'
+              - 'Dockerfile.web'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'package.json'
+              - '.github/workflows/deploy.yml'
 
-      - name: Format check
-        run: pnpm format:check
-
-      - name: Lint
-        run: pnpm -r lint
-
-      # Build antes de typecheck/test: packages/observability precisa do seu
-      # dist/ compilado para que apps/api e apps/web resolvam seus exports.
-      - name: Build
-        run: pnpm -r build
-
-      - name: Typecheck
-        run: pnpm -r typecheck
-
-      - name: Test
-        run: pnpm -r test
+      - id: resolve
+        env:
+          API_CHANGED: ${{ steps.filter.outputs.api }}
+          WEB_CHANGED: ${{ steps.filter.outputs.web }}
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            API=true
+            WEB=true
+          else
+            API="$API_CHANGED"
+            WEB="$WEB_CHANGED"
+          fi
+          apps=$(jq -nc --arg api "$API" --arg web "$WEB" \
+            '[if $api == "true" then "api" else empty end, if $web == "true" then "web" else empty end]')
+          echo "apps=$apps" >> "$GITHUB_OUTPUT"
 
   context:
     name: Resolve environment
@@ -76,6 +88,7 @@ jobs:
       environment: ${{ steps.set.outputs.environment }}
       cluster: ${{ steps.set.outputs.cluster }}
       manifests-dir: ${{ steps.set.outputs.manifests-dir }}
+      image-tag: ${{ steps.set.outputs.image-tag }}
     steps:
       - id: set
         run: |
@@ -88,14 +101,18 @@ jobs:
             echo "cluster=pipo-stag" >> "$GITHUB_OUTPUT"
             echo "manifests-dir=.k8s/raw/stag" >> "$GITHUB_OUTPUT"
           fi
+          echo "image-tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
 
   build:
-    name: Build & push image
-    needs: [test, context]
+    name: Build & push ${{ matrix.app }} image
+    needs: [test, context, changes]
+    if: needs.changes.outputs.apps != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJSON(needs.changes.outputs.apps) }}
     runs-on: ubuntu-latest
     environment: ${{ needs.context.outputs.environment }}
-    outputs:
-      image-tag: ${{ steps.meta.outputs.image-tag }}
     steps:
       - uses: actions/checkout@v4
 
@@ -112,41 +129,37 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      - id: meta
-        run: echo "image-tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
-
       - name: Build & push (arm64)
         env:
           WEB_APP_SENTRY_DSN: ${{ secrets.WEB_APP_SENTRY_DSN }}
         run: |
-          TAG="${{ steps.meta.outputs.image-tag }}"
-          for name in api web; do
-            if [[ "$name" == "api" ]]; then
-              IMAGE="${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY_API }}"
-              BUILD_ARGS=()
-            else
-              IMAGE="${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY_WEB }}"
-              BUILD_ARGS=(--build-arg "WEB_APP_SENTRY_DSN=$WEB_APP_SENTRY_DSN")
-            fi
+          TAG="${{ needs.context.outputs.image-tag }}"
+          if [[ "${{ matrix.app }}" == "api" ]]; then
+            IMAGE="${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY_API }}"
+            BUILD_ARGS=()
+          else
+            IMAGE="${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY_WEB }}"
+            BUILD_ARGS=(--build-arg "WEB_APP_SENTRY_DSN=$WEB_APP_SENTRY_DSN")
+          fi
+          docker buildx build \
+            --platform linux/arm64 \
+            --file "Dockerfile.${{ matrix.app }}" \
+            "${BUILD_ARGS[@]}" \
+            --tag "$IMAGE:$TAG" \
+            --push .
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
             docker buildx build \
               --platform linux/arm64 \
-              --file "Dockerfile.$name" \
+              --file "Dockerfile.${{ matrix.app }}" \
               "${BUILD_ARGS[@]}" \
-              --tag "$IMAGE:$TAG" \
+              --tag "$IMAGE:${{ github.ref_name }}" \
               --push .
-            if [[ "${{ github.ref_type }}" == "tag" ]]; then
-              docker buildx build \
-                --platform linux/arm64 \
-                --file "Dockerfile.$name" \
-                "${BUILD_ARGS[@]}" \
-                --tag "$IMAGE:${{ github.ref_name }}" \
-                --push .
-            fi
-          done
+          fi
 
-  deploy:
-    name: Deploy to ${{ needs.context.outputs.cluster }}
-    needs: [context, build]
+  deploy-shared:
+    name: Apply shared manifests
+    needs: [context, changes, build]
+    if: needs.changes.outputs.apps != '[]'
     runs-on: ubuntu-latest
     environment: ${{ needs.context.outputs.environment }}
     steps:
@@ -163,25 +176,67 @@ jobs:
             --name ${{ needs.context.outputs.cluster }} \
             --region ${{ env.AWS_REGION }}
 
-      - name: Apply manifests
+      # Recursos estáticos (sem IMAGE_TAG), compartilhados pelas duas apps:
+      # aplicados uma única vez por deploy, independente de qual app mudou.
+      - name: Apply shared resources
         env:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: |
           MANIFESTS="${{ needs.context.outputs.manifests-dir }}"
-          sed -i "s|IMAGE_TAG|${{ needs.build.outputs.image-tag }}|g" \
-            "$MANIFESTS/deployment-api.yaml" "$MANIFESTS/deployment-web.yaml"
           export POSTGRES_PASSWORD_URLENC=$(jq -rn --arg v "$POSTGRES_PASSWORD" '$v|@uri')
           envsubst < "$MANIFESTS/postgres-secret.yaml.tmpl" | kubectl apply -f -
           envsubst < "$MANIFESTS/sentry-secret.yaml.tmpl" | kubectl apply -f -
-          kubectl apply -f "$MANIFESTS/"
-          kubectl rollout restart deployment/pipo-os-api deployment/pipo-os-web -n default
+          kubectl apply -f "$MANIFESTS/serviceaccount.yaml"
+          kubectl apply -f "$MANIFESTS/postgres-crossplane.yaml"
+          kubectl apply -f "$MANIFESTS/service-api.yaml" -f "$MANIFESTS/service-web.yaml"
+          kubectl apply -f "$MANIFESTS/ingress.yaml"
 
-      - name: Wait for rollout
+  deploy:
+    name: Deploy ${{ matrix.app }} to ${{ needs.context.outputs.cluster }}
+    needs: [context, build, changes, deploy-shared]
+    if: needs.changes.outputs.apps != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJSON(needs.changes.outputs.apps) }}
+    runs-on: ubuntu-latest
+    environment: ${{ needs.context.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ github.ref_type == 'tag' && secrets.AWS_ROLE_ARN_PROD || secrets.AWS_ROLE_ARN_STAG }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Configure kubeconfig
         run: |
-          kubectl rollout status deployment/pipo-os-api -n default --timeout=180s
-          kubectl rollout status deployment/pipo-os-web -n default --timeout=180s
+          aws eks update-kubeconfig \
+            --name ${{ needs.context.outputs.cluster }} \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Apply deployment
+        env:
+          MANIFESTS: ${{ needs.context.outputs.manifests-dir }}
+          IMAGE_TAG: ${{ needs.context.outputs.image-tag }}
+          APP: ${{ matrix.app }}
+        run: |
+          sed -i "s|IMAGE_TAG|$IMAGE_TAG|g" "$MANIFESTS/deployment-$APP.yaml"
+          kubectl apply -f "$MANIFESTS/deployment-$APP.yaml"
+
+      # kubectl apply já dispara o rollout (a tag da imagem muda a cada deploy);
+      # um `rollout restart` depois disso criaria uma segunda revisão sem imagem
+      # nova, e um rollback subsequente desfaria só essa revisão vazia — não a
+      # imagem quebrada.
+      - name: Wait for rollout
+        id: rollout
+        env:
+          APP: ${{ matrix.app }}
+        run: kubectl rollout status "deployment/pipo-os-$APP" -n default --timeout=180s
 
       - name: Rollback on failure
-        if: failure()
-        run: kubectl rollout undo deployment/pipo-os-api deployment/pipo-os-web -n default
+        if: always() && steps.rollout.outcome == 'failure'
+        env:
+          APP: ${{ matrix.app }}
+        run: kubectl rollout undo "deployment/pipo-os-$APP" -n default

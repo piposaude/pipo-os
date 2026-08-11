@@ -7,7 +7,7 @@ Serviço fullstack para gerenciamento de tickets internos.
 - **`apps/api`** — Node.js + Fastify + TypeScript, monólito modular (porta 3001)
 - **`apps/web`** — Vite + React + TypeScript (porta 5173)
 - **`packages/api-client`** — client TypeScript gerado a partir do contrato OpenAPI, consumido pelo `apps/web`
-- **Banco de dados** — PostgreSQL 15
+- **Banco de dados** — PostgreSQL 17
 
 Monorepo gerenciado com **pnpm workspaces**.
 
@@ -25,7 +25,7 @@ Monorepo gerenciado com **pnpm workspaces**.
 docker compose up -d
 ```
 
-Isso sobe um Postgres 15 local na porta `5432` com as credenciais:
+Isso sobe um Postgres 17 local na porta `5432` com as credenciais:
 
 | Variável            | Valor     |
 | ------------------- | --------- |
@@ -158,4 +158,10 @@ O banco de dados **não é uma instância RDS dedicada**: `pipo_os` é um databa
 
 ### Pipeline
 
-O deploy roda via GitHub Actions (`.github/workflows/deploy.yml`): build & push das imagens para o ECR, autenticação no EKS via OIDC (`aws-actions/configure-aws-credentials`) e aplicação dos manifests em `.k8s/raw/{stag,prod}/`. As mudanças em `.tf/` (IAM roles, EKS access entries) são aplicadas manualmente via `terraform apply` — não há pipeline de Terraform neste repositório.
+`.github/workflows/ci-checks.yml` é um workflow reutilizável (`workflow_call`) com o job de lint/typecheck/test/build via pnpm; tanto `test.yml` (PRs) quanto `deploy.yml` (push em `main`/tag) o chamam, evitando duplicar os steps.
+
+O deploy (`.github/workflows/deploy.yml`) builda e publica as imagens de `apps/api` e `apps/web` de forma independente: um job `changes` (via `dorny/paths-filter`) detecta se a mudança tocou `apps/api/**`, `apps/web/**` ou `packages/**` (que afeta as duas) e só builda/publica/faz rollout da(s) app(s) correspondente(s) — em pushes para `main`. Em tags semver (release para produção), as duas imagens são sempre publicadas e deployadas, para garantir consistência da versão promovida. Recursos de cluster compartilhados (Ingress, secrets, ServiceAccount, database Crossplane) são aplicados uma única vez por deploy, independente de qual app mudou.
+
+Autenticação no EKS via OIDC (`aws-actions/configure-aws-credentials`). As mudanças em `.tf/` (IAM roles, EKS access entries) são aplicadas manualmente via `terraform apply` — não há pipeline de Terraform neste repositório.
+
+O registry `@piposaude` (GitHub Packages) exige autenticação mesmo para leitura; `pnpm install` no CI usa o secret `NODE_AUTH_TOKEN` (PAT com escopo `read:packages`) para isso. Localmente, configure o mesmo token em `~/.npmrc`. Hoje nenhuma dependência do escopo `@piposaude` é instalada (isso chega com o design system em `apps/web`), mas o plumbing já está em vigor.
