@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { randomUUID } from 'node:crypto'
 import cors from '@fastify/cors'
 import swagger from '@fastify/swagger'
 import swaggerUi from '@fastify/swagger-ui'
@@ -12,7 +13,7 @@ import {
 import autoload from '@fastify/autoload'
 import { createLoggerOptions } from '@pipo-os/observability/logger'
 import metricsPlugin from '@pipo-os/observability/metrics'
-import Fastify, { type FastifyInstance } from 'fastify'
+import Fastify, { LogController, type FastifyInstance } from 'fastify'
 import { sql } from 'kysely'
 import { z } from 'zod'
 import dbPlugin from './infrastructure/db.js'
@@ -24,10 +25,25 @@ function corsOrigins(): string[] {
     .map((origin) => origin.trim())
 }
 
+// Fastify's requestIdHeader adopts the client's x-request-id verbatim, unvalidated,
+// straight into logs. Sizing/charset it here instead so a caller can't inject
+// control characters or unbounded strings into the log stream.
+const REQUEST_ID_HEADER = 'x-request-id'
+const REQUEST_ID_PATTERN = /^[a-zA-Z0-9-]{1,64}$/
+
+function genRequestId(request: { headers: Record<string, unknown> }): string {
+  const headerValue = request.headers[REQUEST_ID_HEADER]
+  if (typeof headerValue === 'string' && REQUEST_ID_PATTERN.test(headerValue)) {
+    return headerValue
+  }
+  return randomUUID()
+}
+
 export function buildApp(): FastifyInstance {
   const app = Fastify({
     logger: createLoggerOptions(),
-    requestIdHeader: 'x-request-id',
+    logController: new LogController({ requestIdLogLabel: 'request-id' }),
+    genReqId: genRequestId,
   })
 
   app.setValidatorCompiler(validatorCompiler)
