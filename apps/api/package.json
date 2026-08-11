@@ -21,6 +21,7 @@
     "@fastify/swagger": "^9.5.1",
     "@fastify/swagger-ui": "^5.2.3",
     "@fastify/type-provider-zod": "^1.0.0",
+    "@pipo-os/observability": "workspace:*",
     "fastify": "^5.11.3",
     "fastify-plugin": "^6.0.0",
     "kysely": "^0.29.5",

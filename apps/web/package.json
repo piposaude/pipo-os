@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@pipo-os/api-client": "workspace:*",
+    "@pipo-os/observability": "workspace:*",
     "@tanstack/react-query": "^5.62.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
