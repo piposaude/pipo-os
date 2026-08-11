@@ -2,6 +2,8 @@ import type { FastifyInstance } from 'fastify'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from './app.js'
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+
 describe('app', () => {
   let app: FastifyInstance
 
@@ -42,5 +44,37 @@ describe('app', () => {
     const response = await app.inject({ method: 'GET', url: '/does-not-exist' })
 
     expect(response.statusCode).toBe(404)
+  })
+
+  it('generates a random UUID as request id when no x-request-id header is sent', async () => {
+    const testApp = buildApp()
+    let capturedId: string | undefined
+    testApp.addHook('onRequest', async (request) => {
+      capturedId = request.id
+    })
+    await testApp.ready()
+
+    await testApp.inject({ method: 'GET', url: '/health' })
+    await testApp.close()
+
+    expect(capturedId).toMatch(UUID_PATTERN)
+  })
+
+  it('reuses the incoming x-request-id header value as the request id', async () => {
+    const testApp = buildApp()
+    let capturedId: string | undefined
+    testApp.addHook('onRequest', async (request) => {
+      capturedId = request.id
+    })
+    await testApp.ready()
+
+    await testApp.inject({
+      method: 'GET',
+      url: '/health',
+      headers: { 'x-request-id': 'client-provided-id' },
+    })
+    await testApp.close()
+
+    expect(capturedId).toBe('client-provided-id')
   })
 })

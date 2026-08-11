@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { randomUUID } from 'node:crypto'
 import cors from '@fastify/cors'
 import {
   serializerCompiler,
@@ -8,7 +9,7 @@ import {
 import autoload from '@fastify/autoload'
 import { createLoggerOptions } from '@pipo-os/observability/logger'
 import metricsPlugin from '@pipo-os/observability/metrics'
-import Fastify, { type FastifyInstance } from 'fastify'
+import Fastify, { LogController, type FastifyInstance } from 'fastify'
 import { sql } from 'kysely'
 import { z } from 'zod'
 import dbPlugin from './infrastructure/db.js'
@@ -24,6 +25,8 @@ export function buildApp(): FastifyInstance {
   const app = Fastify({
     logger: createLoggerOptions(),
     requestIdHeader: 'x-request-id',
+    logController: new LogController({ requestIdLogLabel: 'request-id' }),
+    genReqId: () => randomUUID(),
   })
 
   app.setValidatorCompiler(validatorCompiler)

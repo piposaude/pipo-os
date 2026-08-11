@@ -52,6 +52,18 @@ export function createLoggerOptions(input: CreateLoggerOptionsInput = {}): Logge
       res: responseSerializer,
       err: pino.stdSerializers.err,
     },
+    formatters: {
+      // level como string ("info", "error") em vez do número cru do pino: o pipeline
+      // de logs (Promtail) não faz esse mapeamento, então sem isso o Grafana não
+      // reconhece a severidade da linha.
+      level: (label) => ({ level: label }),
+      // pid não agrega valor em containers (1 processo por pod); removido por hora.
+      bindings: (bindings) => {
+        const rest = { ...bindings }
+        delete rest.pid
+        return rest
+      },
+    },
   }
 
   // require.resolve garante que o worker do transport ache pino-pretty mesmo com

@@ -98,6 +98,29 @@ describe('createLoggerOptions', () => {
     expect(entry.password).toBe('[REDACTED]')
   })
 
+  it('logs level as a string label instead of the raw pino number', () => {
+    const { stream, lines } = captureLogs()
+    const logger = pino(createLoggerOptions({ nodeEnv: 'test' }), stream)
+
+    logger.info('ping')
+    logger.error('pong')
+
+    const [info, error] = lines.map((line) => JSON.parse(line))
+    expect(info.level).toBe('info')
+    expect(error.level).toBe('error')
+  })
+
+  it('omits pid but keeps hostname in the base bindings', () => {
+    const { stream, lines } = captureLogs()
+    const logger = pino(createLoggerOptions({ nodeEnv: 'test' }), stream)
+
+    logger.info('ping')
+
+    const entry = lastEntry(lines)
+    expect(entry.pid).toBeUndefined()
+    expect(entry.hostname).toBeDefined()
+  })
+
   it('keeps unrelated fields untouched', () => {
     const { stream, lines } = captureLogs()
     const logger = pino(createLoggerOptions({ nodeEnv: 'test' }), stream)
