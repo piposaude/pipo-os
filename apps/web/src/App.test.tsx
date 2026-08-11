@@ -3,8 +3,10 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 
-const useQueryMock = vi.fn()
-const useMutationMock = vi.fn()
+const { useQueryMock, useMutationMock } = vi.hoisted(() => ({
+  useQueryMock: vi.fn(),
+  useMutationMock: vi.fn(),
+}))
 
 vi.mock('./lib/api', () => ({
   api: {
