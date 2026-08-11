@@ -1,14 +1,7 @@
-import { useEffect, useState } from 'react'
-
-type TicketStatus = 'open' | 'in_progress' | 'closed'
-
-interface Ticket {
-  id: string
-  title: string
-  description: string
-  status: TicketStatus
-  createdAt: string
-}
+import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import type { TicketStatus } from '@pipo-os/api-client'
+import { api } from './lib/api'
 
 const STATUS_LABELS: Record<TicketStatus, string> = {
   open: 'Open',
@@ -22,114 +15,77 @@ const STATUS_COLORS: Record<TicketStatus, string> = {
   closed: '#16a34a',
 }
 
-const API = '/api/tickets'
-
-async function fetchTickets(): Promise<Ticket[]> {
-  const res = await fetch(API)
-  if (!res.ok) throw new Error('Failed to fetch tickets')
-  return res.json()
-}
-
-async function createTicket(data: { title: string; description: string }): Promise<Ticket> {
-  const res = await fetch(API, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  if (!res.ok) throw new Error('Failed to create ticket')
-  return res.json()
-}
-
-async function updateTicket(
-  id: string,
-  data: Partial<Omit<Ticket, 'id' | 'createdAt'>>,
-): Promise<Ticket> {
-  const res = await fetch(`${API}/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  if (!res.ok) throw new Error('Failed to update ticket')
-  return res.json()
-}
-
-async function deleteTicket(id: string): Promise<void> {
-  const res = await fetch(`${API}/${id}`, { method: 'DELETE' })
-  if (!res.ok) throw new Error('Failed to delete ticket')
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'object' && error && 'message' in error) {
+    return String((error as { message: unknown }).message)
+  }
+  return 'Something went wrong'
 }
 
 export default function App() {
-  const [tickets, setTickets] = useState<Ticket[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+  const ticketsQuery = api.useQuery('get', '/api/tickets')
+  const tickets = ticketsQuery.data ?? []
+
+  const createMutation = api.useMutation('post', '/api/tickets')
+  const updateMutation = api.useMutation('put', '/api/tickets/{id}')
+  const deleteMutation = api.useMutation('delete', '/api/tickets/{id}')
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [creating, setCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let active = true
-
-    const load = async () => {
-      try {
-        setError(null)
-        const data = await fetchTickets()
-        if (active) setTickets(data)
-      } catch (e) {
-        if (active) setError((e as Error).message)
-      } finally {
-        if (active) setLoading(false)
-      }
-    }
-
-    load()
-
-    return () => {
-      active = false
-    }
-  }, [])
+  const invalidateTickets = () =>
+    queryClient.invalidateQueries({ queryKey: api.queryOptions('get', '/api/tickets').queryKey })
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim() || !description.trim()) return
-    setCreating(true)
     try {
-      const ticket = await createTicket({ title: title.trim(), description: description.trim() })
-      setTickets((prev) => [ticket, ...prev])
+      setError(null)
+      await createMutation.mutateAsync({
+        body: { title: title.trim(), description: description.trim() },
+      })
+      await invalidateTickets()
       setTitle('')
       setDescription('')
     } catch (e) {
-      setError((e as Error).message)
-    } finally {
-      setCreating(false)
+      setError(errorMessage(e))
     }
   }
 
   const handleStatusChange = async (id: string, status: TicketStatus) => {
     try {
-      const updated = await updateTicket(id, { status })
-      setTickets((prev) => prev.map((t) => (t.id === id ? updated : t)))
+      setError(null)
+      await updateMutation.mutateAsync({ params: { path: { id } }, body: { status } })
+      await invalidateTickets()
     } catch (e) {
-      setError((e as Error).message)
+      setError(errorMessage(e))
     }
   }
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteTicket(id)
-      setTickets((prev) => prev.filter((t) => t.id !== id))
+      setError(null)
+      await deleteMutation.mutateAsync({ params: { path: { id } } })
+      await invalidateTickets()
     } catch (e) {
-      setError((e as Error).message)
+      setError(errorMessage(e))
     }
   }
+
+  const loading = ticketsQuery.isLoading
+  const creating = createMutation.isPending
+  const displayError = error ?? (ticketsQuery.isError ? errorMessage(ticketsQuery.error) : null)
 
   return (
     <div style={styles.page}>
       <h1 style={styles.heading}>Tickets</h1>
 
-      {error && (
+      {displayError && (
         <div style={styles.errorBanner}>
-          {error}
+          {displayError}
           <button style={styles.dismissBtn} onClick={() => setError(null)}>
             x
           </button>
