@@ -57,6 +57,15 @@ resource "aws_iam_policy" "deploy" {
   })
 }
 
+# AWS requires the trust policy to constrain `sub` (or `job_workflow_ref`) —
+# it rejects a policy that only scopes on other claims. The org has
+# "include repo/org ID in subject claims" enabled, which turns `sub` into
+# `repo:piposaude@<org_id>/pipo-os@<repo_id>:environment:staging` instead of
+# the plain `repo:piposaude/pipo-os:environment:staging`, so `sub` is matched
+# with StringLike (wildcarding the optional `@<id>` suffixes) to tolerate
+# that toggle being flipped either way. `repository`/`environment` are kept
+# as an additional StringEquals check for defense in depth.
+
 # ── Staging role ─────────────────────────────────────────────────────
 
 resource "aws_iam_role" "deploy_stag" {
@@ -73,8 +82,12 @@ resource "aws_iam_role" "deploy_stag" {
         Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
           StringEquals = {
-            "${local.github_oidc_provider_url}:aud" = "sts.amazonaws.com"
-            "${local.github_oidc_provider_url}:sub" = "repo:${local.github_org}/${local.github_repo}:environment:staging"
+            "${local.github_oidc_provider_url}:aud"         = "sts.amazonaws.com"
+            "${local.github_oidc_provider_url}:repository"  = "${local.github_org}/${local.github_repo}"
+            "${local.github_oidc_provider_url}:environment" = "staging"
+          }
+          StringLike = {
+            "${local.github_oidc_provider_url}:sub" = "repo:${local.github_org}*/${local.github_repo}*:environment:staging"
           }
         }
       },
@@ -103,8 +116,12 @@ resource "aws_iam_role" "deploy_prod" {
         Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
           StringEquals = {
-            "${local.github_oidc_provider_url}:aud" = "sts.amazonaws.com"
-            "${local.github_oidc_provider_url}:sub" = "repo:${local.github_org}/${local.github_repo}:environment:production"
+            "${local.github_oidc_provider_url}:aud"         = "sts.amazonaws.com"
+            "${local.github_oidc_provider_url}:repository"  = "${local.github_org}/${local.github_repo}"
+            "${local.github_oidc_provider_url}:environment" = "production"
+          }
+          StringLike = {
+            "${local.github_oidc_provider_url}:sub" = "repo:${local.github_org}*/${local.github_repo}*:environment:production"
           }
         }
       },
