@@ -52,27 +52,90 @@ resource "aws_eks_access_policy_association" "deploy_prod" {
   depends_on = [aws_eks_access_entry.deploy_prod]
 }
 
-# ── Crossplane Postgres binding ───────────────────────────────────────
+# ── Crossplane Postgres access ────────────────────────────────────────
 #
 # The Kubernetes "edit" ClusterRole (backing AmazonEKSEditPolicy above)
 # doesn't include the postgresql.sql.crossplane.io CRDs, and those CRDs are
 # cluster-scoped, so a namespace-scoped EKS access policy can never reach
-# them regardless of the underlying RBAC rules. Bind the deploy principals
-# to Crossplane's own "crossplane-edit" ClusterRole (already granting get/
-# create/update on databases, roles, schemas and grants) via a dedicated
-# Kubernetes group instead.
+# them regardless of the underlying RBAC rules. Binding to Crossplane's own
+# "crossplane-edit" ClusterRole would work, but it grants access to every
+# service's Postgres objects on the shared cluster, not just pipo-os's own.
+# Define a dedicated ClusterRole instead, scoped via `resource_names` to
+# exactly the objects pipo-os's manifests create. `create` is the one verb
+# Kubernetes RBAC cannot restrict by name (the object doesn't exist yet at
+# creation time), so it stays cluster-wide for these four resource types —
+# every other verb is scoped to pipo-os's own object names.
 
-resource "kubernetes_cluster_role_binding" "crossplane_edit_stag" {
+locals {
+  pipo_os_db_objects = {
+    stag = {
+      database = "stag-pipo-os-pipo-os"
+      role     = "stag-pipo-os-pipo-os"
+      schema   = "stag-pipo-os-pipo-os-public"
+      grant    = "stag-pipo-os-pipo-os-app-connect"
+    }
+    prod = {
+      database = "prod-pipo-os-pipo-os"
+      role     = "prod-pipo-os-pipo-os"
+      schema   = "prod-pipo-os-pipo-os-public"
+      grant    = "prod-pipo-os-pipo-os-app-connect"
+    }
+  }
+}
+
+resource "kubernetes_cluster_role" "crossplane_postgres_stag" {
   provider = kubernetes.stag
 
   metadata {
-    name = "pipo-os-deploy-crossplane-edit"
+    name = "pipo-os-crossplane-postgres"
+  }
+
+  rule {
+    api_groups = ["postgresql.sql.crossplane.io"]
+    resources  = ["databases", "roles", "schemas", "grants"]
+    verbs      = ["create"]
+  }
+
+  rule {
+    api_groups     = ["postgresql.sql.crossplane.io"]
+    resources      = ["databases", "databases/status"]
+    resource_names = [local.pipo_os_db_objects.stag.database]
+    verbs          = ["get", "update", "patch", "delete"]
+  }
+
+  rule {
+    api_groups     = ["postgresql.sql.crossplane.io"]
+    resources      = ["roles", "roles/status"]
+    resource_names = [local.pipo_os_db_objects.stag.role]
+    verbs          = ["get", "update", "patch", "delete"]
+  }
+
+  rule {
+    api_groups     = ["postgresql.sql.crossplane.io"]
+    resources      = ["schemas", "schemas/status"]
+    resource_names = [local.pipo_os_db_objects.stag.schema]
+    verbs          = ["get", "update", "patch", "delete"]
+  }
+
+  rule {
+    api_groups     = ["postgresql.sql.crossplane.io"]
+    resources      = ["grants", "grants/status"]
+    resource_names = [local.pipo_os_db_objects.stag.grant]
+    verbs          = ["get", "update", "patch", "delete"]
+  }
+}
+
+resource "kubernetes_cluster_role_binding" "crossplane_postgres_stag" {
+  provider = kubernetes.stag
+
+  metadata {
+    name = "pipo-os-deploy-crossplane-postgres"
   }
 
   role_ref {
     api_group = "rbac.authorization.k8s.io"
     kind      = "ClusterRole"
-    name      = "crossplane-edit"
+    name      = kubernetes_cluster_role.crossplane_postgres_stag.metadata[0].name
   }
 
   subject {
@@ -82,17 +145,59 @@ resource "kubernetes_cluster_role_binding" "crossplane_edit_stag" {
   }
 }
 
-resource "kubernetes_cluster_role_binding" "crossplane_edit_prod" {
+resource "kubernetes_cluster_role" "crossplane_postgres_prod" {
   provider = kubernetes.prod
 
   metadata {
-    name = "pipo-os-deploy-crossplane-edit"
+    name = "pipo-os-crossplane-postgres"
+  }
+
+  rule {
+    api_groups = ["postgresql.sql.crossplane.io"]
+    resources  = ["databases", "roles", "schemas", "grants"]
+    verbs      = ["create"]
+  }
+
+  rule {
+    api_groups     = ["postgresql.sql.crossplane.io"]
+    resources      = ["databases", "databases/status"]
+    resource_names = [local.pipo_os_db_objects.prod.database]
+    verbs          = ["get", "update", "patch", "delete"]
+  }
+
+  rule {
+    api_groups     = ["postgresql.sql.crossplane.io"]
+    resources      = ["roles", "roles/status"]
+    resource_names = [local.pipo_os_db_objects.prod.role]
+    verbs          = ["get", "update", "patch", "delete"]
+  }
+
+  rule {
+    api_groups     = ["postgresql.sql.crossplane.io"]
+    resources      = ["schemas", "schemas/status"]
+    resource_names = [local.pipo_os_db_objects.prod.schema]
+    verbs          = ["get", "update", "patch", "delete"]
+  }
+
+  rule {
+    api_groups     = ["postgresql.sql.crossplane.io"]
+    resources      = ["grants", "grants/status"]
+    resource_names = [local.pipo_os_db_objects.prod.grant]
+    verbs          = ["get", "update", "patch", "delete"]
+  }
+}
+
+resource "kubernetes_cluster_role_binding" "crossplane_postgres_prod" {
+  provider = kubernetes.prod
+
+  metadata {
+    name = "pipo-os-deploy-crossplane-postgres"
   }
 
   role_ref {
     api_group = "rbac.authorization.k8s.io"
     kind      = "ClusterRole"
-    name      = "crossplane-edit"
+    name      = kubernetes_cluster_role.crossplane_postgres_prod.metadata[0].name
   }
 
   subject {
