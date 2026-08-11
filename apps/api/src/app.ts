@@ -1,6 +1,10 @@
 import path from 'node:path'
 import cors from '@fastify/cors'
+import swagger from '@fastify/swagger'
+import swaggerUi from '@fastify/swagger-ui'
 import {
+  jsonSchemaTransform,
+  jsonSchemaTransformObject,
   serializerCompiler,
   validatorCompiler,
   type ZodTypeProvider,
@@ -33,6 +37,23 @@ export function buildApp(): FastifyInstance {
   app.register(metricsPlugin)
   app.register(dbPlugin)
   app.register(errorHandlerPlugin)
+
+  app.register(swagger, {
+    openapi: {
+      openapi: '3.1.0',
+      info: {
+        title: 'pipo-os API',
+        description: 'Contrato REST do PipOS',
+        version: '1.0.0',
+      },
+    },
+    transform: jsonSchemaTransform,
+    transformObject: jsonSchemaTransformObject,
+  })
+
+  if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
+    app.register(swaggerUi, { routePrefix: '/docs' })
+  }
 
   app.withTypeProvider<ZodTypeProvider>().get(
     '/health',
