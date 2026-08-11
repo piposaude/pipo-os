@@ -12,10 +12,17 @@ spec:
     - host: pipo-os.pipo.health
       http:
         paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: pipo-os-api
+                port:
+                  number: 80
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: pipo-os
+                name: pipo-os-web
                 port:
                   number: 80
