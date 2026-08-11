@@ -93,6 +93,10 @@ A infraestrutura AWS é gerenciada via Terraform em `.tf/`:
 
 As credenciais do banco são injetadas como variáveis de ambiente no pipeline (`TF_VAR_stag_db_user`, etc.).
 
+### Deploy
+
+`apps/api` e `apps/web` são publicados como **imagens separadas** (`Dockerfile.api`, `Dockerfile.web`), cada uma com seu próprio repositório ECR, Deployment e Service em `.k8s/raw/{stag,prod}/`. Um único Ingress por ambiente roteia por path no mesmo host: `/api` → serviço da api, `/` → serviço do web (nginx com fallback de SPA).
+
 ### Pipeline
 
 O `.gitlab-ci.yml` inclui o template terraform da Pipo, que executa `terraform plan` em MRs e `terraform apply` ao mergear na branch principal.
