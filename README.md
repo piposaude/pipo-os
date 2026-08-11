@@ -6,7 +6,7 @@ Serviço fullstack para gerenciamento de tickets internos.
 
 - **`apps/api`** — Node.js + Fastify + TypeScript, monólito modular (porta 3001)
 - **`apps/web`** — Vite + React + TypeScript (porta 5173)
-- **Banco de dados** — PostgreSQL 15
+- **Banco de dados** — PostgreSQL 17
 
 Monorepo gerenciado com **pnpm workspaces**.
 
@@ -24,7 +24,7 @@ Monorepo gerenciado com **pnpm workspaces**.
 docker compose up -d
 ```
 
-Isso sobe um Postgres 15 local na porta `5432` com as credenciais:
+Isso sobe um Postgres 17 local na porta `5432` com as credenciais:
 
 | Variável            | Valor     |
 | ------------------- | --------- |
