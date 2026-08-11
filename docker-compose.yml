@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:15
+    image: postgres:17.10
     environment:
       POSTGRES_USER: pipo_os
       POSTGRES_PASSWORD: pipo_os
