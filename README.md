@@ -38,6 +38,31 @@ Isso sobe um Postgres 15 local na porta `5432` com as credenciais:
 pnpm install
 ```
 
+### Rodar as migrations
+
+```bash
+pnpm --filter pipo-os-backend db:migrate
+```
+
+Aplica as migrations versionadas (Kysely `Migrator`, via `kysely-ctl`) definidas em `apps/api/migrations/` num Postgres limpo do `docker-compose`.
+A API não roda mais DDL na inicialização — o banco precisa estar migrado antes de subir a API ou rodar os testes.
+
+Para desfazer a última migration:
+
+```bash
+pnpm --filter pipo-os-backend db:rollback
+```
+
+### Gerar os tipos do banco
+
+```bash
+pnpm --filter pipo-os-backend db:codegen
+```
+
+Introspecciona o Postgres local via `kysely-codegen` e regenera `apps/api/src/infrastructure/db-types.ts`.
+Esse arquivo é gerado — não deve ser editado manualmente.
+Rode sempre que uma migration mudar o schema.
+
 ### Rodar
 
 ```bash
@@ -48,8 +73,6 @@ Isso sobe `apps/api` e `apps/web` simultaneamente via `pnpm -r --parallel dev`.
 
 - Web: http://localhost:5173
 - API: http://localhost:3001
-
-A migration da tabela `tickets` é executada automaticamente na inicialização da API.
 
 ## Variáveis de ambiente
 
