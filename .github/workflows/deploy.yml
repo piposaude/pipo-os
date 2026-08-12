@@ -132,6 +132,9 @@ jobs:
       - name: Build & push (arm64)
         env:
           WEB_APP_SENTRY_DSN: ${{ secrets.WEB_APP_SENTRY_DSN }}
+          # Token de leitura do GitHub Packages (@piposaude/design-system),
+          # repassado ao Dockerfile.web como BuildKit secret.
+          NPM_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
         run: |
           TAG="${{ needs.context.outputs.image-tag }}"
           if [[ "${{ matrix.app }}" == "api" ]]; then
@@ -139,7 +142,7 @@ jobs:
             BUILD_ARGS=()
           else
             IMAGE="${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY_WEB }}"
-            BUILD_ARGS=(--build-arg "WEB_APP_SENTRY_DSN=$WEB_APP_SENTRY_DSN")
+            BUILD_ARGS=(--build-arg "WEB_APP_SENTRY_DSN=$WEB_APP_SENTRY_DSN" --secret "id=npm_token,env=NPM_TOKEN")
           fi
           docker buildx build \
             --platform linux/arm64 \

@@ -1,5 +1,12 @@
 {
   "extends": "@pipo-os/typescript-config/vite.json",
-  "include": ["src"],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "types": ["vite/client", "vitest/globals"]
+  },
+  "include": ["src", "tests", ".storybook"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

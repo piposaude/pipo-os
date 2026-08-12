@@ -2,3 +2,7 @@
 **/dist/
 *.env
 .env*
+
+# apps/web: generated at build time (copy-ds-assets, router plugin, storybook)
+apps/web/public/
+storybook-static/
