@@ -34,10 +34,13 @@ jobs:
 
       - uses: pnpm/action-setup@v4
 
+      # registry-url gera um .npmrc que autentica @piposaude (GitHub Packages)
+      # com NODE_AUTH_TOKEN na hora do install.
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: pnpm
+          registry-url: 'https://npm.pkg.github.com'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

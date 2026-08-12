@@ -1,0 +1,34 @@
+.tickets-list-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--pipo-space-xlarge) var(--pipo-space-medium);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pipo-space-large);
+}
+
+.tickets-list-page .new-ticket {
+  background: var(--pipo-surface-subtle);
+  border: var(--pipo-border-width-small) solid var(--pipo-border);
+  border-radius: var(--pipo-radius-medium);
+  padding: var(--pipo-space-large);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pipo-space-medium);
+}
+
+.tickets-list-page .new-ticket-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pipo-space-medium);
+}
+
+.tickets-list-page .new-ticket-submit {
+  align-self: flex-start;
+}
+
+.tickets-list-page .tickets-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pipo-space-small);
+}

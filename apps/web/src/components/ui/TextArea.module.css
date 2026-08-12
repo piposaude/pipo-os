@@ -1,0 +1,89 @@
+/* Mirrors the design system's TextInput visual contract so the form reads as
+   one family. Candidate to graduate upstream into @piposaude/design-system. */
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pipo-space-xxsmall);
+  font-family: var(--pipo-font-body);
+}
+
+.label {
+  font-size: var(--pipo-fs-small);
+  font-weight: var(--pipo-fw-medium);
+  line-height: var(--pipo-lh-default);
+  color: var(--pipo-text-primary);
+  cursor: default;
+}
+
+.required {
+  color: var(--pipo-danger-dark);
+}
+
+.textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--pipo-font-body);
+  font-size: var(--pipo-fs-medium);
+  font-weight: var(--pipo-fw-regular);
+  line-height: var(--pipo-lh-default);
+  color: var(--pipo-text-primary);
+  background-color: var(--pipo-surface);
+  border: var(--pipo-border-width-small) solid var(--pipo-border);
+  border-radius: var(--pipo-radius-small);
+  padding: var(--pipo-inset-medium);
+  outline: none;
+  resize: vertical;
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.textarea::placeholder {
+  color: var(--pipo-neutral-regular);
+}
+
+.textarea:not(:disabled):not(:read-only):not(.textareaError):hover {
+  border-color: var(--pipo-border-strong);
+}
+
+.textarea:not(:disabled):not(:read-only):not(.textareaError):focus {
+  border-color: var(--pipo-brand-primary);
+  box-shadow: var(--pipo-shadow-focus-primary);
+}
+
+.textareaError {
+  border-color: var(--pipo-danger-dark);
+}
+
+.textareaError:focus {
+  box-shadow: var(--pipo-shadow-focus-danger);
+}
+
+.textarea:disabled {
+  background-color: var(--pipo-neutral-lightest);
+  border-color: var(--pipo-neutral-light);
+  color: var(--pipo-neutral-dark);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.textarea:read-only:not(:disabled) {
+  background-color: var(--pipo-neutral-lightest);
+  border-color: var(--pipo-neutral-light);
+  color: var(--pipo-text-primary);
+  cursor: default;
+}
+
+.hint {
+  font-size: var(--pipo-fs-xsmall);
+  font-weight: var(--pipo-fw-regular);
+  line-height: var(--pipo-lh-relaxed);
+  color: var(--pipo-text-secondary);
+}
+
+.errorMessage {
+  font-size: var(--pipo-fs-xsmall);
+  font-weight: var(--pipo-fw-regular);
+  line-height: var(--pipo-lh-relaxed);
+  color: var(--pipo-danger-dark);
+}

@@ -8,3 +8,5 @@ docs
 apps/api/src/infrastructure/db-types.ts
 openapi.json
 packages/api-client/src/generated
+apps/web/src/routeTree.gen.ts
+apps/web/public/
