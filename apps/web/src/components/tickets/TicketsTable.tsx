@@ -90,7 +90,10 @@ export function TicketsTable({ tickets, labels, onChangeStatus, onDelete }: Tick
                     <PopoverMenuItem
                       key={status}
                       disabled={status === ticket.status}
-                      onClick={() => onChangeStatus(ticket.id, status)}
+                      onClick={() => {
+                        setOpenMenuId(null)
+                        onChangeStatus(ticket.id, status)
+                      }}
                     >
                       {labels.status[status]}
                     </PopoverMenuItem>

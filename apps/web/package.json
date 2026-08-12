@@ -14,6 +14,7 @@
     "test:integration": "vitest run tests/integration",
     "prestorybook": "node scripts/copy-ds-assets.mjs",
     "storybook": "storybook dev -p 6006",
+    "prebuild-storybook": "node scripts/copy-ds-assets.mjs",
     "build-storybook": "storybook build",
     "preview": "vite preview"
   },

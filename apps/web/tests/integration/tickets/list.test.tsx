@@ -193,12 +193,16 @@ describe('tickets/list', () => {
     await user.click(screen.getByRole('button', { name: constants.actions.changeStatus }))
     await user.click(screen.getByRole('menuitem', { name: constants.status.in_progress }))
 
-    // Badge + menu item once the badge switches to the new status; the old
-    // status remains only as a (re-enabled) menu item.
+    // Badge + (closed, hidden) menu item once the badge switches to the new
+    // status; the old status remains only as a (re-enabled) menu item.
     await waitFor(() => {
       expect(screen.getAllByText(constants.status.in_progress)).toHaveLength(2)
     })
     expect(screen.getAllByText(constants.status.open)).toHaveLength(1)
+
+    // Reopening confirms the menu closed after the selection and that the
+    // new current status is now the disabled option.
+    await user.click(screen.getByRole('button', { name: constants.actions.changeStatus }))
     expect(screen.getByRole('menuitem', { name: constants.status.in_progress })).toBeDisabled()
   })
 

@@ -51,6 +51,15 @@
   box-shadow: var(--pipo-shadow-focus-primary);
 }
 
+/* box-shadow is discarded in forced-colors mode (Windows High Contrast),
+   which would otherwise leave the field with no visible focus indicator. */
+@media (forced-colors: active) {
+  .textarea:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 1px;
+  }
+}
+
 .textareaError {
   border-color: var(--pipo-danger-dark);
 }
