@@ -50,7 +50,7 @@ spec:
                   name: pipo-os
                   key: SENTRY_DSN
             - name: APP_BASE_URL
-              value: https://pipo-os.pipo.health
+              value: https://os.pipo.health
             - name: AUTH_SERVICE_URL
               value: https://auth-service.pipo.health
             - name: ALLOWED_EMAIL_DOMAINS

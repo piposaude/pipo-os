@@ -7,9 +7,9 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - pipo-os.piposaude.com.br
+        - os.piposaude.com.br
   rules:
-    - host: pipo-os.piposaude.com.br
+    - host: os.piposaude.com.br
       http:
         paths:
           - path: /api

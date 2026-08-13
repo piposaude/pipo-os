@@ -7,9 +7,9 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - pipo-os.pipo.health
+        - os.pipo.health
   rules:
-    - host: pipo-os.pipo.health
+    - host: os.pipo.health
       http:
         paths:
           - path: /api
