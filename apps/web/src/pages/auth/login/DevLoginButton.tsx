@@ -32,7 +32,11 @@ export function DevLoginButton({ redirect }: DevLoginButtonProps) {
       <Button variant="text" loading={pending} onClick={handleClick}>
         {constants.button}
       </Button>
-      {failed && <span className="login-dev-error">{constants.unavailable}</span>}
+      {failed && (
+        <span className="login-dev-error" role="alert">
+          {constants.unavailable}
+        </span>
+      )}
     </>
   )
 }
