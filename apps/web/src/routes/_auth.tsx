@@ -1,13 +1,21 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { isAuthenticated } from '@/lib/auth'
+import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
+import { ensureSession, isAuthenticated } from '@/lib/auth'
+import { AuthTopBar } from '@/components/layout/AuthTopBar'
 
-// Pathless layout guarding every protected route. The login issue will turn
-// the stub in lib/auth into a real session check and redirect unauthenticated
-// visitors to the public login route.
+// Pathless layout guarding every protected route: hydrates the session once
+// (GET /api/auth/me, deduped by ensureSession) and redirects to the public
+// login route — preserving the destination — when there's no active session.
 export const Route = createFileRoute('/_auth')({
-  beforeLoad: () => {
+  beforeLoad: async ({ location }) => {
+    await ensureSession()
     if (!isAuthenticated()) {
-      throw new Error('Unauthenticated')
+      throw redirect({ to: '/login', search: { redirect: location.href } })
     }
   },
+  component: () => (
+    <>
+      <AuthTopBar />
+      <Outlet />
+    </>
+  ),
 })
