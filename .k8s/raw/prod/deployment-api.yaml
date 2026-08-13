@@ -50,7 +50,7 @@ spec:
                   name: pipo-os
                   key: SENTRY_DSN
             - name: APP_BASE_URL
-              value: https://pipo-os.piposaude.com.br
+              value: https://os.piposaude.com.br
             - name: AUTH_SERVICE_URL
               value: https://auth-service.piposaude.com.br
             - name: ALLOWED_EMAIL_DOMAINS

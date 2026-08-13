@@ -57,7 +57,7 @@ describe('dev login', () => {
       // throw first and this test would not exercise the dev-login refusal.
       process.env.AUTH_SERVICE_URL = 'https://auth-service.piposaude.com.br'
       process.env.GOOGLE_OAUTH_CLIENT_ID = 'test-client-id'
-      process.env.APP_BASE_URL = 'https://pipo-os.piposaude.com.br'
+      process.env.APP_BASE_URL = 'https://os.piposaude.com.br'
 
       expect(() => authConfig()).toThrow(/never be set in a deployed environment/)
     })
@@ -97,7 +97,7 @@ describe('dev login', () => {
       NODE_ENV: 'production',
       AUTH_SERVICE_URL: 'https://auth-service.piposaude.com.br',
       GOOGLE_OAUTH_CLIENT_ID: 'test-client-id',
-      APP_BASE_URL: 'https://pipo-os.piposaude.com.br',
+      APP_BASE_URL: 'https://os.piposaude.com.br',
     }
 
     it('boots fine when every required var is set', () => {
