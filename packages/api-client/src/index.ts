@@ -8,3 +8,4 @@ import type { components } from './generated/schema.js'
 
 export type Ticket = components['schemas']['Ticket']
 export type TicketStatus = components['schemas']['TicketStatus']
+export type AuthMe = components['schemas']['AuthMe']

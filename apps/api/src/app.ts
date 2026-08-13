@@ -1,5 +1,6 @@
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
+import cookie from '@fastify/cookie'
 import cors from '@fastify/cors'
 import swagger from '@fastify/swagger'
 import swaggerUi from '@fastify/swagger-ui'
@@ -23,6 +24,22 @@ function corsOrigins(): string[] {
   return (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
     .split(',')
     .map((origin) => origin.trim())
+}
+
+// The session and oauth-state cookies are signed with this secret (HMAC) — it's
+// what lets the API trust a cookie's contents without being able to verify the
+// auth-service's JWT signature locally (that key lives in AWS KMS, see the auth
+// module). A weak/default secret in production would let anyone forge a session,
+// so we fail fast there instead of booting with a guessable value.
+function cookieSecret(): string {
+  const secret = process.env.COOKIE_SECRET
+  if (secret) {
+    return secret
+  }
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('COOKIE_SECRET must be set in production')
+  }
+  return 'dev-only-cookie-secret-change-me'
 }
 
 // Fastify's requestIdHeader adopts the client's x-request-id verbatim, unvalidated,
@@ -50,6 +67,7 @@ export function buildApp(): FastifyInstance {
   app.setSerializerCompiler(serializerCompiler)
 
   app.register(cors, { origin: corsOrigins() })
+  app.register(cookie, { secret: cookieSecret() })
   app.register(metricsPlugin)
   app.register(dbPlugin)
   app.register(errorHandlerPlugin)
