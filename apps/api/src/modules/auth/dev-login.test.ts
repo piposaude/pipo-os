@@ -53,6 +53,11 @@ describe('dev login', () => {
     it('throws when enabled with NODE_ENV=production', () => {
       process.env.DEV_LOGIN_ENABLED = 'true'
       process.env.NODE_ENV = 'production'
+      // Otherwise the production-required-vars check (a separate guard) would
+      // throw first and this test would not exercise the dev-login refusal.
+      process.env.AUTH_SERVICE_URL = 'https://auth-service.piposaude.com.br'
+      process.env.GOOGLE_OAUTH_CLIENT_ID = 'test-client-id'
+      process.env.APP_BASE_URL = 'https://pipo-os.piposaude.com.br'
 
       expect(() => authConfig()).toThrow(/never be set in a deployed environment/)
     })
@@ -80,6 +85,46 @@ describe('dev login', () => {
       process.env.DEV_LOGIN_EMAIL = 'someone@gmail.com'
 
       expect(() => authConfig()).toThrow(/must belong to one of ALLOWED_EMAIL_DOMAINS/)
+    })
+  })
+
+  // Unrelated to the dev-login flag itself, but the same fail-fast stance:
+  // a missing AUTH_SERVICE_URL/GOOGLE_OAUTH_CLIENT_ID/APP_BASE_URL in
+  // production would otherwise silently fall back to a localhost value and
+  // only break at the first real login attempt.
+  describe('production config guard', () => {
+    const validProdEnv = {
+      NODE_ENV: 'production',
+      AUTH_SERVICE_URL: 'https://auth-service.piposaude.com.br',
+      GOOGLE_OAUTH_CLIENT_ID: 'test-client-id',
+      APP_BASE_URL: 'https://pipo-os.piposaude.com.br',
+    }
+
+    it('boots fine when every required var is set', () => {
+      Object.assign(process.env, validProdEnv)
+      delete process.env.DEV_LOGIN_ENABLED
+
+      expect(() => authConfig()).not.toThrow()
+    })
+
+    it.each(['AUTH_SERVICE_URL', 'GOOGLE_OAUTH_CLIENT_ID', 'APP_BASE_URL'])(
+      'throws when %s is missing in production',
+      (missingVar) => {
+        Object.assign(process.env, validProdEnv)
+        delete process.env[missingVar]
+
+        expect(() => authConfig()).toThrow(new RegExp(`${missingVar} must be set in production`))
+      },
+    )
+
+    it('does not require these vars outside production', () => {
+      process.env.NODE_ENV = 'development'
+      delete process.env.APP_ENV
+      delete process.env.AUTH_SERVICE_URL
+      delete process.env.GOOGLE_OAUTH_CLIENT_ID
+      delete process.env.APP_BASE_URL
+
+      expect(() => authConfig()).not.toThrow()
     })
   })
 

@@ -10,6 +10,21 @@ export interface AuthConfig {
 
 const DEPLOYED_APP_ENVS = new Set(['stag', 'prod'])
 
+// Without this, a missing AUTH_SERVICE_URL/GOOGLE_OAUTH_CLIENT_ID/APP_BASE_URL
+// in production silently falls back to a localhost value, the API boots fine,
+// and login only breaks at the first real attempt — the same class of failure
+// COOKIE_SECRET already guards against in app.ts.
+function requiredInProduction(name: string, fallback: string, isProduction: boolean): string {
+  const value = process.env[name]
+  if (value) {
+    return value
+  }
+  if (isProduction) {
+    throw new Error(`${name} must be set in production`)
+  }
+  return fallback
+}
+
 // The dev login mints a session without ever contacting Google or the
 // auth-service, so reaching it in a deployed environment would be a complete
 // authentication bypass. Refusing to boot turns a misconfiguration into a loud
@@ -54,9 +69,9 @@ export function authConfig(): AuthConfig {
   const devLoginEmail = process.env.DEV_LOGIN_EMAIL ?? 'dev@piposaude.com.br'
 
   return {
-    authServiceUrl: process.env.AUTH_SERVICE_URL ?? 'http://localhost:9090',
-    googleClientId: process.env.GOOGLE_OAUTH_CLIENT_ID ?? '',
-    appBaseUrl: process.env.APP_BASE_URL ?? 'http://localhost:5173',
+    authServiceUrl: requiredInProduction('AUTH_SERVICE_URL', 'http://localhost:9090', isProduction),
+    googleClientId: requiredInProduction('GOOGLE_OAUTH_CLIENT_ID', '', isProduction),
+    appBaseUrl: requiredInProduction('APP_BASE_URL', 'http://localhost:5173', isProduction),
     allowedEmailDomains,
     isProduction,
     devLoginEnabled: resolveDevLoginEnabled(isProduction, devLoginEmail, allowedEmailDomains),
