@@ -5,7 +5,7 @@ metadata:
   namespace: default
   annotations:
     nginx.ingress.kubernetes.io/modsecurity-snippet: |
-      SecRule REQUEST_URI "@streq /api/auth/google/callback" "id:1000,phase:1,pass,nolog,ctl:ruleRemoveById=942130"
+      SecRule REQUEST_URI "@rx ^/api/auth/google/callback(?:\?.*)?$" "id:1000,phase:1,pass,nolog,ctl:ruleRemoveById=942130"
 spec:
   ingressClassName: nginx
   tls:
