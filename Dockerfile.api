@@ -6,7 +6,18 @@ COPY apps/api/package.json apps/api/package.json
 COPY packages/typescript-config/package.json packages/typescript-config/package.json
 COPY packages/eslint-config/package.json packages/eslint-config/package.json
 COPY packages/observability/package.json packages/observability/package.json
-RUN pnpm install --frozen-lockfile
+# --filter scopes the actual install to the api's dependency closure, so it
+# never needs apps/web's @piposaude/design-system (private GitHub Packages
+# registry) — this image has no need for it and no credentials to fetch it.
+# --trust-lockfile is still required on top of that: pnpm's supply-chain
+# policy pre-check (minimumReleaseAge/trustPolicy) scans every entry in the
+# committed lockfile regardless of --filter, unauthenticated, so it 401s on
+# the private package's metadata even though nothing would install it. The
+# lockfile is already vetted by CI on every PR before merge, so skipping the
+# re-check here is the documented use case for this flag (see `pnpm install
+# --help`: "closed-source projects, CI runs against an already-verified
+# lockfile").
+RUN pnpm install --frozen-lockfile --trust-lockfile --filter "{./apps/api}..."
 
 FROM base AS build
 COPY packages/typescript-config packages/typescript-config
@@ -23,7 +34,7 @@ COPY apps/api/package.json apps/api/package.json
 COPY packages/typescript-config/package.json packages/typescript-config/package.json
 COPY packages/eslint-config/package.json packages/eslint-config/package.json
 COPY packages/observability/package.json packages/observability/package.json
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --frozen-lockfile --trust-lockfile --prod --filter "{./apps/api}..."
 COPY --from=build /app/packages/observability/dist packages/observability/dist
 COPY --from=build /app/apps/api/dist apps/api/dist
 WORKDIR /app/apps/api
