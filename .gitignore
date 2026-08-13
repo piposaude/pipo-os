@@ -2,6 +2,8 @@
 **/dist/
 *.env
 .env*
+# Template versionado: documenta as variáveis, nunca carrega valores reais.
+!.env.example
 
 # apps/web: generated at build time (copy-ds-assets, router plugin, storybook)
 apps/web/public/

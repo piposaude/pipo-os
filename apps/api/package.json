@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx --watch src/server.ts",
+    "dev": "DEV_LOGIN_ENABLED=true tsx --watch --env-file-if-exists=.env src/server.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@fastify/autoload": "^6.5.0",
+    "@fastify/cookie": "^11.1.2",
     "@fastify/cors": "^11.3.0",
     "@fastify/swagger": "^9.5.1",
     "@fastify/swagger-ui": "^5.2.3",

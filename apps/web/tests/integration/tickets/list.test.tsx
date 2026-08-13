@@ -8,6 +8,7 @@ import { isAuthenticated } from '@/lib/auth'
 import constants from '@/constants/pages/tickets/list'
 
 vi.mock('@/lib/auth', () => ({
+  ensureSession: vi.fn().mockResolvedValue(undefined),
   isAuthenticated: vi.fn(),
 }))
 

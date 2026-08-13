@@ -1,0 +1,22 @@
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--pipo-space-large);
+}
+
+.login-page .login-dev-error {
+  color: var(--pipo-danger-dark);
+  font-size: var(--pipo-font-size-small);
+}
+
+.login-page .login-card {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pipo-space-medium);
+  text-align: center;
+}

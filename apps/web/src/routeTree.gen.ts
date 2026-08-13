@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as PublicRouteImport } from './routes/_public'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
 import { Route as AuthTicketsIndexRouteImport } from './routes/_auth/tickets/index'
+import { Route as PublicLoginIndexRouteImport } from './routes/_public/login/index'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
@@ -32,14 +33,21 @@ const AuthTicketsIndexRoute = AuthTicketsIndexRouteImport.update({
   path: '/tickets/',
   getParentRoute: () => AuthRoute,
 } as any)
+const PublicLoginIndexRoute = PublicLoginIndexRouteImport.update({
+  id: '/login/',
+  path: '/login/',
+  getParentRoute: () => PublicRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
   '/tickets/': typeof AuthTicketsIndexRoute
+  '/login/': typeof PublicLoginIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof PublicIndexRoute
   '/tickets': typeof AuthTicketsIndexRoute
+  '/login': typeof PublicLoginIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -47,13 +55,20 @@ export interface FileRoutesById {
   '/_public': typeof PublicRouteWithChildren
   '/_public/': typeof PublicIndexRoute
   '/_auth/tickets/': typeof AuthTicketsIndexRoute
+  '/_public/login/': typeof PublicLoginIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/tickets/'
+  fullPaths: '/' | '/tickets/' | '/login/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/tickets'
-  id: '__root__' | '/_auth' | '/_public' | '/_public/' | '/_auth/tickets/'
+  to: '/' | '/tickets' | '/login'
+  id:
+    | '__root__'
+    | '/_auth'
+    | '/_public'
+    | '/_public/'
+    | '/_auth/tickets/'
+    | '/_public/login/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -91,6 +106,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthTicketsIndexRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_public/login/': {
+      id: '/_public/login/'
+      path: '/login'
+      fullPath: '/login/'
+      preLoaderRoute: typeof PublicLoginIndexRouteImport
+      parentRoute: typeof PublicRoute
+    }
   }
 }
 
@@ -106,10 +128,12 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 interface PublicRouteChildren {
   PublicIndexRoute: typeof PublicIndexRoute
+  PublicLoginIndexRoute: typeof PublicLoginIndexRoute
 }
 
 const PublicRouteChildren: PublicRouteChildren = {
   PublicIndexRoute: PublicIndexRoute,
+  PublicLoginIndexRoute: PublicLoginIndexRoute,
 }
 
 const PublicRouteWithChildren =

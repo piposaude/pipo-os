@@ -10,3 +10,12 @@ export class NotFoundError extends DomainError {
     this.name = 'NotFoundError'
   }
 }
+
+export class UnauthorizedError extends DomainError {
+  readonly statusCode = 401
+
+  constructor(message: string) {
+    super(message)
+    this.name = 'UnauthorizedError'
+  }
+}
