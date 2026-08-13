@@ -185,6 +185,8 @@ jobs:
         env:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
         run: |
           MANIFESTS="${{ needs.context.outputs.manifests-dir }}"
           export POSTGRES_PASSWORD_URLENC=$(jq -rn --arg v "$POSTGRES_PASSWORD" '$v|@uri')

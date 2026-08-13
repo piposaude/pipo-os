@@ -49,6 +49,22 @@ spec:
                 secretKeyRef:
                   name: pipo-os
                   key: SENTRY_DSN
+            - name: APP_BASE_URL
+              value: https://pipo-os.piposaude.com.br
+            - name: AUTH_SERVICE_URL
+              value: https://auth-service.piposaude.com.br
+            - name: ALLOWED_EMAIL_DOMAINS
+              value: piposaude.com.br,pipo.ai
+            - name: COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: pipo-os
+                  key: COOKIE_SECRET
+            - name: GOOGLE_OAUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: pipo-os
+                  key: GOOGLE_OAUTH_CLIENT_ID
           livenessProbe:
             httpGet:
               path: /health
