@@ -9,6 +9,9 @@ spec:
   deletionPolicy: Orphan
   forProvider:
     owner: pipo_os
+    # Pin DEFAULT so the provider never emits an explicit TABLESPACE clause —
+    # see PLAT-34.
+    tablespace: DEFAULT
   providerConfigRef:
     name: postgresql-pipobusiness-prod
 ---

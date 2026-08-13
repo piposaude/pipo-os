@@ -9,6 +9,10 @@ spec:
   deletionPolicy: Orphan
   forProvider:
     owner: pipo_os
+    # Pin DEFAULT so the provider never emits an explicit TABLESPACE clause —
+    # see PLAT-34. This CR was already unblocked manually by dropping the
+    # TABLESPACE clause on create; this makes that fix permanent in git.
+    tablespace: DEFAULT
   providerConfigRef:
     name: postgresql-pipobusiness-stag
 ---
