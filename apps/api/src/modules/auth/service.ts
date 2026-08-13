@@ -11,6 +11,13 @@ interface GoogleToolsLoginResponse {
   'access-token'?: unknown
 }
 
+// exchangeCode runs on the request path of GET /api/auth/google/callback: an
+// unbounded fetch would hold that request open for as long as the
+// auth-service is hung, which piles up during an incident. The abort maps to
+// the generic catch in routes.ts (auth_service_unavailable), same as any
+// other exchange failure.
+const EXCHANGE_TIMEOUT_MS = 10_000
+
 // Wraps the auth-service's /v1/google-tools-login contract: the API receives
 // an OAuth2 authorization code (never the Google credential/id_token itself)
 // and the auth-service performs the code exchange server-side, reusing the
@@ -38,6 +45,7 @@ export class AuthService {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ authcode, 'redirect-uri': this.callbackUrl }),
+      signal: AbortSignal.timeout(EXCHANGE_TIMEOUT_MS),
     })
 
     if (response.status === 404) {
