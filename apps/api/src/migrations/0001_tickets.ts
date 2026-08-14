@@ -35,12 +35,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
 
   await db.schema.createIndex('ix_tickets_assignee').on('tickets').column('assignee_id').execute()
 
-  await db.schema
-    .createIndex('ix_tickets_tags')
-    .on('tickets')
-    .using('gin')
-    .column('tags')
-    .execute()
+  await db.schema.createIndex('ix_tickets_tags').on('tickets').using('gin').column('tags').execute()
 
   await db.schema.createIndex('ix_tickets_company').on('tickets').column('company_id').execute()
 }
