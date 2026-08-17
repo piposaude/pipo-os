@@ -6,6 +6,9 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .ifNotExists()
     .addColumn('id', 'uuid', (col) => col.primaryKey().defaultTo(sql`gen_random_uuid()`))
     .addColumn('ticket_id', 'uuid', (col) => col.notNull().references('tickets.id'))
+    .addColumn('status_history_id', 'uuid', (col) =>
+      col.notNull().references('ticket_status_history.id'),
+    )
     .addColumn('from_status', 'text')
     .addColumn('to_status', 'text', (col) => col.notNull())
     .addColumn('target_url', 'text', (col) => col.notNull())
@@ -28,9 +31,17 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .on('outbound_webhook_deliveries')
     .column('status')
     .execute()
+
+  await db.schema
+    .createIndex('uq_outbound_deliveries_idempotency')
+    .unique()
+    .on('outbound_webhook_deliveries')
+    .columns(['status_history_id', 'target_url'])
+    .execute()
 }
 
 export async function down(db: Kysely<unknown>): Promise<void> {
+  await db.schema.dropIndex('uq_outbound_deliveries_idempotency').execute()
   await db.schema.dropIndex('ix_outbound_deliveries_status').execute()
   await db.schema.dropIndex('ix_outbound_deliveries_ticket').execute()
   await db.schema.dropTable('outbound_webhook_deliveries').ifExists().execute()
