@@ -11,6 +11,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     )
     .addColumn('from_status', 'text')
     .addColumn('to_status', 'text', (col) => col.notNull())
+    .addColumn('webhook_config_id', 'uuid', (col) => col.notNull().references('webhook_configs.id'))
     .addColumn('target_url', 'text', (col) => col.notNull())
     .addColumn('payload', 'jsonb', (col) => col.notNull())
     .addColumn('status', 'text', (col) => col.notNull().defaultTo('pending'))
@@ -36,7 +37,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .createIndex('uq_outbound_deliveries_idempotency')
     .unique()
     .on('outbound_webhook_deliveries')
-    .columns(['status_history_id', 'target_url'])
+    .columns(['status_history_id', 'webhook_config_id'])
     .execute()
 }
 
