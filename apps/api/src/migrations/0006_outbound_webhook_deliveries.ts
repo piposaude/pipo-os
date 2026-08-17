@@ -14,6 +14,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     .addColumn('webhook_config_id', 'uuid', (col) =>
       col.notNull().references('webhook_configs.id').onDelete('restrict'),
     )
+    .addColumn('signing_secret', 'text', (col) => col.notNull())
     .addColumn('target_url', 'text', (col) => col.notNull())
     .addColumn('payload', 'jsonb', (col) => col.notNull())
     .addColumn('status', 'text', (col) => col.notNull().defaultTo('pending'))
