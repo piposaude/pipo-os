@@ -31,7 +31,6 @@ export interface OutboundWebhookDeliveries {
   attempt_count: Generated<number>
   created_at: Generated<Timestamp>
   delivered_at: Timestamp | null
-  from_status: string | null
   id: Generated<string>
   last_error: string | null
   payload: Json
@@ -40,7 +39,6 @@ export interface OutboundWebhookDeliveries {
   status_history_id: string
   target_url: string
   ticket_id: string
-  to_status: string
   webhook_config_id: string
 }
 
