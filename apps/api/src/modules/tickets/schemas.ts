@@ -22,6 +22,10 @@ export const ticketSchema = z
   })
   .meta({ id: 'Ticket' })
 
+export const errorResponseSchema = z
+  .object({ error: z.string(), message: z.string() })
+  .meta({ id: 'ErrorResponse' })
+
 export const ticketParamsSchema = z.object({
   id: z.uuid(),
 })

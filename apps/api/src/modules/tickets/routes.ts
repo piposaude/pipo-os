@@ -2,7 +2,12 @@ import type { ZodTypeProvider } from '@fastify/type-provider-zod'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { UnauthorizedError } from '../../shared/errors.js'
 import { SESSION_COOKIE_NAME, extractSessionClaims } from '../auth/session.js'
-import { createTicketBodySchema, ticketParamsSchema, ticketSchema } from './schemas.js'
+import {
+  createTicketBodySchema,
+  errorResponseSchema,
+  ticketParamsSchema,
+  ticketSchema,
+} from './schemas.js'
 import type { TicketsService } from './service.js'
 
 function requireSession(request: FastifyRequest): void {
@@ -20,7 +25,12 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
 
   server.get(
     '/api/tickets/:id',
-    { schema: { params: ticketParamsSchema, response: { 200: ticketSchema } } },
+    {
+      schema: {
+        params: ticketParamsSchema,
+        response: { 200: ticketSchema, 401: errorResponseSchema, 404: errorResponseSchema },
+      },
+    },
     async (request) => {
       requireSession(request)
       return service.get(request.params.id)
@@ -29,7 +39,12 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
 
   server.post(
     '/api/tickets',
-    { schema: { body: createTicketBodySchema, response: { 201: ticketSchema } } },
+    {
+      schema: {
+        body: createTicketBodySchema,
+        response: { 201: ticketSchema, 401: errorResponseSchema, 409: errorResponseSchema },
+      },
+    },
     async (request, reply) => {
       requireSession(request)
       const ticket = await service.create(request.body)

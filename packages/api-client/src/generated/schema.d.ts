@@ -171,7 +171,7 @@ export interface paths {
                         "application/json": components["schemas"]["Ticket"];
                     };
                 };
-                /** @description Not authenticated */
+                /** @description Default Response */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -180,7 +180,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Ticket not found */
+                /** @description Default Response */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -230,7 +230,7 @@ export interface paths {
                         "application/json": components["schemas"]["Ticket"];
                     };
                 };
-                /** @description Not authenticated */
+                /** @description Default Response */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -239,7 +239,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Enrollment already has an open ticket */
+                /** @description Default Response */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -260,10 +260,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        ErrorResponse: {
-            error: string;
-            message: string;
-        };
         TicketStatusInput: string;
         CreateTicketBodyInput: {
             /** Format: uuid */
@@ -312,6 +308,10 @@ export interface components {
             closedAt: string | null;
             createdAt: string;
             updatedAt: string;
+        };
+        ErrorResponse: {
+            error: string;
+            message: string;
         };
     };
     responses: never;
