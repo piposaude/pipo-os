@@ -19,6 +19,25 @@ const createWrapper = () => {
   )
 }
 
+const buildTicket = (overrides: Partial<Ticket> = {}): Ticket => ({
+  id: crypto.randomUUID(),
+  enrollmentId: crypto.randomUUID(),
+  enrollmentType: 'inclusion',
+  status: 'broker-processing',
+  queueId: null,
+  assigneeId: null,
+  companyId: crypto.randomUUID(),
+  tags: [],
+  forceCompletion: false,
+  enrollmentSnapshot: {},
+  sourceSystem: 'enrollment-integrations',
+  parentTicketId: null,
+  closedAt: null,
+  createdAt: '2026-08-10T14:30:00.000Z',
+  updatedAt: '2026-08-10T14:30:00.000Z',
+  ...overrides,
+})
+
 describe('useTickets', () => {
   const fetchMock = vi.fn()
 
@@ -32,14 +51,7 @@ describe('useTickets', () => {
   })
 
   it('should hydrate the list from the create response without refetching', async () => {
-    const created: Ticket = {
-      id: crypto.randomUUID(),
-      title: 'Novo ticket',
-      description: 'Descrição do ticket',
-      status: 'open',
-      createdAt: '2026-08-10T14:30:00.000Z',
-    }
-    fetchMock.mockResolvedValueOnce(jsonResponse([]))
+    const created = buildTicket({ enrollmentType: 'Novo ticket' })
     fetchMock.mockResolvedValueOnce(jsonResponse(created, 201))
 
     const { result } = renderHook(() => useTickets(), { wrapper: createWrapper() })
@@ -48,18 +60,17 @@ describe('useTickets', () => {
     let succeeded: boolean | undefined
     await act(async () => {
       succeeded = await result.current.createTicket({
-        title: created.title,
-        description: created.description,
+        title: created.enrollmentType,
+        description: 'Descrição do ticket',
       })
     })
 
     expect(succeeded).toBe(true)
-    expect(fetchMock).toHaveBeenCalledTimes(2) // initial GET + POST, no refetch
-    expect(result.current.tickets).toMatchObject([{ id: created.id, title: created.title }])
+    expect(fetchMock).toHaveBeenCalledTimes(1) // POST only, no refetch
+    expect(result.current.tickets).toMatchObject([{ id: created.id }])
   })
 
   it('should flag actionFailed when a mutation fails and clear it on dismiss', async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse([]))
     fetchMock.mockResolvedValueOnce(jsonResponse({ message: 'boom' }, 500))
 
     const { result } = renderHook(() => useTickets(), { wrapper: createWrapper() })
@@ -79,26 +90,5 @@ describe('useTickets', () => {
 
     act(() => result.current.dismissActionError())
     expect(result.current.actionFailed).toBe(false)
-  })
-
-  it('should remove the ticket from the cache when deletion succeeds', async () => {
-    const existing: Ticket = {
-      id: crypto.randomUUID(),
-      title: 'Ticket existente',
-      description: 'Descrição',
-      status: 'open',
-      createdAt: '2026-08-10T14:30:00.000Z',
-    }
-    fetchMock.mockResolvedValueOnce(jsonResponse([existing]))
-    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }))
-
-    const { result } = renderHook(() => useTickets(), { wrapper: createWrapper() })
-    await waitFor(() => expect(result.current.tickets).toHaveLength(1))
-
-    await act(async () => {
-      await result.current.deleteTicket(existing.id)
-    })
-
-    expect(result.current.tickets).toHaveLength(0)
   })
 })

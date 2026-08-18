@@ -5,21 +5,41 @@ describe('createApiClient', () => {
   it('sends requests to baseUrl using the injected fetch', async () => {
     const fetchMock = vi.fn(async (request: Request) => {
       expect(request).toBeInstanceOf(Request)
-      return new Response(JSON.stringify([]), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      })
+      return new Response(
+        JSON.stringify({
+          id: '00000000-0000-4000-8000-000000000001',
+          enrollmentId: '00000000-0000-4000-8000-000000000002',
+          enrollmentType: 'inclusion',
+          status: 'broker-processing',
+          queueId: null,
+          assigneeId: null,
+          companyId: '00000000-0000-4000-8000-000000000003',
+          tags: [],
+          forceCompletion: false,
+          enrollmentSnapshot: {},
+          sourceSystem: 'enrollment-integrations',
+          parentTicketId: null,
+          closedAt: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      )
     })
 
     const client = createApiClient({ baseUrl: 'http://localhost:3001', fetch: fetchMock })
-    const { data, error } = await client.GET('/api/tickets')
+    const { data, error } = await client.GET('/api/tickets/{id}', {
+      params: { path: { id: '00000000-0000-4000-8000-000000000001' } },
+    })
 
     expect(error).toBeUndefined()
-    expect(data).toEqual([])
+    expect(data?.id).toBe('00000000-0000-4000-8000-000000000001')
     expect(fetchMock).toHaveBeenCalledTimes(1)
 
     const [request] = fetchMock.mock.calls[0]
-    expect(request.url).toBe('http://localhost:3001/api/tickets')
+    expect(request.url).toBe(
+      'http://localhost:3001/api/tickets/00000000-0000-4000-8000-000000000001',
+    )
     expect(request.method).toBe('GET')
   })
 
@@ -33,9 +53,8 @@ describe('createApiClient', () => {
     )
 
     const client = createApiClient({ baseUrl: 'http://localhost:3001', fetch: fetchMock })
-    const { data, error, response } = await client.PUT('/api/tickets/{id}', {
-      params: { path: { id: '00000000-0000-0000-0000-000000000000' } },
-      body: { status: 'closed' },
+    const { data, error, response } = await client.GET('/api/tickets/{id}', {
+      params: { path: { id: '00000000-0000-4000-8000-000000000099' } },
     })
 
     expect(data).toBeUndefined()

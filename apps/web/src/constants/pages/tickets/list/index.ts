@@ -16,9 +16,14 @@ export default {
     actions: 'Ações',
   },
   status: {
-    open: 'Aberto',
-    in_progress: 'Em andamento',
-    closed: 'Fechado',
+    'broker-processing': 'Aguardando Pipo Saúde',
+    'carrier-processing': 'Aguardando Operadora',
+    'broker-open-issue': 'Pendência Interna',
+    'missing-documents': 'Aguardando Documentos',
+    'incorrect-data': 'Dados Incorretos',
+    completed: 'Concluída',
+    cancelled: 'Cancelada',
+    'submitted-cancellation': 'Em Cancelamento',
   },
   actions: {
     changeStatus: 'Alterar status',

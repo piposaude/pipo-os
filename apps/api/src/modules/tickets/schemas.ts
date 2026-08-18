@@ -1,20 +1,41 @@
 import { z } from 'zod'
 
-export const ticketStatusSchema = z.enum(['open', 'in_progress', 'closed']).meta({
-  id: 'TicketStatus',
-})
+export const ticketStatusSchema = z
+  .enum([
+    'broker-processing',
+    'carrier-processing',
+    'broker-open-issue',
+    'missing-documents',
+    'incorrect-data',
+    'completed',
+    'cancelled',
+    'submitted-cancellation',
+  ])
+  .meta({ id: 'TicketStatus' })
 
 export const ticketSchema = z
   .object({
     id: z.uuid(),
-    title: z.string(),
-    description: z.string(),
+    enrollmentId: z.uuid(),
+    enrollmentType: z.string(),
     status: ticketStatusSchema,
+    queueId: z.uuid().nullable(),
+    assigneeId: z.uuid().nullable(),
+    companyId: z.uuid(),
+    tags: z.array(z.string()),
+    forceCompletion: z.boolean(),
+    enrollmentSnapshot: z.record(z.string(), z.unknown()),
+    sourceSystem: z.string(),
+    parentTicketId: z.uuid().nullable(),
+    closedAt: z.string().nullable(),
     createdAt: z.string(),
+    updatedAt: z.string(),
   })
   .meta({ id: 'Ticket' })
 
-export const ticketListResponseSchema = z.array(ticketSchema)
+export const errorResponseSchema = z
+  .object({ error: z.string(), message: z.string() })
+  .meta({ id: 'ErrorResponse' })
 
 export const ticketParamsSchema = z.object({
   id: z.uuid(),
@@ -22,37 +43,21 @@ export const ticketParamsSchema = z.object({
 
 export const createTicketBodySchema = z
   .object({
-    title: z.string().min(1),
-    description: z.string().min(1),
+    enrollmentId: z.uuid(),
+    enrollmentType: z.string(),
+    companyId: z.uuid(),
+    sourceSystem: z.string(),
+    enrollmentSnapshot: z.record(z.string(), z.unknown()),
     status: ticketStatusSchema.optional(),
+    queueId: z.uuid().optional(),
+    assigneeId: z.uuid().optional(),
+    tags: z.array(z.string()).optional(),
+    forceCompletion: z.boolean().optional(),
+    parentTicketId: z.uuid().optional(),
   })
   .meta({ id: 'CreateTicketBody' })
-
-const titleField = z.string().min(1)
-const descriptionField = z.string().min(1)
-
-export const updateTicketBodySchema = z
-  .union([
-    z.object({
-      title: titleField,
-      description: descriptionField.optional(),
-      status: ticketStatusSchema.optional(),
-    }),
-    z.object({
-      title: titleField.optional(),
-      description: descriptionField,
-      status: ticketStatusSchema.optional(),
-    }),
-    z.object({
-      title: titleField.optional(),
-      description: descriptionField.optional(),
-      status: ticketStatusSchema,
-    }),
-  ])
-  .meta({ id: 'UpdateTicketBody' })
 
 export type TicketStatus = z.infer<typeof ticketStatusSchema>
 export type Ticket = z.infer<typeof ticketSchema>
 export type TicketParams = z.infer<typeof ticketParamsSchema>
 export type CreateTicketBody = z.infer<typeof createTicketBodySchema>
-export type UpdateTicketBody = z.infer<typeof updateTicketBodySchema>

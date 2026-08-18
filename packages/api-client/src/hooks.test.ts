@@ -7,7 +7,12 @@ describe('createApiHooks', () => {
     const client = createApiClient({ baseUrl: 'http://localhost:3001' })
     const api = createApiHooks(client)
 
-    expect(api.queryOptions('get', '/api/tickets').queryKey).toEqual(['get', '/api/tickets'])
+    const init = { params: { path: { id: '00000000-0000-4000-8000-000000000001' } } }
+    expect(api.queryOptions('get', '/api/tickets/{id}', init).queryKey).toEqual([
+      'get',
+      '/api/tickets/{id}',
+      init,
+    ])
     expect(typeof api.useQuery).toBe('function')
     expect(typeof api.useMutation).toBe('function')
   })

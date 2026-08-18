@@ -1,53 +1,55 @@
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
-import type { FastifyInstance } from 'fastify'
-import { z } from 'zod'
+import type { FastifyInstance, FastifyRequest } from 'fastify'
+import { UnauthorizedError } from '../../shared/errors.js'
+import { SESSION_COOKIE_NAME, extractSessionClaims } from '../auth/session.js'
 import {
   createTicketBodySchema,
-  ticketListResponseSchema,
+  errorResponseSchema,
   ticketParamsSchema,
   ticketSchema,
-  updateTicketBodySchema,
 } from './schemas.js'
 import type { TicketsService } from './service.js'
+
+function requireSession(request: FastifyRequest): void {
+  const rawCookie = request.cookies[SESSION_COOKIE_NAME]
+  const unsigned = rawCookie ? request.unsignCookie(rawCookie) : null
+  const claims = unsigned?.valid && unsigned.value ? extractSessionClaims(unsigned.value) : null
+
+  if (!claims) {
+    throw new UnauthorizedError('Not authenticated')
+  }
+}
 
 export function registerTicketRoutes(app: FastifyInstance, service: TicketsService): void {
   const server = app.withTypeProvider<ZodTypeProvider>()
 
   server.get(
-    '/api/tickets',
-    { schema: { response: { 200: ticketListResponseSchema } } },
-    async () => service.list(),
-  )
-
-  server.post(
-    '/api/tickets',
-    { schema: { body: createTicketBodySchema, response: { 201: ticketSchema } } },
-    async (request, reply) => {
-      const ticket = await service.create(request.body)
-      reply.status(201)
-      return ticket
-    },
-  )
-
-  server.put(
     '/api/tickets/:id',
     {
       schema: {
         params: ticketParamsSchema,
-        body: updateTicketBodySchema,
-        response: { 200: ticketSchema },
+        response: { 200: ticketSchema, 401: errorResponseSchema, 404: errorResponseSchema },
       },
     },
-    async (request) => service.update(request.params.id, request.body),
+    async (request) => {
+      requireSession(request)
+      return service.get(request.params.id)
+    },
   )
 
-  server.delete(
-    '/api/tickets/:id',
-    { schema: { params: ticketParamsSchema, response: { 204: z.null() } } },
+  server.post(
+    '/api/tickets',
+    {
+      schema: {
+        body: createTicketBodySchema,
+        response: { 201: ticketSchema, 401: errorResponseSchema, 409: errorResponseSchema },
+      },
+    },
     async (request, reply) => {
-      await service.remove(request.params.id)
-      reply.status(204)
-      return null
+      requireSession(request)
+      const ticket = await service.create(request.body)
+      reply.status(201)
+      return ticket
     },
   )
 }

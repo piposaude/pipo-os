@@ -144,7 +144,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tickets": {
+    "/api/tickets/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -155,7 +155,9 @@ export interface paths {
             parameters: {
                 query?: never;
                 header?: never;
-                path?: never;
+                path: {
+                    id: string;
+                };
                 cookie?: never;
             };
             requestBody?: never;
@@ -166,11 +168,45 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Ticket"][];
+                        "application/json": components["schemas"]["Ticket"];
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
         };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
         put?: never;
         post: {
             parameters: {
@@ -194,69 +230,27 @@ export interface paths {
                         "application/json": components["schemas"]["Ticket"];
                     };
                 };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tickets/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["UpdateTicketBodyInput"];
-                };
-            };
-            responses: {
                 /** @description Default Response */
-                200: {
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Ticket"];
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-            };
-        };
-        post?: never;
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
                 /** @description Default Response */
-                204: {
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
                 };
             };
         };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -267,24 +261,26 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /** @enum {string} */
-        TicketStatusInput: "open" | "in_progress" | "closed";
+        TicketStatusInput: "broker-processing" | "carrier-processing" | "broker-open-issue" | "missing-documents" | "incorrect-data" | "completed" | "cancelled" | "submitted-cancellation";
         CreateTicketBodyInput: {
-            title: string;
-            description: string;
+            /** Format: uuid */
+            enrollmentId: string;
+            enrollmentType: string;
+            /** Format: uuid */
+            companyId: string;
+            sourceSystem: string;
+            enrollmentSnapshot: {
+                [key: string]: unknown;
+            };
             status?: components["schemas"]["TicketStatusInput"];
-        };
-        UpdateTicketBodyInput: {
-            title: string;
-            description?: string;
-            status?: components["schemas"]["TicketStatusInput"];
-        } | {
-            title?: string;
-            description: string;
-            status?: components["schemas"]["TicketStatusInput"];
-        } | {
-            title?: string;
-            description?: string;
-            status: components["schemas"]["TicketStatusInput"];
+            /** Format: uuid */
+            queueId?: string;
+            /** Format: uuid */
+            assigneeId?: string;
+            tags?: string[];
+            forceCompletion?: boolean;
+            /** Format: uuid */
+            parentTicketId?: string;
         };
         AuthMe: {
             /** Format: email */
@@ -292,14 +288,32 @@ export interface components {
             policies: string[];
         };
         /** @enum {string} */
-        TicketStatus: "open" | "in_progress" | "closed";
+        TicketStatus: "broker-processing" | "carrier-processing" | "broker-open-issue" | "missing-documents" | "incorrect-data" | "completed" | "cancelled" | "submitted-cancellation";
         Ticket: {
             /** Format: uuid */
             id: string;
-            title: string;
-            description: string;
+            /** Format: uuid */
+            enrollmentId: string;
+            enrollmentType: string;
             status: components["schemas"]["TicketStatus"];
+            queueId: string | null;
+            assigneeId: string | null;
+            /** Format: uuid */
+            companyId: string;
+            tags: string[];
+            forceCompletion: boolean;
+            enrollmentSnapshot: {
+                [key: string]: unknown;
+            };
+            sourceSystem: string;
+            parentTicketId: string | null;
+            closedAt: string | null;
             createdAt: string;
+            updatedAt: string;
+        };
+        ErrorResponse: {
+            error: string;
+            message: string;
         };
     };
     responses: never;
