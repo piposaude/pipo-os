@@ -47,7 +47,7 @@ export interface TicketComments {
   body: string
   channel: Generated<string>
   created_at: Generated<Timestamp>
-  event_type: string | null
+  event_type: string
   id: Generated<string>
   kind: string
   ticket_id: string
