@@ -4,6 +4,8 @@ import type { Tickets } from '../../infrastructure/db-types.js'
 import { ConflictError } from '../../shared/errors.js'
 import type { CreateTicketBody, Ticket } from './schemas.js'
 
+const OPEN_ENROLLMENT_CONSTRAINT = 'uq_tickets_open_enrollment'
+
 function toTicket(row: Selectable<Tickets>): Ticket {
   return {
     id: row.id,
@@ -69,7 +71,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
         'code' in err &&
         err.code === '23505' &&
         'constraint' in err &&
-        err.constraint === 'uq_tickets_open_enrollment'
+        err.constraint === OPEN_ENROLLMENT_CONSTRAINT
       ) {
         throw new ConflictError(`Enrollment ${data.enrollmentId} already has an open ticket`)
       }
