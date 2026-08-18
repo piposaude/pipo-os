@@ -1,9 +1,6 @@
-import { useState } from 'react'
 import {
   Icon,
   IconButton,
-  PopoverMenu,
-  PopoverMenuItem,
   Status,
   Table,
   TableBody,
@@ -33,8 +30,6 @@ export interface TicketsTableLabels {
 export interface TicketsTableProps {
   tickets: Ticket[]
   labels: TicketsTableLabels
-  onChangeStatus: (id: string, status: TicketStatus) => void
-  onDelete: (id: string) => void
 }
 
 const statusVariant: Record<TicketStatus, StatusVariant> = {
@@ -43,11 +38,7 @@ const statusVariant: Record<TicketStatus, StatusVariant> = {
   closed: 'success',
 }
 
-const TICKET_STATUSES: TicketStatus[] = ['open', 'in_progress', 'closed']
-
-export function TicketsTable({ tickets, labels, onChangeStatus, onDelete }: TicketsTableProps) {
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
-
+export function TicketsTable({ tickets, labels }: TicketsTableProps) {
   return (
     <Table hoverable>
       <TableHead>
@@ -70,41 +61,19 @@ export function TicketsTable({ tickets, labels, onChangeStatus, onDelete }: Tick
             <TableCell className={styles.createdAt}>{formatDateTime(ticket.createdAt)}</TableCell>
             <TableCell>
               <div className={styles.actionsCell}>
-                <PopoverMenu
-                  isOpen={openMenuId === ticket.id}
-                  onClose={() => setOpenMenuId(null)}
-                  placement="bottom-end"
-                  trigger={
-                    <IconButton
-                      variant="neutral"
-                      size="sm"
-                      icon={<Icon name="fill/pencil" size="sm" />}
-                      aria-label={labels.changeStatus}
-                      onClick={() =>
-                        setOpenMenuId((current) => (current === ticket.id ? null : ticket.id))
-                      }
-                    />
-                  }
-                >
-                  {TICKET_STATUSES.map((status) => (
-                    <PopoverMenuItem
-                      key={status}
-                      disabled={status === ticket.status}
-                      onClick={() => {
-                        setOpenMenuId(null)
-                        onChangeStatus(ticket.id, status)
-                      }}
-                    >
-                      {labels.status[status]}
-                    </PopoverMenuItem>
-                  ))}
-                </PopoverMenu>
                 <IconButton
+                  disabled
+                  variant="neutral"
+                  size="sm"
+                  icon={<Icon name="fill/pencil" size="sm" />}
+                  aria-label={labels.changeStatus}
+                />
+                <IconButton
+                  disabled
                   variant="neutral"
                   size="sm"
                   icon={<Icon name="fill/trash" size="sm" />}
                   aria-label={labels.delete}
-                  onClick={() => onDelete(ticket.id)}
                 />
               </div>
             </TableCell>

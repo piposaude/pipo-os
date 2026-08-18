@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Ticket, TicketStatus } from '@pipo-os/api-client'
+import type { Ticket } from '@pipo-os/api-client'
 import { api } from '@/lib/api'
 
 export interface CreateTicketInput {
@@ -37,12 +37,6 @@ export function useTickets() {
       setTickets((prev) => [...prev, created])
     })
 
-  // Placeholders — endpoints serão implementados no ACE-53
-  const updateTicketStatus: (id: string, status: TicketStatus) => Promise<boolean> = () =>
-    runAction(async () => {})
-
-  const deleteTicket: (id: string) => Promise<boolean> = () => runAction(async () => {})
-
   return {
     tickets,
     isInitialLoading: false,
@@ -51,7 +45,5 @@ export function useTickets() {
     dismissActionError: () => setActionFailed(false),
     isCreating: createMutation.isPending,
     createTicket,
-    updateTicketStatus,
-    deleteTicket,
   }
 }

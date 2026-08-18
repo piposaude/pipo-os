@@ -22,8 +22,6 @@ export default function TicketsList() {
     dismissActionError,
     isCreating,
     createTicket,
-    updateTicketStatus,
-    deleteTicket,
   } = useTickets()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -97,8 +95,6 @@ export default function TicketsList() {
             changeStatus: constants.actions.changeStatus,
             delete: constants.actions.delete,
           }}
-          onChangeStatus={updateTicketStatus}
-          onDelete={deleteTicket}
         />
       )}
     </main>

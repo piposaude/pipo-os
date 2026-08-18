@@ -91,26 +91,4 @@ describe('useTickets', () => {
     act(() => result.current.dismissActionError())
     expect(result.current.actionFailed).toBe(false)
   })
-
-  it('should remove the ticket from the list when deletion succeeds', async () => {
-    const existing = buildTicket()
-    fetchMock.mockResolvedValueOnce(jsonResponse(existing, 201))
-
-    const { result } = renderHook(() => useTickets(), { wrapper: createWrapper() })
-
-    await act(async () => {
-      await result.current.createTicket({
-        title: existing.enrollmentType,
-        description: 'Descrição',
-      })
-    })
-    expect(result.current.tickets).toHaveLength(1)
-
-    await act(async () => {
-      await result.current.deleteTicket(existing.id)
-    })
-
-    // deleteTicket é placeholder — tickets permanecem até que o endpoint exista
-    expect(result.current.tickets).toHaveLength(1)
-  })
 })
