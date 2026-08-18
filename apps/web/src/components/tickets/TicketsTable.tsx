@@ -33,9 +33,14 @@ export interface TicketsTableProps {
 }
 
 const statusVariant: Record<TicketStatus, StatusVariant> = {
-  open: 'waiting',
-  in_progress: 'warning',
-  closed: 'success',
+  'broker-processing': 'waiting',
+  'carrier-processing': 'waiting',
+  'broker-open-issue': 'warning',
+  'missing-documents': 'warning',
+  'incorrect-data': 'warning',
+  completed: 'success',
+  cancelled: 'neutral',
+  'submitted-cancellation': 'warning',
 }
 
 export function TicketsTable({ tickets, labels }: TicketsTableProps) {
