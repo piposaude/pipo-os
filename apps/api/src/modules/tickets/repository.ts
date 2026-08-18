@@ -1,6 +1,7 @@
 import type { Kysely, Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
+import { ConflictError } from '../../shared/errors.js'
 import type { CreateTicketBody, Ticket } from './schemas.js'
 
 function toTicket(row: Selectable<Tickets>): Ticket {
@@ -26,7 +27,6 @@ function toTicket(row: Selectable<Tickets>): Ticket {
 export interface TicketsRepositoryPort {
   findById(id: string): Promise<Ticket | undefined>
   create(data: CreateTicketBody): Promise<Ticket>
-  hasOpenTicketForEnrollment(enrollmentId: string): Promise<boolean>
 }
 
 export class TicketsRepository implements TicketsRepositoryPort {
@@ -43,35 +43,37 @@ export class TicketsRepository implements TicketsRepositoryPort {
   }
 
   async create(data: CreateTicketBody): Promise<Ticket> {
-    const row = await this.db
-      .insertInto('tickets')
-      .values({
-        enrollment_id: data.enrollmentId,
-        enrollment_type: data.enrollmentType,
-        company_id: data.companyId,
-        source_system: data.sourceSystem,
-        enrollment_snapshot: JSON.stringify(data.enrollmentSnapshot),
-        status: data.status ?? 'broker-processing',
-        queue_id: data.queueId,
-        assignee_id: data.assigneeId,
-        tags: data.tags ?? [],
-        force_completion: data.forceCompletion ?? false,
-        parent_ticket_id: data.parentTicketId,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow()
+    try {
+      const row = await this.db
+        .insertInto('tickets')
+        .values({
+          enrollment_id: data.enrollmentId,
+          enrollment_type: data.enrollmentType,
+          company_id: data.companyId,
+          source_system: data.sourceSystem,
+          enrollment_snapshot: JSON.stringify(data.enrollmentSnapshot),
+          status: data.status ?? 'broker-processing',
+          queue_id: data.queueId,
+          assignee_id: data.assigneeId,
+          tags: data.tags ?? [],
+          force_completion: data.forceCompletion ?? false,
+          parent_ticket_id: data.parentTicketId,
+        })
+        .returningAll()
+        .executeTakeFirstOrThrow()
 
-    return toTicket(row)
-  }
-
-  async hasOpenTicketForEnrollment(enrollmentId: string): Promise<boolean> {
-    const row = await this.db
-      .selectFrom('tickets')
-      .select('id')
-      .where('enrollment_id', '=', enrollmentId)
-      .where('status', 'not in', ['completed', 'cancelled'])
-      .executeTakeFirst()
-
-    return row !== undefined
+      return toTicket(row)
+    } catch (err) {
+      if (
+        err instanceof Error &&
+        'code' in err &&
+        err.code === '23505' &&
+        'constraint' in err &&
+        err.constraint === 'uq_tickets_open_enrollment'
+      ) {
+        throw new ConflictError(`Enrollment ${data.enrollmentId} already has an open ticket`)
+      }
+      throw err
+    }
   }
 }

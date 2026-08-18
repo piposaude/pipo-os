@@ -1,4 +1,4 @@
-import { ConflictError, NotFoundError } from '../../shared/errors.js'
+import { NotFoundError } from '../../shared/errors.js'
 import type { TicketsRepositoryPort } from './repository.js'
 import type { CreateTicketBody, Ticket } from './schemas.js'
 
@@ -15,13 +15,7 @@ export class TicketsService {
     return ticket
   }
 
-  async create(data: CreateTicketBody): Promise<Ticket> {
-    const hasOpen = await this.repository.hasOpenTicketForEnrollment(data.enrollmentId)
-
-    if (hasOpen) {
-      throw new ConflictError(`Enrollment ${data.enrollmentId} already has an open ticket`)
-    }
-
+  create(data: CreateTicketBody): Promise<Ticket> {
     return this.repository.create(data)
   }
 }
