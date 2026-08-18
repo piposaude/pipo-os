@@ -123,8 +123,8 @@ export interface TicketQueuesXGroup {
 }
 
 export interface TicketStatusHistory {
-  actor_id: string | null
-  actor_type: string
+  author_id: string | null
+  author_type: string
   created_at: Generated<Timestamp>
   from_status: string | null
   id: Generated<string>
