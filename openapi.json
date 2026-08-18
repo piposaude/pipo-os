@@ -221,7 +221,11 @@
             "type": "string"
           }
         },
-        "required": ["error", "message"]
+        "required": [
+          "error",
+          "message"
+        ],
+        "additionalProperties": false
       }
     }
   },
