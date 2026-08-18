@@ -23,6 +23,7 @@ describe('tickets routes', () => {
   let sessionCookie: string
 
   beforeAll(async () => {
+    process.env.DEV_LOGIN_ENABLED = 'true'
     app = buildApp()
     await app.ready()
 
@@ -36,6 +37,7 @@ describe('tickets routes', () => {
 
   afterAll(async () => {
     await app.close()
+    delete process.env.DEV_LOGIN_ENABLED
   })
 
   afterEach(async () => {
