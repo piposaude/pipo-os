@@ -11,9 +11,9 @@ function cookieValue(
 }
 
 const validTicketBody = {
-  enrollmentId: '00000000-0000-0000-0000-000000000001',
+  enrollmentId: '00000000-0000-4000-8000-000000000001',
   enrollmentType: 'inclusion',
-  companyId: '00000000-0000-0000-0000-000000000002',
+  companyId: '00000000-0000-4000-8000-000000000002',
   sourceSystem: 'enrollment-integrations',
   enrollmentSnapshot: { name: 'Test User' },
 }
@@ -97,7 +97,7 @@ describe('tickets routes', () => {
       const response = await app.inject({
         method: 'POST',
         url: '/api/tickets',
-        payload: { enrollmentId: '00000000-0000-0000-0000-000000000001' },
+        payload: { enrollmentId: '00000000-0000-4000-8000-000000000001' },
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
 
@@ -109,7 +109,7 @@ describe('tickets routes', () => {
     it('returns 401 without session cookie', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/api/tickets/00000000-0000-0000-0000-000000000099',
+        url: '/api/tickets/00000000-0000-4000-8000-000000000099',
       })
 
       expect(response.statusCode).toBe(401)
@@ -119,7 +119,7 @@ describe('tickets routes', () => {
     it('returns 404 for a non-existent ticket', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/api/tickets/00000000-0000-0000-0000-000000000099',
+        url: '/api/tickets/00000000-0000-4000-8000-000000000099',
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
 
