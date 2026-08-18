@@ -260,7 +260,7 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        TicketStatusInput: string;
+        TicketStatusInput: "broker-processing" | "carrier-processing" | "broker-open-issue" | "missing-documents" | "incorrect-data" | "completed" | "cancelled" | "submitted-cancellation";
         CreateTicketBodyInput: {
             /** Format: uuid */
             enrollmentId: string;
@@ -286,7 +286,7 @@ export interface components {
             email: string;
             policies: string[];
         };
-        TicketStatus: string;
+        TicketStatus: "broker-processing" | "carrier-processing" | "broker-open-issue" | "missing-documents" | "incorrect-data" | "completed" | "cancelled" | "submitted-cancellation";
         Ticket: {
             /** Format: uuid */
             id: string;

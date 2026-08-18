@@ -1,6 +1,17 @@
 import { z } from 'zod'
 
-export const ticketStatusSchema = z.string().meta({ id: 'TicketStatus' })
+export const ticketStatusSchema = z
+  .enum([
+    'broker-processing',
+    'carrier-processing',
+    'broker-open-issue',
+    'missing-documents',
+    'incorrect-data',
+    'completed',
+    'cancelled',
+    'submitted-cancellation',
+  ])
+  .meta({ id: 'TicketStatus' })
 
 export const ticketSchema = z
   .object({

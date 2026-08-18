@@ -8,7 +8,17 @@
   "components": {
     "schemas": {
       "TicketStatusInput": {
-        "type": "string"
+        "type": "string",
+        "enum": [
+          "broker-processing",
+          "carrier-processing",
+          "broker-open-issue",
+          "missing-documents",
+          "incorrect-data",
+          "completed",
+          "cancelled",
+          "submitted-cancellation"
+        ]
       },
       "CreateTicketBodyInput": {
         "type": "object",
@@ -94,7 +104,17 @@
         "additionalProperties": false
       },
       "TicketStatus": {
-        "type": "string"
+        "type": "string",
+        "enum": [
+          "broker-processing",
+          "carrier-processing",
+          "broker-open-issue",
+          "missing-documents",
+          "incorrect-data",
+          "completed",
+          "cancelled",
+          "submitted-cancellation"
+        ]
       },
       "Ticket": {
         "type": "object",
