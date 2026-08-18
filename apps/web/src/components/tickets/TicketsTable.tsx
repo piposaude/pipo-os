@@ -62,8 +62,8 @@ export function TicketsTable({ tickets, labels, onChangeStatus, onDelete }: Tick
       <TableBody>
         {tickets.map((ticket) => (
           <TableRow key={ticket.id}>
-            <TableCell>{ticket.title}</TableCell>
-            <TableCell>{ticket.description}</TableCell>
+            <TableCell>{ticket.enrollmentType}</TableCell>
+            <TableCell>{ticket.sourceSystem}</TableCell>
             <TableCell>
               <Status variant={statusVariant[ticket.status]}>{labels.status[ticket.status]}</Status>
             </TableCell>

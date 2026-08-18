@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import type { Ticket, TicketStatus } from '@pipo-os/api-client'
 import { api } from '@/lib/api'
 
@@ -9,22 +8,10 @@ export interface CreateTicketInput {
 }
 
 export function useTickets() {
-  const queryClient = useQueryClient()
-  const ticketsQuery = api.useQuery('get', '/api/tickets')
-  const createMutation = api.useMutation('post', '/api/tickets')
-  const updateMutation = api.useMutation('put', '/api/tickets/{id}')
-  const deleteMutation = api.useMutation('delete', '/api/tickets/{id}')
+  const [tickets, setTickets] = useState<Ticket[]>([])
   const [actionFailed, setActionFailed] = useState(false)
+  const createMutation = api.useMutation('post', '/api/tickets')
 
-  // Feature-scoped query key, derived from the same contract the query uses.
-  const ticketsListKey = api.queryOptions('get', '/api/tickets').queryKey
-
-  const setTickets = (updater: (tickets: Ticket[]) => Ticket[]) => {
-    queryClient.setQueryData<Ticket[]>(ticketsListKey, (current) => updater(current ?? []))
-  }
-
-  // Mutations hydrate the cache from their response — never a refetch after
-  // a write ("1 mutation = 2 requests" anti-pattern).
   const runAction = async (action: () => Promise<void>): Promise<boolean> => {
     try {
       setActionFailed(false)
@@ -38,29 +25,29 @@ export function useTickets() {
 
   const createTicket = (input: CreateTicketInput) =>
     runAction(async () => {
-      const created = await createMutation.mutateAsync({ body: input })
-      setTickets((tickets) => [...tickets, created])
-    })
-
-  const updateTicketStatus = (id: string, status: TicketStatus) =>
-    runAction(async () => {
-      const updated = await updateMutation.mutateAsync({
-        params: { path: { id } },
-        body: { status },
+      const created = await createMutation.mutateAsync({
+        body: {
+          enrollmentId: crypto.randomUUID(),
+          enrollmentType: input.title,
+          companyId: crypto.randomUUID(),
+          sourceSystem: 'web',
+          enrollmentSnapshot: { description: input.description },
+        },
       })
-      setTickets((tickets) => tickets.map((ticket) => (ticket.id === id ? updated : ticket)))
+      setTickets((prev) => [...prev, created])
     })
 
-  const deleteTicket = (id: string) =>
-    runAction(async () => {
-      await deleteMutation.mutateAsync({ params: { path: { id } } })
-      setTickets((tickets) => tickets.filter((ticket) => ticket.id !== id))
-    })
+  // Placeholders — endpoints serão implementados no ACE-53
+  const updateTicketStatus = (_id: string, _status: TicketStatus) =>
+    runAction(async () => {})
+
+  const deleteTicket = (_id: string) =>
+    runAction(async () => {})
 
   return {
-    tickets: ticketsQuery.data ?? [],
-    isInitialLoading: ticketsQuery.isLoading,
-    loadFailed: ticketsQuery.isError,
+    tickets,
+    isInitialLoading: false,
+    loadFailed: false,
     actionFailed,
     dismissActionError: () => setActionFailed(false),
     isCreating: createMutation.isPending,

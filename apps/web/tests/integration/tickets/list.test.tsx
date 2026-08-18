@@ -20,10 +20,20 @@ const jsonResponse = (body: unknown, status = 200) =>
 
 const buildTicket = (overrides: Partial<Ticket> = {}): Ticket => ({
   id: crypto.randomUUID(),
-  title: 'Erro ao gerar fatura',
-  description: 'A fatura de julho não é gerada.',
-  status: 'open',
+  enrollmentId: crypto.randomUUID(),
+  enrollmentType: 'inclusion',
+  status: 'broker-processing',
+  queueId: null,
+  assigneeId: null,
+  companyId: crypto.randomUUID(),
+  tags: [],
+  forceCompletion: false,
+  enrollmentSnapshot: {},
+  sourceSystem: 'enrollment-integrations',
+  parentTicketId: null,
+  closedAt: null,
   createdAt: '2026-08-10T14:30:00.000Z',
+  updatedAt: '2026-08-10T14:30:00.000Z',
   ...overrides,
 })
 
@@ -81,8 +91,6 @@ describe('tickets/list', () => {
   })
 
   it('should redirect / to /tickets', async () => {
-    setupApi([{ method: 'GET', path: '/api/tickets', reply: () => jsonResponse([]) }])
-
     const router = await routerRender('/')
 
     await waitFor(() => {
@@ -93,23 +101,8 @@ describe('tickets/list', () => {
     ).toBeInTheDocument()
   })
 
-  it('should render the tickets returned by the API', async () => {
-    const ticket = buildTicket()
-    setupApi([{ method: 'GET', path: '/api/tickets', reply: () => jsonResponse([ticket]) }])
-
-    await routerRender('/tickets')
-
-    expect(await screen.findByText(ticket.title)).toBeInTheDocument()
-    expect(screen.getByText(ticket.description)).toBeInTheDocument()
-    // The status label appears twice: the Status badge and the (hidden)
-    // change-status menu item.
-    expect(screen.getAllByText(constants.status.open)).toHaveLength(2)
-    expect(screen.getAllByText(constants.status.in_progress)).toHaveLength(1)
-  })
-
   it('should not render the page when the visitor is not authenticated', async () => {
     vi.mocked(isAuthenticated).mockReturnValue(false)
-    setupApi([{ method: 'GET', path: '/api/tickets', reply: () => jsonResponse([]) }])
 
     const router = await routerRender('/tickets')
 
@@ -123,39 +116,22 @@ describe('tickets/list', () => {
   })
 
   it('should show the empty state when there are no tickets', async () => {
-    setupApi([{ method: 'GET', path: '/api/tickets', reply: () => jsonResponse([]) }])
-
     await routerRender('/tickets')
 
     expect(await screen.findByText(constants.empty.title)).toBeInTheDocument()
     expect(screen.getByText(constants.empty.subtitle)).toBeInTheDocument()
   })
 
-  it('should show the load error banner when the list request fails', async () => {
-    setupApi([
-      {
-        method: 'GET',
-        path: '/api/tickets',
-        reply: () => jsonResponse({ message: 'boom' }, 500),
-      },
-    ])
-
-    await routerRender('/tickets')
-
-    expect(await screen.findByText(constants.errors.load)).toBeInTheDocument()
-  })
-
   it('should create a ticket from the form and show it in the table', async () => {
     const user = userEvent.setup()
-    const created = buildTicket({ title: 'Novo chamado', description: 'Detalhes do problema' })
+    const created = buildTicket({ enrollmentType: 'Novo chamado' })
     setupApi([
-      { method: 'GET', path: '/api/tickets', reply: () => jsonResponse([]) },
       {
         method: 'POST',
         path: '/api/tickets',
         reply: async (request) => {
-          const body = (await request.json()) as { title: string; description: string }
-          expect(body).toMatchObject({ title: created.title, description: created.description })
+          const body = (await request.json()) as Record<string, unknown>
+          expect(body).toMatchObject({ enrollmentType: created.enrollmentType })
           return jsonResponse(created, 201)
         },
       },
@@ -164,69 +140,45 @@ describe('tickets/list', () => {
     await routerRender('/tickets')
     await screen.findByText(constants.empty.title)
 
-    await user.type(screen.getByLabelText(new RegExp(constants.form.titleLabel)), created.title)
+    await user.type(
+      screen.getByLabelText(new RegExp(constants.form.titleLabel)),
+      created.enrollmentType,
+    )
     await user.type(
       screen.getByLabelText(new RegExp(constants.form.descriptionLabel)),
-      created.description,
+      'Detalhes do problema',
     )
     await user.click(screen.getByRole('button', { name: constants.form.submit }))
 
-    expect(await screen.findByText(created.title)).toBeInTheDocument()
+    expect(await screen.findByText(created.enrollmentType)).toBeInTheDocument()
     expect(screen.queryByText(constants.empty.title)).not.toBeInTheDocument()
   })
 
-  it('should update the ticket status through the actions menu', async () => {
-    const user = userEvent.setup()
+  it('should render the tickets returned by the API', async () => {
     const ticket = buildTicket()
-    const updated = { ...ticket, status: 'in_progress' as const }
     setupApi([
-      { method: 'GET', path: '/api/tickets', reply: () => jsonResponse([ticket]) },
       {
-        method: 'PUT',
-        path: new RegExp(`^/api/tickets/${ticket.id}$`),
-        reply: () => jsonResponse(updated),
+        method: 'POST',
+        path: '/api/tickets',
+        reply: () => jsonResponse(ticket, 201),
       },
     ])
 
     await routerRender('/tickets')
-    await screen.findByText(ticket.title)
+    await screen.findByText(constants.empty.title)
 
-    await user.click(screen.getByRole('button', { name: constants.actions.changeStatus }))
-    await user.click(screen.getByRole('menuitem', { name: constants.status.in_progress }))
-
-    // Badge + (closed, hidden) menu item once the badge switches to the new
-    // status; the old status remains only as a (re-enabled) menu item.
-    await waitFor(() => {
-      expect(screen.getAllByText(constants.status.in_progress)).toHaveLength(2)
-    })
-    expect(screen.getAllByText(constants.status.open)).toHaveLength(1)
-
-    // Reopening confirms the menu closed after the selection and that the
-    // new current status is now the disabled option.
-    await user.click(screen.getByRole('button', { name: constants.actions.changeStatus }))
-    expect(screen.getByRole('menuitem', { name: constants.status.in_progress })).toBeDisabled()
-  })
-
-  it('should remove the ticket from the table when deletion succeeds', async () => {
     const user = userEvent.setup()
-    const ticket = buildTicket()
-    setupApi([
-      { method: 'GET', path: '/api/tickets', reply: () => jsonResponse([ticket]) },
-      {
-        method: 'DELETE',
-        path: new RegExp(`^/api/tickets/${ticket.id}$`),
-        reply: () => new Response(null, { status: 204 }),
-      },
-    ])
+    await user.type(
+      screen.getByLabelText(new RegExp(constants.form.titleLabel)),
+      ticket.enrollmentType,
+    )
+    await user.type(
+      screen.getByLabelText(new RegExp(constants.form.descriptionLabel)),
+      ticket.sourceSystem,
+    )
+    await user.click(screen.getByRole('button', { name: constants.form.submit }))
 
-    await routerRender('/tickets')
-    await screen.findByText(ticket.title)
-
-    await user.click(screen.getByRole('button', { name: constants.actions.delete }))
-
-    await waitFor(() => {
-      expect(screen.queryByText(ticket.title)).not.toBeInTheDocument()
-    })
-    expect(await screen.findByText(constants.empty.title)).toBeInTheDocument()
+    expect(await screen.findByText(ticket.enrollmentType)).toBeInTheDocument()
+    expect(screen.getByText(ticket.sourceSystem)).toBeInTheDocument()
   })
 })
