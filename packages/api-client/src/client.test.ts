@@ -37,7 +37,9 @@ describe('createApiClient', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
 
     const [request] = fetchMock.mock.calls[0]
-    expect(request.url).toBe('http://localhost:3001/api/tickets/00000000-0000-4000-8000-000000000001')
+    expect(request.url).toBe(
+      'http://localhost:3001/api/tickets/00000000-0000-4000-8000-000000000001',
+    )
     expect(request.method).toBe('GET')
   })
 
