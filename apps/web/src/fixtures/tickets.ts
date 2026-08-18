@@ -40,9 +40,9 @@ export const ticketsFixture: Ticket[] = [
     companyId: crypto.randomUUID(),
     status: 'completed',
     sourceSystem: 'enrollment-integrations',
-    closedAt: '2026-08-12T10:00:00.000Z',
     createdAt: '2026-08-12T08:00:00.000Z',
     updatedAt: '2026-08-12T10:00:00.000Z',
     ...base,
+    closedAt: '2026-08-12T10:00:00.000Z',
   },
 ]
