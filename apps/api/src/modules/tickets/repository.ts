@@ -2,7 +2,7 @@ import type { Kysely, Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
 import { ConflictError } from '../../shared/errors.js'
-import type { CreateTicketBody, Ticket } from './schemas.js'
+import type { CreateTicketBody, Ticket, TicketStatus } from './schemas.js'
 
 const OPEN_ENROLLMENT_CONSTRAINT = 'uq_tickets_open_enrollment'
 
@@ -11,7 +11,7 @@ function toTicket(row: Selectable<Tickets>): Ticket {
     id: row.id,
     enrollmentId: row.enrollment_id,
     enrollmentType: row.enrollment_type,
-    status: row.status,
+    status: row.status as TicketStatus,
     queueId: row.queue_id,
     assigneeId: row.assignee_id,
     companyId: row.company_id,
