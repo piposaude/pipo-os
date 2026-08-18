@@ -38,9 +38,10 @@ export function useTickets() {
     })
 
   // Placeholders — endpoints serão implementados no ACE-53
-  const updateTicketStatus = (_id: string, _status: TicketStatus) => runAction(async () => {})
+  const updateTicketStatus: (id: string, status: TicketStatus) => Promise<boolean> = () =>
+    runAction(async () => {})
 
-  const deleteTicket = (_id: string) => runAction(async () => {})
+  const deleteTicket: (id: string) => Promise<boolean> = () => runAction(async () => {})
 
   return {
     tickets,
