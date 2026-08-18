@@ -1,20 +1,12 @@
-import { NotFoundError } from '../../shared/errors.js'
+import { ConflictError, NotFoundError } from '../../shared/errors.js'
 import type { TicketsRepositoryPort } from './repository.js'
-import type { CreateTicketBody, Ticket, UpdateTicketBody } from './schemas.js'
+import type { CreateTicketBody, Ticket } from './schemas.js'
 
 export class TicketsService {
   constructor(private readonly repository: TicketsRepositoryPort) {}
 
-  list(): Promise<Ticket[]> {
-    return this.repository.findAll()
-  }
-
-  create(data: CreateTicketBody): Promise<Ticket> {
-    return this.repository.create(data)
-  }
-
-  async update(id: string, data: UpdateTicketBody): Promise<Ticket> {
-    const ticket = await this.repository.update(id, data)
+  async get(id: string): Promise<Ticket> {
+    const ticket = await this.repository.findById(id)
 
     if (!ticket) {
       throw new NotFoundError(`Ticket ${id} not found`)
@@ -23,11 +15,13 @@ export class TicketsService {
     return ticket
   }
 
-  async remove(id: string): Promise<void> {
-    const deleted = await this.repository.delete(id)
+  async create(data: CreateTicketBody): Promise<Ticket> {
+    const hasOpen = await this.repository.hasOpenTicketForEnrollment(data.enrollmentId)
 
-    if (!deleted) {
-      throw new NotFoundError(`Ticket ${id} not found`)
+    if (hasOpen) {
+      throw new ConflictError(`Enrollment ${data.enrollmentId} already has an open ticket`)
     }
+
+    return this.repository.create(data)
   }
 }

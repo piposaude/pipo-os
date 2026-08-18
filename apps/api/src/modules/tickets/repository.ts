@@ -1,45 +1,62 @@
 import type { Kysely, Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
-import type { CreateTicketBody, Ticket, UpdateTicketBody } from './schemas.js'
+import type { CreateTicketBody, Ticket } from './schemas.js'
 
 function toTicket(row: Selectable<Tickets>): Ticket {
   return {
     id: row.id,
-    title: row.title,
-    description: row.description,
-    status: row.status as Ticket['status'],
+    enrollmentId: row.enrollment_id,
+    enrollmentType: row.enrollment_type,
+    status: row.status,
+    queueId: row.queue_id,
+    assigneeId: row.assignee_id,
+    companyId: row.company_id,
+    tags: row.tags as string[],
+    forceCompletion: row.force_completion,
+    enrollmentSnapshot: row.enrollment_snapshot as Record<string, unknown>,
+    sourceSystem: row.source_system,
+    parentTicketId: row.parent_ticket_id,
+    closedAt: row.closed_at ? row.closed_at.toISOString() : null,
     createdAt: row.created_at.toISOString(),
+    updatedAt: row.updated_at.toISOString(),
   }
 }
 
 export interface TicketsRepositoryPort {
-  findAll(): Promise<Ticket[]>
+  findById(id: string): Promise<Ticket | undefined>
   create(data: CreateTicketBody): Promise<Ticket>
-  update(id: string, data: UpdateTicketBody): Promise<Ticket | undefined>
-  delete(id: string): Promise<boolean>
+  hasOpenTicketForEnrollment(enrollmentId: string): Promise<boolean>
 }
 
 export class TicketsRepository implements TicketsRepositoryPort {
   constructor(private readonly db: Kysely<Database>) {}
 
-  async findAll(): Promise<Ticket[]> {
-    const rows = await this.db
+  async findById(id: string): Promise<Ticket | undefined> {
+    const row = await this.db
       .selectFrom('tickets')
       .selectAll()
-      .orderBy('created_at', 'desc')
-      .execute()
+      .where('id', '=', id)
+      .executeTakeFirst()
 
-    return rows.map(toTicket)
+    return row ? toTicket(row) : undefined
   }
 
   async create(data: CreateTicketBody): Promise<Ticket> {
     const row = await this.db
       .insertInto('tickets')
       .values({
-        title: data.title,
-        description: data.description,
-        status: data.status ?? 'open',
+        enrollment_id: data.enrollmentId,
+        enrollment_type: data.enrollmentType,
+        company_id: data.companyId,
+        source_system: data.sourceSystem,
+        enrollment_snapshot: JSON.stringify(data.enrollmentSnapshot),
+        status: data.status ?? 'broker-processing',
+        queue_id: data.queueId,
+        assignee_id: data.assigneeId,
+        tags: data.tags ?? [],
+        force_completion: data.forceCompletion ?? false,
+        parent_ticket_id: data.parentTicketId,
       })
       .returningAll()
       .executeTakeFirstOrThrow()
@@ -47,24 +64,14 @@ export class TicketsRepository implements TicketsRepositoryPort {
     return toTicket(row)
   }
 
-  async update(id: string, data: UpdateTicketBody): Promise<Ticket | undefined> {
+  async hasOpenTicketForEnrollment(enrollmentId: string): Promise<boolean> {
     const row = await this.db
-      .updateTable('tickets')
-      .set({
-        title: data.title,
-        description: data.description,
-        status: data.status,
-      })
-      .where('id', '=', id)
-      .returningAll()
+      .selectFrom('tickets')
+      .select('id')
+      .where('enrollment_id', '=', enrollmentId)
+      .where('status', 'not in', ['completed', 'cancelled'])
       .executeTakeFirst()
 
-    return row ? toTicket(row) : undefined
-  }
-
-  async delete(id: string): Promise<boolean> {
-    const result = await this.db.deleteFrom('tickets').where('id', '=', id).executeTakeFirst()
-
-    return result.numDeletedRows > 0n
+    return row !== undefined
   }
 }

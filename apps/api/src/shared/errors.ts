@@ -19,3 +19,12 @@ export class UnauthorizedError extends DomainError {
     this.name = 'UnauthorizedError'
   }
 }
+
+export class ConflictError extends DomainError {
+  readonly statusCode = 409
+
+  constructor(message: string) {
+    super(message)
+    this.name = 'ConflictError'
+  }
+}
