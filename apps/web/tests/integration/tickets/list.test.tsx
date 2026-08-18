@@ -160,7 +160,14 @@ describe('tickets/list', () => {
       {
         method: 'POST',
         path: '/api/tickets',
-        reply: () => jsonResponse(ticket, 201),
+        reply: async (request) => {
+          const body = (await request.json()) as Record<string, unknown>
+          expect(body).toMatchObject({
+            sourceSystem: 'web',
+            enrollmentSnapshot: { description: ticket.sourceSystem },
+          })
+          return jsonResponse(ticket, 201)
+        },
       },
     ])
 
