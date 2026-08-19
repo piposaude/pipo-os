@@ -1,6 +1,13 @@
 import { NotFoundError } from '../../shared/errors.js'
 import type { TicketsRepositoryPort } from './repository.js'
-import type { CreateTicketBody, Ticket, TicketStatus, UpdateTicketBody } from './schemas.js'
+import type {
+  CreateTicketBody,
+  ListTicketsQuery,
+  Ticket,
+  TicketList,
+  TicketStatus,
+  UpdateTicketBody,
+} from './schemas.js'
 
 const CLOSED_STATUSES = new Set<TicketStatus>(['completed', 'cancelled'])
 
@@ -44,5 +51,10 @@ export class TicketsService {
     const ticket = await this.repository.update(id, payload)
     if (!ticket) throw new NotFoundError(`Ticket ${id} not found`)
     return ticket
+  }
+
+  async list(query: ListTicketsQuery): Promise<TicketList> {
+    const { data, total } = await this.repository.findMany(query)
+    return { data, total, page: query.page, pageSize: query.pageSize }
   }
 }

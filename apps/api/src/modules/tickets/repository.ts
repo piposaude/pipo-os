@@ -1,8 +1,14 @@
-import type { Kysely, Selectable } from 'kysely'
+import { sql, type Kysely, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
 import { ConflictError } from '../../shared/errors.js'
-import type { CreateTicketBody, Ticket, TicketStatus, UpdateTicketBody } from './schemas.js'
+import type {
+  CreateTicketBody,
+  ListTicketsQuery,
+  Ticket,
+  TicketStatus,
+  UpdateTicketBody,
+} from './schemas.js'
 
 const OPEN_ENROLLMENT_CONSTRAINT = 'uq_tickets_open_enrollment'
 
@@ -30,6 +36,7 @@ export interface TicketsRepositoryPort {
   findById(id: string): Promise<Ticket | undefined>
   create(data: CreateTicketBody): Promise<Ticket>
   update(id: string, data: UpdateTicketBody): Promise<Ticket | undefined>
+  findMany(query: ListTicketsQuery): Promise<{ data: Ticket[]; total: number }>
 }
 
 export class TicketsRepository implements TicketsRepositoryPort {
@@ -43,6 +50,34 @@ export class TicketsRepository implements TicketsRepositoryPort {
       .executeTakeFirst()
 
     return row ? toTicket(row) : undefined
+  }
+
+  async findMany(query: ListTicketsQuery): Promise<{ data: Ticket[]; total: number }> {
+    const offset = (query.page - 1) * query.pageSize
+
+    const base = this.db
+      .selectFrom('tickets')
+      .$if(query.status !== undefined, (q) => q.where('status', '=', query.status!))
+      .$if(query.queueId !== undefined, (q) => q.where('queue_id', '=', query.queueId!))
+      .$if(query.assigneeId !== undefined, (q) => q.where('assignee_id', '=', query.assigneeId!))
+      .$if(query.companyId !== undefined, (q) => q.where('company_id', '=', query.companyId!))
+      .$if(query.enrollmentType !== undefined, (q) =>
+        q.where('enrollment_type', '=', query.enrollmentType!),
+      )
+      .$if(query.sourceSystem !== undefined, (q) =>
+        q.where('source_system', '=', query.sourceSystem!),
+      )
+      .$if(!!query.tags?.length, (q) => q.where(sql<boolean>`tags @> ${query.tags!}::text[]`))
+      .$if(!!query.search, (q) =>
+        q.where(sql<boolean>`enrollment_snapshot::text ILIKE ${`%${query.search}%`}`),
+      )
+
+    const [{ count }, rows] = await Promise.all([
+      base.select((eb) => eb.fn.countAll<string>().as('count')).executeTakeFirstOrThrow(),
+      base.selectAll().orderBy('created_at', 'desc').limit(query.pageSize).offset(offset).execute(),
+    ])
+
+    return { data: rows.map(toTicket), total: Number(count) }
   }
 
   async create(data: CreateTicketBody): Promise<Ticket> {

@@ -258,7 +258,46 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: {
+            parameters: {
+                query?: {
+                    status?: components["schemas"]["TicketStatusInput"];
+                    queueId?: string;
+                    assigneeId?: string;
+                    enrollmentType?: string;
+                    sourceSystem?: string;
+                    companyId?: string;
+                    tags?: string[];
+                    search?: string;
+                    page?: number;
+                    pageSize?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TicketList"];
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
         put?: never;
         post: {
             parameters: {
@@ -375,6 +414,12 @@ export interface components {
         ErrorResponse: {
             error: string;
             message: string;
+        };
+        TicketList: {
+            data: components["schemas"]["Ticket"][];
+            total: number;
+            page: number;
+            pageSize: number;
         };
     };
     responses: never;
