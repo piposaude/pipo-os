@@ -133,13 +133,8 @@ export class TicketsRepository implements TicketsRepositoryPort {
     return rows.map(toFormValue)
   }
 
-  // actor is the authenticated caller's email; updated_by remains null until
-  // ACE-18 resolves session email to a user UUID.
-  async upsertFormValues(
-    ticketId: string,
-    entries: PatchFormValuesBody,
-    _: string,
-  ): Promise<FormValue[]> {
+  // updated_by remains null until ACE-18 resolves the session actor to a user UUID.
+  async upsertFormValues(ticketId: string, entries: PatchFormValuesBody): Promise<FormValue[]> {
     await this.db
       .insertInto('ticket_form_values')
       .values(
