@@ -145,7 +145,8 @@
               }
             ]
           }
-        }
+        },
+        "minProperties": 1
       },
       "AuthMe": {
         "type": "object",
