@@ -462,8 +462,6 @@ export interface components {
         PatchFormValuesBodyInput: {
             fieldKey: string;
             fieldValue: unknown;
-            /** Format: uuid */
-            updatedBy?: string;
         }[];
         AuthMe: {
             /** Format: email */

@@ -49,7 +49,11 @@ export interface TicketsRepositoryPort {
   create(data: CreateTicketBody): Promise<Ticket>
   update(id: string, data: UpdateTicketBody): Promise<Ticket | undefined>
   findFormValues(ticketId: string): Promise<FormValue[]>
-  upsertFormValues(ticketId: string, entries: PatchFormValuesBody): Promise<FormValue[]>
+  upsertFormValues(
+    ticketId: string,
+    entries: PatchFormValuesBody,
+    actor: string,
+  ): Promise<FormValue[]>
 }
 
 export class TicketsRepository implements TicketsRepositoryPort {
@@ -129,7 +133,13 @@ export class TicketsRepository implements TicketsRepositoryPort {
     return rows.map(toFormValue)
   }
 
-  async upsertFormValues(ticketId: string, entries: PatchFormValuesBody): Promise<FormValue[]> {
+  // actor is the authenticated caller's email; updated_by remains null until
+  // ACE-18 resolves session email to a user UUID.
+  async upsertFormValues(
+    ticketId: string,
+    entries: PatchFormValuesBody,
+    _actor: string,
+  ): Promise<FormValue[]> {
     await this.db
       .insertInto('ticket_form_values')
       .values(
@@ -137,7 +147,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
           ticket_id: ticketId,
           field_key: e.fieldKey,
           field_value: JSON.stringify(e.fieldValue),
-          updated_by: e.updatedBy ?? null,
+          updated_by: null,
         })),
       )
       .onConflict((oc) =>

@@ -37,9 +37,13 @@ export class TicketsService {
     return this.repository.findFormValues(ticketId)
   }
 
-  async upsertFormValues(ticketId: string, entries: PatchFormValuesBody): Promise<FormValue[]> {
+  async upsertFormValues(
+    ticketId: string,
+    entries: PatchFormValuesBody,
+    actor: string,
+  ): Promise<FormValue[]> {
     const ticket = await this.repository.findById(ticketId)
     if (!ticket) throw new NotFoundError(`Ticket ${ticketId} not found`)
-    return this.repository.upsertFormValues(ticketId, entries)
+    return this.repository.upsertFormValues(ticketId, entries, actor)
   }
 }

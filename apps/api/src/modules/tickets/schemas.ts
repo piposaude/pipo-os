@@ -86,7 +86,6 @@ export const patchFormValuesBodySchema = z
     z.object({
       fieldKey: z.string().min(1),
       fieldValue: z.unknown().refine((v) => v !== undefined, { message: 'fieldValue is required' }),
-      updatedBy: z.uuid().optional(),
     }),
   )
   .min(1)
