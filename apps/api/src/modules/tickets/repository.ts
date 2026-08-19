@@ -138,7 +138,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
   async upsertFormValues(
     ticketId: string,
     entries: PatchFormValuesBody,
-    _actor: string,
+    _: string,
   ): Promise<FormValue[]> {
     await this.db
       .insertInto('ticket_form_values')
