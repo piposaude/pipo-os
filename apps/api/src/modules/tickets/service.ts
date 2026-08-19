@@ -24,7 +24,11 @@ export class TicketsService {
   async update(id: string, data: UpdateTicketBody): Promise<Ticket> {
     const payload: UpdateTicketBody = { ...data }
 
-    if (payload.status !== undefined && CLOSED_STATUSES.has(payload.status) && payload.closedAt === undefined) {
+    if (
+      payload.status !== undefined &&
+      CLOSED_STATUSES.has(payload.status) &&
+      payload.closedAt === undefined
+    ) {
       payload.closedAt = new Date().toISOString()
     }
 
@@ -32,7 +36,11 @@ export class TicketsService {
       payload.status = 'completed'
     }
 
-    if (payload.status !== undefined && !CLOSED_STATUSES.has(payload.status) && payload.closedAt === undefined) {
+    if (
+      payload.status !== undefined &&
+      !CLOSED_STATUSES.has(payload.status) &&
+      payload.closedAt === undefined
+    ) {
       payload.closedAt = null
     }
 
