@@ -1,4 +1,4 @@
-import { type Kysely, type Selectable } from 'kysely'
+import type { Kysely, Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
 import { ConflictError } from '../../shared/errors.js'
