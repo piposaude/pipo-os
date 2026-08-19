@@ -74,7 +74,13 @@ export class TicketsRepository implements TicketsRepositoryPort {
 
     const [{ count }, rows] = await Promise.all([
       base.select((eb) => eb.fn.countAll<string>().as('count')).executeTakeFirstOrThrow(),
-      base.selectAll().orderBy('created_at', 'desc').limit(query.pageSize).offset(offset).execute(),
+      base
+        .selectAll()
+        .orderBy('created_at', 'desc')
+        .orderBy('id', 'desc')
+        .limit(query.pageSize)
+        .offset(offset)
+        .execute(),
     ])
 
     return { data: rows.map(toTicket), total: Number(count) }

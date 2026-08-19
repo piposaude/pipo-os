@@ -270,6 +270,10 @@ describe('tickets routes', () => {
       })
       expect(page2.json().data).toHaveLength(1)
       expect(page2.json().total).toBe(2)
+
+      const id1 = page1.json().data[0].id
+      const id2 = page2.json().data[0].id
+      expect(id1).not.toBe(id2)
     })
   })
 
