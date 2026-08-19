@@ -90,10 +90,9 @@ export const patchFormValuesBodySchema = z
     }),
   )
   .min(1)
-  .refine(
-    (entries) => new Set(entries.map((e) => e.fieldKey)).size === entries.length,
-    { message: 'Duplicate fieldKey values are not allowed' },
-  )
+  .refine((entries) => new Set(entries.map((e) => e.fieldKey)).size === entries.length, {
+    message: 'Duplicate fieldKey values are not allowed',
+  })
   .meta({ id: 'PatchFormValuesBody' })
 
 export type TicketStatus = z.infer<typeof ticketStatusSchema>
