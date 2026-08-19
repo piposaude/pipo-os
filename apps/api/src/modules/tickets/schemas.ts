@@ -68,7 +68,7 @@ export const updateTicketBodySchema = z
     parentTicketId: z.uuid().nullable().optional(),
   })
   .refine((b) => Object.keys(b).length > 0, { message: 'At least one field is required' })
-  .meta({ id: 'UpdateTicketBody' })
+  .meta({ id: 'UpdateTicketBody', minProperties: 1 })
 
 export type TicketStatus = z.infer<typeof ticketStatusSchema>
 export type Ticket = z.infer<typeof ticketSchema>
