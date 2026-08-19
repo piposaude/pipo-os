@@ -64,7 +64,7 @@ export const updateTicketBodySchema = z
     assigneeId: z.uuid().nullable().optional(),
     tags: z.array(z.string()).optional(),
     forceCompletion: z.boolean().optional(),
-    closedAt: z.string().nullable().optional(),
+    closedAt: z.iso.datetime({ offset: true }).nullable().optional(),
     parentTicketId: z.uuid().nullable().optional(),
   })
   .refine((b) => Object.keys(b).length > 0, { message: 'At least one field is required' })
