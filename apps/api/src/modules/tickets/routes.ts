@@ -63,7 +63,12 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
       schema: {
         params: ticketParamsSchema,
         body: updateTicketBodySchema,
-        response: { 200: ticketSchema, 401: errorResponseSchema, 404: errorResponseSchema },
+        response: {
+          200: ticketSchema,
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+          404: errorResponseSchema,
+        },
       },
     },
     async (request) => {
@@ -79,6 +84,7 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
         params: ticketParamsSchema,
         response: {
           200: z.array(formValueSchema),
+          400: errorResponseSchema,
           401: errorResponseSchema,
           404: errorResponseSchema,
         },
@@ -98,6 +104,7 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
         body: patchFormValuesBodySchema,
         response: {
           200: z.array(formValueSchema),
+          400: errorResponseSchema,
           401: errorResponseSchema,
           404: errorResponseSchema,
         },
