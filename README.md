@@ -101,12 +101,12 @@ Isso sobe `apps/api` e `apps/web` simultaneamente via `pnpm -r --parallel dev`.
 
 ## API
 
-| Método   | Rota               | Descrição                            |
-| -------- | ------------------ | ------------------------------------ |
-| `GET`    | `/api/tickets`     | Lista tickets com filtros e paginação        |
-| `GET`    | `/api/tickets/:id` | Retorna um ticket pelo ID                    |
-| `POST`   | `/api/tickets`     | Cria um novo ticket                          |
-| `PATCH`  | `/api/tickets/:id` | Atualiza campos do ticket parcialmente       |
+| Método  | Rota               | Descrição                              |
+| ------- | ------------------ | -------------------------------------- |
+| `GET`   | `/api/tickets`     | Lista tickets com filtros e paginação  |
+| `GET`   | `/api/tickets/:id` | Retorna um ticket pelo ID              |
+| `POST`  | `/api/tickets`     | Cria um novo ticket                    |
+| `PATCH` | `/api/tickets/:id` | Atualiza campos do ticket parcialmente |
 
 ### Autenticação
 
