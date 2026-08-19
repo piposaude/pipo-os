@@ -103,10 +103,10 @@ Isso sobe `apps/api` e `apps/web` simultaneamente via `pnpm -r --parallel dev`.
 
 | Método   | Rota               | Descrição                            |
 | -------- | ------------------ | ------------------------------------ |
-| `GET`    | `/api/tickets`     | Lista todos os tickets               |
-| `POST`   | `/api/tickets`     | Cria um novo ticket                  |
-| `PUT`    | `/api/tickets/:id` | Atualiza título, descrição ou status |
-| `DELETE` | `/api/tickets/:id` | Remove um ticket                     |
+| `GET`    | `/api/tickets`     | Lista tickets com filtros e paginação        |
+| `GET`    | `/api/tickets/:id` | Retorna um ticket pelo ID                    |
+| `POST`   | `/api/tickets`     | Cria um novo ticket                          |
+| `PATCH`  | `/api/tickets/:id` | Atualiza campos do ticket parcialmente       |
 
 ### Autenticação
 
