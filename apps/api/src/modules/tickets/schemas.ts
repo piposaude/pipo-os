@@ -70,34 +70,8 @@ export const updateTicketBodySchema = z
   .refine((b) => Object.keys(b).length > 0, { message: 'At least one field is required' })
   .meta({ id: 'UpdateTicketBody' })
 
-export const formValueSchema = z
-  .object({
-    id: z.uuid(),
-    ticketId: z.uuid(),
-    fieldKey: z.string(),
-    fieldValue: z.unknown(),
-    updatedBy: z.uuid().nullable(),
-    updatedAt: z.string(),
-  })
-  .meta({ id: 'FormValue' })
-
-export const patchFormValuesBodySchema = z
-  .array(
-    z.object({
-      fieldKey: z.string().min(1),
-      fieldValue: z.unknown().refine((v) => v !== undefined, { message: 'fieldValue is required' }),
-    }),
-  )
-  .min(1)
-  .refine((entries) => new Set(entries.map((e) => e.fieldKey)).size === entries.length, {
-    message: 'Duplicate fieldKey values are not allowed',
-  })
-  .meta({ id: 'PatchFormValuesBody' })
-
 export type TicketStatus = z.infer<typeof ticketStatusSchema>
 export type Ticket = z.infer<typeof ticketSchema>
 export type TicketParams = z.infer<typeof ticketParamsSchema>
 export type CreateTicketBody = z.infer<typeof createTicketBodySchema>
 export type UpdateTicketBody = z.infer<typeof updateTicketBodySchema>
-export type FormValue = z.infer<typeof formValueSchema>
-export type PatchFormValuesBody = z.infer<typeof patchFormValuesBodySchema>
