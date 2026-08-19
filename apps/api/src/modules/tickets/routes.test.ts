@@ -404,5 +404,24 @@ describe('tickets routes', () => {
 
       expect(response.statusCode).toBe(400)
     })
+
+    it('returns 400 when fieldValue is omitted', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${id}/form-values`,
+        payload: [{ fieldKey: 'cpf' }],
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
   })
 })
