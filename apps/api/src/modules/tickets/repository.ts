@@ -91,6 +91,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
         ...(data.forceCompletion !== undefined && { force_completion: data.forceCompletion }),
         ...(data.closedAt !== undefined && { closed_at: data.closedAt }),
         ...(data.parentTicketId !== undefined && { parent_ticket_id: data.parentTicketId }),
+        updated_at: new Date(),
       })
       .where('id', '=', id)
       .returningAll()
