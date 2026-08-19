@@ -1,12 +1,16 @@
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
+import { z } from 'zod'
 import { UnauthorizedError } from '../../shared/errors.js'
 import { SESSION_COOKIE_NAME, extractSessionClaims } from '../auth/session.js'
 import {
   createTicketBodySchema,
   errorResponseSchema,
+  formValueSchema,
+  patchFormValuesBodySchema,
   ticketParamsSchema,
   ticketSchema,
+  updateTicketBodySchema,
 } from './schemas.js'
 import type { TicketsService } from './service.js'
 
@@ -50,6 +54,50 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
       const ticket = await service.create(request.body)
       reply.status(201)
       return ticket
+    },
+  )
+
+  server.patch(
+    '/api/tickets/:id',
+    {
+      schema: {
+        params: ticketParamsSchema,
+        body: updateTicketBodySchema,
+        response: { 200: ticketSchema, 401: errorResponseSchema, 404: errorResponseSchema },
+      },
+    },
+    async (request) => {
+      requireSession(request)
+      return service.update(request.params.id, request.body)
+    },
+  )
+
+  server.get(
+    '/api/tickets/:id/form-values',
+    {
+      schema: {
+        params: ticketParamsSchema,
+        response: { 200: z.array(formValueSchema), 401: errorResponseSchema, 404: errorResponseSchema },
+      },
+    },
+    async (request) => {
+      requireSession(request)
+      return service.getFormValues(request.params.id)
+    },
+  )
+
+  server.patch(
+    '/api/tickets/:id/form-values',
+    {
+      schema: {
+        params: ticketParamsSchema,
+        body: patchFormValuesBodySchema,
+        response: { 200: z.array(formValueSchema), 401: errorResponseSchema, 404: errorResponseSchema },
+      },
+    },
+    async (request) => {
+      requireSession(request)
+      return service.upsertFormValues(request.params.id, request.body)
     },
   )
 }
