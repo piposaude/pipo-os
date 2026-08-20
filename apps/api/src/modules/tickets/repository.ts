@@ -67,7 +67,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
       .$if(query.sourceSystem !== undefined, (q) =>
         q.where('source_system', '=', query.sourceSystem!),
       )
-      .$if(!!query.tags?.length, (q) => q.where(sql<boolean>`tags @> ${query.tags!}::text[]`))
+      .$if(!!query.tags?.length, (q) => q.where(sql<boolean>`tags && ${query.tags!}::text[]`))
       .$if(!!query.search, (q) => {
         const escaped = query.search!.replace(/[\\%_]/g, '\\$&')
         return q.where(sql<boolean>`enrollment_snapshot::text ILIKE ${`%${escaped}%`} ESCAPE '\\'`)
