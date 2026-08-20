@@ -1,6 +1,8 @@
 import { NotFoundError } from '../../shared/errors.js'
 import type { TicketsRepositoryPort } from './repository.js'
-import type { CreateTicketBody, Ticket } from './schemas.js'
+import type { CreateTicketBody, Ticket, TicketStatus, UpdateTicketBody } from './schemas.js'
+
+const CLOSED_STATUSES = new Set<TicketStatus>(['completed', 'cancelled'])
 
 export class TicketsService {
   constructor(private readonly repository: TicketsRepositoryPort) {}
@@ -17,5 +19,30 @@ export class TicketsService {
 
   create(data: CreateTicketBody): Promise<Ticket> {
     return this.repository.create(data)
+  }
+
+  async update(id: string, data: UpdateTicketBody): Promise<Ticket> {
+    const payload: UpdateTicketBody = { ...data }
+
+    const hasStatus = payload.status !== undefined
+    const hasClosedAt = payload.closedAt !== undefined
+
+    if (hasStatus) {
+      const isClosed = CLOSED_STATUSES.has(payload.status!)
+
+      if (isClosed && !hasClosedAt) {
+        payload.closedAt = new Date().toISOString()
+      } else if (!isClosed && !hasClosedAt) {
+        payload.closedAt = null
+      }
+    }
+
+    if (!hasStatus && payload.closedAt != null) {
+      payload.status = 'completed'
+    }
+
+    const ticket = await this.repository.update(id, payload)
+    if (!ticket) throw new NotFoundError(`Ticket ${id} not found`)
+    return ticket
   }
 }

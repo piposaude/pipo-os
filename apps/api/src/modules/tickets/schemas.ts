@@ -57,7 +57,21 @@ export const createTicketBodySchema = z
   })
   .meta({ id: 'CreateTicketBody' })
 
+export const updateTicketBodySchema = z
+  .object({
+    status: ticketStatusSchema.optional(),
+    queueId: z.uuid().nullable().optional(),
+    assigneeId: z.uuid().nullable().optional(),
+    tags: z.array(z.string()).optional(),
+    forceCompletion: z.boolean().optional(),
+    closedAt: z.iso.datetime({ offset: true }).nullable().optional(),
+    parentTicketId: z.uuid().nullable().optional(),
+  })
+  .refine((b) => Object.keys(b).length > 0, { message: 'At least one field is required' })
+  .meta({ id: 'UpdateTicketBody', minProperties: 1 })
+
 export type TicketStatus = z.infer<typeof ticketStatusSchema>
 export type Ticket = z.infer<typeof ticketSchema>
 export type TicketParams = z.infer<typeof ticketParamsSchema>
 export type CreateTicketBody = z.infer<typeof createTicketBodySchema>
+export type UpdateTicketBody = z.infer<typeof updateTicketBodySchema>

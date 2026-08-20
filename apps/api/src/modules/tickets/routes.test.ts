@@ -149,4 +149,88 @@ describe('tickets routes', () => {
       expect(response.json().enrollmentId).toBe(validTicketBody.enrollmentId)
     })
   })
+
+  describe('PATCH /api/tickets/:id', () => {
+    it('returns 401 without session cookie', async () => {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: '/api/tickets/00000000-0000-4000-8000-000000000099',
+        payload: { status: 'completed' },
+      })
+
+      expect(response.statusCode).toBe(401)
+      expect(response.json().error).toBe('UnauthorizedError')
+    })
+
+    it('returns 404 for a non-existent ticket', async () => {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: '/api/tickets/00000000-0000-4000-8000-000000000099',
+        payload: { status: 'completed' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(404)
+      expect(response.json().error).toBe('NotFoundError')
+    })
+
+    it('updates ticket status and returns 200', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${id}`,
+        payload: { status: 'carrier-processing' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(200)
+      expect(response.json().status).toBe('carrier-processing')
+    })
+
+    it('accepts null to clear a nullable field', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, queueId: '00000000-0000-4000-8000-000000000010' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${id}`,
+        payload: { queueId: null },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(200)
+      expect(response.json().queueId).toBeNull()
+    })
+
+    it('returns 400 for an empty body', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${id}`,
+        payload: {},
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+  })
 })

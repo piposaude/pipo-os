@@ -196,7 +196,59 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateTicketBodyInput"];
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Ticket"];
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/tickets": {
@@ -281,6 +333,15 @@ export interface components {
             forceCompletion?: boolean;
             /** Format: uuid */
             parentTicketId?: string;
+        };
+        UpdateTicketBodyInput: {
+            status?: components["schemas"]["TicketStatusInput"];
+            queueId?: string | null;
+            assigneeId?: string | null;
+            tags?: string[];
+            forceCompletion?: boolean;
+            closedAt?: string | null;
+            parentTicketId?: string | null;
         };
         AuthMe: {
             /** Format: email */

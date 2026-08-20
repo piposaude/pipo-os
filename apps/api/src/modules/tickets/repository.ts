@@ -2,7 +2,7 @@ import type { Kysely, Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
 import { ConflictError } from '../../shared/errors.js'
-import type { CreateTicketBody, Ticket, TicketStatus } from './schemas.js'
+import type { CreateTicketBody, Ticket, TicketStatus, UpdateTicketBody } from './schemas.js'
 
 const OPEN_ENROLLMENT_CONSTRAINT = 'uq_tickets_open_enrollment'
 
@@ -29,6 +29,7 @@ function toTicket(row: Selectable<Tickets>): Ticket {
 export interface TicketsRepositoryPort {
   findById(id: string): Promise<Ticket | undefined>
   create(data: CreateTicketBody): Promise<Ticket>
+  update(id: string, data: UpdateTicketBody): Promise<Ticket | undefined>
 }
 
 export class TicketsRepository implements TicketsRepositoryPort {
@@ -77,5 +78,24 @@ export class TicketsRepository implements TicketsRepositoryPort {
       }
       throw err
     }
+  }
+
+  async update(id: string, data: UpdateTicketBody): Promise<Ticket | undefined> {
+    const row = await this.db
+      .updateTable('tickets')
+      .set({
+        ...(data.status !== undefined && { status: data.status }),
+        ...(data.queueId !== undefined && { queue_id: data.queueId }),
+        ...(data.assigneeId !== undefined && { assignee_id: data.assigneeId }),
+        ...(data.tags !== undefined && { tags: data.tags }),
+        ...(data.forceCompletion !== undefined && { force_completion: data.forceCompletion }),
+        ...(data.closedAt !== undefined && { closed_at: data.closedAt }),
+        ...(data.parentTicketId !== undefined && { parent_ticket_id: data.parentTicketId }),
+      })
+      .where('id', '=', id)
+      .returningAll()
+      .executeTakeFirst()
+
+    return row ? toTicket(row) : undefined
   }
 }

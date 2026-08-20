@@ -7,6 +7,7 @@ import {
   errorResponseSchema,
   ticketParamsSchema,
   ticketSchema,
+  updateTicketBodySchema,
 } from './schemas.js'
 import type { TicketsService } from './service.js'
 
@@ -50,6 +51,26 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
       const ticket = await service.create(request.body)
       reply.status(201)
       return ticket
+    },
+  )
+
+  server.patch(
+    '/api/tickets/:id',
+    {
+      schema: {
+        params: ticketParamsSchema,
+        body: updateTicketBodySchema,
+        response: {
+          200: ticketSchema,
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+          404: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      requireSession(request)
+      return service.update(request.params.id, request.body)
     },
   )
 }
