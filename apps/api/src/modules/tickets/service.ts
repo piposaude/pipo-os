@@ -28,7 +28,7 @@ export class TicketsService {
     const hasClosedAt = payload.closedAt !== undefined
 
     if (hasStatus) {
-      const isClosed = CLOSED_STATUSES.has(payload.status)
+      const isClosed = CLOSED_STATUSES.has(payload.status!)
 
       if (isClosed && !hasClosedAt) {
         payload.closedAt = new Date().toISOString()
