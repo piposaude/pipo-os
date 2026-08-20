@@ -195,6 +195,100 @@ describe('tickets routes', () => {
       expect(miss.json().total).toBe(0)
     })
 
+    it('filters by queueId', async () => {
+      const queueId = '00000000-0000-4000-8000-000000000010'
+      await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, queueId },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const hit = await app.inject({
+        method: 'GET',
+        url: `/api/tickets?queueId=${queueId}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(hit.json().total).toBe(1)
+
+      const miss = await app.inject({
+        method: 'GET',
+        url: '/api/tickets?queueId=00000000-0000-4000-8000-000000000099',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(miss.json().total).toBe(0)
+    })
+
+    it('filters by assigneeId', async () => {
+      const assigneeId = '00000000-0000-4000-8000-000000000011'
+      await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, assigneeId },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const hit = await app.inject({
+        method: 'GET',
+        url: `/api/tickets?assigneeId=${assigneeId}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(hit.json().total).toBe(1)
+
+      const miss = await app.inject({
+        method: 'GET',
+        url: '/api/tickets?assigneeId=00000000-0000-4000-8000-000000000099',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(miss.json().total).toBe(0)
+    })
+
+    it('filters by enrollmentType', async () => {
+      await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const hit = await app.inject({
+        method: 'GET',
+        url: `/api/tickets?enrollmentType=${validTicketBody.enrollmentType}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(hit.json().total).toBe(1)
+
+      const miss = await app.inject({
+        method: 'GET',
+        url: '/api/tickets?enrollmentType=exclusion',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(miss.json().total).toBe(0)
+    })
+
+    it('filters by sourceSystem', async () => {
+      await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const hit = await app.inject({
+        method: 'GET',
+        url: `/api/tickets?sourceSystem=${validTicketBody.sourceSystem}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(hit.json().total).toBe(1)
+
+      const miss = await app.inject({
+        method: 'GET',
+        url: '/api/tickets?sourceSystem=other-system',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(miss.json().total).toBe(0)
+    })
+
     it('filters by tags', async () => {
       await app.inject({
         method: 'POST',
