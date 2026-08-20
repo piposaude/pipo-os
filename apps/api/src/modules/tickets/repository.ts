@@ -70,7 +70,14 @@ export class TicketsRepository implements TicketsRepositoryPort {
       .$if(!!query.tags?.length, (q) => q.where(sql<boolean>`tags && ${query.tags!}::text[]`))
       .$if(!!query.search, (q) => {
         const escaped = query.search!.replace(/[\\%_]/g, '\\$&')
-        return q.where(sql<boolean>`enrollment_snapshot::text ILIKE ${`%${escaped}%`} ESCAPE '\\'`)
+        const pattern = `%${escaped}%`
+        return q.where(sql<boolean>`
+          EXISTS (
+            SELECT 1 FROM jsonb_array_elements(enrollment_snapshot->'membros') AS m
+            WHERE m->>'name' ILIKE ${pattern} ESCAPE '\\'
+               OR m->>'tax_id' ILIKE ${pattern} ESCAPE '\\'
+          )
+        `)
       })
 
     const rows = await base

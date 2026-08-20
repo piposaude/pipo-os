@@ -312,20 +312,30 @@ describe('tickets routes', () => {
       expect(miss.json().total).toBe(0)
     })
 
-    it('searches by enrollment snapshot content', async () => {
+    it('searches by member name in enrollment snapshot', async () => {
       await app.inject({
         method: 'POST',
         url: '/api/tickets',
-        payload: { ...validTicketBody, enrollmentSnapshot: { name: 'Maria Oliveira' } },
+        payload: {
+          ...validTicketBody,
+          enrollmentSnapshot: { membros: [{ name: 'Maria Oliveira', tax_id: '123.456.789-00' }] },
+        },
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
 
-      const hit = await app.inject({
+      const hitByName = await app.inject({
         method: 'GET',
         url: '/api/tickets?search=Maria',
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
-      expect(hit.json().total).toBe(1)
+      expect(hitByName.json().total).toBe(1)
+
+      const hitByTaxId = await app.inject({
+        method: 'GET',
+        url: '/api/tickets?search=123.456',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(hitByTaxId.json().total).toBe(1)
 
       const miss = await app.inject({
         method: 'GET',
