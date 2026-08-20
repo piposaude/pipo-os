@@ -362,7 +362,7 @@ describe('tickets routes', () => {
       expect(miss.json().total).toBe(0)
     })
 
-    it('paginates results correctly', async () => {
+    it('paginates results correctly with stable ordering', async () => {
       await app.inject({
         method: 'POST',
         url: '/api/tickets',
@@ -395,6 +395,19 @@ describe('tickets routes', () => {
       const id1 = page1.json().data[0].id
       const id2 = page2.json().data[0].id
       expect(id1).not.toBe(id2)
+
+      const page1Again = await app.inject({
+        method: 'GET',
+        url: '/api/tickets?page=1&pageSize=1',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const page2Again = await app.inject({
+        method: 'GET',
+        url: '/api/tickets?page=2&pageSize=1',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(page1Again.json().data[0].id).toBe(id1)
+      expect(page2Again.json().data[0].id).toBe(id2)
     })
 
     it('returns correct total even when page is out of range', async () => {
