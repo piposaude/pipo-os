@@ -73,7 +73,13 @@ export class TicketsRepository implements TicketsRepositoryPort {
         const pattern = `%${escaped}%`
         return q.where(sql<boolean>`
           EXISTS (
-            SELECT 1 FROM jsonb_array_elements(enrollment_snapshot->'membros') AS m
+            SELECT 1 FROM jsonb_array_elements(
+              CASE
+                WHEN jsonb_typeof(enrollment_snapshot->'membros') = 'array'
+                  THEN enrollment_snapshot->'membros'
+                ELSE '[]'::jsonb
+              END
+            ) AS m
             WHERE m->>'name' ILIKE ${pattern} ESCAPE '\\'
                OR m->>'tax_id' ILIKE ${pattern} ESCAPE '\\'
           )
