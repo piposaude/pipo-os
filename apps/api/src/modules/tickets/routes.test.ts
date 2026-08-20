@@ -293,16 +293,33 @@ describe('tickets routes', () => {
       await app.inject({
         method: 'POST',
         url: '/api/tickets',
-        payload: { ...validTicketBody, tags: ['urgent', 'dental'] },
+        payload: { ...validTicketBody, tags: ['urgent'] },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: {
+          ...validTicketBody,
+          enrollmentId: '00000000-0000-4000-8000-000000000002',
+          tags: ['dental'],
+        },
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
 
-      const hit = await app.inject({
+      const singleTag = await app.inject({
         method: 'GET',
         url: '/api/tickets?tags=urgent',
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
-      expect(hit.json().total).toBe(1)
+      expect(singleTag.json().total).toBe(1)
+
+      const orSemantics = await app.inject({
+        method: 'GET',
+        url: '/api/tickets?tags=urgent&tags=dental',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(orSemantics.json().total).toBe(2)
 
       const miss = await app.inject({
         method: 'GET',
