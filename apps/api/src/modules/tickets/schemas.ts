@@ -77,7 +77,7 @@ export const listTicketsQuerySchema = z.object({
   enrollmentType: z.string().optional(),
   sourceSystem: z.string().optional(),
   companyId: z.uuid().optional(),
-  tags: z.preprocess((v) => (typeof v === 'string' ? [v] : v), z.array(z.string())).optional(),
+  tags: z.preprocess((v) => (typeof v === 'string' ? (v ? [v] : []) : v), z.array(z.string())).optional(),
   search: z.string().optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
