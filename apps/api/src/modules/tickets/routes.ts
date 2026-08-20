@@ -1,7 +1,7 @@
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { UnauthorizedError } from '../../shared/errors.js'
-import { SESSION_COOKIE_NAME, extractSessionClaims, type SessionClaims } from '../auth/session.js'
+import { SESSION_COOKIE_NAME, extractSessionClaims } from '../auth/session.js'
 import {
   createTicketBodySchema,
   errorResponseSchema,
@@ -11,7 +11,7 @@ import {
 } from './schemas.js'
 import type { TicketsService } from './service.js'
 
-function requireSession(request: FastifyRequest): SessionClaims {
+function requireSession(request: FastifyRequest): void {
   const rawCookie = request.cookies[SESSION_COOKIE_NAME]
   const unsigned = rawCookie ? request.unsignCookie(rawCookie) : null
   const claims = unsigned?.valid && unsigned.value ? extractSessionClaims(unsigned.value) : null
@@ -19,8 +19,6 @@ function requireSession(request: FastifyRequest): SessionClaims {
   if (!claims) {
     throw new UnauthorizedError('Not authenticated')
   }
-
-  return claims
 }
 
 export function registerTicketRoutes(app: FastifyInstance, service: TicketsService): void {
