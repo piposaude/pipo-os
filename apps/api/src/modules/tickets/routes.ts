@@ -36,6 +36,8 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
     },
     async (request) => {
       requireSession(request)
+      // TODO: enforce tenant scope from session claims before this endpoint goes to production
+      // Any authenticated user can currently list tickets from any company by omitting companyId
       return service.list(request.query)
     },
   )
