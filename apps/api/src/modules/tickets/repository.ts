@@ -68,9 +68,10 @@ export class TicketsRepository implements TicketsRepositoryPort {
         q.where('source_system', '=', query.sourceSystem!),
       )
       .$if(!!query.tags?.length, (q) => q.where(sql<boolean>`tags @> ${query.tags!}::text[]`))
-      .$if(!!query.search, (q) =>
-        q.where(sql<boolean>`enrollment_snapshot::text ILIKE ${`%${query.search}%`}`),
-      )
+      .$if(!!query.search, (q) => {
+        const escaped = query.search!.replace(/[\\%_]/g, '\\$&')
+        return q.where(sql<boolean>`enrollment_snapshot::text ILIKE ${`%${escaped}%`} ESCAPE '\\'`)
+      })
 
     const [{ count }, rows] = await Promise.all([
       base.select((eb) => eb.fn.countAll<string>().as('count')).executeTakeFirstOrThrow(),
