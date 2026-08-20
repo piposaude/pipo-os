@@ -5,6 +5,8 @@ import { SESSION_COOKIE_NAME, extractSessionClaims } from '../auth/session.js'
 import {
   createTicketBodySchema,
   errorResponseSchema,
+  listTicketsQuerySchema,
+  ticketListSchema,
   ticketParamsSchema,
   ticketSchema,
   updateTicketBodySchema,
@@ -23,6 +25,22 @@ function requireSession(request: FastifyRequest): void {
 
 export function registerTicketRoutes(app: FastifyInstance, service: TicketsService): void {
   const server = app.withTypeProvider<ZodTypeProvider>()
+
+  server.get(
+    '/api/tickets',
+    {
+      schema: {
+        querystring: listTicketsQuerySchema,
+        response: { 200: ticketListSchema, 401: errorResponseSchema },
+      },
+    },
+    async (request) => {
+      requireSession(request)
+      // TODO: enforce tenant scope from session claims before this endpoint goes to production
+      // Any authenticated user can currently list tickets from any company by omitting companyId
+      return service.list(request.query)
+    },
+  )
 
   server.get(
     '/api/tickets/:id',

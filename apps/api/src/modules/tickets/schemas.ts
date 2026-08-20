@@ -67,11 +67,39 @@ export const updateTicketBodySchema = z
     closedAt: z.iso.datetime({ offset: true }).nullable().optional(),
     parentTicketId: z.uuid().nullable().optional(),
   })
+  .strict()
   .refine((b) => Object.keys(b).length > 0, { message: 'At least one field is required' })
   .meta({ id: 'UpdateTicketBody', minProperties: 1 })
+
+export const listTicketsQuerySchema = z.object({
+  status: ticketStatusSchema.optional(),
+  queueId: z.uuid().optional(),
+  assigneeId: z.uuid().optional(),
+  enrollmentType: z.string().optional(),
+  sourceSystem: z.string().optional(),
+  companyId: z.uuid().optional(),
+  tags: z
+    .preprocess((v) => (typeof v === 'string' ? (v ? [v] : []) : v), z.array(z.string()))
+    .describe('Filtra tickets que contenham ao menos uma das tags informadas (OR)')
+    .optional(),
+  search: z.string().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+})
+
+export const ticketListSchema = z
+  .object({
+    data: z.array(ticketSchema),
+    total: z.number().int(),
+    page: z.number().int(),
+    pageSize: z.number().int(),
+  })
+  .meta({ id: 'TicketList' })
 
 export type TicketStatus = z.infer<typeof ticketStatusSchema>
 export type Ticket = z.infer<typeof ticketSchema>
 export type TicketParams = z.infer<typeof ticketParamsSchema>
 export type CreateTicketBody = z.infer<typeof createTicketBodySchema>
 export type UpdateTicketBody = z.infer<typeof updateTicketBodySchema>
+export type ListTicketsQuery = z.infer<typeof listTicketsQuerySchema>
+export type TicketList = z.infer<typeof ticketListSchema>
