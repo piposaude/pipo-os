@@ -73,18 +73,19 @@ export class TicketsRepository implements TicketsRepositoryPort {
         return q.where(sql<boolean>`enrollment_snapshot::text ILIKE ${`%${escaped}%`} ESCAPE '\\'`)
       })
 
-    const [{ count }, rows] = await Promise.all([
-      base.select((eb) => eb.fn.countAll<string>().as('count')).executeTakeFirstOrThrow(),
-      base
-        .selectAll()
-        .orderBy('created_at', 'desc')
-        .orderBy('id', 'desc')
-        .limit(query.pageSize)
-        .offset(offset)
-        .execute(),
-    ])
+    const rows = await base
+      .selectAll()
+      .select(sql<string>`count(*) over ()`.as('total_count'))
+      .orderBy('created_at', 'desc')
+      .orderBy('id', 'desc')
+      .limit(query.pageSize)
+      .offset(offset)
+      .execute()
 
-    return { data: rows.map(toTicket), total: Number(count) }
+    return {
+      data: rows.map((row) => toTicket(row as unknown as Selectable<Tickets>)),
+      total: rows.length > 0 ? Number(rows[0].total_count) : 0,
+    }
   }
 
   async create(data: CreateTicketBody): Promise<Ticket> {
