@@ -24,24 +24,21 @@ export class TicketsService {
   async update(id: string, data: UpdateTicketBody): Promise<Ticket> {
     const payload: UpdateTicketBody = { ...data }
 
-    if (
-      payload.status !== undefined &&
-      CLOSED_STATUSES.has(payload.status) &&
-      payload.closedAt === undefined
-    ) {
-      payload.closedAt = new Date().toISOString()
+    const hasStatus = payload.status !== undefined
+    const hasClosedAt = payload.closedAt !== undefined
+
+    if (hasStatus) {
+      const isClosed = CLOSED_STATUSES.has(payload.status)
+
+      if (isClosed && !hasClosedAt) {
+        payload.closedAt = new Date().toISOString()
+      } else if (!isClosed && !hasClosedAt) {
+        payload.closedAt = null
+      }
     }
 
-    if (payload.closedAt != null && payload.status === undefined) {
+    if (!hasStatus && payload.closedAt != null) {
       payload.status = 'completed'
-    }
-
-    if (
-      payload.status !== undefined &&
-      !CLOSED_STATUSES.has(payload.status) &&
-      payload.closedAt === undefined
-    ) {
-      payload.closedAt = null
     }
 
     const ticket = await this.repository.update(id, payload)
