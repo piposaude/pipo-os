@@ -67,6 +67,7 @@ export const updateTicketBodySchema = z
     closedAt: z.iso.datetime({ offset: true }).nullable().optional(),
     parentTicketId: z.uuid().nullable().optional(),
   })
+  .strict()
   .refine((b) => Object.keys(b).length > 0, { message: 'At least one field is required' })
   .meta({ id: 'UpdateTicketBody', minProperties: 1 })
 
