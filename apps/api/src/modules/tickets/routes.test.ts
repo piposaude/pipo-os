@@ -379,6 +379,25 @@ describe('tickets routes', () => {
       const id2 = page2.json().data[0].id
       expect(id1).not.toBe(id2)
     })
+
+    it('returns correct total even when page is out of range', async () => {
+      await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/tickets?page=99&pageSize=20',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(200)
+      expect(response.json().data).toHaveLength(0)
+      expect(response.json().total).toBe(1)
+    })
   })
 
   describe('GET /api/tickets/:id', () => {

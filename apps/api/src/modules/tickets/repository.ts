@@ -95,10 +95,18 @@ export class TicketsRepository implements TicketsRepositoryPort {
       .offset(offset)
       .execute()
 
-    return {
-      data: rows.map((row) => toTicket(row as unknown as Selectable<Tickets>)),
-      total: rows.length > 0 ? Number(rows[0].total_count) : 0,
+    if (rows.length > 0) {
+      return {
+        data: rows.map((row) => toTicket(row as unknown as Selectable<Tickets>)),
+        total: Number(rows[0].total_count),
+      }
     }
+
+    const { count } = await base
+      .select((eb) => eb.fn.countAll<string>().as('count'))
+      .executeTakeFirstOrThrow()
+
+    return { data: [], total: Number(count) }
   }
 
   async create(data: CreateTicketBody): Promise<Ticket> {
