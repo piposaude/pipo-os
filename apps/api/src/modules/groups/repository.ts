@@ -111,9 +111,16 @@ export class GroupsRepository implements GroupsRepositoryPort {
   }
 
   async delete(id: string): Promise<boolean> {
-    const [result] = await this.db.deleteFrom('ticket_groups').where('id', '=', id).execute()
+    try {
+      const [result] = await this.db.deleteFrom('ticket_groups').where('id', '=', id).execute()
 
-    return (result?.numDeletedRows ?? 0n) > 0n
+      return (result?.numDeletedRows ?? 0n) > 0n
+    } catch (err) {
+      if (err instanceof Error && 'code' in err && err.code === '23503') {
+        throw new ConflictError(`Group ${id} still has members`)
+      }
+      throw err
+    }
   }
 
   async addMember(groupId: string, userId: string): Promise<GroupMember> {

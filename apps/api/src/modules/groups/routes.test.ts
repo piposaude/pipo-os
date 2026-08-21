@@ -385,6 +385,31 @@ describe('groups routes', () => {
 
       expect(response.statusCode).toBe(404)
     })
+
+    it('returns 409 when group still has members', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Com Membros' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      await app.inject({
+        method: 'POST',
+        url: `/api/groups/${id}/users`,
+        payload: { userId: USER_ID_1 },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/groups/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(409)
+    })
   })
 
   // ---------------------------------------------------------------------------

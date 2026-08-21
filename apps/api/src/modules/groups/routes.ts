@@ -106,7 +106,12 @@ export function registerGroupRoutes(app: FastifyInstance, service: GroupsService
     {
       schema: {
         params: groupParamsSchema,
-        response: { 204: z.null(), 401: errorResponseSchema, 404: errorResponseSchema },
+        response: {
+          204: z.null(),
+          401: errorResponseSchema,
+          404: errorResponseSchema,
+          409: errorResponseSchema,
+        },
       },
     },
     async (request, reply) => {
