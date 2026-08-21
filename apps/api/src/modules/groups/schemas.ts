@@ -29,7 +29,7 @@ export const groupParamsSchema = z.object({
 
 export const memberParamsSchema = z.object({
   id: z.uuid(),
-  userId: z.uuid(),
+  memberId: z.uuid(),
 })
 
 export const createGroupBodySchema = z

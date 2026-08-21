@@ -504,7 +504,7 @@ describe('groups routes', () => {
   })
 
   // ---------------------------------------------------------------------------
-  describe('DELETE /api/groups/:id/members/:userId', () => {
+  describe('DELETE /api/groups/:id/members/:memberId', () => {
     it('returns 401 without session cookie', async () => {
       const response = await app.inject({
         method: 'DELETE',
@@ -558,7 +558,7 @@ describe('groups routes', () => {
   })
 
   // ---------------------------------------------------------------------------
-  describe('PATCH /api/groups/:id/members/:userId', () => {
+  describe('PATCH /api/groups/:id/members/:memberId', () => {
     it('returns 401 without session cookie', async () => {
       const response = await app.inject({
         method: 'PATCH',

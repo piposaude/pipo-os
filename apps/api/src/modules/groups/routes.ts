@@ -134,7 +134,7 @@ export function registerGroupRoutes(app: FastifyInstance, service: GroupsService
   )
 
   server.delete(
-    '/api/groups/:id/members/:userId',
+    '/api/groups/:id/members/:memberId',
     {
       schema: {
         params: memberParamsSchema,
@@ -143,14 +143,14 @@ export function registerGroupRoutes(app: FastifyInstance, service: GroupsService
     },
     async (request, reply) => {
       getSession(request)
-      await service.removeMember(request.params.id, request.params.userId)
+      await service.removeMember(request.params.id, request.params.memberId)
       reply.status(204)
       return null
     },
   )
 
   server.patch(
-    '/api/groups/:id/members/:userId',
+    '/api/groups/:id/members/:memberId',
     {
       schema: {
         params: memberParamsSchema,
@@ -165,7 +165,7 @@ export function registerGroupRoutes(app: FastifyInstance, service: GroupsService
     },
     async (request) => {
       getSession(request)
-      return service.updateMember(request.params.id, request.params.userId, request.body)
+      return service.updateMember(request.params.id, request.params.memberId, request.body)
     },
   )
 }

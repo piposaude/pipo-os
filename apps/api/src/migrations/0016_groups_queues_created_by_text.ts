@@ -9,7 +9,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
   )
 }
 
-export async function down(_db: Kysely<unknown>): Promise<void> {
+export async function down(): Promise<void> {
   throw new Error(
     'Migration 0016 is irreversible: created_by may already contain non-UUID email values that cannot be cast back to uuid',
   )
