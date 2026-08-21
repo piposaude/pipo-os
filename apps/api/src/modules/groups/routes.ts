@@ -43,7 +43,11 @@ export function registerGroupRoutes(app: FastifyInstance, service: GroupsService
     },
     async (request, reply) => {
       const claims = getSession(request)
-      const group = await service.create(request.body, claims.sub ?? claims.email)
+      const createdBy = claims.sub?.trim()
+      if (!createdBy) {
+        throw new UnauthorizedError('Invalid session')
+      }
+      const group = await service.create(request.body, createdBy)
       reply.status(201)
       return group
     },
