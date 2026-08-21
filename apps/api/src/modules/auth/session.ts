@@ -1,4 +1,6 @@
 import type { CookieSerializeOptions } from '@fastify/cookie'
+import type { FastifyRequest } from 'fastify'
+import { UnauthorizedError } from '../../shared/errors.js'
 import type { AuthConfig } from './config.js'
 
 export const SESSION_COOKIE_NAME = 'pipo_os_session'
@@ -69,4 +71,16 @@ export function extractSessionClaims(token: string): SessionClaims | null {
 export function sessionMaxAgeSeconds(claims: SessionClaims): number {
   const remaining = claims.exp - Math.floor(Date.now() / 1000)
   return remaining > 0 ? remaining : DEFAULT_SESSION_MAX_AGE_SECONDS
+}
+
+export function getSession(request: FastifyRequest): SessionClaims {
+  const rawCookie = request.cookies[SESSION_COOKIE_NAME]
+  const unsigned = rawCookie ? request.unsignCookie(rawCookie) : null
+  const claims = unsigned?.valid && unsigned.value ? extractSessionClaims(unsigned.value) : null
+
+  if (!claims) {
+    throw new UnauthorizedError('Not authenticated')
+  }
+
+  return claims
 }

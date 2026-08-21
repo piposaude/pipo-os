@@ -1,8 +1,8 @@
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
-import type { FastifyInstance, FastifyRequest } from 'fastify'
+import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { UnauthorizedError } from '../../shared/errors.js'
-import { SESSION_COOKIE_NAME, extractSessionClaims, type SessionClaims } from '../auth/session.js'
+import { getSession } from '../auth/session.js'
 import {
   addMemberBodySchema,
   createGroupBodySchema,
@@ -18,17 +18,6 @@ import {
 } from './schemas.js'
 import type { GroupsService } from './service.js'
 
-function getSession(request: FastifyRequest): SessionClaims {
-  const rawCookie = request.cookies[SESSION_COOKIE_NAME]
-  const unsigned = rawCookie ? request.unsignCookie(rawCookie) : null
-  const claims = unsigned?.valid && unsigned.value ? extractSessionClaims(unsigned.value) : null
-
-  if (!claims) {
-    throw new UnauthorizedError('Not authenticated')
-  }
-
-  return claims
-}
 
 export function registerGroupRoutes(app: FastifyInstance, service: GroupsService): void {
   const server = app.withTypeProvider<ZodTypeProvider>()
