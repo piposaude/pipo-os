@@ -10,6 +10,7 @@ function cookieValue(
   return response.cookies.find((cookie) => cookie.name === name)?.value ?? null
 }
 
+const DEV_LOGIN_USER_ID = '00000000-0000-4000-8000-000000000000'
 const USER_ID_1 = '00000000-0000-4000-8000-000000000001'
 const NONEXISTENT_ID = '00000000-0000-4000-8000-000000000099'
 
@@ -64,7 +65,7 @@ describe('groups routes', () => {
       const body = response.json()
       expect(body.id).toBeTruthy()
       expect(body.name).toBe('Operações')
-      expect(body.createdBy).toBeTruthy()
+      expect(body.createdBy).toBe(DEV_LOGIN_USER_ID)
       expect(body.createdAt).toBeTruthy()
       expect(body.updatedAt).toBeTruthy()
     })
