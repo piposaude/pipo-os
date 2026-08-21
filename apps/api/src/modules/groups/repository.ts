@@ -11,6 +11,8 @@ import type {
   UpdateMemberBody,
 } from './schemas.js'
 
+const PG_FK_VIOLATION = '23503'
+
 function toGroup(row: Selectable<TicketGroups>): Group {
   return {
     id: row.id,
@@ -109,7 +111,7 @@ export class GroupsRepository implements GroupsRepositoryPort {
 
       return (result?.numDeletedRows ?? 0n) > 0n
     } catch (err) {
-      if (err instanceof Error && 'code' in err && err.code === '23503') {
+      if (err instanceof Error && 'code' in err && err.code === PG_FK_VIOLATION) {
         throw new ConflictError(`Group ${id} still has members`)
       }
       throw err
@@ -141,7 +143,7 @@ export class GroupMembersRepository implements GroupMembersRepositoryPort {
 
       return toMember(row)
     } catch (err) {
-      if (err instanceof Error && 'code' in err && err.code === '23503') {
+      if (err instanceof Error && 'code' in err && err.code === PG_FK_VIOLATION) {
         throw new NotFoundError(`Group ${groupId} not found`)
       }
       throw err
