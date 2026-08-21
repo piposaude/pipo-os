@@ -1,5 +1,5 @@
 import { NotFoundError } from '../../shared/errors.js'
-import type { GroupsRepositoryPort } from './repository.js'
+import type { GroupMembersRepositoryPort, GroupsRepositoryPort } from './repository.js'
 import type {
   AddMemberBody,
   CreateGroupBody,
@@ -12,7 +12,10 @@ import type {
 } from './schemas.js'
 
 export class GroupsService {
-  constructor(private readonly repository: GroupsRepositoryPort) {}
+  constructor(
+    private readonly repository: GroupsRepositoryPort,
+    private readonly membersRepository: GroupMembersRepositoryPort,
+  ) {}
 
   create(data: CreateGroupBody, createdBy: string): Promise<Group> {
     return this.repository.create(data, createdBy)
@@ -41,11 +44,11 @@ export class GroupsService {
   }
 
   addMember(groupId: string, body: AddMemberBody): Promise<GroupMember> {
-    return this.repository.addMember(groupId, body.userId)
+    return this.membersRepository.add(groupId, body.userId)
   }
 
   async removeMember(groupId: string, userId: string): Promise<void> {
-    const removed = await this.repository.removeMember(groupId, userId)
+    const removed = await this.membersRepository.remove(groupId, userId)
     if (!removed) throw new NotFoundError(`Member ${userId} not found in group ${groupId}`)
   }
 
@@ -54,7 +57,7 @@ export class GroupsService {
     userId: string,
     data: UpdateMemberBody,
   ): Promise<GroupMember> {
-    const member = await this.repository.updateMember(groupId, userId, data)
+    const member = await this.membersRepository.update(groupId, userId, data)
     if (!member) throw new NotFoundError(`Member ${userId} not found in group ${groupId}`)
     return member
   }

@@ -36,13 +36,6 @@ export interface GroupsRepositoryPort {
   findMany(query: ListGroupsQuery): Promise<{ data: Group[]; total: number }>
   update(id: string, data: UpdateGroupBody): Promise<Group | undefined>
   delete(id: string): Promise<boolean>
-  addMember(groupId: string, userId: string): Promise<GroupMember>
-  removeMember(groupId: string, userId: string): Promise<boolean>
-  updateMember(
-    groupId: string,
-    userId: string,
-    data: UpdateMemberBody,
-  ): Promise<GroupMember | undefined>
 }
 
 export class GroupsRepository implements GroupsRepositoryPort {
@@ -122,8 +115,18 @@ export class GroupsRepository implements GroupsRepositoryPort {
       throw err
     }
   }
+}
 
-  async addMember(groupId: string, userId: string): Promise<GroupMember> {
+export interface GroupMembersRepositoryPort {
+  add(groupId: string, userId: string): Promise<GroupMember>
+  remove(groupId: string, userId: string): Promise<boolean>
+  update(groupId: string, userId: string, data: UpdateMemberBody): Promise<GroupMember | undefined>
+}
+
+export class GroupMembersRepository implements GroupMembersRepositoryPort {
+  constructor(private readonly db: Kysely<Database>) {}
+
+  async add(groupId: string, userId: string): Promise<GroupMember> {
     try {
       const row = await this.db
         .insertInto('ticket_group_members')
@@ -145,7 +148,7 @@ export class GroupsRepository implements GroupsRepositoryPort {
     }
   }
 
-  async removeMember(groupId: string, userId: string): Promise<boolean> {
+  async remove(groupId: string, userId: string): Promise<boolean> {
     const [result] = await this.db
       .deleteFrom('ticket_group_members')
       .where('group_id', '=', groupId)
@@ -155,7 +158,7 @@ export class GroupsRepository implements GroupsRepositoryPort {
     return (result?.numDeletedRows ?? 0n) > 0n
   }
 
-  async updateMember(
+  async update(
     groupId: string,
     userId: string,
     data: UpdateMemberBody,
