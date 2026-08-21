@@ -1,7 +1,6 @@
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
-import type { FastifyInstance, FastifyRequest } from 'fastify'
-import { UnauthorizedError } from '../../shared/errors.js'
-import { SESSION_COOKIE_NAME, extractSessionClaims } from '../auth/session.js'
+import type { FastifyInstance } from 'fastify'
+import { getSession } from '../auth/session.js'
 import {
   createTicketBodySchema,
   errorResponseSchema,
@@ -12,16 +11,6 @@ import {
   updateTicketBodySchema,
 } from './schemas.js'
 import type { TicketsService } from './service.js'
-
-function requireSession(request: FastifyRequest): void {
-  const rawCookie = request.cookies[SESSION_COOKIE_NAME]
-  const unsigned = rawCookie ? request.unsignCookie(rawCookie) : null
-  const claims = unsigned?.valid && unsigned.value ? extractSessionClaims(unsigned.value) : null
-
-  if (!claims) {
-    throw new UnauthorizedError('Not authenticated')
-  }
-}
 
 export function registerTicketRoutes(app: FastifyInstance, service: TicketsService): void {
   const server = app.withTypeProvider<ZodTypeProvider>()
@@ -35,7 +24,7 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
       },
     },
     async (request) => {
-      requireSession(request)
+      getSession(request)
       // TODO: enforce tenant scope from session claims before this endpoint goes to production
       // Any authenticated user can currently list tickets from any company by omitting companyId
       return service.list(request.query)
@@ -51,7 +40,7 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
       },
     },
     async (request) => {
-      requireSession(request)
+      getSession(request)
       return service.get(request.params.id)
     },
   )
@@ -65,7 +54,7 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
       },
     },
     async (request, reply) => {
-      requireSession(request)
+      getSession(request)
       const ticket = await service.create(request.body)
       reply.status(201)
       return ticket
@@ -87,7 +76,7 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
       },
     },
     async (request) => {
-      requireSession(request)
+      getSession(request)
       return service.update(request.params.id, request.body)
     },
   )
