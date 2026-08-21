@@ -18,7 +18,8 @@
         },
         "required": [
           "name"
-        ]
+        ],
+        "additionalProperties": false
       },
       "UpdateGroupBodyInput": {
         "type": "object",
@@ -45,7 +46,8 @@
         },
         "required": [
           "userId"
-        ]
+        ],
+        "additionalProperties": false
       },
       "UpdateGroupMemberBodyInput": {
         "type": "object",

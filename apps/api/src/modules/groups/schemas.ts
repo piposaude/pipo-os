@@ -36,6 +36,7 @@ export const createGroupBodySchema = z
   .object({
     name: z.string().min(1).max(255),
   })
+  .strict()
   .meta({ id: 'CreateGroupBody' })
 
 export const updateGroupBodySchema = z
@@ -49,6 +50,7 @@ export const addMemberBodySchema = z
   .object({
     userId: z.uuid(),
   })
+  .strict()
   .meta({ id: 'AddGroupMemberBody' })
 
 export const updateMemberBodySchema = z

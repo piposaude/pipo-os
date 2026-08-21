@@ -90,6 +90,17 @@ describe('groups routes', () => {
 
       expect(response.statusCode).toBe(400)
     })
+
+    it('returns 400 for unknown field (strict schema)', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Grupo', campoInexistente: 'valor' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
   })
 
   // ---------------------------------------------------------------------------
