@@ -97,7 +97,7 @@ export class GroupsRepository implements GroupsRepositoryPort {
   async update(id: string, data: UpdateGroupBody): Promise<Group | undefined> {
     const row = await this.db
       .updateTable('ticket_groups')
-      .set({ name: data.name, updated_at: sql`now()` })
+      .set({ name: data.name })
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirst()
