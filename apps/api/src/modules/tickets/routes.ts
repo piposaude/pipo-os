@@ -12,7 +12,6 @@ import {
 } from './schemas.js'
 import type { TicketsService } from './service.js'
 
-
 export function registerTicketRoutes(app: FastifyInstance, service: TicketsService): void {
   const server = app.withTypeProvider<ZodTypeProvider>()
 

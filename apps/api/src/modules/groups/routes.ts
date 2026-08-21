@@ -18,7 +18,6 @@ import {
 } from './schemas.js'
 import type { GroupsService } from './service.js'
 
-
 export function registerGroupRoutes(app: FastifyInstance, service: GroupsService): void {
   const server = app.withTypeProvider<ZodTypeProvider>()
 

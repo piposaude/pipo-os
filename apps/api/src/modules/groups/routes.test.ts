@@ -10,7 +10,7 @@ function cookieValue(
   return response.cookies.find((cookie) => cookie.name === name)?.value ?? null
 }
 
-const DEV_LOGIN_USER_ID = '00000000-0000-4000-8000-000000000000'
+const DEV_LOGIN_USER_ID = 'dev@piposaude.com.br'
 const USER_ID_1 = '00000000-0000-4000-8000-000000000001'
 const NONEXISTENT_ID = '00000000-0000-4000-8000-000000000099'
 
