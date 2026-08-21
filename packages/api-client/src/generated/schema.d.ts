@@ -386,7 +386,7 @@ export interface paths {
         };
         trace?: never;
     };
-    "/api/groups/{id}/users": {
+    "/api/groups/{id}/members": {
         parameters: {
             query?: never;
             header?: never;
@@ -463,7 +463,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/groups/{id}/users/{userId}": {
+    "/api/groups/{id}/members/{userId}": {
         parameters: {
             query?: never;
             header?: never;

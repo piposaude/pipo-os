@@ -845,7 +845,7 @@
         }
       }
     },
-    "/api/groups/{id}/users": {
+    "/api/groups/{id}/members": {
       "post": {
         "requestBody": {
           "required": true,
@@ -923,7 +923,7 @@
         }
       }
     },
-    "/api/groups/{id}/users/{userId}": {
+    "/api/groups/{id}/members/{userId}": {
       "delete": {
         "parameters": [
           {

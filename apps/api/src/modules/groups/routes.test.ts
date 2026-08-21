@@ -397,7 +397,7 @@ describe('groups routes', () => {
 
       await app.inject({
         method: 'POST',
-        url: `/api/groups/${id}/users`,
+        url: `/api/groups/${id}/members`,
         payload: { userId: USER_ID_1 },
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
@@ -413,11 +413,11 @@ describe('groups routes', () => {
   })
 
   // ---------------------------------------------------------------------------
-  describe('POST /api/groups/:id/users', () => {
+  describe('POST /api/groups/:id/members', () => {
     it('returns 401 without session cookie', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: `/api/groups/${NONEXISTENT_ID}/users`,
+        url: `/api/groups/${NONEXISTENT_ID}/members`,
         payload: { userId: USER_ID_1 },
       })
       expect(response.statusCode).toBe(401)
@@ -434,7 +434,7 @@ describe('groups routes', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: `/api/groups/${groupId}/users`,
+        url: `/api/groups/${groupId}/members`,
         payload: { userId: USER_ID_1 },
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
@@ -457,14 +457,14 @@ describe('groups routes', () => {
 
       await app.inject({
         method: 'POST',
-        url: `/api/groups/${groupId}/users`,
+        url: `/api/groups/${groupId}/members`,
         payload: { userId: USER_ID_1 },
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
 
       const response = await app.inject({
         method: 'POST',
-        url: `/api/groups/${groupId}/users`,
+        url: `/api/groups/${groupId}/members`,
         payload: { userId: USER_ID_1 },
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
@@ -475,7 +475,7 @@ describe('groups routes', () => {
     it('returns 404 for non-existent group', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: `/api/groups/${NONEXISTENT_ID}/users`,
+        url: `/api/groups/${NONEXISTENT_ID}/members`,
         payload: { userId: USER_ID_1 },
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
@@ -494,7 +494,7 @@ describe('groups routes', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: `/api/groups/${groupId}/users`,
+        url: `/api/groups/${groupId}/members`,
         payload: { userId: 'nao-e-uuid' },
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
@@ -504,11 +504,11 @@ describe('groups routes', () => {
   })
 
   // ---------------------------------------------------------------------------
-  describe('DELETE /api/groups/:id/users/:userId', () => {
+  describe('DELETE /api/groups/:id/members/:userId', () => {
     it('returns 401 without session cookie', async () => {
       const response = await app.inject({
         method: 'DELETE',
-        url: `/api/groups/${NONEXISTENT_ID}/users/${USER_ID_1}`,
+        url: `/api/groups/${NONEXISTENT_ID}/members/${USER_ID_1}`,
       })
       expect(response.statusCode).toBe(401)
     })
@@ -524,14 +524,14 @@ describe('groups routes', () => {
 
       await app.inject({
         method: 'POST',
-        url: `/api/groups/${groupId}/users`,
+        url: `/api/groups/${groupId}/members`,
         payload: { userId: USER_ID_1 },
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
 
       const response = await app.inject({
         method: 'DELETE',
-        url: `/api/groups/${groupId}/users/${USER_ID_1}`,
+        url: `/api/groups/${groupId}/members/${USER_ID_1}`,
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
 
@@ -549,7 +549,7 @@ describe('groups routes', () => {
 
       const response = await app.inject({
         method: 'DELETE',
-        url: `/api/groups/${groupId}/users/${USER_ID_1}`,
+        url: `/api/groups/${groupId}/members/${USER_ID_1}`,
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
 
@@ -558,11 +558,11 @@ describe('groups routes', () => {
   })
 
   // ---------------------------------------------------------------------------
-  describe('PATCH /api/groups/:id/users/:userId', () => {
+  describe('PATCH /api/groups/:id/members/:userId', () => {
     it('returns 401 without session cookie', async () => {
       const response = await app.inject({
         method: 'PATCH',
-        url: `/api/groups/${NONEXISTENT_ID}/users/${USER_ID_1}`,
+        url: `/api/groups/${NONEXISTENT_ID}/members/${USER_ID_1}`,
         payload: { active: false },
       })
       expect(response.statusCode).toBe(401)
@@ -579,14 +579,14 @@ describe('groups routes', () => {
 
       await app.inject({
         method: 'POST',
-        url: `/api/groups/${groupId}/users`,
+        url: `/api/groups/${groupId}/members`,
         payload: { userId: USER_ID_1 },
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
 
       const response = await app.inject({
         method: 'PATCH',
-        url: `/api/groups/${groupId}/users/${USER_ID_1}`,
+        url: `/api/groups/${groupId}/members/${USER_ID_1}`,
         payload: { active: false },
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
@@ -607,14 +607,14 @@ describe('groups routes', () => {
 
       await app.inject({
         method: 'POST',
-        url: `/api/groups/${groupId}/users`,
+        url: `/api/groups/${groupId}/members`,
         payload: { userId: USER_ID_1 },
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
 
       const response = await app.inject({
         method: 'PATCH',
-        url: `/api/groups/${groupId}/users/${USER_ID_1}`,
+        url: `/api/groups/${groupId}/members/${USER_ID_1}`,
         payload: { active: false, campoInexistente: 'valor' },
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
@@ -633,7 +633,7 @@ describe('groups routes', () => {
 
       const response = await app.inject({
         method: 'PATCH',
-        url: `/api/groups/${groupId}/users/${USER_ID_1}`,
+        url: `/api/groups/${groupId}/members/${USER_ID_1}`,
         payload: { active: false },
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
