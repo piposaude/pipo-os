@@ -5,8 +5,8 @@ export const groupSchema = z
     id: z.uuid(),
     name: z.string(),
     createdBy: z.string(),
-    createdAt: z.string(),
-    updatedAt: z.string(),
+    createdAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime(),
   })
   .meta({ id: 'Group' })
 
@@ -15,7 +15,7 @@ export const groupMemberSchema = z
     groupId: z.uuid(),
     userId: z.uuid(),
     active: z.boolean(),
-    createdAt: z.string(),
+    createdAt: z.iso.datetime(),
   })
   .meta({ id: 'GroupMember' })
 
@@ -62,7 +62,7 @@ export const updateMemberBodySchema = z
 
 export const listGroupsQuerySchema = z.object({
   name: z.string().optional(),
-  page: z.coerce.number().int().min(1).default(1),
+  page: z.coerce.number().int().min(1).max(10_000).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 })
 

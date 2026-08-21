@@ -823,7 +823,9 @@ export interface components {
             id: string;
             name: string;
             createdBy: string;
+            /** Format: date-time */
             createdAt: string;
+            /** Format: date-time */
             updatedAt: string;
         };
         GroupMember: {
@@ -832,6 +834,7 @@ export interface components {
             /** Format: uuid */
             userId: string;
             active: boolean;
+            /** Format: date-time */
             createdAt: string;
         };
         ErrorResponse: {

@@ -188,18 +188,40 @@ describe('groups routes', () => {
         })
       }
 
-      const response = await app.inject({
+      const page1 = await app.inject({
         method: 'GET',
         url: '/api/groups?page=1&pageSize=2',
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
 
-      expect(response.statusCode).toBe(200)
-      const body = response.json()
-      expect(body.total).toBe(3)
-      expect(body.data).toHaveLength(2)
-      expect(body.page).toBe(1)
-      expect(body.pageSize).toBe(2)
+      expect(page1.statusCode).toBe(200)
+      const body1 = page1.json()
+      expect(body1.total).toBe(3)
+      expect(body1.data).toHaveLength(2)
+      expect(body1.page).toBe(1)
+      expect(body1.pageSize).toBe(2)
+
+      const page2 = await app.inject({
+        method: 'GET',
+        url: '/api/groups?page=2&pageSize=2',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(page2.statusCode).toBe(200)
+      const body2 = page2.json()
+      expect(body2.total).toBe(3)
+      expect(body2.data).toHaveLength(1)
+
+      const pageOut = await app.inject({
+        method: 'GET',
+        url: '/api/groups?page=99&pageSize=2',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(pageOut.statusCode).toBe(200)
+      const bodyOut = pageOut.json()
+      expect(bodyOut.total).toBe(3)
+      expect(bodyOut.data).toHaveLength(0)
     })
 
     it('returns 400 for invalid pageSize', async () => {
@@ -265,14 +287,14 @@ describe('groups routes', () => {
       expect(response.statusCode).toBe(401)
     })
 
-    it('updates group name', async () => {
+    it('updates group name and refreshes updatedAt', async () => {
       const created = await app.inject({
         method: 'POST',
         url: '/api/groups',
         payload: { name: 'Antigo' },
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
-      const { id } = created.json()
+      const { id, updatedAt: updatedAtBefore } = created.json()
 
       const response = await app.inject({
         method: 'PATCH',
@@ -282,7 +304,11 @@ describe('groups routes', () => {
       })
 
       expect(response.statusCode).toBe(200)
-      expect(response.json().name).toBe('Novo Nome')
+      const body = response.json()
+      expect(body.name).toBe('Novo Nome')
+      expect(new Date(body.updatedAt).getTime()).toBeGreaterThanOrEqual(
+        new Date(updatedAtBefore).getTime(),
+      )
     })
 
     it('returns 400 for unknown field (strict schema)', async () => {
