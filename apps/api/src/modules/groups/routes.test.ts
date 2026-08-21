@@ -1,0 +1,581 @@
+import type { FastifyInstance } from 'fastify'
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { buildApp } from '../../app.js'
+import { SESSION_COOKIE_NAME } from '../auth/session.js'
+
+function cookieValue(
+  response: { cookies: Array<{ name: string; value: string }> },
+  name: string,
+): string | null {
+  return response.cookies.find((cookie) => cookie.name === name)?.value ?? null
+}
+
+const USER_ID_1 = '00000000-0000-4000-8000-000000000001'
+const NONEXISTENT_ID = '00000000-0000-4000-8000-000000000099'
+
+describe('groups routes', () => {
+  let app: FastifyInstance
+  let sessionCookie: string
+
+  beforeAll(async () => {
+    process.env.DEV_LOGIN_ENABLED = 'true'
+    app = buildApp()
+    await app.ready()
+
+    const loginResponse = await app.inject({
+      method: 'POST',
+      url: '/api/auth/dev-login',
+      payload: { policies: [] },
+    })
+    sessionCookie = cookieValue(loginResponse, SESSION_COOKIE_NAME)!
+  })
+
+  afterAll(async () => {
+    await app.close()
+    delete process.env.DEV_LOGIN_ENABLED
+  })
+
+  afterEach(async () => {
+    await app.db.deleteFrom('ticket_group_members').execute()
+    await app.db.deleteFrom('ticket_groups').execute()
+  })
+
+  // ---------------------------------------------------------------------------
+  describe('POST /api/groups', () => {
+    it('returns 401 without session cookie', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Operações' },
+      })
+
+      expect(response.statusCode).toBe(401)
+    })
+
+    it('creates a group and returns 201', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Operações' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(201)
+      const body = response.json()
+      expect(body.id).toBeTruthy()
+      expect(body.name).toBe('Operações')
+      expect(body.createdBy).toBeTruthy()
+      expect(body.createdAt).toBeTruthy()
+      expect(body.updatedAt).toBeTruthy()
+    })
+
+    it('returns 400 when name is missing', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: {},
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+
+    it('returns 400 when name is empty string', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: '' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  describe('GET /api/groups', () => {
+    it('returns 401 without session cookie', async () => {
+      const response = await app.inject({ method: 'GET', url: '/api/groups' })
+      expect(response.statusCode).toBe(401)
+    })
+
+    it('returns empty list when no groups exist', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/groups',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(200)
+      const body = response.json()
+      expect(body.data).toEqual([])
+      expect(body.total).toBe(0)
+      expect(body.page).toBe(1)
+      expect(body.pageSize).toBe(20)
+    })
+
+    it('returns all created groups', async () => {
+      await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Alpha' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Beta' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/groups',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(200)
+      const body = response.json()
+      expect(body.total).toBe(2)
+      expect(body.data).toHaveLength(2)
+    })
+
+    it('filters groups by name (case-insensitive)', async () => {
+      await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Operações Dental' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Suporte Médico' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/groups?name=dental',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(200)
+      const body = response.json()
+      expect(body.total).toBe(1)
+      expect(body.data[0].name).toBe('Operações Dental')
+    })
+
+    it('paginates results', async () => {
+      for (let i = 1; i <= 3; i++) {
+        await app.inject({
+          method: 'POST',
+          url: '/api/groups',
+          payload: { name: `Grupo ${i}` },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+      }
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/groups?page=1&pageSize=2',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(200)
+      const body = response.json()
+      expect(body.total).toBe(3)
+      expect(body.data).toHaveLength(2)
+      expect(body.page).toBe(1)
+      expect(body.pageSize).toBe(2)
+    })
+
+    it('returns 400 for invalid pageSize', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/groups?pageSize=999',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  describe('GET /api/groups/:id', () => {
+    it('returns 401 without session cookie', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/groups/${NONEXISTENT_ID}`,
+      })
+      expect(response.statusCode).toBe(401)
+    })
+
+    it('returns group by id', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Suporte' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/groups/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(200)
+      expect(response.json().id).toBe(id)
+      expect(response.json().name).toBe('Suporte')
+    })
+
+    it('returns 404 for non-existent group', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/groups/${NONEXISTENT_ID}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(404)
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  describe('PATCH /api/groups/:id', () => {
+    it('returns 401 without session cookie', async () => {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/groups/${NONEXISTENT_ID}`,
+        payload: { name: 'Novo Nome' },
+      })
+      expect(response.statusCode).toBe(401)
+    })
+
+    it('updates group name', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Antigo' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/groups/${id}`,
+        payload: { name: 'Novo Nome' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(200)
+      expect(response.json().name).toBe('Novo Nome')
+    })
+
+    it('returns 400 for unknown field (strict schema)', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Grupo' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/groups/${id}`,
+        payload: { name: 'Válido', campoInexistente: 'valor' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+
+    it('returns 404 for non-existent group', async () => {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/groups/${NONEXISTENT_ID}`,
+        payload: { name: 'Novo' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(404)
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  describe('DELETE /api/groups/:id', () => {
+    it('returns 401 without session cookie', async () => {
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/groups/${NONEXISTENT_ID}`,
+      })
+      expect(response.statusCode).toBe(401)
+    })
+
+    it('deletes group and returns 204', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Para Deletar' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      const deleteResponse = await app.inject({
+        method: 'DELETE',
+        url: `/api/groups/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(deleteResponse.statusCode).toBe(204)
+
+      const getResponse = await app.inject({
+        method: 'GET',
+        url: `/api/groups/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(getResponse.statusCode).toBe(404)
+    })
+
+    it('returns 404 for non-existent group', async () => {
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/groups/${NONEXISTENT_ID}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(404)
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  describe('POST /api/groups/:id/users', () => {
+    it('returns 401 without session cookie', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/groups/${NONEXISTENT_ID}/users`,
+        payload: { userId: USER_ID_1 },
+      })
+      expect(response.statusCode).toBe(401)
+    })
+
+    it('adds a member to a group and returns 201', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Grupo' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id: groupId } = created.json()
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/groups/${groupId}/users`,
+        payload: { userId: USER_ID_1 },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(201)
+      const body = response.json()
+      expect(body.groupId).toBe(groupId)
+      expect(body.userId).toBe(USER_ID_1)
+      expect(body.active).toBe(true)
+    })
+
+    it('returns 409 when adding duplicate member', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Grupo' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id: groupId } = created.json()
+
+      await app.inject({
+        method: 'POST',
+        url: `/api/groups/${groupId}/users`,
+        payload: { userId: USER_ID_1 },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/groups/${groupId}/users`,
+        payload: { userId: USER_ID_1 },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(409)
+    })
+
+    it('returns 404 for non-existent group', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/groups/${NONEXISTENT_ID}/users`,
+        payload: { userId: USER_ID_1 },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(404)
+    })
+
+    it('returns 400 when userId is not a valid UUID', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Grupo' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id: groupId } = created.json()
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/groups/${groupId}/users`,
+        payload: { userId: 'nao-e-uuid' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  describe('DELETE /api/groups/:id/users/:userId', () => {
+    it('returns 401 without session cookie', async () => {
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/groups/${NONEXISTENT_ID}/users/${USER_ID_1}`,
+      })
+      expect(response.statusCode).toBe(401)
+    })
+
+    it('removes a member and returns 204', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Grupo' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id: groupId } = created.json()
+
+      await app.inject({
+        method: 'POST',
+        url: `/api/groups/${groupId}/users`,
+        payload: { userId: USER_ID_1 },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/groups/${groupId}/users/${USER_ID_1}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(204)
+    })
+
+    it('returns 404 when member does not exist', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Grupo' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id: groupId } = created.json()
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/groups/${groupId}/users/${USER_ID_1}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(404)
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  describe('PATCH /api/groups/:id/users/:userId', () => {
+    it('returns 401 without session cookie', async () => {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/groups/${NONEXISTENT_ID}/users/${USER_ID_1}`,
+        payload: { active: false },
+      })
+      expect(response.statusCode).toBe(401)
+    })
+
+    it('updates member active status', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Grupo' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id: groupId } = created.json()
+
+      await app.inject({
+        method: 'POST',
+        url: `/api/groups/${groupId}/users`,
+        payload: { userId: USER_ID_1 },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/groups/${groupId}/users/${USER_ID_1}`,
+        payload: { active: false },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(200)
+      expect(response.json().active).toBe(false)
+      expect(response.json().userId).toBe(USER_ID_1)
+    })
+
+    it('returns 400 for unknown field (strict schema)', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Grupo' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id: groupId } = created.json()
+
+      await app.inject({
+        method: 'POST',
+        url: `/api/groups/${groupId}/users`,
+        payload: { userId: USER_ID_1 },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/groups/${groupId}/users/${USER_ID_1}`,
+        payload: { active: false, campoInexistente: 'valor' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+
+    it('returns 404 when member does not exist', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Grupo' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id: groupId } = created.json()
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/groups/${groupId}/users/${USER_ID_1}`,
+        payload: { active: false },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(404)
+    })
+  })
+})
