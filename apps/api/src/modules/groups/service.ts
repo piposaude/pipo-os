@@ -40,8 +40,7 @@ export class GroupsService {
     if (!deleted) throw new NotFoundError(`Group ${id} not found`)
   }
 
-  async addMember(groupId: string, body: AddMemberBody): Promise<GroupMember> {
-    await this.get(groupId)
+  addMember(groupId: string, body: AddMemberBody): Promise<GroupMember> {
     return this.repository.addMember(groupId, body.userId)
   }
 

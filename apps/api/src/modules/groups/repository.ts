@@ -1,7 +1,7 @@
 import { sql, type Kysely, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { TicketGroupMembers, TicketGroups } from '../../infrastructure/db-types.js'
-import { ConflictError } from '../../shared/errors.js'
+import { ConflictError, NotFoundError } from '../../shared/errors.js'
 import type {
   CreateGroupBody,
   Group,
@@ -117,18 +117,25 @@ export class GroupsRepository implements GroupsRepositoryPort {
   }
 
   async addMember(groupId: string, userId: string): Promise<GroupMember> {
-    const row = await this.db
-      .insertInto('ticket_group_members')
-      .values({ group_id: groupId, user_id: userId })
-      .onConflict((oc) => oc.columns(['group_id', 'user_id']).doNothing())
-      .returningAll()
-      .executeTakeFirst()
+    try {
+      const row = await this.db
+        .insertInto('ticket_group_members')
+        .values({ group_id: groupId, user_id: userId })
+        .onConflict((oc) => oc.columns(['group_id', 'user_id']).doNothing())
+        .returningAll()
+        .executeTakeFirst()
 
-    if (!row) {
-      throw new ConflictError(`User ${userId} is already a member of group ${groupId}`)
+      if (!row) {
+        throw new ConflictError(`User ${userId} is already a member of group ${groupId}`)
+      }
+
+      return toMember(row)
+    } catch (err) {
+      if (err instanceof Error && 'code' in err && err.code === '23503') {
+        throw new NotFoundError(`Group ${groupId} not found`)
+      }
+      throw err
     }
-
-    return toMember(row)
   }
 
   async removeMember(groupId: string, userId: string): Promise<boolean> {
