@@ -9,11 +9,8 @@ export async function up(db: Kysely<unknown>): Promise<void> {
   )
 }
 
-export async function down(db: Kysely<unknown>): Promise<void> {
-  await sql`ALTER TABLE ticket_groups ALTER COLUMN created_by TYPE uuid USING created_by::uuid`.execute(
-    db,
-  )
-  await sql`ALTER TABLE ticket_queues ALTER COLUMN created_by TYPE uuid USING created_by::uuid`.execute(
-    db,
+export async function down(_db: Kysely<unknown>): Promise<void> {
+  throw new Error(
+    'Migration 0016 is irreversible: created_by may already contain non-UUID email values that cannot be cast back to uuid',
   )
 }
