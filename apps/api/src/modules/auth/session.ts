@@ -19,6 +19,7 @@ export function baseCookieOptions(config: AuthConfig): CookieSerializeOptions {
 }
 
 export interface SessionClaims {
+  sub?: string
   email: string
   policies: string[]
   exp: number
@@ -49,13 +50,14 @@ export function extractSessionClaims(token: string): SessionClaims | null {
     return null
   }
 
-  const { email, exp, policies } = payload
+  const { sub, email, exp, policies } = payload
 
   if (typeof email !== 'string' || typeof exp !== 'number' || exp * 1000 <= Date.now()) {
     return null
   }
 
   return {
+    sub: typeof sub === 'string' ? sub : undefined,
     email,
     exp,
     policies: Array.isArray(policies)

@@ -38,7 +38,7 @@ function mintDevToken(email: string, policies: string[]): string {
   const payload = base64url(
     JSON.stringify({
       iss: 'pipo-os-dev-login',
-      sub: email,
+      sub: '00000000-0000-4000-8000-000000000000',
       email,
       iat: now,
       exp: now + DEFAULT_SESSION_MAX_AGE_SECONDS,
