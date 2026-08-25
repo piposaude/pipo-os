@@ -37,7 +37,6 @@ describe('groups routes', () => {
   })
 
   afterEach(async () => {
-    await app.db.deleteFrom('ticket_queues_x_group').execute()
     await app.db.deleteFrom('ticket_group_members').execute()
     await app.db.deleteFrom('ticket_groups').execute()
   })

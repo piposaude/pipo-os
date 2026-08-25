@@ -5,6 +5,7 @@ export default defineConfig({
     alias: [{ find: /^(\.{1,2}\/.*)\.js$/, replacement: '$1' }],
   },
   test: {
+    fileParallelism: false,
     server: {
       deps: {
         inline: ['@fastify/autoload'],

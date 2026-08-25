@@ -46,12 +46,9 @@ describe('queues routes', () => {
 
   afterEach(async () => {
     await app.db.deleteFrom('ticket_queues_x_group').execute()
-    await app.db.deleteFrom('ticket_group_members').where('group_id', '=', GROUP_ID).execute()
-    await app.db.deleteFrom('ticket_groups').where('id', '=', GROUP_ID).execute()
-    await app.db
-      .deleteFrom('tickets')
-      .where('queue_id', 'in', app.db.selectFrom('ticket_queues').select('id'))
-      .execute()
+    await app.db.deleteFrom('ticket_group_members').execute()
+    await app.db.deleteFrom('tickets').execute()
+    await app.db.deleteFrom('ticket_groups').execute()
     await app.db.deleteFrom('ticket_queues').execute()
   })
 
