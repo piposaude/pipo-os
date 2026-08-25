@@ -33,6 +33,9 @@ export const updateQueueBodySchema = z
     filters: z.record(z.string(), z.unknown()).optional(),
   })
   .strict()
+  .refine((d) => d.name !== undefined || d.filters !== undefined, {
+    message: 'At least one field is required',
+  })
   .meta({ id: 'UpdateQueueBody' })
 
 export const listQueuesQuerySchema = z.object({

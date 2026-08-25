@@ -285,6 +285,24 @@ describe('queues routes', () => {
       expect(response.statusCode).toBe(200)
       expect(response.json().filters).toEqual({ priority: 'high' })
     })
+
+    it('returns 400 for empty body', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { name: 'Fila A' },
+      })
+      const { id } = created.json()
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/queues/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: {},
+      })
+      expect(response.statusCode).toBe(400)
+    })
   })
 
   // ---------------------------------------------------------------------------

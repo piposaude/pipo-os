@@ -84,12 +84,16 @@ export class QueuesRepository implements QueuesRepositoryPort {
   }
 
   async update(id: string, data: UpdateQueueBody): Promise<Queue | undefined> {
+    const updates = {
+      ...(data.name !== undefined && { name: data.name }),
+      ...(data.filters !== undefined && { filters: JSON.stringify(data.filters) }),
+    }
+
+    if (Object.keys(updates).length === 0) return undefined
+
     const row = await this.db
       .updateTable('ticket_queues')
-      .set({
-        ...(data.name !== undefined && { name: data.name }),
-        ...(data.filters !== undefined && { filters: JSON.stringify(data.filters) }),
-      })
+      .set(updates)
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirst()
