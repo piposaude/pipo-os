@@ -51,8 +51,7 @@ export class QueuesService {
     return { data, total, page: query.page, pageSize: query.pageSize }
   }
 
-  async addGroup(queueId: string, groupId: string): Promise<QueueGroup> {
-    await this.get(queueId)
+  addGroup(queueId: string, groupId: string): Promise<QueueGroup> {
     return this.queueGroupsRepository.add(queueId, groupId)
   }
 

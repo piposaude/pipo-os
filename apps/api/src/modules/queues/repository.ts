@@ -134,19 +134,15 @@ export class QueueGroupsRepository implements QueueGroupsRepositoryPort {
   constructor(private readonly db: Kysely<Database>) {}
 
   async add(queueId: string, groupId: string): Promise<QueueGroup> {
+    let row: Selectable<TicketQueuesXGroup> | undefined
+
     try {
-      const row = await this.db
+      row = await this.db
         .insertInto('ticket_queues_x_group')
         .values({ queue_id: queueId, group_id: groupId })
         .onConflict((oc) => oc.columns(['queue_id', 'group_id']).doNothing())
         .returningAll()
         .executeTakeFirst()
-
-      if (!row) {
-        throw new ConflictError(`Group ${groupId} is already linked to queue ${queueId}`)
-      }
-
-      return toQueueGroup(row)
     } catch (err) {
       if (err instanceof Error && 'code' in err && err.code === PG_FK_VIOLATION) {
         if ('constraint' in err && err.constraint === 'ticket_queues_x_group_group_id_fkey') {
@@ -156,6 +152,12 @@ export class QueueGroupsRepository implements QueueGroupsRepositoryPort {
       }
       throw err
     }
+
+    if (!row) {
+      throw new ConflictError(`Group ${groupId} is already linked to queue ${queueId}`)
+    }
+
+    return toQueueGroup(row)
   }
 
   async remove(queueId: string, groupId: string): Promise<boolean> {

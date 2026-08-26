@@ -618,5 +618,31 @@ describe('tickets routes', () => {
       expect(response.statusCode).toBe(200)
       expect(response.json().assigneeId).toBe(DEV_LOGIN_USER_ID)
     })
+
+    it('returns 422 when ticket is already closed', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: validTicketBody,
+      })
+      const { id } = created.json()
+
+      await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { status: 'completed' },
+      })
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/tickets/${id}/claim`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(422)
+      expect(response.json().error).toBe('UnprocessableEntityError')
+    })
   })
 })
