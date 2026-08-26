@@ -1,8 +1,14 @@
 import { sql, type Kysely, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
-import type { TicketQueues } from '../../infrastructure/db-types.js'
-import { ConflictError } from '../../shared/errors.js'
-import type { CreateQueueBody, Queue, ListQueuesQuery, UpdateQueueBody } from './schemas.js'
+import type { TicketQueues, TicketQueuesXGroup } from '../../infrastructure/db-types.js'
+import { ConflictError, NotFoundError } from '../../shared/errors.js'
+import type {
+  CreateQueueBody,
+  Queue,
+  QueueGroup,
+  ListQueuesQuery,
+  UpdateQueueBody,
+} from './schemas.js'
 
 const PG_FK_VIOLATION = '23503'
 
@@ -108,5 +114,54 @@ export class QueuesRepository implements QueuesRepositoryPort {
       }
       throw err
     }
+  }
+}
+
+function toQueueGroup(row: Selectable<TicketQueuesXGroup>): QueueGroup {
+  return {
+    queueId: row.queue_id,
+    groupId: row.group_id,
+    createdAt: row.created_at.toISOString(),
+  }
+}
+
+export interface QueueGroupsRepositoryPort {
+  add(queueId: string, groupId: string): Promise<QueueGroup>
+  remove(queueId: string, groupId: string): Promise<boolean>
+}
+
+export class QueueGroupsRepository implements QueueGroupsRepositoryPort {
+  constructor(private readonly db: Kysely<Database>) {}
+
+  async add(queueId: string, groupId: string): Promise<QueueGroup> {
+    try {
+      const row = await this.db
+        .insertInto('ticket_queues_x_group')
+        .values({ queue_id: queueId, group_id: groupId })
+        .onConflict((oc) => oc.columns(['queue_id', 'group_id']).doNothing())
+        .returningAll()
+        .executeTakeFirst()
+
+      if (!row) {
+        throw new ConflictError(`Group ${groupId} is already linked to queue ${queueId}`)
+      }
+
+      return toQueueGroup(row)
+    } catch (err) {
+      if (err instanceof Error && 'code' in err && err.code === PG_FK_VIOLATION) {
+        throw new NotFoundError(`Group ${groupId} not found`)
+      }
+      throw err
+    }
+  }
+
+  async remove(queueId: string, groupId: string): Promise<boolean> {
+    const [result] = await this.db
+      .deleteFrom('ticket_queues_x_group')
+      .where('queue_id', '=', queueId)
+      .where('group_id', '=', groupId)
+      .execute()
+
+    return (result?.numDeletedRows ?? 0n) > 0n
   }
 }
