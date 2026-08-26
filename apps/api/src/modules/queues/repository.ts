@@ -149,7 +149,10 @@ export class QueueGroupsRepository implements QueueGroupsRepositoryPort {
       return toQueueGroup(row)
     } catch (err) {
       if (err instanceof Error && 'code' in err && err.code === PG_FK_VIOLATION) {
-        throw new NotFoundError(`Group ${groupId} not found`)
+        if ('constraint' in err && err.constraint === 'ticket_queues_x_group_group_id_fkey') {
+          throw new NotFoundError(`Group ${groupId} not found`)
+        }
+        throw new NotFoundError(`Queue ${queueId} not found`)
       }
       throw err
     }
