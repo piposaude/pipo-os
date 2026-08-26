@@ -57,4 +57,10 @@ export class TicketsService {
     const { data, total } = await this.repository.findMany(query)
     return { data, total, page: query.page, pageSize: query.pageSize }
   }
+
+  async claim(id: string, assigneeId: string): Promise<Ticket> {
+    const ticket = await this.repository.update(id, { assigneeId })
+    if (!ticket) throw new NotFoundError(`Ticket ${id} not found`)
+    return ticket
+  }
 }

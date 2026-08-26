@@ -1,5 +1,6 @@
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
 import type { FastifyInstance } from 'fastify'
+import { UnauthorizedError } from '../../shared/errors.js'
 import { getSession } from '../auth/session.js'
 import {
   createTicketBodySchema,
@@ -78,6 +79,28 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
     async (request) => {
       getSession(request)
       return service.update(request.params.id, request.body)
+    },
+  )
+
+  server.post(
+    '/api/tickets/:id/claim',
+    {
+      schema: {
+        params: ticketParamsSchema,
+        response: {
+          200: ticketSchema,
+          401: errorResponseSchema,
+          404: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      const claims = getSession(request)
+      const assigneeId = claims.sub?.trim()
+      if (!assigneeId) {
+        throw new UnauthorizedError('Invalid session')
+      }
+      return service.claim(request.params.id, assigneeId)
     },
   )
 }
