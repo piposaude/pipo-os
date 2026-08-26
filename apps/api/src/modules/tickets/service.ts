@@ -59,8 +59,6 @@ export class TicketsService {
   }
 
   async claim(id: string, assigneeId: string): Promise<Ticket> {
-    // Calls repository directly instead of this.update() — claim has no status
-    // constraints and must not inherit future gate logic added to update().
     const ticket = await this.repository.update(id, { assigneeId })
     if (!ticket) throw new NotFoundError(`Ticket ${id} not found`)
     return ticket
