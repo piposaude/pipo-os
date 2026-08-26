@@ -10,6 +10,9 @@ function cookieValue(
   return response.cookies.find((cookie) => cookie.name === name)?.value ?? null
 }
 
+const DEV_LOGIN_USER_ID = 'dev@piposaude.com.br'
+const NONEXISTENT_ID = '00000000-0000-4000-8000-000000000099'
+
 const validTicketBody = {
   enrollmentId: '00000000-0000-4000-8000-000000000001',
   enrollmentType: 'inclusion',
@@ -554,6 +557,66 @@ describe('tickets routes', () => {
       })
 
       expect(response.statusCode).toBe(400)
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  describe('POST /api/tickets/:id/claim', () => {
+    it('returns 401 without session cookie', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/tickets/${NONEXISTENT_ID}/claim`,
+      })
+      expect(response.statusCode).toBe(401)
+    })
+
+    it('returns 404 for nonexistent ticket', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/tickets/${NONEXISTENT_ID}/claim`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(response.statusCode).toBe(404)
+    })
+
+    it('claims the ticket and sets assigneeId to session user', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: validTicketBody,
+      })
+      const { id } = created.json()
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/tickets/${id}/claim`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const body = response.json()
+
+      expect(response.statusCode).toBe(200)
+      expect(body.id).toBe(id)
+      expect(body.assigneeId).toBe(DEV_LOGIN_USER_ID)
+    })
+
+    it('overwrites previous assignee on re-claim', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { ...validTicketBody, assigneeId: '00000000-0000-4000-8000-000000000050' },
+      })
+      const { id } = created.json()
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/tickets/${id}/claim`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(200)
+      expect(response.json().assigneeId).toBe(DEV_LOGIN_USER_ID)
     })
   })
 })
