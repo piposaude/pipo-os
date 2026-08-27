@@ -1342,6 +1342,7 @@ export interface components {
             id: string;
             name: string;
             createdBy: string;
+            updatedBy: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -1404,6 +1405,7 @@ export interface components {
                 [key: string]: unknown;
             };
             createdBy: string;
+            updatedBy: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */

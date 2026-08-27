@@ -18,6 +18,7 @@ function toQueue(row: Selectable<TicketQueues>): Queue {
     name: row.name,
     filters: row.filters as Record<string, unknown>,
     createdBy: row.created_by,
+    updatedBy: row.updated_by,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   }
@@ -27,7 +28,7 @@ export interface QueuesRepositoryPort {
   create(data: CreateQueueBody, createdBy: string): Promise<Queue>
   findById(id: string): Promise<Queue | undefined>
   findMany(query: ListQueuesQuery): Promise<{ data: Queue[]; total: number }>
-  update(id: string, data: UpdateQueueBody): Promise<Queue | undefined>
+  update(id: string, data: UpdateQueueBody, updatedBy: string): Promise<Queue | undefined>
   delete(id: string): Promise<boolean>
 }
 
@@ -89,12 +90,13 @@ export class QueuesRepository implements QueuesRepositoryPort {
     return { data: [], total: Number(count) }
   }
 
-  async update(id: string, data: UpdateQueueBody): Promise<Queue | undefined> {
+  async update(id: string, data: UpdateQueueBody, updatedBy: string): Promise<Queue | undefined> {
     const row = await this.db
       .updateTable('ticket_queues')
       .set({
         ...(data.name !== undefined && { name: data.name }),
         ...(data.filters !== undefined && { filters: JSON.stringify(data.filters) }),
+        updated_by: updatedBy,
       })
       .where('id', '=', id)
       .returningAll()

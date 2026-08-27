@@ -6,6 +6,7 @@ export const queueSchema = z
     name: z.string(),
     filters: z.record(z.string(), z.unknown()),
     createdBy: z.string(),
+    updatedBy: z.string().min(1).nullable(),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
   })

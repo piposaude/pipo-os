@@ -5,6 +5,7 @@ export const groupSchema = z
     id: z.uuid(),
     name: z.string(),
     createdBy: z.string(),
+    updatedBy: z.string().min(1).nullable(),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
   })

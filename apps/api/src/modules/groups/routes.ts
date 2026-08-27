@@ -84,8 +84,10 @@ export function registerGroupRoutes(app: FastifyInstance, service: GroupsService
       },
     },
     async (request) => {
-      getSession(request)
-      return service.update(request.params.id, request.body)
+      const claims = getSession(request)
+      const updatedBy = claims.sub?.trim()
+      if (!updatedBy) throw new UnauthorizedError('Invalid session')
+      return service.update(request.params.id, request.body, updatedBy)
     },
   )
 

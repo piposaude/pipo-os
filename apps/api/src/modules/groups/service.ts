@@ -32,8 +32,8 @@ export class GroupsService {
     return { data, total, page: query.page, pageSize: query.pageSize }
   }
 
-  async update(id: string, data: UpdateGroupBody): Promise<Group> {
-    const group = await this.repository.update(id, data)
+  async update(id: string, data: UpdateGroupBody, updatedBy: string): Promise<Group> {
+    const group = await this.repository.update(id, data, updatedBy)
     if (!group) throw new NotFoundError(`Group ${id} not found`)
     return group
   }
