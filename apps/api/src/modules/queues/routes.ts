@@ -5,10 +5,13 @@ import { UnauthorizedError } from '../../shared/errors.js'
 import { getSession } from '../auth/session.js'
 import { ticketListSchema } from '../tickets/schemas.js'
 import {
+  addQueueGroupBodySchema,
   createQueueBodySchema,
   errorResponseSchema,
   listQueueTicketsQuerySchema,
   listQueuesQuerySchema,
+  queueGroupParamsSchema,
+  queueGroupSchema,
   queueListSchema,
   queueParamsSchema,
   queueSchema,
@@ -103,6 +106,49 @@ export function registerQueueRoutes(app: FastifyInstance, service: QueuesService
     async (request, reply) => {
       getSession(request)
       await service.delete(request.params.id)
+      reply.status(204)
+      return null
+    },
+  )
+
+  server.post(
+    '/api/queues/:id/groups',
+    {
+      schema: {
+        params: queueParamsSchema,
+        body: addQueueGroupBodySchema,
+        response: {
+          201: queueGroupSchema,
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+          404: errorResponseSchema,
+          409: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      getSession(request)
+      const group = await service.addGroup(request.params.id, request.body.groupId)
+      reply.status(201)
+      return group
+    },
+  )
+
+  server.delete(
+    '/api/queues/:id/groups/:groupId',
+    {
+      schema: {
+        params: queueGroupParamsSchema,
+        response: {
+          204: z.null(),
+          401: errorResponseSchema,
+          404: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      getSession(request)
+      await service.removeGroup(request.params.id, request.params.groupId)
       reply.status(204)
       return null
     },

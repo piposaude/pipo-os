@@ -1,4 +1,4 @@
-import { NotFoundError } from '../../shared/errors.js'
+import { NotFoundError, UnprocessableEntityError } from '../../shared/errors.js'
 import type { TicketsRepositoryPort } from './repository.js'
 import type {
   CreateTicketBody,
@@ -56,5 +56,14 @@ export class TicketsService {
   async list(query: ListTicketsQuery): Promise<TicketList> {
     const { data, total } = await this.repository.findMany(query)
     return { data, total, page: query.page, pageSize: query.pageSize }
+  }
+
+  async claim(id: string, assigneeId: string): Promise<Ticket> {
+    const ticket = await this.repository.claimOpen(id, assigneeId)
+    if (ticket) return ticket
+
+    const existing = await this.repository.findById(id)
+    if (!existing) throw new NotFoundError(`Ticket ${id} not found`)
+    throw new UnprocessableEntityError(`Ticket ${id} is already closed`)
   }
 }

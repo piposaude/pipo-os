@@ -28,3 +28,12 @@ export class ConflictError extends DomainError {
     this.name = 'ConflictError'
   }
 }
+
+export class UnprocessableEntityError extends DomainError {
+  readonly statusCode = 422
+
+  constructor(message: string) {
+    super(message)
+    this.name = 'UnprocessableEntityError'
+  }
+}

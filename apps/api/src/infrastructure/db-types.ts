@@ -3,174 +3,172 @@
  * Please do not edit it manually.
  */
 
-import type { ColumnType } from 'kysely'
+import type { ColumnType } from "kysely";
 
-export type ArrayType<T> = ArrayTypeImpl<T> extends (infer U)[] ? U[] : ArrayTypeImpl<T>
+export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
+  ? ColumnType<S, I | undefined, U>
+  : ColumnType<T, T | undefined, T>;
 
-export type ArrayTypeImpl<T> =
-  T extends ColumnType<infer S, infer I, infer U> ? ColumnType<S[], I[], U[]> : T[]
+export type Int8 = ColumnType<string, bigint | number | string, bigint | number | string>;
 
-export type Generated<T> =
-  T extends ColumnType<infer S, infer I, infer U>
-    ? ColumnType<S, I | undefined, U>
-    : ColumnType<T, T | undefined, T>
+export type Json = JsonValue;
 
-export type Json = JsonValue
+export type JsonArray = JsonValue[];
 
-export type JsonArray = JsonValue[]
+export type JsonObject = {
+  [x: string]: JsonValue | undefined;
+};
 
-export type JsonObject = { [K in string]?: JsonValue }
+export type JsonPrimitive = boolean | number | string | null;
 
-export type JsonPrimitive = boolean | null | number | string
+export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
 
-export type JsonValue = JsonArray | JsonObject | JsonPrimitive
-
-export type Timestamp = ColumnType<Date, Date | string, Date | string>
+export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
 export interface OutboundWebhookDeliveries {
-  attempt_count: Generated<number>
-  created_at: Generated<Timestamp>
-  delivered_at: Timestamp | null
-  id: Generated<string>
-  last_error: string | null
-  payload: Json
-  signing_secret: string
-  status: Generated<string>
-  status_history_id: string
-  target_url: string
-  ticket_id: string
-  webhook_config_id: string
+  attempt_count: Generated<number>;
+  created_at: Generated<Timestamp>;
+  delivered_at: Timestamp | null;
+  id: Generated<string>;
+  last_error: string | null;
+  payload: Json;
+  signing_secret: string;
+  status: Generated<string>;
+  status_history_id: string;
+  target_url: string;
+  ticket_id: string;
+  webhook_config_id: string;
 }
 
 export interface TicketComments {
-  author_id: string
-  body: string
-  channel: Generated<string>
-  created_at: Generated<Timestamp>
-  event_type: string
-  id: Generated<string>
-  kind: string
-  ticket_id: string
-  visibility: string
+  author_id: string;
+  body: string;
+  channel: Generated<string>;
+  created_at: Generated<Timestamp>;
+  event_type: string;
+  id: Generated<string>;
+  kind: string;
+  ticket_id: string;
+  visibility: string;
 }
 
 export interface TicketEmailAttachments {
-  filename: string
-  id: string
-  mime_type: string
-  size_bytes: string
-  storage_url: string
-  ticket_email_id: string
+  filename: string;
+  id: Generated<string>;
+  mime_type: string;
+  size_bytes: Int8;
+  storage_url: string;
+  ticket_email_id: string;
 }
 
 export interface TicketEmails {
-  body_html: string | null
-  body_text: string | null
-  cc_addresses: Generated<Json>
-  comment_id: string
-  created_at: Generated<Timestamp>
-  direction: string
-  from_address: string
-  gmail_message_id: string
-  gmail_thread_id: string
-  has_attachments: Generated<boolean>
-  id: Generated<string>
-  snippet: string | null
-  subject: string | null
-  ticket_id: string
-  to_addresses: Generated<Json>
+  body_html: string | null;
+  body_text: string | null;
+  cc_addresses: Generated<Json>;
+  comment_id: string;
+  created_at: Generated<Timestamp>;
+  direction: string;
+  from_address: string;
+  gmail_message_id: string;
+  gmail_thread_id: string;
+  has_attachments: Generated<boolean>;
+  id: Generated<string>;
+  snippet: string | null;
+  subject: string | null;
+  ticket_id: string;
+  to_addresses: Generated<Json>;
 }
 
 export interface TicketFormValues {
-  field_key: string
-  field_value: Json
-  ticket_id: string
-  updated_at: Generated<Timestamp>
-  updated_by: string | null
-  id: Generated<string>
+  field_key: string;
+  field_value: Json;
+  id: Generated<string>;
+  ticket_id: string;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
 }
 
 export interface TicketGroupMembers {
-  active: Generated<boolean>
-  created_at: Generated<Timestamp>
-  group_id: string
-  user_id: string
+  active: Generated<boolean>;
+  created_at: Generated<Timestamp>;
+  group_id: string;
+  user_id: string;
 }
 
 export interface TicketGroups {
-  created_at: Generated<Timestamp>
-  created_by: string
-  id: Generated<string>
-  name: string
-  updated_at: Generated<Timestamp>
+  created_at: Generated<Timestamp>;
+  created_by: string;
+  id: Generated<string>;
+  name: string;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface TicketQueues {
-  created_at: Generated<Timestamp>
-  created_by: string
-  filters: Generated<Json>
-  id: Generated<string>
-  name: string
-  updated_at: Generated<Timestamp>
+  created_at: Generated<Timestamp>;
+  created_by: string;
+  filters: Generated<Json>;
+  id: Generated<string>;
+  name: string;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface TicketQueuesXGroup {
-  created_at: Generated<Timestamp>
-  group_id: string
-  queue_id: string
-}
-
-export interface TicketStatusHistory {
-  author_id: string | null
-  author_type: string
-  created_at: Generated<Timestamp>
-  from_status: string | null
-  id: Generated<string>
-  reason: string | null
-  ticket_id: string
-  to_status: string
+  created_at: Generated<Timestamp>;
+  group_id: string;
+  queue_id: string;
 }
 
 export interface Tickets {
-  assignee_id: string | null
-  closed_at: Timestamp | null
-  company_id: string
-  created_at: Generated<Timestamp>
-  enrollment_id: string
-  enrollment_snapshot: Generated<Json>
-  enrollment_type: string
-  force_completion: Generated<boolean>
-  id: Generated<string>
-  parent_ticket_id: string | null
-  queue_id: string | null
-  source_system: string
-  status: string
-  tags: Generated<ArrayType<string>>
-  updated_at: Generated<Timestamp>
+  assignee_id: string | null;
+  closed_at: Timestamp | null;
+  company_id: string;
+  created_at: Generated<Timestamp>;
+  enrollment_id: string;
+  enrollment_snapshot: Generated<Json>;
+  enrollment_type: string;
+  force_completion: Generated<boolean>;
+  id: Generated<string>;
+  parent_ticket_id: string | null;
+  queue_id: string | null;
+  source_system: string;
+  status: string;
+  tags: Generated<string[]>;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface TicketStatusHistory {
+  author_id: string | null;
+  author_type: string;
+  created_at: Generated<Timestamp>;
+  from_status: string | null;
+  id: Generated<string>;
+  reason: string | null;
+  ticket_id: string;
+  to_status: string;
 }
 
 export interface WebhookConfigs {
-  active: Generated<boolean>
-  created_at: Generated<Timestamp>
-  event_types: Generated<Json>
-  id: Generated<string>
-  name: string
-  secret: string
-  target_url: string
-  updated_at: Generated<Timestamp>
+  active: Generated<boolean>;
+  created_at: Generated<Timestamp>;
+  event_types: Generated<Json>;
+  id: Generated<string>;
+  name: string;
+  secret: string;
+  target_url: string;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface DB {
-  outbound_webhook_deliveries: OutboundWebhookDeliveries
-  ticket_comments: TicketComments
-  ticket_email_attachments: TicketEmailAttachments
-  ticket_emails: TicketEmails
-  ticket_form_values: TicketFormValues
-  ticket_group_members: TicketGroupMembers
-  ticket_groups: TicketGroups
-  ticket_queues: TicketQueues
-  ticket_queues_x_group: TicketQueuesXGroup
-  ticket_status_history: TicketStatusHistory
-  tickets: Tickets
-  webhook_configs: WebhookConfigs
+  outbound_webhook_deliveries: OutboundWebhookDeliveries;
+  ticket_comments: TicketComments;
+  ticket_email_attachments: TicketEmailAttachments;
+  ticket_emails: TicketEmails;
+  ticket_form_values: TicketFormValues;
+  ticket_group_members: TicketGroupMembers;
+  ticket_groups: TicketGroups;
+  ticket_queues: TicketQueues;
+  ticket_queues_x_group: TicketQueuesXGroup;
+  ticket_status_history: TicketStatusHistory;
+  tickets: Tickets;
+  webhook_configs: WebhookConfigs;
 }
