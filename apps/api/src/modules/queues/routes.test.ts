@@ -535,6 +535,7 @@ describe('queues routes', () => {
         payload: { groupId: NONEXISTENT_ID },
       })
       expect(response.statusCode).toBe(404)
+      expect(response.json().message).toContain('Group')
     })
 
     it('links group to queue and returns 201', async () => {

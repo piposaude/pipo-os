@@ -36,6 +36,7 @@ export interface TicketsRepositoryPort {
   findById(id: string): Promise<Ticket | undefined>
   create(data: CreateTicketBody): Promise<Ticket>
   update(id: string, data: UpdateTicketBody): Promise<Ticket | undefined>
+  claimOpen(id: string, assigneeId: string): Promise<Ticket | undefined>
   findMany(query: ListTicketsQuery): Promise<{ data: Ticket[]; total: number }>
 }
 
@@ -142,6 +143,18 @@ export class TicketsRepository implements TicketsRepositoryPort {
       }
       throw err
     }
+  }
+
+  async claimOpen(id: string, assigneeId: string): Promise<Ticket | undefined> {
+    const row = await this.db
+      .updateTable('tickets')
+      .set({ assignee_id: assigneeId })
+      .where('id', '=', id)
+      .where('status', 'not in', ['completed', 'cancelled'])
+      .returningAll()
+      .executeTakeFirst()
+
+    return row ? toTicket(row) : undefined
   }
 
   async update(id: string, data: UpdateTicketBody): Promise<Ticket | undefined> {

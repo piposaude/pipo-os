@@ -59,13 +59,11 @@ export class TicketsService {
   }
 
   async claim(id: string, assigneeId: string): Promise<Ticket> {
+    const ticket = await this.repository.claimOpen(id, assigneeId)
+    if (ticket) return ticket
+
     const existing = await this.repository.findById(id)
     if (!existing) throw new NotFoundError(`Ticket ${id} not found`)
-    if (CLOSED_STATUSES.has(existing.status)) {
-      throw new UnprocessableEntityError(`Ticket ${id} is already closed`)
-    }
-    const ticket = await this.repository.update(id, { assigneeId })
-    if (!ticket) throw new NotFoundError(`Ticket ${id} not found`)
-    return ticket
+    throw new UnprocessableEntityError(`Ticket ${id} is already closed`)
   }
 }
