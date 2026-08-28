@@ -1,4 +1,5 @@
 import type { Kysely, Selectable } from 'kysely'
+import { z } from 'zod'
 import type { Database } from '../../infrastructure/db.js'
 import type { TicketComments } from '../../infrastructure/db-types.js'
 import type { Comment, CreateCommentBody } from './schemas.js'
@@ -13,7 +14,7 @@ function toComment(row: Selectable<TicketComments>): Comment {
     eventType: row.event_type,
     authorId: row.author_id,
     body: row.body,
-    metadata: row.metadata as Record<string, unknown>,
+    metadata: z.record(z.string(), z.unknown()).parse(row.metadata),
     createdAt: row.created_at.toISOString(),
   }
 }

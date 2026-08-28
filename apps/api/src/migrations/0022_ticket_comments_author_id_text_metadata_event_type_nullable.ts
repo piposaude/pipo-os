@@ -10,7 +10,6 @@ export async function up(db: Kysely<unknown>): Promise<void> {
 
 export async function down(db: Kysely<unknown>): Promise<void> {
   await sql`ALTER TABLE ticket_comments DROP COLUMN metadata`.execute(db)
-  await sql`ALTER TABLE ticket_comments ALTER COLUMN event_type SET NOT NULL`.execute(db)
   await sql`
     ALTER TABLE ticket_comments
     ALTER COLUMN author_id TYPE uuid
