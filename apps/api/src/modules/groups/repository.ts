@@ -18,6 +18,7 @@ function toGroup(row: Selectable<TicketGroups>): Group {
     id: row.id,
     name: row.name,
     createdBy: row.created_by,
+    updatedBy: row.updated_by,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   }
@@ -36,7 +37,7 @@ export interface GroupsRepositoryPort {
   create(data: CreateGroupBody, createdBy: string): Promise<Group>
   findById(id: string): Promise<Group | undefined>
   findMany(query: ListGroupsQuery): Promise<{ data: Group[]; total: number }>
-  update(id: string, data: UpdateGroupBody): Promise<Group | undefined>
+  update(id: string, data: UpdateGroupBody, updatedBy: string): Promise<Group | undefined>
   delete(id: string): Promise<boolean>
 }
 
@@ -94,10 +95,10 @@ export class GroupsRepository implements GroupsRepositoryPort {
     return { data: [], total: Number(count) }
   }
 
-  async update(id: string, data: UpdateGroupBody): Promise<Group | undefined> {
+  async update(id: string, data: UpdateGroupBody, updatedBy: string): Promise<Group | undefined> {
     const row = await this.db
       .updateTable('ticket_groups')
-      .set({ name: data.name })
+      .set({ name: data.name, updated_by: updatedBy })
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirst()

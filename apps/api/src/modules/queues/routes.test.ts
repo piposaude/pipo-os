@@ -263,6 +263,7 @@ describe('queues routes', () => {
 
       expect(response.statusCode).toBe(200)
       expect(body.name).toBe('Fila Renomeada')
+      expect(body.updatedBy).toBe(DEV_LOGIN_USER_ID)
       expect(new Date(body.updatedAt).getTime()).toBeGreaterThan(
         new Date(originalUpdatedAt).getTime(),
       )

@@ -34,8 +34,8 @@ export class QueuesService {
     return { data, total, page: query.page, pageSize: query.pageSize }
   }
 
-  async update(id: string, data: UpdateQueueBody): Promise<Queue> {
-    const queue = await this.repository.update(id, data)
+  async update(id: string, data: UpdateQueueBody, updatedBy: string): Promise<Queue> {
+    const queue = await this.repository.update(id, data, updatedBy)
     if (!queue) throw new NotFoundError(`Queue ${id} not found`)
     return queue
   }

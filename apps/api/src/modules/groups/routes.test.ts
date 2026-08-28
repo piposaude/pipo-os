@@ -306,6 +306,7 @@ describe('groups routes', () => {
       expect(response.statusCode).toBe(200)
       const body = response.json()
       expect(body.name).toBe('Novo Nome')
+      expect(body.updatedBy).toBe(DEV_LOGIN_USER_ID)
       expect(new Date(body.updatedAt).getTime()).toBeGreaterThanOrEqual(
         new Date(updatedAtBefore).getTime(),
       )

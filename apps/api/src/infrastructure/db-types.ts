@@ -101,6 +101,7 @@ export interface TicketGroups {
   id: Generated<string>;
   name: string;
   updated_at: Generated<Timestamp>;
+  updated_by: string | null;
 }
 
 export interface TicketQueues {
@@ -110,6 +111,7 @@ export interface TicketQueues {
   id: Generated<string>;
   name: string;
   updated_at: Generated<Timestamp>;
+  updated_by: string | null;
 }
 
 export interface TicketQueuesXGroup {
