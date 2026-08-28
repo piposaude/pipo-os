@@ -1243,6 +1243,15 @@ export interface paths {
                     };
                 };
                 /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
                 401: {
                     headers: {
                         [name: string]: unknown;
