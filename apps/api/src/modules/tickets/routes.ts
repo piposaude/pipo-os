@@ -10,6 +10,7 @@ import {
   ticketParamsSchema,
   ticketSchema,
   updateTicketBodySchema,
+  updateTicketStatusBodySchema,
 } from './schemas.js'
 import type { TicketsService } from './service.js'
 
@@ -79,6 +80,28 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
     async (request) => {
       getSession(request)
       return service.update(request.params.id, request.body)
+    },
+  )
+
+  server.patch(
+    '/api/tickets/:id/status',
+    {
+      schema: {
+        params: ticketParamsSchema,
+        body: updateTicketStatusBodySchema,
+        response: {
+          200: ticketSchema,
+          401: errorResponseSchema,
+          404: errorResponseSchema,
+          422: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      const claims = getSession(request)
+      const authorId = claims.sub?.trim()
+      if (!authorId) throw new UnauthorizedError('Invalid session')
+      return service.changeStatus(request.params.id, request.body, authorId)
     },
   )
 

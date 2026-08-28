@@ -44,6 +44,7 @@ describe('tickets routes', () => {
   })
 
   afterEach(async () => {
+    await app.db.deleteFrom('ticket_status_history').execute()
     await app.db.deleteFrom('tickets').execute()
   })
 
@@ -557,6 +558,137 @@ describe('tickets routes', () => {
       })
 
       expect(response.statusCode).toBe(400)
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  describe('PATCH /api/tickets/:id/status', () => {
+    it('returns 401 without session cookie', async () => {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${NONEXISTENT_ID}/status`,
+        payload: { status: 'carrier-processing' },
+      })
+      expect(response.statusCode).toBe(401)
+    })
+
+    it('returns 404 for nonexistent ticket', async () => {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${NONEXISTENT_ID}/status`,
+        payload: { status: 'carrier-processing' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(response.statusCode).toBe(404)
+      expect(response.json().error).toBe('NotFoundError')
+    })
+
+    it('changes the ticket status and records history', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: validTicketBody,
+      })
+      const { id } = created.json()
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${id}/status`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { status: 'carrier-processing' },
+      })
+      const body = response.json()
+
+      expect(response.statusCode).toBe(200)
+      expect(body.id).toBe(id)
+      expect(body.status).toBe('carrier-processing')
+
+      const history = await app.db
+        .selectFrom('ticket_status_history')
+        .selectAll()
+        .where('ticket_id', '=', id)
+        .executeTakeFirst()
+
+      expect(history).toBeDefined()
+      expect(history!.from_status).toBe('broker-processing')
+      expect(history!.to_status).toBe('carrier-processing')
+      expect(history!.author_id).toBe(DEV_LOGIN_USER_ID)
+      expect(history!.author_type).toBe('user')
+      expect(history!.reason).toBeNull()
+    })
+
+    it('records optional reason in history', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: validTicketBody,
+      })
+      const { id } = created.json()
+
+      await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${id}/status`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { status: 'missing-documents', reason: 'RG não enviado' },
+      })
+
+      const history = await app.db
+        .selectFrom('ticket_status_history')
+        .selectAll()
+        .where('ticket_id', '=', id)
+        .executeTakeFirst()
+
+      expect(history!.reason).toBe('RG não enviado')
+    })
+
+    it('sets closedAt when moving to completed', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: validTicketBody,
+      })
+      const { id } = created.json()
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${id}/status`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { status: 'completed' },
+      })
+
+      expect(response.statusCode).toBe(200)
+      expect(response.json().status).toBe('completed')
+      expect(response.json().closedAt).not.toBeNull()
+    })
+
+    it('returns 422 when ticket is already closed', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: validTicketBody,
+      })
+      const { id } = created.json()
+
+      await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${id}/status`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { status: 'completed' },
+      })
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${id}/status`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { status: 'carrier-processing' },
+      })
+
+      expect(response.statusCode).toBe(422)
+      expect(response.json().error).toBe('UnprocessableEntityError')
     })
   })
 

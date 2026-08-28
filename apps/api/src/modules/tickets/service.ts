@@ -7,6 +7,7 @@ import type {
   TicketList,
   TicketStatus,
   UpdateTicketBody,
+  UpdateTicketStatusBody,
 } from './schemas.js'
 
 const CLOSED_STATUSES = new Set<TicketStatus>(['completed', 'cancelled'])
@@ -56,6 +57,24 @@ export class TicketsService {
   async list(query: ListTicketsQuery): Promise<TicketList> {
     const { data, total } = await this.repository.findMany(query)
     return { data, total, page: query.page, pageSize: query.pageSize }
+  }
+
+  async changeStatus(id: string, data: UpdateTicketStatusBody, authorId: string): Promise<Ticket> {
+    const isClosed = CLOSED_STATUSES.has(data.status)
+    const closedAt = isClosed ? new Date().toISOString() : null
+
+    const result = await this.repository.changeStatus(
+      id,
+      data.status,
+      closedAt,
+      authorId,
+      data.reason,
+    )
+
+    if (result.kind === 'not-found') throw new NotFoundError(`Ticket ${id} not found`)
+    if (result.kind === 'already-closed')
+      throw new UnprocessableEntityError(`Ticket ${id} is already closed`)
+    return result.ticket
   }
 
   async claim(id: string, assigneeId: string): Promise<Ticket> {
