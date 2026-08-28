@@ -664,32 +664,35 @@ describe('tickets routes', () => {
       expect(response.json().closedAt).not.toBeNull()
     })
 
-    it('returns 422 when ticket is already closed', async () => {
-      const created = await app.inject({
-        method: 'POST',
-        url: '/api/tickets',
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload: validTicketBody,
-      })
-      const { id } = created.json()
+    it.each([{ closingStatus: 'completed' }, { closingStatus: 'cancelled' }])(
+      'returns 422 when ticket is already $closingStatus',
+      async ({ closingStatus }) => {
+        const created = await app.inject({
+          method: 'POST',
+          url: '/api/tickets',
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+          payload: validTicketBody,
+        })
+        const { id } = created.json()
 
-      await app.inject({
-        method: 'PATCH',
-        url: `/api/tickets/${id}/status`,
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload: { status: 'completed' },
-      })
+        await app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${id}/status`,
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+          payload: { status: closingStatus },
+        })
 
-      const response = await app.inject({
-        method: 'PATCH',
-        url: `/api/tickets/${id}/status`,
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload: { status: 'carrier-processing' },
-      })
+        const response = await app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${id}/status`,
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+          payload: { status: 'carrier-processing' },
+        })
 
-      expect(response.statusCode).toBe(422)
-      expect(response.json().error).toBe('UnprocessableEntityError')
-    })
+        expect(response.statusCode).toBe(422)
+        expect(response.json().error).toBe('UnprocessableEntityError')
+      },
+    )
   })
 
   // ---------------------------------------------------------------------------
