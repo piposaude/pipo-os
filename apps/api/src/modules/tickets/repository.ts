@@ -2,12 +2,13 @@ import { sql, type Kysely, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
 import { ConflictError } from '../../shared/errors.js'
-import type {
-  CreateTicketBody,
-  ListTicketsQuery,
-  Ticket,
-  TicketStatus,
-  UpdateTicketBody,
+import {
+  CLOSED_STATUSES,
+  type CreateTicketBody,
+  type ListTicketsQuery,
+  type Ticket,
+  type TicketStatus,
+  type UpdateTicketBody,
 } from './schemas.js'
 
 export type ChangeStatusResult =
@@ -171,7 +172,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
         .executeTakeFirst()
 
       if (!current) return { kind: 'not-found' }
-      if (current.status === 'completed' || current.status === 'cancelled') {
+      if (CLOSED_STATUSES.has(current.status as TicketStatus)) {
         return { kind: 'already-closed' }
       }
 

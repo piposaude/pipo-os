@@ -13,6 +13,11 @@ export const ticketStatusSchema = z
   ])
   .meta({ id: 'TicketStatus' })
 
+export const CLOSED_STATUSES = new Set<z.infer<typeof ticketStatusSchema>>([
+  'completed',
+  'cancelled',
+])
+
 export const ticketSchema = z
   .object({
     id: z.uuid(),

@@ -1,16 +1,14 @@
 import { NotFoundError, UnprocessableEntityError } from '../../shared/errors.js'
 import type { TicketsRepositoryPort } from './repository.js'
-import type {
-  CreateTicketBody,
-  ListTicketsQuery,
-  Ticket,
-  TicketList,
-  TicketStatus,
-  UpdateTicketBody,
-  UpdateTicketStatusBody,
+import {
+  CLOSED_STATUSES,
+  type CreateTicketBody,
+  type ListTicketsQuery,
+  type Ticket,
+  type TicketList,
+  type UpdateTicketBody,
+  type UpdateTicketStatusBody,
 } from './schemas.js'
-
-const CLOSED_STATUSES = new Set<TicketStatus>(['completed', 'cancelled'])
 
 export class TicketsService {
   constructor(private readonly repository: TicketsRepositoryPort) {}
