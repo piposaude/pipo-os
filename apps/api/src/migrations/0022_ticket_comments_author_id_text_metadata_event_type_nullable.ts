@@ -4,6 +4,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
   await sql`ALTER TABLE ticket_comments ALTER COLUMN author_id TYPE text USING author_id::text`.execute(
     db,
   )
+  await sql`ALTER TABLE ticket_comments ALTER COLUMN author_id DROP NOT NULL`.execute(db)
   await sql`ALTER TABLE ticket_comments ALTER COLUMN event_type DROP NOT NULL`.execute(db)
   await sql`ALTER TABLE ticket_comments ADD COLUMN metadata jsonb NOT NULL DEFAULT '{}'`.execute(db)
 }
