@@ -1,9 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { useState } from 'react'
+import userEvent from '@testing-library/user-event'
+import { useRef, useState } from 'react'
 import { Popover } from '@/components/pipodesk/primitives'
 
 function Harness({ onOpenChange }: { onOpenChange?: (open: boolean) => void } = {}) {
   const [open, setOpen] = useState(false)
+  const trigger = useRef<HTMLButtonElement>(null)
   const change = (next: boolean) => {
     setOpen(next)
     onOpenChange?.(next)
@@ -11,10 +13,10 @@ function Harness({ onOpenChange }: { onOpenChange?: (open: boolean) => void } = 
 
   return (
     <div>
-      <button type="button" onClick={() => change(!open)}>
+      <button type="button" ref={trigger} onClick={() => change(!open)}>
         Filtros
       </button>
-      <Popover open={open} onClose={() => change(false)} label="Filtros">
+      <Popover open={open} onClose={() => change(false)} label="Filtros" anchor={trigger}>
         <button type="button">Status</button>
       </Popover>
       <button type="button">Fora</button>
@@ -56,6 +58,20 @@ describe('Popover', () => {
 
     fireEvent.mouseDown(screen.getByRole('button', { name: 'Fora' }))
 
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  /** Without the anchor, the outside `mousedown` closed the panel and the
+   *  trigger's click reopened it — the button could not close what it opened. */
+  it('should let the trigger close it, in one gesture', async () => {
+    render(<Harness />)
+    const user = userEvent.setup()
+    const trigger = screen.getByRole('button', { name: 'Filtros' })
+
+    await user.click(trigger)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+
+    await user.click(trigger)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 

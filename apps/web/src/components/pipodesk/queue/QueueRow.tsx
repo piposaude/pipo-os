@@ -48,6 +48,9 @@ export function QueueRow({
   resolveName,
 }: QueueRowProps) {
   const reason = ticket.reason ? PENDING_REASON_COPY[ticket.reason] : null
+  // The operational number (PD-011) is what the analyst reads out loud;
+  // the internal id stands in until the API sends one.
+  const number = ticket.displayNumber ?? ticket.id
 
   const cells: Record<string, React.ReactNode> = {
     select: (
@@ -55,7 +58,7 @@ export function QueueRow({
         <input
           type="checkbox"
           checked={selected}
-          aria-label={`${constants.selectRow} ${ticket.id}`}
+          aria-label={`${constants.selectRow} ${number}`}
           onChange={() => onToggleSelect(ticket.id)}
           onClick={(event) => event.stopPropagation()}
         />
@@ -63,7 +66,7 @@ export function QueueRow({
     ),
     id: (
       <td key="id" className={styles.num}>
-        {ticket.id}
+        {number}
       </td>
     ),
     assignee: (

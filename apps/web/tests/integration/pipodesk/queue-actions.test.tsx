@@ -60,6 +60,21 @@ describe('painel de filtros', () => {
     expect(clt.textContent).toMatch(/CLT\s*\d+/)
   })
 
+  /** Closing by the trigger must reset the panel: reopening on the previous
+   *  subpanel hides the other eleven fields. */
+  it('should reopen on the field list, not on the last field visited', async () => {
+    await renderQueue()
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: 'Filtros' }))
+    await user.click(screen.getByRole('button', { name: 'Contrato' }))
+    await user.click(screen.getByRole('button', { name: 'Filtros' }))
+    await user.click(screen.getByRole('button', { name: 'Filtros' }))
+
+    const painel = screen.getByRole('dialog', { name: /filtros/i })
+    expect(within(painel).getAllByRole('button')[0]).toHaveTextContent(/Aberto em/)
+  })
+
   it('should offer the date window as the first item of the panel', async () => {
     await renderQueue()
     const user = userEvent.setup()

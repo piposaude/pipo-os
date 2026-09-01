@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type RefObject } from 'react'
 import { Popover } from '@/components/pipodesk/primitives'
 import {
   DATE_WINDOWS,
@@ -25,6 +25,8 @@ import styles from './Queue.module.css'
  * as a chip, its × would return the whole period.
  */
 export interface FilterPopoverProps {
+  /** The trigger, so its own click closes the panel. */
+  anchor?: RefObject<HTMLElement | null>
   open: boolean
   onClose: () => void
   /** The node's tickets, before any chip. */
@@ -47,6 +49,7 @@ export function FilterPopover({
   onApply,
   dateWindowDays,
   onSetDateWindow,
+  anchor,
 }: FilterPopoverProps) {
   const [field, setField] = useState<FilterField | null>(null)
   const [query, setQuery] = useState('')
@@ -90,7 +93,7 @@ export function FilterPopover({
   }
 
   return (
-    <Popover open={open} onClose={close} label="Filtros" align="right">
+    <Popover open={open} onClose={close} label="Filtros" align="right" anchor={anchor}>
       <div className={styles.panelBody}>
         {onDateWindow ? (
           <>

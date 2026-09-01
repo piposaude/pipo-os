@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode, type RefObject } from 'react'
 import styles from './Popover.module.css'
 
 export interface PopoverProps {
@@ -10,6 +10,9 @@ export interface PopoverProps {
   align?: 'left' | 'right'
   /** Which side to open on. `top` is for the batch bar, pinned to the bottom. */
   side?: 'top' | 'bottom'
+  /** The trigger. Pointer events on it belong to it: without this, closing
+   *  here let its click reopen the panel and the button never closed. */
+  anchor?: RefObject<HTMLElement | null>
   children: ReactNode
 }
 
@@ -25,6 +28,7 @@ export function Popover({
   label,
   align = 'left',
   side = 'bottom',
+  anchor,
   children,
 }: PopoverProps) {
   const panel = useRef<HTMLDivElement>(null)
@@ -35,10 +39,12 @@ export function Popover({
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') onClose()
     }
-    // `mousedown`, not `click`: closing on click would let the trigger receive
-    // the event and reopen the panel in the same gesture.
+    // `mousedown`, not `click`: by the time a click bubbles, the pointer may
+    // have left the element it started on.
     const onPointerDown = (event: MouseEvent): void => {
-      if (!panel.current?.contains(event.target as Node)) onClose()
+      const target = event.target as Node
+      if (panel.current?.contains(target) || anchor?.current?.contains(target)) return
+      onClose()
     }
 
     document.addEventListener('keydown', onKeyDown)
@@ -47,7 +53,7 @@ export function Popover({
       document.removeEventListener('keydown', onKeyDown)
       document.removeEventListener('mousedown', onPointerDown)
     }
-  }, [open, onClose])
+  }, [open, onClose, anchor])
 
   if (!open) return null
 

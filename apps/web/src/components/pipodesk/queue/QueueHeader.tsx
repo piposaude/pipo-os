@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Breadcrumb, BreadcrumbItem } from '@piposaude/design-system'
 import { IS_MAC } from '@/lib/pipodesk/platform'
 import { FILTER_FIELD_COPY, type FilterChip, type LabelContext } from '@/lib/pipodesk/filter-copy'
@@ -80,6 +80,8 @@ export function QueueHeader({
   const toggleLabel = sidebarCollapsed ? constants.expandSidebar : constants.collapseSidebar
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [displayOpen, setDisplayOpen] = useState(false)
+  const filtersTrigger = useRef<HTMLButtonElement>(null)
+  const displayTrigger = useRef<HTMLButtonElement>(null)
 
   return (
     <div className={styles.pagehead}>
@@ -170,6 +172,7 @@ export function QueueHeader({
           <span className={styles.panelAnchor}>
             <button
               type="button"
+              ref={filtersTrigger}
               className={styles.iconButton}
               aria-label={constants.filters}
               aria-expanded={filtersOpen}
@@ -190,21 +193,27 @@ export function QueueHeader({
                 <span className={styles.iconDot} aria-hidden="true" />
               )}
             </button>
-            <FilterPopover
-              open={filtersOpen}
-              onClose={() => setFiltersOpen(false)}
-              base={base}
-              filter={filter}
-              viewerId={viewerId}
-              ctx={ctx}
-              onApply={onApplyFilter}
-              dateWindowDays={dateWindowDays}
-              onSetDateWindow={onSetDateWindow}
-            />
+            {/* Mounted only while open: the panel remembers which field is on
+                             screen, and a closed one would reopen on the last subpanel. */}
+            {filtersOpen && (
+              <FilterPopover
+                open={filtersOpen}
+                anchor={filtersTrigger}
+                onClose={() => setFiltersOpen(false)}
+                base={base}
+                filter={filter}
+                viewerId={viewerId}
+                ctx={ctx}
+                onApply={onApplyFilter}
+                dateWindowDays={dateWindowDays}
+                onSetDateWindow={onSetDateWindow}
+              />
+            )}
           </span>
           <span className={styles.panelAnchor}>
             <button
               type="button"
+              ref={displayTrigger}
               className={styles.iconButton}
               aria-label={constants.display}
               aria-expanded={displayOpen}
@@ -226,6 +235,7 @@ export function QueueHeader({
             </button>
             <DisplayPopover
               open={displayOpen}
+              anchor={displayTrigger}
               onClose={() => setDisplayOpen(false)}
               groupBy={groupBy}
               onSetGroupBy={onSetGroupBy}

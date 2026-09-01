@@ -148,7 +148,10 @@ export default function QueuePage() {
     applyPatch(selectedVisible, patch)
   }
 
-  const analysts = ANALYSTS_BY_POD[VIEWER_GROUP_ID].map((id) => ({ id, name: resolveName(id) }))
+  const analysts = (ANALYSTS_BY_POD[VIEWER_GROUP_ID] ?? []).map((id) => ({
+    id,
+    name: resolveName(id),
+  }))
   const pods: PodOption[] = structureFixture.groups
     .filter((group) => group.parentId !== null)
     .map((group) => ({

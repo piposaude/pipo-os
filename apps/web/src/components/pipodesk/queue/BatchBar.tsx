@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Popover } from '@/components/pipodesk/primitives'
 import { API_STATUSES, toDisplayStatus, type ApiStatus } from '@/lib/pipodesk/status'
 import { DISPLAY_STATUS_COPY, PENDING_REASON_COPY } from '@/constants/pipodesk/status'
@@ -56,6 +56,7 @@ export function BatchBar({
   onSchedule,
 }: BatchBarProps) {
   const [open, setOpen] = useState(false)
+  const trigger = useRef<HTMLButtonElement>(null)
   const [screen, setScreen] = useState<Screen>('root')
   const [date, setDate] = useState('')
 
@@ -92,13 +93,21 @@ export function BatchBar({
         <span className={styles.batchAnchor}>
           <button
             type="button"
+            ref={trigger}
             className={styles.batchAction}
             aria-expanded={open}
             onClick={() => setOpen((current) => !current)}
           >
             Ações
           </button>
-          <Popover open={open} onClose={close} label="Ações em lote" align="right" side="top">
+          <Popover
+            open={open}
+            onClose={close}
+            label="Ações em lote"
+            align="right"
+            side="top"
+            anchor={trigger}
+          >
             <div className={styles.panelBody}>
               {screen === 'root' && (
                 <>

@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useState, type CSSProperties, useRef } from 'react'
 import { Badge, Button, Text } from '@piposaude/design-system'
 import { PipoOsWordmark } from '@/components/pipodesk/shell/PipoOsWordmark'
 import { Popover } from '@/components/pipodesk/primitives'
@@ -348,6 +348,7 @@ export function QueueSidebar({
   onOpenSearch,
 }: QueueSidebarProps) {
   const [accountOpen, setAccountOpen] = useState(false)
+  const accountTrigger = useRef<HTMLButtonElement>(null)
   return (
     <nav className={styles.sidebar} aria-label={constants.nav}>
       <div className={styles.brand}>
@@ -410,6 +411,7 @@ export function QueueSidebar({
         <div className={styles.accountAnchor}>
           <button
             type="button"
+            ref={accountTrigger}
             className={styles.viewer}
             aria-label={constants.account(viewerName)}
             aria-expanded={accountOpen}
@@ -424,6 +426,7 @@ export function QueueSidebar({
           <Popover
             open={accountOpen}
             onClose={() => setAccountOpen(false)}
+            anchor={accountTrigger}
             label={constants.account(viewerName)}
             align="left"
           >

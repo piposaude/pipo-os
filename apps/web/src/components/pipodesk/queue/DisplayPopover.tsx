@@ -1,3 +1,4 @@
+import type { RefObject } from 'react'
 import { Popover } from '@/components/pipodesk/primitives'
 import { DIRECTION_COPY, GROUP_BY_COPY, SORT_COPY } from '@/lib/pipodesk/filter-copy'
 import type { GroupBy } from '@/lib/pipodesk/group'
@@ -12,6 +13,8 @@ import styles from './Queue.module.css'
  * is hidable, and hiding it used to remove the criterion.
  */
 export interface DisplayPopoverProps {
+  /** The trigger, so its own click closes the panel. */
+  anchor?: RefObject<HTMLElement | null>
   open: boolean
   onClose: () => void
   groupBy: GroupBy
@@ -37,9 +40,10 @@ export function DisplayPopover({
   onToggleColumn,
   visibleColumnKeys,
   onMoveColumn,
+  anchor,
 }: DisplayPopoverProps) {
   return (
-    <Popover open={open} onClose={onClose} label="Exibição" align="right">
+    <Popover open={open} onClose={onClose} label="Exibição" align="right" anchor={anchor}>
       <div className={styles.panelBody}>
         <div role="group" aria-label="Agrupar por">
           <p className={styles.panelSection}>Agrupar por</p>
