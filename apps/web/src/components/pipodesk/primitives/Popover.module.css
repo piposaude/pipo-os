@@ -1,0 +1,28 @@
+.panel {
+  position: absolute;
+  z-index: var(--desk-z-popover);
+  min-width: 220px;
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
+  padding: var(--pipo-space-xxsmall, 4px);
+  background: var(--desk-panel);
+  border: var(--pipo-border-width-small, 1px) solid var(--pipo-border, #e2e1df);
+  border-radius: var(--pipo-radius-medium, 8px);
+  box-shadow: var(--desk-shadow-panel);
+}
+
+.bottom {
+  top: calc(100% + var(--pipo-space-xxsmall, 4px));
+}
+
+.top {
+  bottom: calc(100% + var(--pipo-space-xxsmall, 4px));
+}
+
+.left {
+  left: 0;
+}
+
+.right {
+  right: 0;
+}

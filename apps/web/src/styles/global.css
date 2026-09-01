@@ -1,0 +1,6 @@
+/* The app's global minimum. The browser body margin (8px) plus the DS
+ * `body.pipo-base` white background drew a white frame around the shell. Only
+ * this — not a reset: the DS already normalizes type and color. */
+body {
+  margin: 0;
+}

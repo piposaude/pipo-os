@@ -1,0 +1,39 @@
+.node {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--pipo-space-xxsmall, 4px);
+}
+
+.trigger {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--pipo-space-xxsmall, 4px);
+  padding: var(--pipo-space-xxsmall, 4px) var(--pipo-space-xsmall, 8px);
+  background: none;
+  border: 0;
+  border-radius: var(--pipo-radius-small, 6px);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.trigger:hover {
+  background: var(--desk-hover);
+}
+
+.chevron {
+  width: 12px;
+  color: var(--pipo-text-secondary, #6b6b6b);
+  font-size: 10px;
+}
+
+.children {
+  padding-left: var(--pipo-space-small, 12px);
+}
