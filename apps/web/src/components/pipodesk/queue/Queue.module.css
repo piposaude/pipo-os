@@ -1,0 +1,753 @@
+/* The queue, ported from the prototype's queue.css. Its --app-* tokens map
+   to our --desk-* (styles/pipodesk-tokens.css). */
+
+.screen {
+  position: relative;
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* No rule below: with the continuous background and the active pill, it was
+   one more stroke with no information. The thead keeps its own. */
+.pagehead {
+  flex: none;
+  padding: var(--pipo-space-xsmall) var(--pipo-space-small);
+}
+
+/* The toggle centers on the axis, not the baseline — a 24px button on the
+   baseline pulls the path text down. */
+.crumbRow {
+  display: flex;
+  align-items: center;
+  gap: var(--pipo-space-xsmall);
+}
+
+.sidebarToggle {
+  display: inline-flex;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--pipo-radius-small);
+  background: transparent;
+  color: var(--pipo-text-secondary);
+  cursor: pointer;
+}
+
+.sidebarToggle:hover {
+  background: var(--pipo-neutral-lightest);
+  color: var(--pipo-text-primary);
+}
+
+.sidebarToggle:focus-visible {
+  outline: none;
+  box-shadow: var(--pipo-shadow-focus-primary);
+}
+
+/* The DS Breadcrumb is 14px regular — trail size. Here it IS the screen
+   title: 16px, semibold current item, like the prototype. */
+.exitSearch {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--pipo-radius-pill);
+  background: var(--pipo-neutral-lightest);
+  color: var(--pipo-text-secondary);
+  cursor: pointer;
+}
+
+.exitSearch:hover {
+  color: var(--pipo-text-primary);
+}
+
+.pagehead nav[aria-label='breadcrumb'] {
+  font-size: var(--pipo-fs-medium);
+}
+
+.pagehead nav[aria-label='breadcrumb'] [aria-current='page'] {
+  font-weight: var(--pipo-fw-semibold);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--pipo-space-xsmall);
+  margin-top: var(--pipo-space-xsmall);
+}
+
+.pills {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--pipo-space-xxsmall);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.pills::-webkit-scrollbar {
+  display: none;
+}
+
+.pill {
+  position: relative;
+  flex: none;
+  height: 28px;
+  padding: 0 10px;
+  border: 0.5px solid transparent;
+  border-radius: var(--pipo-radius-pill);
+  background: var(--pipo-surface);
+  box-shadow: var(--desk-shadow-surface);
+  color: var(--pipo-text-secondary);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-xsmall);
+  font-weight: var(--pipo-fw-medium);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 120ms ease-out;
+}
+
+.pill:hover {
+  color: var(--pipo-text-primary);
+}
+
+.pill[aria-current='page'] {
+  background: #ececed;
+  color: var(--pipo-text-primary);
+}
+
+.pillAdd {
+  display: inline-flex;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--pipo-radius-pill);
+  background: transparent;
+  color: var(--pipo-text-secondary);
+  font-size: var(--pipo-fs-medium);
+  cursor: pointer;
+  transition: background-color 120ms ease-out;
+}
+
+.pillAdd:hover:not(:disabled) {
+  background: var(--desk-canvas);
+  color: var(--pipo-text-primary);
+}
+
+.pillAdd:disabled,
+.barButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.toolbarEnd {
+  display: flex;
+  align-items: center;
+  gap: var(--pipo-space-xsmall);
+  margin-left: auto;
+}
+
+.iconButton {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border: var(--pipo-border-width-small) solid var(--pipo-border);
+  border-radius: var(--pipo-radius-pill);
+  background: var(--pipo-surface);
+  color: var(--pipo-text-secondary);
+  cursor: pointer;
+  transition: background-color 120ms ease-out;
+}
+
+.iconButton:hover:not(:disabled) {
+  background: var(--pipo-neutral-lightest);
+  color: var(--pipo-text-primary);
+}
+
+.iconButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.barButton {
+  display: inline-flex;
+  height: 32px;
+  align-items: center;
+  gap: var(--pipo-space-xxsmall);
+  padding: 0 var(--pipo-space-small);
+  border: var(--pipo-border-width-small) solid var(--pipo-border);
+  border-radius: var(--pipo-radius-small);
+  background: var(--pipo-surface);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-xsmall);
+  font-weight: var(--pipo-fw-semibold);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 120ms ease-out;
+}
+
+.barButton:hover:not(:disabled) {
+  background: var(--pipo-neutral-lightest);
+}
+
+/* Table. Only the scroll area owns height: the top band is fixed and the
+   table scrolls inside, keeping the column header on screen. */
+.scroll {
+  min-height: 0;
+  flex: 1;
+  padding-inline: var(--pipo-space-xsmall);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.table {
+  width: 100%;
+  /* Widths from columns.ts; only the subject stretches. Without `fixed`, a
+     row far below would resize columns while scrolling. */
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  height: 44px;
+  padding: 0 var(--pipo-space-xsmall);
+  overflow: hidden;
+  color: var(--pipo-text-primary);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-xsmall);
+  line-height: var(--pipo-lh-default);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 40px;
+  background: var(--desk-panel);
+  box-shadow: inset 0 calc(-1 * var(--pipo-border-width-small)) 0 var(--pipo-border);
+  color: var(--pipo-text-secondary);
+  font-weight: var(--pipo-fw-semibold);
+}
+
+.headerButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pipo-space-xxsmall);
+  padding: var(--pipo-space-xxsmall);
+  margin: calc(-1 * var(--pipo-space-xxsmall));
+  border: none;
+  border-radius: var(--pipo-radius-pill);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.headerButton:hover {
+  background: var(--pipo-neutral-lightest);
+}
+
+/* The unsorted column's arrow is dimmed: it announces sortability without
+   competing with the sorted column. */
+.table th[aria-sort='none'] .sortGlyph {
+  opacity: 0.4;
+}
+
+.table th[aria-sort='none']:hover .sortGlyph {
+  opacity: 1;
+}
+
+.table tbody tr[data-ticket-id] {
+  cursor: pointer;
+}
+
+.table tbody tr[data-ticket-id] td {
+  background: var(--row-bg, transparent);
+}
+
+.table tbody tr[data-ticket-id]:hover {
+  --row-bg: var(--desk-hover);
+}
+
+.table tbody tr[data-selected='true'] {
+  --row-bg: var(--desk-selected);
+}
+
+.table tbody tr[data-ticket-id] td:first-child {
+  border-radius: var(--pipo-radius-small) 0 0 var(--pipo-radius-small);
+}
+
+.table tbody tr[data-ticket-id] td:last-child {
+  border-radius: 0 var(--pipo-radius-small) var(--pipo-radius-small) 0;
+}
+
+/* The checkbox only shows on hover/selection/focus — a column of empty
+   boxes on every row is noise in a glance-read queue. */
+.selectCell {
+  padding: 0 0 0 16px;
+  opacity: 0;
+  transition: opacity 80ms ease-out;
+}
+
+.table tbody tr:hover .selectCell,
+.table tbody tr[data-selected='true'] .selectCell,
+.table tbody tr:focus-within .selectCell {
+  opacity: 1;
+}
+
+.table thead th:first-child {
+  padding: 0 0 0 16px;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.right {
+  text-align: right;
+}
+
+.secondary {
+  color: var(--pipo-text-secondary);
+}
+
+.reason {
+  color: var(--pipo-text-secondary);
+}
+
+.subject {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--pipo-space-xxsmall);
+}
+
+.carrierLogo {
+  flex: none;
+}
+
+.subjectCarrier {
+  flex-shrink: 0;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: var(--pipo-fw-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subjectProduct {
+  flex-shrink: 0;
+  color: var(--pipo-text-secondary);
+  white-space: nowrap;
+}
+
+.subjectProduct::after {
+  content: '·';
+  margin-left: var(--pipo-space-xxsmall);
+  color: var(--pipo-neutral-regular);
+}
+
+/* The person yields space first when the column tightens. */
+.subjectName {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  color: var(--pipo-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table .rowChip {
+  display: inline-flex;
+  height: 20px;
+  max-width: 100%;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: var(--pipo-radius-pill);
+  font-size: var(--pipo-fs-xsmall);
+  font-weight: var(--pipo-fw-medium);
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.avatar {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--pipo-radius-pill);
+  background: var(--pipo-brand-primary-lightest);
+  color: var(--pipo-neutral-darkest);
+  font-size: var(--pipo-fs-xxsmall, 10px);
+  font-weight: var(--pipo-fw-semibold);
+}
+
+/* Free in the pod: the prototype's dashed circle — a drawn vacancy, not a dash. */
+.free {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border: 1px dashed var(--pipo-neutral-regular);
+  border-radius: var(--pipo-radius-pill);
+}
+
+.groupRow td {
+  padding: 4px 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.groupRow td > button {
+  display: flex;
+  width: 100%;
+  height: 36px;
+  align-items: center;
+  gap: var(--pipo-space-xsmall);
+  padding: 0 var(--pipo-space-xsmall);
+  border: none;
+  border-radius: var(--pipo-radius-small);
+  background: var(--desk-canvas);
+  color: var(--pipo-text-secondary);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-xsmall);
+  font-weight: var(--pipo-fw-semibold);
+  cursor: pointer;
+}
+
+.groupCount {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pipo-space-xxsmall);
+  padding: var(--pipo-space-large);
+  text-align: center;
+}
+
+.emptyTitle {
+  color: var(--pipo-text-primary);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-medium);
+  font-weight: var(--pipo-fw-semibold);
+}
+
+.emptySubtitle {
+  color: var(--pipo-text-secondary);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-small);
+}
+
+/* Live region: for screen readers, not the eye. */
+.live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  border: 0;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* Panels (filters, display, actions). The anchor gives the absolute
+   Popover an address. */
+.panelAnchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.iconDot {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--pipo-radius-pill);
+  background: var(--pipo-brand-primary);
+}
+
+.panelBody {
+  display: flex;
+  width: 264px;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.panelHead {
+  display: flex;
+  align-items: center;
+  gap: var(--pipo-space-xxsmall);
+  padding: var(--pipo-space-xxsmall);
+  color: var(--pipo-text-primary);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-xsmall);
+  font-weight: var(--pipo-fw-semibold);
+}
+
+.panelBack {
+  padding: 2px var(--pipo-space-xxsmall);
+  border: none;
+  border-radius: var(--pipo-radius-xsmall);
+  background: transparent;
+  color: var(--pipo-text-secondary);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-xsmall);
+  cursor: pointer;
+}
+
+.panelBack:hover {
+  background: var(--pipo-neutral-lightest);
+  color: var(--pipo-text-primary);
+}
+
+/* Same row as the sidebar tree — identical height, radius and type, so
+   panel and side menu read as one family. */
+.panelItem {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--pipo-space-xsmall);
+  padding: var(--pipo-space-xxsmall) var(--pipo-space-xsmall);
+  border: none;
+  border-radius: var(--pipo-radius-xsmall);
+  background: transparent;
+  color: var(--pipo-neutral-darkest);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-xsmall);
+  font-weight: var(--pipo-fw-medium);
+  line-height: var(--pipo-lh-default);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms ease-out;
+}
+
+.panelItem:hover:not(:disabled) {
+  background: var(--pipo-neutral-lightest);
+}
+
+.panelItem:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Selection mark is an explicit ✓, not a background: several options stay
+   marked at once, and the background is the sidebar's "active node" cue. */
+.panelItem[aria-pressed='true'] {
+  font-weight: var(--pipo-fw-semibold);
+}
+
+.panelItem[aria-pressed='true']::before {
+  content: '✓';
+  flex: none;
+  color: var(--pipo-brand-primary);
+  font-weight: var(--pipo-fw-bold);
+  line-height: 1;
+}
+
+.panelLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panelCount {
+  margin-left: auto;
+  color: var(--pipo-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.panelSearch {
+  width: 100%;
+  margin: var(--pipo-space-xxsmall) 0;
+  padding: var(--pipo-space-xxsmall) var(--pipo-space-xsmall);
+  border: var(--pipo-border-width-small) solid var(--pipo-border);
+  border-radius: var(--pipo-radius-small);
+  background: var(--pipo-surface);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-xsmall);
+}
+
+.panelScroll {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.panelEmpty {
+  padding: var(--pipo-space-xsmall);
+  color: var(--pipo-text-secondary);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-xsmall);
+}
+
+.panelSection {
+  margin: var(--pipo-space-xxsmall) 0 2px;
+  padding: 0 var(--pipo-space-xsmall);
+  color: var(--pipo-text-secondary);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-xxsmall, 10px);
+  font-weight: var(--pipo-fw-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.panelSep {
+  margin: var(--pipo-space-xxsmall) 0;
+  border: none;
+  border-top: var(--pipo-border-width-small) solid var(--pipo-border);
+}
+
+.columnRow {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.columnMove {
+  display: inline-flex;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--pipo-radius-xsmall);
+  background: transparent;
+  color: var(--pipo-text-secondary);
+  cursor: pointer;
+}
+
+.columnMove:hover:not(:disabled) {
+  background: var(--pipo-neutral-lightest);
+}
+
+.columnMove:disabled {
+  cursor: default;
+  opacity: 0.3;
+}
+
+/* Chips. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pipo-space-xxsmall);
+  margin-top: var(--pipo-space-xxsmall);
+}
+
+.chip {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: var(--pipo-space-xxsmall);
+  padding: 1px 6px;
+  border: var(--pipo-border-width-small) solid var(--pipo-border);
+  border-radius: var(--pipo-radius-pill);
+  background: var(--pipo-surface);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-xxsmall, 11px);
+  line-height: 1.4;
+}
+
+.chipRemove {
+  display: inline-flex;
+  padding: 0 2px;
+  border: none;
+  background: none;
+  color: var(--pipo-text-secondary);
+  font-size: var(--pipo-fs-xsmall);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chipRemove:hover {
+  color: var(--pipo-text-primary);
+}
+
+/* Batch bar: a compact pill pinned to the panel's bottom — count, Ações,
+   ×. */
+.batchbar {
+  position: absolute;
+  bottom: var(--pipo-space-small);
+  left: 50%;
+  z-index: var(--desk-z-batch-bar);
+  transform: translateX(-50%);
+}
+
+.batchPill {
+  display: flex;
+  align-items: center;
+  gap: var(--pipo-space-xsmall);
+  padding: var(--pipo-space-xxsmall) var(--pipo-space-xxsmall) var(--pipo-space-xxsmall)
+    var(--pipo-space-small);
+  border-radius: var(--pipo-radius-pill);
+  background: var(--pipo-surface);
+  box-shadow: var(--desk-shadow-panel);
+}
+
+.batchCount {
+  color: var(--pipo-text-primary);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-xsmall);
+  white-space: nowrap;
+}
+
+.batchAnchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.batchAction {
+  padding: var(--pipo-space-xxsmall) var(--pipo-space-small);
+  border: none;
+  border-radius: var(--pipo-radius-pill);
+  background: var(--pipo-brand-primary);
+  color: var(--pipo-text-on-primary);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-xsmall);
+  font-weight: var(--pipo-fw-semibold);
+  cursor: pointer;
+}
+
+.batchClear {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--pipo-radius-pill);
+  background: transparent;
+  color: var(--pipo-text-secondary);
+  font-size: var(--pipo-fs-medium);
+  cursor: pointer;
+}
+
+.batchClear:hover {
+  background: var(--pipo-neutral-lightest);
+  color: var(--pipo-text-primary);
+}

@@ -6,8 +6,7 @@ import { routeTree } from '@/routeTree.gen'
 import { useSessionStore } from '@/stores/session'
 import loginConstants from '@/constants/pages/auth/login'
 import devConstants from '@/constants/pages/auth/login/dev'
-import topBarConstants from '@/constants/layout/auth-top-bar'
-import ticketsConstants from '@/constants/pages/tickets/list'
+import sidebarConstants from '@/constants/pipodesk/sidebar'
 
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -77,12 +76,12 @@ describe('auth/login', () => {
   it('redirects an unauthenticated visitor from a protected route to /login, preserving the destination', async () => {
     setupApi([{ method: 'GET', path: '/api/auth/me', reply: () => jsonResponse({}, 401) }])
 
-    const router = await routerRender('/tickets')
+    const router = await routerRender('/')
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/login')
     })
-    expect(router.state.location.search).toEqual({ redirect: '/tickets' })
+    expect(router.state.location.search).toEqual({ redirect: '/' })
     expect(
       await screen.findByRole('button', { name: loginConstants.googleButton }),
     ).toBeInTheDocument()
@@ -95,12 +94,12 @@ describe('auth/login', () => {
     const assign = vi.fn()
     vi.stubGlobal('location', { ...window.location, assign })
 
-    await routerRender('/tickets')
+    await routerRender('/')
     const user = userEvent.setup()
 
     await user.click(await screen.findByRole('button', { name: loginConstants.googleButton }))
 
-    expect(assign).toHaveBeenCalledWith('/api/auth/google?redirect=%2Ftickets')
+    expect(assign).toHaveBeenCalledWith('/api/auth/google?redirect=%2F')
   })
 
   // Vitest runs with import.meta.env.DEV true, so the dev-only button renders
@@ -118,13 +117,13 @@ describe('auth/login', () => {
     const assign = vi.fn()
     vi.stubGlobal('location', { ...window.location, assign })
 
-    await routerRender('/tickets')
+    await routerRender('/')
     const user = userEvent.setup()
 
     await user.click(await screen.findByRole('button', { name: devConstants.button }))
 
     await waitFor(() => {
-      expect(assign).toHaveBeenCalledWith('/tickets')
+      expect(assign).toHaveBeenCalledWith('/')
     })
   })
 
@@ -167,11 +166,11 @@ describe('auth/login', () => {
     const router = await routerRender('/login')
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/tickets')
+      expect(router.state.location.pathname).toBe('/')
     })
   })
 
-  it('renders the protected page and logs out through the top bar', async () => {
+  it('renders the protected page and logs out from the sidebar footer', async () => {
     setupApi([
       {
         method: 'GET',
@@ -186,12 +185,14 @@ describe('auth/login', () => {
       },
     ])
 
-    const router = await routerRender('/tickets')
+    const router = await routerRender('/')
     const user = userEvent.setup()
 
+    // The shell has no top bar: identity and logout live in the sidebar footer.
+    // At rest only the person shows; e-mail and logout appear in the panel.
+    await user.click(await screen.findByRole('button', { name: /conta de/i }))
     expect(await screen.findByText('pikachu@piposaude.com.br')).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: topBarConstants.logout }))
+    await user.click(screen.getByRole('button', { name: sidebarConstants.logout }))
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/login')
@@ -202,7 +203,7 @@ describe('auth/login', () => {
     expect(useSessionStore.getState().status).toBe('unauthenticated')
   })
 
-  it('keeps the tickets heading reachable once authenticated', async () => {
+  it('keeps the queue reachable once authenticated', async () => {
     setupApi([
       {
         method: 'GET',
@@ -212,10 +213,9 @@ describe('auth/login', () => {
       { method: 'GET', path: '/api/tickets', reply: () => jsonResponse([]) },
     ])
 
-    await routerRender('/tickets')
+    await routerRender('/')
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: ticketsConstants.title }),
-    ).toBeInTheDocument()
+    // The queue is the root: you land on the day's work.
+    expect(await screen.findByRole('navigation', { name: /pipodesk/i })).toBeInTheDocument()
   })
 })

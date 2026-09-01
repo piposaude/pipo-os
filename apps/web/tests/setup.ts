@@ -21,6 +21,18 @@ class TestRequest extends NativeRequest {
 
 vi.stubGlobal('Request', TestRequest)
 
+// jsdom has no ResizeObserver, and the queue table measures its scroll area.
+// Observing nothing is correct here: the initial height comes from state.
+class NoopResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+// Direct assignment, not vi.stubGlobal: an unstubAllGlobals() in a test file
+// would erase the stub for the tests after it.
+globalThis.ResizeObserver = NoopResizeObserver as unknown as typeof ResizeObserver
+
 afterEach(() => {
   cleanup()
 })
