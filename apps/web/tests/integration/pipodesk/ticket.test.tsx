@@ -77,6 +77,22 @@ describe('detalhe do chamado', () => {
     )
   })
 
+  /** The menu's own trigger has to close it: without that, the click reopened
+   *  what the outside-pointer had just closed. */
+  it('should close the priority menu from its own trigger', async () => {
+    await renderAt('/tickets/700003')
+    const user = userEvent.setup()
+
+    const contexto = await screen.findByRole('complementary', { name: 'Contexto do chamado' })
+    const trigger = within(contexto).getByRole('button', { name: /prioridade/i })
+
+    await user.click(trigger)
+    expect(screen.getByRole('dialog', { name: 'Prioridade' })).toBeInTheDocument()
+
+    await user.click(trigger)
+    expect(screen.queryByRole('dialog', { name: 'Prioridade' })).not.toBeInTheDocument()
+  })
+
   it('should add an internal note to the timeline through the composer', async () => {
     await renderAt('/tickets/700003')
     const user = userEvent.setup()

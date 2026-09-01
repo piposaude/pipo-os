@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef } from 'react'
 import { Banner, Breadcrumb, BreadcrumbItem, Button, Heading, Tabs } from '@piposaude/design-system'
 import { Link, useParams } from '@tanstack/react-router'
 import { useDesk } from '@/components/pipodesk/shell/desk-context'
@@ -46,6 +46,8 @@ export default function TicketPage() {
   const [copied, setCopied] = useState(false)
   const [priorityOpen, setPriorityOpen] = useState(false)
   const [ownerOpen, setOwnerOpen] = useState(false)
+  const priorityTrigger = useRef<HTMLButtonElement>(null)
+  const ownerTrigger = useRef<HTMLButtonElement>(null)
   const [channel, setChannel] = useState<CommentChannel>('internal')
   const [draft, setDraft] = useState('')
 
@@ -211,6 +213,7 @@ export default function TicketPage() {
           <span className={styles.panelAnchor}>
             <button
               type="button"
+              ref={priorityTrigger}
               className={styles.pillAction}
               aria-label={`${constants.context.priority}: ${
                 ticket.priority ? PRIORITY_COPY[ticket.priority] : constants.context.noPriority
@@ -223,6 +226,7 @@ export default function TicketPage() {
             <Popover
               open={priorityOpen}
               onClose={() => setPriorityOpen(false)}
+              anchor={priorityTrigger}
               label={constants.context.priority}
             >
               {/* "Sem prioridade" first: the origin value of every ticket, hence the
@@ -261,6 +265,7 @@ export default function TicketPage() {
           <span className={styles.panelAnchor}>
             <button
               type="button"
+              ref={ownerTrigger}
               className={styles.pillAction}
               aria-label={`${constants.context.owner}: ${
                 ticket.assigneeId ? resolveName(ticket.assigneeId) : constants.context.free
@@ -273,6 +278,7 @@ export default function TicketPage() {
             <Popover
               open={ownerOpen}
               onClose={() => setOwnerOpen(false)}
+              anchor={ownerTrigger}
               label={constants.context.owner}
             >
               {podAnalysts.map((userId) => (
