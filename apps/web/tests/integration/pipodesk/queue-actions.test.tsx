@@ -100,6 +100,18 @@ describe('painel de exibição', () => {
     expect(screen.getByRole('button', { name: /Com a Pipo/ })).toBeInTheDocument()
   })
 
+  /** `visibleColumnKeys` counts the checkbox column; the order does not. The
+   *  first data column read as position 1 and offered an arrow that did nothing. */
+  it('should disable the left arrow on the first column', async () => {
+    await renderQueue()
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: 'Exibição' }))
+
+    expect(screen.getByRole('button', { name: 'Mover ID. para a esquerda' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Mover ID. para a direita' })).toBeEnabled()
+  })
+
   it('should hide a column from the panel', async () => {
     await renderQueue()
     const user = userEvent.setup()
@@ -135,6 +147,31 @@ describe('barra de lote', () => {
     // it, since selection does not survive the rows leaving.
     expect(screen.getByRole('status')).toHaveTextContent(/^0 chamados/)
     expect(screen.queryByRole('group', { name: 'Ações em lote' })).not.toBeInTheDocument()
+  })
+
+  /** The bar returned to whatever screen the last selection left open, date
+   *  and all — `return null` came after the hooks, so nothing was reset. */
+  it('should reopen the batch panel from the start after a new selection', async () => {
+    await renderQueue()
+    const user = userEvent.setup()
+    const selectAll = screen.getByRole('checkbox', { name: /selecionar todos/i })
+
+    await user.click(selectAll)
+    const barra = await screen.findByRole('group', { name: 'Ações em lote' })
+    await user.click(within(barra).getByRole('button', { name: 'Ações' }))
+    await user.click(screen.getByRole('button', { name: 'Agendar' }))
+    expect(screen.getByRole('dialog', { name: 'Ações em lote' })).toBeInTheDocument()
+
+    // By keyboard, so no pointer lands outside the panel — a mouse click would
+    // close it on the way and hide the leak.
+    selectAll.focus()
+    await user.keyboard(' ')
+    expect(screen.queryByRole('group', { name: 'Ações em lote' })).not.toBeInTheDocument()
+
+    await user.keyboard(' ')
+
+    expect(await screen.findByRole('group', { name: 'Ações em lote' })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Ações em lote' })).not.toBeInTheDocument()
   })
 
   it('should change status in batch, keeping the sidebar count honest', async () => {
@@ -191,6 +228,35 @@ describe('busca global', () => {
     expect(screen.getByRole('navigation', { name: /breadcrumb/i })).toHaveTextContent(
       'Meus tickets',
     )
+  })
+
+  /** Outside `.desk-root`: inside it, the shell's own `> div` rule beat the
+   *  overlay's padding and the palette stuck to the top of the screen. */
+  it('should render outside the shell, so the shell layout cannot reach it', async () => {
+    await renderQueue()
+    const user = userEvent.setup()
+
+    await user.keyboard('{Meta>}k{/Meta}')
+
+    const palette = await screen.findByRole('dialog', { name: 'Busca global' })
+    const shell = document.querySelector('.desk-root')
+    expect(shell).not.toBeNull()
+    expect(shell?.contains(palette)).toBe(false)
+  })
+
+  it('should announce the highlighted result to screen readers while the arrows move', async () => {
+    await renderQueue()
+    const user = userEvent.setup()
+
+    await user.keyboard('{Meta>}k{/Meta}')
+    const field = await screen.findByRole('combobox')
+    const options = screen.getAllByRole('option')
+
+    expect(field).toHaveAttribute('aria-activedescendant', options[0].id)
+    expect(options[0].id).not.toBe('')
+
+    await user.keyboard('{ArrowDown}')
+    expect(field).toHaveAttribute('aria-activedescendant', options[1].id)
   })
 
   it('should open from the sidebar trigger too, teaching the shortcut', async () => {

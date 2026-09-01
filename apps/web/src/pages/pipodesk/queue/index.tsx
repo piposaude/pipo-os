@@ -9,6 +9,7 @@ import {
   columnsFor,
   DEFAULT_COLUMN_PREFS,
   moveColumn,
+  readColumnPrefs,
   type ColumnPrefs,
 } from '@/lib/pipodesk/columns'
 import { applyFilter, sinceOf, windowOf, type FilterField } from '@/lib/pipodesk/filter'
@@ -118,7 +119,7 @@ export default function QueuePage() {
   const [columnPrefs, setColumnPrefs] = useState<ColumnPrefs>(() => {
     try {
       const stored = localStorage.getItem(COLUMN_PREFS_KEY)
-      return stored ? { ...DEFAULT_COLUMN_PREFS, ...JSON.parse(stored) } : DEFAULT_COLUMN_PREFS
+      return stored ? readColumnPrefs(JSON.parse(stored)) : DEFAULT_COLUMN_PREFS
     } catch {
       return DEFAULT_COLUMN_PREFS
     }
@@ -233,21 +234,25 @@ export default function QueuePage() {
         resolveName={resolveName}
       />
 
-      <BatchBar
-        selectedCount={selectedVisible.length}
-        matchingCount={total}
-        selectAllMatching={selectedVisible.length === total && total > 0}
-        onSelectAllMatching={() =>
-          dispatch({ type: 'set-selection', ids: listed.map((ticket) => ticket.id) })
-        }
-        onClear={() => dispatch({ type: 'clear-selection' })}
-        analysts={analysts}
-        onAssign={(userId) => runBatch({ assigneeId: userId })}
-        pods={pods}
-        onMoveToPod={(groupId, userId) => runBatch({ groupId, assigneeId: userId })}
-        onStatus={(status) => runBatch({ status })}
-        onSchedule={(date) => runBatch({ actionDate: date })}
-      />
+      {/* Mounted only while something is selected: the panel keeps which screen
+          is open, and it used to come back on the last one, date and all. */}
+      {selectedVisible.length > 0 && (
+        <BatchBar
+          selectedCount={selectedVisible.length}
+          matchingCount={total}
+          selectAllMatching={selectedVisible.length === total && total > 0}
+          onSelectAllMatching={() =>
+            dispatch({ type: 'set-selection', ids: listed.map((ticket) => ticket.id) })
+          }
+          onClear={() => dispatch({ type: 'clear-selection' })}
+          analysts={analysts}
+          onAssign={(userId) => runBatch({ assigneeId: userId })}
+          pods={pods}
+          onMoveToPod={(groupId, userId) => runBatch({ groupId, assigneeId: userId })}
+          onStatus={(status) => runBatch({ status })}
+          onSchedule={(date) => runBatch({ actionDate: date })}
+        />
+      )}
     </div>
   )
 }

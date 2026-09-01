@@ -1,6 +1,7 @@
 import type { RefObject } from 'react'
 import { Popover } from '@/components/pipodesk/primitives'
 import { DIRECTION_COPY, GROUP_BY_COPY, SORT_COPY } from '@/lib/pipodesk/filter-copy'
+import { FIXED_COLUMN } from '@/lib/pipodesk/columns'
 import type { GroupBy } from '@/lib/pipodesk/group'
 import type { SortField, TicketSort } from '@/lib/pipodesk/sort'
 import styles from './Queue.module.css'
@@ -90,7 +91,10 @@ export function DisplayPopover({
           <div className={styles.panelScroll}>
             {availableColumns.map((column) => {
               const visivel = !hiddenColumns.includes(column.key)
-              const posicao = visibleColumnKeys.indexOf(column.key)
+              // Without dropping the fixed column, every data column reads one
+              // position to the right and the first one offered a dead arrow.
+              const ordenaveis = visibleColumnKeys.filter((key) => key !== FIXED_COLUMN)
+              const posicao = ordenaveis.indexOf(column.key)
               return (
                 <div key={column.key} className={styles.columnRow}>
                   <button
@@ -116,7 +120,7 @@ export function DisplayPopover({
                     type="button"
                     className={styles.columnMove}
                     aria-label={`Mover ${column.label} para a direita`}
-                    disabled={!visivel || posicao === visibleColumnKeys.length - 1}
+                    disabled={!visivel || posicao === ordenaveis.length - 1}
                     onClick={() => onMoveColumn(column.key, 1)}
                   >
                     ↓

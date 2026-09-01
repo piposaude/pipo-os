@@ -236,7 +236,7 @@
 .table thead th {
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: var(--desk-z-table-header);
   height: 40px;
   background: var(--desk-panel);
   box-shadow: inset 0 calc(-1 * var(--pipo-border-width-small)) 0 var(--pipo-border);
@@ -437,9 +437,11 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Inside the scroll box (see QueueTable): `height`, not `flex`, since the
+   parent no longer lays it out as a flex child. */
 .empty {
   display: flex;
-  flex: 1;
+  height: 100%;
   flex-direction: column;
   align-items: center;
   justify-content: center;

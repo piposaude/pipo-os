@@ -5,9 +5,7 @@ export default {
   saveView: 'Salvar esta fila como view',
   saveViewPending: 'Salvar view chega com o PD-104.',
   filters: 'Filtros',
-  filtersPending: 'O painel de filtros chega com o PD-102 (segunda rodada).',
   display: 'Exibição',
-  displayPending: 'Agrupar, ordenar e colunas chegam com o PD-102 (segunda rodada).',
   selectAll: 'Selecionar todos os chamados desta fila',
   selectRow: 'Selecionar chamado',
   empty: {

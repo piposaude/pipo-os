@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { QueueNode } from '@/lib/pipodesk/queue-view'
 import {
   CATEGORY_COPY,
@@ -51,11 +52,17 @@ export function SearchPalette({
     onClose()
   }
 
+  const optionId = (index: number) => `search-palette-option-${index}`
+
   const renderHit = (hit: SearchHit, index: number) => (
     <button
       key={hit.key}
+      id={optionId(index)}
       type="button"
       role="option"
+      // Out of the tab order: in a listbox the field keeps the focus and the
+      // arrows move the selection.
+      tabIndex={-1}
       aria-selected={index === active}
       className={styles.hit}
       data-active={index === active ? 'true' : undefined}
@@ -70,7 +77,9 @@ export function SearchPalette({
     </button>
   )
 
-  return (
+  // In a portal, outside `.desk-root`: inside the shell, its layout rules
+  // (`> div`) outrank the overlay's own and pinned the palette to the top.
+  return createPortal(
     <div
       className={styles.overlay}
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
@@ -83,6 +92,8 @@ export function SearchPalette({
           role="combobox"
           aria-expanded="true"
           aria-controls="search-palette-results"
+          // Without it the arrows move a highlight only sighted people see.
+          aria-activedescendant={flat.length > 0 ? optionId(active) : undefined}
           aria-label="Buscar chamados, beneficiários, empresas e visões"
           className={styles.input}
           placeholder="Buscar…"
@@ -137,6 +148,7 @@ export function SearchPalette({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

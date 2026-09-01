@@ -23,6 +23,16 @@ async function renderQueue() {
 const table = () => screen.getByRole('table')
 
 describe('fila operacional', () => {
+  /** A stored preference in the wrong shape used to throw on every render, and
+   *  the only way out ("reload") read the same storage again. */
+  it('should ignore a column preference stored in the wrong shape', async () => {
+    localStorage.setItem('pipodesk:columns', JSON.stringify({ hidden: null }))
+
+    await renderQueue()
+
+    expect(screen.getByRole('columnheader', { name: /Assunto/ })).toBeInTheDocument()
+  })
+
   it('should open on Meus tickets, with the columns of the prototype', async () => {
     await renderQueue()
 
@@ -60,9 +70,8 @@ describe('fila operacional', () => {
 
     const sidebar = screen.getByRole('navigation', { name: /pipodesk/i })
     const row = within(sidebar).getByText('Meus tickets').closest('div')
-    const naArvore = within(row as HTMLElement).getByRole('button', {
-      name: /^[\d.]+$/,
-    }).textContent
+    // The count is text beside the row, not a control: the row is what clicks.
+    const naArvore = within(row as HTMLElement).getByText(/^[\d.]+$/).textContent
 
     const anunciado = screen.getByRole('status').textContent ?? ''
 
@@ -86,6 +95,23 @@ describe('fila operacional', () => {
 
     await user.click(restore)
     expect(screen.getByRole('navigation', { name: /pipodesk/i })).toBeInTheDocument()
+  })
+
+  /** Collapsing hid the tree by unmounting it, and every expanded pod closed
+   *  again — the analyst reopened the same four nodes after each ⌘B. */
+  it('should keep the tree as it was after collapsing and restoring the menu', async () => {
+    await renderQueue()
+    const user = userEvent.setup()
+    const sidebar = screen.getByRole('navigation', { name: /pipodesk/i })
+
+    await user.click(within(sidebar).getByText('POD 1'))
+    expect(within(sidebar).getByText('MOV CLT')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Minimizar menu' }))
+    await user.click(screen.getByRole('button', { name: 'Mostrar menu' }))
+
+    const back = screen.getByRole('navigation', { name: /pipodesk/i })
+    expect(within(back).getByText('MOV CLT')).toBeInTheDocument()
   })
 
   it('should toggle the sidebar with the keyboard shortcut', async () => {

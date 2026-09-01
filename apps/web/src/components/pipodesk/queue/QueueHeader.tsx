@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { Breadcrumb, BreadcrumbItem } from '@piposaude/design-system'
 import { IS_MAC } from '@/lib/pipodesk/platform'
+import { hasCustomColumns } from '@/lib/pipodesk/columns'
 import { FILTER_FIELD_COPY, type FilterChip, type LabelContext } from '@/lib/pipodesk/filter-copy'
 import type { FilterField, TicketFilter } from '@/lib/pipodesk/filter'
 import type { GroupBy } from '@/lib/pipodesk/group'
@@ -229,7 +230,7 @@ export function QueueHeader({
                   strokeLinejoin="round"
                 />
               </svg>
-              {(groupBy !== 'none' || hiddenColumns.length > 2) && (
+              {(groupBy !== 'none' || hasCustomColumns(hiddenColumns)) && (
                 <span className={styles.iconDot} aria-hidden="true" />
               )}
             </button>

@@ -20,7 +20,8 @@
   --desk-shadow-panel: 0 4px 12px rgb(19 19 18 / 8%), 0 1px 3px rgb(19 19 18 / 6%);
 
   /* Explicit z ruler, or every component invents a number. */
-  --desk-z-table-header: 1;
+  /* Above the rows, below the batch bar and the popovers. */
+  --desk-z-table-header: 2;
   --desk-z-batch-bar: 10;
   --desk-z-popover: 20;
   --desk-z-modal: 30;

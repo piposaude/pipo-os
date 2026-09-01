@@ -29,6 +29,12 @@
   outline: none;
 }
 
+/* The only `outline: none` of the queue without a replacement — coming back to
+   the field with Shift+Tab showed nothing. */
+.input:focus-visible {
+  box-shadow: var(--pipo-shadow-focus-primary);
+}
+
 .results {
   overflow-y: auto;
   padding: var(--pipo-space-xxsmall);

@@ -178,44 +178,68 @@ export function DeskShell() {
   )
 
   const handleLogout = async () => {
-    await logout()
+    // Navigate even if the request fails: the person asked to leave, and
+    // staying on the queue with no feedback is worse than a stale server session.
+    try {
+      await logout()
+    } catch {
+      // The store already drops the local session when the request fails.
+    }
     navigate({ to: '/login' })
   }
 
+  /* Memoized: the shell sits above every screen of the desk, so a new object
+     here rerenders all of them on any state change. */
+  const context = useMemo(
+    () => ({
+      sections,
+      view,
+      dispatch,
+      rows,
+      today: DATASET_TODAY,
+      applyPatch,
+      comments,
+      addComment,
+      viewerId,
+      resolveName,
+      sidebarCollapsed,
+      toggleSidebar,
+    }),
+    [
+      sections,
+      view,
+      dispatch,
+      rows,
+      applyPatch,
+      comments,
+      addComment,
+      viewerId,
+      resolveName,
+      sidebarCollapsed,
+      toggleSidebar,
+    ],
+  )
+
   return (
-    <DeskContext.Provider
-      value={{
-        sections,
-        view,
-        dispatch,
-        rows,
-        today: DATASET_TODAY,
-        applyPatch,
-        comments,
-        addComment,
-        viewerId,
-        resolveName,
-        sidebarCollapsed,
-        toggleSidebar,
-      }}
-    >
+    <DeskContext.Provider value={context}>
       <div className="desk-root">
         <SidebarMainLayout
           sidebarWidth={sidebarCollapsed ? '0px' : 'var(--sidebar-w)'}
           sidebar={
-            sidebarCollapsed ? null : (
-              <QueueSidebar
-                sections={sections}
-                activeId={view.nodeId}
-                onSelect={selectNode}
-                structure={structureFixture}
-                viewerInitials={iniciaisDe(FIXTURE_USER_NAMES[viewerId] ?? viewerName)}
-                viewerName={FIXTURE_USER_NAMES[viewerId] ?? viewerName}
-                viewerEmail={email}
-                onLogout={handleLogout}
-                onOpenSearch={() => setSearchOpen(true)}
-              />
-            )
+            // Always mounted, hidden when collapsed: the tree keeps which nodes
+            // are open instead of reopening at the default after every ⌘B.
+            <QueueSidebar
+              collapsed={sidebarCollapsed}
+              sections={sections}
+              activeId={view.nodeId}
+              onSelect={selectNode}
+              structure={structureFixture}
+              viewerInitials={iniciaisDe(FIXTURE_USER_NAMES[viewerId] ?? viewerName)}
+              viewerName={FIXTURE_USER_NAMES[viewerId] ?? viewerName}
+              viewerEmail={email}
+              onLogout={handleLogout}
+              onOpenSearch={() => setSearchOpen(true)}
+            />
           }
           main={
             // `div`, not `main`: the DS layout already renders the `<main>` — nesting

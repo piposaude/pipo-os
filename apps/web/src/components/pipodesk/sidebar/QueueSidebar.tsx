@@ -30,6 +30,9 @@ export interface QueueSidebarProps {
   viewerEmail: string
   onLogout: () => void
   onOpenSearch: () => void
+  /** Hidden, not unmounted: which nodes are open is local state, and the tree
+   *  would reopen at the default after every ⌘B. */
+  collapsed?: boolean
 }
 
 /** The three team-page destinations. Glyphs drawn inline — the DS lacks
@@ -165,7 +168,7 @@ function Node({
         type="button"
         className={isInbox ? `${styles.item} ${styles.surface}` : styles.item}
         style={style}
-        aria-current={isActive}
+        aria-current={isActive ? 'page' : undefined}
         onClick={activate}
       >
         {iconAndLabel}
@@ -198,7 +201,7 @@ function Node({
         <button
           type="button"
           className={`${styles.item} ${styles.branch}`}
-          aria-current={isContainer ? undefined : isActive}
+          aria-current={isContainer || !isActive ? undefined : 'page'}
         >
           {iconAndLabel}
         </button>
@@ -206,7 +209,7 @@ function Node({
           type="button"
           className={styles.toggle}
           aria-expanded={open}
-          aria-label={`Expandir ${node.label}`}
+          aria-label={`${open ? 'Recolher' : 'Expandir'} ${node.label}`}
           onClick={(event) => {
             event.stopPropagation()
             setOpen((current) => !current)
@@ -229,11 +232,7 @@ function Node({
             />
           </svg>
         </button>
-        {isContainer ? null : (
-          <button type="button" className={styles.count} aria-current={isActive}>
-            {formatCount(node.count)}
-          </button>
-        )}
+        {isContainer ? null : <span className={styles.count}>{formatCount(node.count)}</span>}
       </div>
 
       {/* The group's admin links. Deliberately NOT TreeNodes: a node without
@@ -303,7 +302,7 @@ function SectionHeader({ title, children }: { title: string; children: React.Rea
           type="button"
           className={styles.toggle}
           aria-expanded={open}
-          aria-label={`Abrir ${title}`}
+          aria-label={`${open ? 'Recolher' : 'Abrir'} ${title}`}
           onClick={(event) => {
             event.stopPropagation()
             setOpen((current) => !current)
@@ -346,11 +345,12 @@ export function QueueSidebar({
   viewerEmail,
   onLogout,
   onOpenSearch,
+  collapsed = false,
 }: QueueSidebarProps) {
   const [accountOpen, setAccountOpen] = useState(false)
   const accountTrigger = useRef<HTMLButtonElement>(null)
   return (
-    <nav className={styles.sidebar} aria-label={constants.nav}>
+    <nav className={styles.sidebar} aria-label={constants.nav} hidden={collapsed}>
       <div className={styles.brand}>
         <PipoOsWordmark className={styles.wordmark} />
       </div>
