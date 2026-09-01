@@ -1,15 +1,14 @@
 import { NotFoundError, UnprocessableEntityError } from '../../shared/errors.js'
 import type { TicketsRepositoryPort } from './repository.js'
-import type {
-  CreateTicketBody,
-  ListTicketsQuery,
-  Ticket,
-  TicketList,
-  TicketStatus,
-  UpdateTicketBody,
+import {
+  CLOSED_STATUSES,
+  type CreateTicketBody,
+  type ListTicketsQuery,
+  type Ticket,
+  type TicketList,
+  type UpdateTicketBody,
+  type UpdateTicketStatusBody,
 } from './schemas.js'
-
-const CLOSED_STATUSES = new Set<TicketStatus>(['completed', 'cancelled'])
 
 export class TicketsService {
   constructor(private readonly repository: TicketsRepositoryPort) {}
@@ -56,6 +55,24 @@ export class TicketsService {
   async list(query: ListTicketsQuery): Promise<TicketList> {
     const { data, total } = await this.repository.findMany(query)
     return { data, total, page: query.page, pageSize: query.pageSize }
+  }
+
+  async changeStatus(id: string, data: UpdateTicketStatusBody, authorId: string): Promise<Ticket> {
+    const isClosed = CLOSED_STATUSES.has(data.status)
+    const closedAt = isClosed ? new Date().toISOString() : null
+
+    const result = await this.repository.changeStatus(
+      id,
+      data.status,
+      closedAt,
+      authorId,
+      data.reason,
+    )
+
+    if (result.kind === 'not-found') throw new NotFoundError(`Ticket ${id} not found`)
+    if (result.kind === 'already-closed')
+      throw new UnprocessableEntityError(`Ticket ${id} is already closed`)
+    return result.ticket
   }
 
   async claim(id: string, assigneeId: string): Promise<Ticket> {

@@ -13,6 +13,11 @@ export const ticketStatusSchema = z
   ])
   .meta({ id: 'TicketStatus' })
 
+export const CLOSED_STATUSES = new Set<z.infer<typeof ticketStatusSchema>>([
+  'completed',
+  'cancelled',
+])
+
 export const ticketSchema = z
   .object({
     id: z.uuid(),
@@ -71,6 +76,14 @@ export const updateTicketBodySchema = z
   .refine((b) => Object.keys(b).length > 0, { message: 'At least one field is required' })
   .meta({ id: 'UpdateTicketBody', minProperties: 1 })
 
+export const updateTicketStatusBodySchema = z
+  .object({
+    status: ticketStatusSchema,
+    reason: z.string().min(1).optional(),
+  })
+  .strict()
+  .meta({ id: 'UpdateTicketStatusBody' })
+
 export const listTicketsQuerySchema = z.object({
   status: ticketStatusSchema.optional(),
   queueId: z.uuid().optional(),
@@ -101,5 +114,6 @@ export type Ticket = z.infer<typeof ticketSchema>
 export type TicketParams = z.infer<typeof ticketParamsSchema>
 export type CreateTicketBody = z.infer<typeof createTicketBodySchema>
 export type UpdateTicketBody = z.infer<typeof updateTicketBodySchema>
+export type UpdateTicketStatusBody = z.infer<typeof updateTicketStatusBodySchema>
 export type ListTicketsQuery = z.infer<typeof listTicketsQuerySchema>
 export type TicketList = z.infer<typeof ticketListSchema>

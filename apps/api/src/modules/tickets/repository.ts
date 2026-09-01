@@ -2,13 +2,17 @@ import { sql, type Kysely, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
 import { ConflictError } from '../../shared/errors.js'
-import type {
-  CreateTicketBody,
-  ListTicketsQuery,
-  Ticket,
-  TicketStatus,
-  UpdateTicketBody,
+import {
+  CLOSED_STATUSES,
+  type CreateTicketBody,
+  type ListTicketsQuery,
+  type Ticket,
+  type TicketStatus,
+  type UpdateTicketBody,
 } from './schemas.js'
+
+export type ChangeStatusResult =
+  { kind: 'not-found' } | { kind: 'already-closed' } | { kind: 'ok'; ticket: Ticket }
 
 const OPEN_ENROLLMENT_CONSTRAINT = 'uq_tickets_open_enrollment'
 
@@ -37,6 +41,13 @@ export interface TicketsRepositoryPort {
   create(data: CreateTicketBody): Promise<Ticket>
   update(id: string, data: UpdateTicketBody): Promise<Ticket | undefined>
   claimOpen(id: string, assigneeId: string): Promise<Ticket | undefined>
+  changeStatus(
+    id: string,
+    toStatus: TicketStatus,
+    closedAt: string | null,
+    authorId: string,
+    reason?: string,
+  ): Promise<ChangeStatusResult>
   findMany(query: ListTicketsQuery): Promise<{ data: Ticket[]; total: number }>
 }
 
@@ -143,6 +154,49 @@ export class TicketsRepository implements TicketsRepositoryPort {
       }
       throw err
     }
+  }
+
+  async changeStatus(
+    id: string,
+    toStatus: TicketStatus,
+    closedAt: string | null,
+    authorId: string,
+    reason?: string,
+  ): Promise<ChangeStatusResult> {
+    return this.db.transaction().execute(async (trx) => {
+      const current = await trx
+        .selectFrom('tickets')
+        .selectAll()
+        .where('id', '=', id)
+        .forUpdate()
+        .executeTakeFirst()
+
+      if (!current) return { kind: 'not-found' }
+      if (CLOSED_STATUSES.has(current.status as TicketStatus)) {
+        return { kind: 'already-closed' }
+      }
+
+      const updated = await trx
+        .updateTable('tickets')
+        .set({ status: toStatus, closed_at: closedAt })
+        .where('id', '=', id)
+        .returningAll()
+        .executeTakeFirstOrThrow()
+
+      await trx
+        .insertInto('ticket_status_history')
+        .values({
+          ticket_id: id,
+          from_status: current.status,
+          to_status: toStatus,
+          author_id: authorId,
+          author_type: 'user',
+          reason: reason ?? null,
+        })
+        .execute()
+
+      return { kind: 'ok', ticket: toTicket(updated) }
+    })
   }
 
   async claimOpen(id: string, assigneeId: string): Promise<Ticket | undefined> {
