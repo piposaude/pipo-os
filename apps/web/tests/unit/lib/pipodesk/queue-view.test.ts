@@ -177,6 +177,20 @@ describe('queueViewReducer — filtros', () => {
     expect(next.filter.assigneeIds).toEqual([null, 'ana@pipo.health'])
   })
 
+  /** The window is not a filter: clearing chips must not silently widen the
+   *  queue from 30 days to the whole history. */
+  it('should keep the opening window when the filters are cleared', () => {
+    const dirty = queueViewReducer(INITIAL_VIEW, {
+      type: 'add-filter',
+      field: 'products',
+      values: ['life'],
+    })
+
+    const next = queueViewReducer(dirty, { type: 'clear-filters' })
+
+    expect(next.dateWindowDays).toBe(30)
+  })
+
   it('should clear every added filter and keep the node filter', () => {
     const dirty = queueViewReducer(
       queueViewReducer(INITIAL_VIEW, { type: 'add-filter', field: 'products', values: ['life'] }),

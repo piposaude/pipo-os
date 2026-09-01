@@ -152,12 +152,9 @@ export function queueViewReducer(view: QueueView, action: QueueAction): QueueVie
             : ({ ...cleared, [action.field]: fromNode } as TicketFilter),
       }
     }
+    // The window survives here too: it is the viewer's preference, not a chip.
     case 'clear-filters':
-      return {
-        ...view,
-        filter: { ...view.nodeFilter },
-        dateWindowDays: null,
-      }
+      return { ...view, filter: { ...view.nodeFilter } }
     // Store only the number: the screen applies the window on the base. Baking
     // it into `filter.createdSince` would make it a removable chip. Selection
     // clears because marked rows may have left the screen.

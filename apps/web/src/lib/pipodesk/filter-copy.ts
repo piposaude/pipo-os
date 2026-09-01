@@ -120,6 +120,18 @@ export interface FilterChip {
   text: string
 }
 
+/** Order-insensitive equality between two filter value lists. */
+const sameValues = (a: (string | null)[], b: (string | null)[]): boolean => {
+  if (a.length !== b.length) return false
+  const rest = [...b]
+  return a.every((value) => {
+    const at = rest.indexOf(value)
+    if (at === -1) return false
+    rest.splice(at, 1)
+    return true
+  })
+}
+
 /**
  * Chips read as sentences. Only what the person added on top of the node
  * becomes a chip — the node's own filter already lights the sidebar, and its
@@ -136,13 +148,9 @@ export function filterChipsOf(
     const values = filter[field] as (string | null)[] | undefined
     if (!values || values.length === 0) continue
     const fromNode = nodeFilter[field] as (string | null)[] | undefined
-    if (
-      fromNode &&
-      fromNode.length === values.length &&
-      fromNode.every((value, index) => value === values[index])
-    ) {
-      continue
-    }
+    // Compared as sets: the values are an OR, so another order is the same
+    // filter — positionally, a hand-built URL grew a chip nobody added.
+    if (fromNode && sameValues(fromNode, values)) continue
 
     const labels = values.map((value) => optionLabel(field, value, ctx))
     const text =

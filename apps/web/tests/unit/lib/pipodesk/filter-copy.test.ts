@@ -61,6 +61,18 @@ describe('filterChipsOf', () => {
     expect(chips).toEqual([{ field: 'products', text: 'Produto é Saúde' }])
   })
 
+  /** Same values in another order (a hand-built URL) are the same filter — a
+   *  positional compare invented a chip nobody added. */
+  it('should not chip the node filter when the values arrive in another order', () => {
+    const chips = filterChipsOf(
+      { statuses: ['incorrect-data', 'missing-documents'] },
+      { statuses: ['missing-documents', 'incorrect-data'] },
+      ctx,
+    )
+
+    expect(chips).toEqual([])
+  })
+
   it('should read as a sentence, joining two values with "ou" and folding more', () => {
     const dois = filterChipsOf({ types: ['inclusion', 'exclusion'] }, {}, ctx)
     expect(dois[0].text).toBe('Tipo é Inclusão ou Exclusão')
