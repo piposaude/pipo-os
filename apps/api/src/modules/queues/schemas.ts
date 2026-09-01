@@ -1,10 +1,11 @@
 import { z } from 'zod'
+import { ticketFilterSchema } from '../tickets/filter-schema.js'
 
 export const queueSchema = z
   .object({
     id: z.uuid(),
     name: z.string(),
-    filters: z.record(z.string(), z.unknown()),
+    filters: ticketFilterSchema,
     createdBy: z.string(),
     updatedBy: z.string().min(1).nullable(),
     createdAt: z.iso.datetime(),
@@ -23,7 +24,7 @@ export const queueParamsSchema = z.object({
 export const createQueueBodySchema = z
   .object({
     name: z.string().min(1).max(255),
-    filters: z.record(z.string(), z.unknown()).optional(),
+    filters: ticketFilterSchema.optional(),
   })
   .strict()
   .meta({ id: 'CreateQueueBody' })
@@ -31,7 +32,7 @@ export const createQueueBodySchema = z
 export const updateQueueBodySchema = z
   .object({
     name: z.string().min(1).max(255).optional(),
-    filters: z.record(z.string(), z.unknown()).optional(),
+    filters: ticketFilterSchema.optional(),
   })
   .strict()
   .refine((d) => d.name !== undefined || d.filters !== undefined, {

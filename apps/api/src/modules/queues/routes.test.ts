@@ -84,7 +84,13 @@ describe('queues routes', () => {
     })
 
     it('creates a queue with custom filters', async () => {
-      const filters = { status: 'active', tags: ['vip'] }
+      const filters = {
+        statuses: ['broker-processing', 'missing-documents'],
+        tags: ['vip'],
+        assigneeIds: ['@me', null],
+        priorities: ['urgent', null],
+        urgentBy: '2026-09-01',
+      }
       const response = await app.inject({
         method: 'POST',
         url: '/api/queues',
@@ -93,6 +99,28 @@ describe('queues routes', () => {
       })
       expect(response.statusCode).toBe(201)
       expect(response.json().filters).toEqual(filters)
+    })
+
+    it('returns 400 for a filter field that is not in the contract', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { name: 'Fila C', filters: { status: 'broker-processing' } },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+
+    it('returns 400 for a status outside the eight the API stores', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { name: 'Fila D', filters: { statuses: ['open'] } },
+      })
+
+      expect(response.statusCode).toBe(400)
     })
 
     it('returns 400 without name', async () => {
@@ -282,10 +310,10 @@ describe('queues routes', () => {
         method: 'PATCH',
         url: `/api/queues/${id}`,
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload: { filters: { priority: 'high' } },
+        payload: { filters: { priorities: ['high'] } },
       })
       expect(response.statusCode).toBe(200)
-      expect(response.json().filters).toEqual({ priority: 'high' })
+      expect(response.json().filters).toEqual({ priorities: ['high'] })
     })
 
     it('returns 400 for empty body', async () => {
