@@ -4,11 +4,13 @@ import type { Priority, TicketRow, Vinculo } from './ticket-row'
 /**
  * Queue filtering, plus the alive/awake window rules.
  *
+ * `statuses: [a, b]` matches a or b, and every extra field narrows further.
+ * `tags` is the exception: it asks for all the tags listed, not any of them.
+ * `urgentBy` matches a ticket that is urgent or already past its action date.
+ *
  * `statuses` stores the 8 API values, not the 6 UI ones — "Com o cliente"
  * writes `['missing-documents', 'incorrect-data']`, so a saved filter resolves
- * to the same set here and in the server-side resolver. `tags` is AND; every
- * other field is OR within and AND across. `null` is a legit value for
- * `assigneeIds` (free) and `priorities` (none).
+ * to the same set here and in the server-side resolver.
  */
 
 export type AssigneeFilterValue = string | null | '@me'
@@ -27,10 +29,11 @@ export interface TicketFilter {
   origins?: string[]
   groupIds?: string[]
   tags?: string[]
+  /** `null` = livre no pod; `@me` é resolvido para o viewer. */
   assigneeIds?: AssigneeFilterValue[]
+  /** `null` = sem prioridade. */
   priorities?: (Priority | null)[]
   actionDateBefore?: string
-  /** The filter's only OR: urgent OR past its action date. */
   urgentBy?: string
   createdSince?: string
   archived?: boolean
