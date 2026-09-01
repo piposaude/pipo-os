@@ -1,0 +1,141 @@
+/* Team page, ported from the prototype's team.css. */
+
+.screen {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  font-family: var(--pipo-font-ui);
+}
+
+/* The breadcrumb band is fixed with a rule below — unlike the queue, here
+   it separates navigation from scrolling content. */
+.topbar {
+  display: flex;
+  min-height: 48px;
+  flex: none;
+  align-items: center;
+  gap: var(--pipo-space-xsmall);
+  padding: 12px var(--pipo-space-medium);
+  border-bottom: var(--pipo-border-width-small) solid var(--pipo-border);
+  background: var(--desk-panel);
+}
+
+.missing {
+  padding: var(--pipo-space-medium);
+}
+
+.pagehead {
+  flex: none;
+  padding: var(--pipo-space-medium) var(--pipo-space-medium) var(--pipo-space-small);
+  display: flex;
+  align-items: flex-start;
+}
+
+/* 24px, not the DS 48px h1: a pod name is a working title, not a headline. */
+.pagehead h1 {
+  font-size: var(--pipo-fs-h3);
+  line-height: 1.313;
+  text-transform: none;
+}
+
+.titulo {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--pipo-space-xxsmall);
+}
+
+.sub {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The permission note closes the title row, right-aligned: it answers "why
+   is there no button here". */
+.acao {
+  flex: none;
+  margin-left: auto;
+  padding-top: 2px;
+  max-width: 38ch;
+  color: var(--pipo-text-secondary);
+  font-size: var(--pipo-fs-small);
+  text-align: right;
+}
+
+/* Outlined box, not a filled banner: a debt for coordination to resolve,
+   not a system error — filled red would shout all day. */
+.pendencia {
+  margin: 0 var(--pipo-space-medium) var(--pipo-space-small);
+  padding: var(--pipo-space-xsmall) var(--pipo-space-small);
+  border: var(--pipo-border-width-small) solid var(--pipo-danger-dark);
+  border-radius: var(--pipo-radius-small);
+}
+
+.pendenciaTexto {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pipo-space-xxsmall);
+  font-size: var(--pipo-fs-small);
+}
+
+.pendenciaTexto strong {
+  display: flex;
+  align-items: center;
+  gap: var(--pipo-space-xxsmall);
+  color: var(--pipo-neutral-darkest);
+  font-weight: var(--pipo-fw-semibold);
+}
+
+.pendenciaTexto span {
+  color: var(--pipo-text-secondary);
+}
+
+.secao {
+  min-height: 0;
+  flex: 1;
+  padding: 0 var(--pipo-space-medium) var(--pipo-space-large);
+}
+
+.person {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pipo-space-xsmall);
+}
+
+.muted {
+  color: var(--pipo-text-secondary);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pipo-space-small);
+  padding-top: var(--pipo-space-small);
+}
+
+.search {
+  max-width: 320px;
+}
+
+.nota {
+  margin: 0;
+  max-width: 68ch;
+  color: var(--pipo-text-secondary);
+  font-size: var(--pipo-fs-small);
+  line-height: var(--pipo-lh-default);
+}
+
+.criterio {
+  color: var(--pipo-text-secondary);
+  font-size: var(--pipo-fs-xsmall);
+}
+
+/* The open-toned variant: record, not alarm. */
+.pendenciaAberta {
+  margin: 0;
+  border-color: var(--pipo-border);
+}

@@ -1,4 +1,5 @@
 import { useState, type CSSProperties, useRef } from 'react'
+import { Link, useLocation } from '@tanstack/react-router'
 import { Badge, Button, Text } from '@piposaude/design-system'
 import { PipoOsWordmark } from '@/components/pipodesk/shell/PipoOsWordmark'
 import { Popover } from '@/components/pipodesk/primitives'
@@ -133,6 +134,7 @@ function Node({
   const style = { '--depth': node.depth } as CSSProperties
   const isActive = node.id === activeId
   const nodeGroup = groupOfNode(node.id, structure)
+  const location = useLocation()
   /** GEBEN is depth 0, so not a container: clicking opens the whole queue
    *  (the merge with the old "Todos" view). */
   const isContainer = nodeGroup !== undefined && node.depth > 0
@@ -239,19 +241,30 @@ function Node({
                  filter or count would break the count-equals-list invariant. */}
       {open && nodeGroup !== undefined && (
         <div className={styles.children} style={style}>
-          {/* Inert until the team page exists — the slice that adds it turns
-                         these into real links. */}
-          {ADMIN_LINKS.map(({ key, label, glyph }) => (
-            <span
-              key={key}
-              className={styles.item}
-              aria-disabled="true"
-              style={{ '--depth': node.depth + 1 } as CSSProperties}
-            >
-              <span className={styles.icon}>{glyph}</span>
-              <span className={styles.label}>{label}</span>
-            </span>
-          ))}
+          {/* `Link`, not button+navigate: real navigation gives ⌘-click and
+                         open-in-new-tab for free. */}
+          {ADMIN_LINKS.map(({ key, label, glyph }) => {
+            /* The three routes share a pathname and differ in `?tab=` — router
+                           `activeProps` matches by pathname and would light all three.
+                           `page`, not `true`: the right `aria-current` for a link. */
+            const naPagina = location.pathname === `/teams/${nodeGroup.id}`
+            const tabAtual = (location.search as { tab?: string }).tab ?? 'home'
+            return (
+              <Link
+                key={key}
+                to="/teams/$groupId"
+                params={{ groupId: nodeGroup.id }}
+                search={{ tab: key === 'home' ? undefined : key }}
+                className={styles.item}
+                aria-current={naPagina && tabAtual === key ? 'page' : undefined}
+                style={{ '--depth': node.depth + 1 } as CSSProperties}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <span className={styles.icon}>{glyph}</span>
+                <span className={styles.label}>{label}</span>
+              </Link>
+            )
+          })}
         </div>
       )}
 

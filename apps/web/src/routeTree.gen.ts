@@ -14,6 +14,7 @@ import { Route as PublicRouteImport } from './routes/_public'
 import { Route as AuthDeskRouteImport } from './routes/_auth/_desk'
 import { Route as AuthDeskIndexRouteImport } from './routes/_auth/_desk/index'
 import { Route as PublicLoginIndexRouteImport } from './routes/_public/login/index'
+import { Route as AuthDeskTeamsGroupIdRouteImport } from './routes/_auth/_desk/teams/$groupId'
 import { Route as AuthDeskTicketsIdRouteImport } from './routes/_auth/_desk/tickets/$id'
 
 const AuthRoute = AuthRouteImport.update({
@@ -38,6 +39,11 @@ const PublicLoginIndexRoute = PublicLoginIndexRouteImport.update({
   path: '/login/',
   getParentRoute: () => PublicRoute,
 } as any)
+const AuthDeskTeamsGroupIdRoute = AuthDeskTeamsGroupIdRouteImport.update({
+  id: '/teams/$groupId',
+  path: '/teams/$groupId',
+  getParentRoute: () => AuthDeskRoute,
+} as any)
 const AuthDeskTicketsIdRoute = AuthDeskTicketsIdRouteImport.update({
   id: '/tickets/$id',
   path: '/tickets/$id',
@@ -47,11 +53,13 @@ const AuthDeskTicketsIdRoute = AuthDeskTicketsIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AuthDeskIndexRoute
   '/login/': typeof PublicLoginIndexRoute
+  '/teams/$groupId': typeof AuthDeskTeamsGroupIdRoute
   '/tickets/$id': typeof AuthDeskTicketsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AuthDeskIndexRoute
   '/login': typeof PublicLoginIndexRoute
+  '/teams/$groupId': typeof AuthDeskTeamsGroupIdRoute
   '/tickets/$id': typeof AuthDeskTicketsIdRoute
 }
 export interface FileRoutesById {
@@ -61,13 +69,14 @@ export interface FileRoutesById {
   '/_auth/_desk': typeof AuthDeskRouteWithChildren
   '/_auth/_desk/': typeof AuthDeskIndexRoute
   '/_public/login/': typeof PublicLoginIndexRoute
+  '/_auth/_desk/teams/$groupId': typeof AuthDeskTeamsGroupIdRoute
   '/_auth/_desk/tickets/$id': typeof AuthDeskTicketsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login/' | '/tickets/$id'
+  fullPaths: '/' | '/login/' | '/teams/$groupId' | '/tickets/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/tickets/$id'
+  to: '/' | '/login' | '/teams/$groupId' | '/tickets/$id'
   id:
     | '__root__'
     | '/_auth'
@@ -75,6 +84,7 @@ export interface FileRouteTypes {
     | '/_auth/_desk'
     | '/_auth/_desk/'
     | '/_public/login/'
+    | '/_auth/_desk/teams/$groupId'
     | '/_auth/_desk/tickets/$id'
   fileRoutesById: FileRoutesById
 }
@@ -120,6 +130,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicLoginIndexRouteImport
       parentRoute: typeof PublicRoute
     }
+    '/_auth/_desk/teams/$groupId': {
+      id: '/_auth/_desk/teams/$groupId'
+      path: '/teams/$groupId'
+      fullPath: '/teams/$groupId'
+      preLoaderRoute: typeof AuthDeskTeamsGroupIdRouteImport
+      parentRoute: typeof AuthDeskRoute
+    }
     '/_auth/_desk/tickets/$id': {
       id: '/_auth/_desk/tickets/$id'
       path: '/tickets/$id'
@@ -132,11 +149,13 @@ declare module '@tanstack/react-router' {
 
 interface AuthDeskRouteChildren {
   AuthDeskIndexRoute: typeof AuthDeskIndexRoute
+  AuthDeskTeamsGroupIdRoute: typeof AuthDeskTeamsGroupIdRoute
   AuthDeskTicketsIdRoute: typeof AuthDeskTicketsIdRoute
 }
 
 const AuthDeskRouteChildren: AuthDeskRouteChildren = {
   AuthDeskIndexRoute: AuthDeskIndexRoute,
+  AuthDeskTeamsGroupIdRoute: AuthDeskTeamsGroupIdRoute,
   AuthDeskTicketsIdRoute: AuthDeskTicketsIdRoute,
 }
 
