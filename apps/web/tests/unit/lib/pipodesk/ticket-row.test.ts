@@ -17,10 +17,17 @@ function apiTicket(overrides: Partial<Ticket> = {}): Ticket {
     sourceSystem: 'enrollment-integrations',
     parentTicketId: null,
     closedAt: null,
+    title: null,
+    priority: null,
+    actionDate: null,
+    groupId: null,
+    pendingDocumentation: [],
+    requester: null,
+    collaborators: [],
     createdAt: '2026-08-10T14:30:00.000Z',
     updatedAt: '2026-08-11T09:00:00.000Z',
     ...overrides,
-  }
+  } as Ticket
 }
 
 describe('toTicketRow — campos do próprio ticket', () => {
