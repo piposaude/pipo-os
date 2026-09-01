@@ -41,13 +41,14 @@ export interface OutboundWebhookDeliveries {
 }
 
 export interface TicketComments {
-  author_id: string;
+  author_id: string | null;
   body: string;
   channel: Generated<string>;
   created_at: Generated<Timestamp>;
-  event_type: string;
+  event_type: string | null;
   id: Generated<string>;
   kind: string;
+  metadata: Generated<Json>;
   ticket_id: string;
   visibility: string;
 }

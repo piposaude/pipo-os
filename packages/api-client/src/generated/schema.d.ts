@@ -144,6 +144,113 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tickets/{id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CommentList"];
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateCommentBodyInput"];
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TicketComment"];
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/groups": {
         parameters: {
             query?: never;
@@ -1350,19 +1457,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        CreateGroupBodyInput: {
-            name: string;
-        };
-        UpdateGroupBodyInput: {
-            name: string;
-        };
-        AddGroupMemberBodyInput: {
-            /** Format: uuid */
-            userId: string;
-        };
-        UpdateGroupMemberBodyInput: {
-            active: boolean;
-        };
         /** @enum {string} */
         TicketStatusInput: "broker-processing" | "carrier-processing" | "broker-open-issue" | "missing-documents" | "incorrect-data" | "completed" | "cancelled" | "submitted-cancellation";
         CreateTicketBodyInput: {
@@ -1397,6 +1491,24 @@ export interface components {
             status: components["schemas"]["TicketStatusInput"];
             reason?: string;
         };
+        CreateCommentBodyInput: {
+            /** @enum {string} */
+            visibility: "public" | "private";
+            body: string;
+        };
+        CreateGroupBodyInput: {
+            name: string;
+        };
+        UpdateGroupBodyInput: {
+            name: string;
+        };
+        AddGroupMemberBodyInput: {
+            /** Format: uuid */
+            userId: string;
+        };
+        UpdateGroupMemberBodyInput: {
+            active: boolean;
+        };
         CreateQueueBodyInput: {
             name: string;
             filters?: {
@@ -1417,36 +1529,6 @@ export interface components {
             /** Format: email */
             email: string;
             policies: string[];
-        };
-        Group: {
-            /** Format: uuid */
-            id: string;
-            name: string;
-            createdBy: string;
-            updatedBy: string | null;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        GroupMember: {
-            /** Format: uuid */
-            groupId: string;
-            /** Format: uuid */
-            userId: string;
-            active: boolean;
-            /** Format: date-time */
-            createdAt: string;
-        };
-        ErrorResponse: {
-            error: string;
-            message: string;
-        };
-        GroupList: {
-            data: components["schemas"]["Group"][];
-            total: number;
-            page: number;
-            pageSize: number;
         };
         /** @enum {string} */
         TicketStatus: "broker-processing" | "carrier-processing" | "broker-open-issue" | "missing-documents" | "incorrect-data" | "completed" | "cancelled" | "submitted-cancellation";
@@ -1488,8 +1570,60 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        ErrorResponse: {
+            error: string;
+            message: string;
+        };
         TicketList: {
             data: components["schemas"]["Ticket"][];
+            total: number;
+            page: number;
+            pageSize: number;
+        };
+        TicketComment: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            ticketId: string;
+            /** @enum {string} */
+            kind: "manual" | "automated_event";
+            /** @enum {string} */
+            channel: "internal" | "email";
+            /** @enum {string} */
+            visibility: "public" | "private";
+            eventType: string | null;
+            authorId: string | null;
+            body: string;
+            metadata: {
+                [key: string]: unknown;
+            };
+            createdAt: string;
+        };
+        CommentList: {
+            data: components["schemas"]["TicketComment"][];
+        };
+        Group: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            createdBy: string;
+            updatedBy: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        GroupMember: {
+            /** Format: uuid */
+            groupId: string;
+            /** Format: uuid */
+            userId: string;
+            active: boolean;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        GroupList: {
+            data: components["schemas"]["Group"][];
             total: number;
             page: number;
             pageSize: number;
