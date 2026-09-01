@@ -4,6 +4,7 @@ import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 
 const row = (overrides: Partial<TicketRow> & Pick<TicketRow, 'id'>): TicketRow =>
   ({
+    displayNumber: null,
     enrollmentId: 'e',
     companyId: 'a',
     status: 'broker-processing',
@@ -35,6 +36,13 @@ const row = (overrides: Partial<TicketRow> & Pick<TicketRow, 'id'>): TicketRow =
 const TODAY = '2026-08-31'
 
 describe('applyPatches', () => {
+  it('should ignore an explicit undefined in the patch — absence is the only "keep"', () => {
+    const base = [row({ id: '1', priority: 'urgent' })]
+    const patched = applyPatches(base, { '1': { priority: undefined } }, TODAY)
+
+    expect(patched[0].priority).toBe('urgent')
+  })
+
   it('should leave the base untouched and return it unchanged when there is no patch', () => {
     const base = [row({ id: '1' })]
 

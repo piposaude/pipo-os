@@ -6,6 +6,7 @@ import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 
 const row = (overrides: Partial<TicketRow> & Pick<TicketRow, 'id'>): TicketRow =>
   ({
+    displayNumber: null,
     enrollmentId: 'e',
     companyId: 'empresa-1',
     status: 'broker-processing',
@@ -58,6 +59,14 @@ const rows = [
     display: 'completed',
     closedAt: '2026-08-01T10:00:00.000Z',
   }),
+  row({ id: '705700', displayNumber: 'M000123' }),
+  row({ id: '705701', beneficiaryName: 'Paula Souza' }),
+  row({
+    id: '705702',
+    beneficiaryName: 'Paula Souza',
+    companyId: 'empresa-2',
+    companyName: 'Guaporé Agropecuária',
+  }),
 ]
 
 const sections = buildTree(rows, {
@@ -97,6 +106,25 @@ describe('searchQueue', () => {
       'Renata Borges',
     ])
     expect(pessoas?.hits[0].node.windowMode).toBe('all')
+  })
+
+  it('should find a ticket by its display number', () => {
+    const groups = searchQueue('m000123', rows, sections)
+    const chamados = groups.find((group) => group.category === 'chamado')
+
+    expect(chamados?.hits[0].label).toBe('Chamado M000123')
+    expect(chamados?.hits[0].node.filter).toEqual({ ticketIds: ['705700'] })
+  })
+
+  it('should keep homonyms from different companies as two results', () => {
+    const groups = searchQueue('paula souza', rows, sections)
+    const pessoas = groups.find((group) => group.category === 'beneficiario')
+
+    expect(pessoas?.hits).toHaveLength(2)
+    expect(pessoas?.hits.map((hit) => hit.detail)).toEqual([
+      'Caiçara Metalurgia',
+      'Guaporé Agropecuária',
+    ])
   })
 
   it('should find the tree views by label', () => {

@@ -20,7 +20,9 @@ export interface TicketFilter {
   products?: string[]
   types?: string[]
   portes?: string[]
-  contractTypes?: string[]
+  /** `null` = sem contrato no snapshot — MOV PJ filtra `['pj', null]` para a
+   *  lista bater com o tally (que conta não-CLT). */
+  contractTypes?: (string | null)[]
   vinculos?: Vinculo[]
   origins?: string[]
   groupIds?: string[]
@@ -97,7 +99,8 @@ export function matchesFilter(ticket: TicketRow, filter: TicketFilter, viewerId:
   if (missesList(filter.products, ticket.product)) return false
   if (missesList(filter.types, ticket.enrollmentType)) return false
   if (missesList(filter.portes, ticket.porte)) return false
-  if (missesList(filter.contractTypes, ticket.contractType)) return false
+  if (filter.contractTypes?.length && !filter.contractTypes.includes(ticket.contractType))
+    return false
   if (missesList(filter.vinculos, ticket.vinculo)) return false
   if (missesList(filter.origins, ticket.sourceSystem)) return false
   if (missesList(filter.groupIds, ticket.groupId)) return false

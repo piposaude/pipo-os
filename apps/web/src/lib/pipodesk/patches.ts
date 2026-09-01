@@ -30,8 +30,14 @@ export function applyPatches(
   if (Object.keys(patches).length === 0) return tickets
 
   return tickets.map((ticket) => {
-    const patch = patches[ticket.id]
-    if (!patch) return ticket
+    const raw = patches[ticket.id]
+    if (!raw) return ticket
+
+    // An explicit `{ priority: undefined }` must not clobber the field —
+    // absence is the only "keep as is" (exactOptionalPropertyTypes is off).
+    const patch = Object.fromEntries(
+      Object.entries(raw).filter(([, value]) => value !== undefined),
+    ) as TicketPatch
 
     const next: TicketRow = { ...ticket, ...patch }
     if (patch.status !== undefined) {

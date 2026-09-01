@@ -93,6 +93,16 @@ describe('slaOf', () => {
     expect(reading.state).toBe('warning')
   })
 
+  it('should still warn on the last whole day when the limit is not a multiple of 24h', () => {
+    const reading = slaOf(
+      { createdAt: '2026-08-30T00:00:00.000Z' },
+      { hours: 36, hasPenalty: false },
+      TODAY,
+    )
+
+    expect(reading.state).toBe('warning')
+  })
+
   it('should be ok with room to spare', () => {
     const reading = slaOf(
       { createdAt: '2026-08-30T00:00:00.000Z' },

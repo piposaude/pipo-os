@@ -3,6 +3,7 @@ import { tallyPods } from '@/lib/pipodesk/tally'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 
 const row = (overrides: Partial<TicketRow> & Pick<TicketRow, 'id'>): TicketRow => ({
+  displayNumber: null,
   enrollmentId: `enr-${overrides.id}`,
   companyId: 'empresa-a',
   status: 'broker-processing',

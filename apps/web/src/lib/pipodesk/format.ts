@@ -73,8 +73,10 @@ export function slaOf(
   if (!sla) return { daysOpen, limitHours: null, hasPenalty: false, state: null }
 
   const limitDays = sla.hours / 24
+  // `daysOpen` is an integer; a fractional limit (36h → 1,5) would make the
+  // strict-equality "last day" unreachable, jumping ok → breached.
   const state: SlaState =
-    daysOpen > limitDays ? 'breached' : daysOpen === limitDays ? 'warning' : 'ok'
+    daysOpen > limitDays ? 'breached' : daysOpen === Math.floor(limitDays) ? 'warning' : 'ok'
 
   return { daysOpen, limitHours: sla.hours, hasPenalty: sla.hasPenalty, state }
 }

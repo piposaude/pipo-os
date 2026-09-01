@@ -14,6 +14,7 @@ const TODAY = '2026-08-31'
 const VIEWER = 'ana@piposaude.com.br'
 
 const row = (overrides: Partial<TicketRow> & Pick<TicketRow, 'id'>): TicketRow => ({
+  displayNumber: null,
   enrollmentId: `enr-${overrides.id}`,
   companyId: 'empresa-a',
   status: 'broker-processing',
@@ -278,6 +279,33 @@ describe('buildTree — o invariante: contagem do nó = lista que a tela monta',
 
       expect(`${node.id}: ${node.count}`).toBe(`${node.id}: ${listed.length}`)
     }
+  })
+
+  it('should hold for MOV PJ, where a missing contract counts as PJ (filter [pj, null])', () => {
+    const state = structure({
+      queues: [
+        {
+          id: 'queue-pod-1-pj',
+          name: 'MOV PJ',
+          groupId: 'pod-1',
+          ownerId: null,
+          subscriberIds: [],
+          filter: { contractTypes: ['pj', null] },
+          sort: { by: 'actionDate', direction: 'asc' },
+        },
+      ],
+    })
+    const rows = [
+      row({ id: '1', contractType: 'pj' }),
+      row({ id: '2', contractType: null }),
+      row({ id: '3', contractType: 'clt' }),
+    ]
+    const sections = build(rows, state)
+    const pj = nodeById(sections, 'queue-pod-1-pj')
+
+    expect(pj?.count).toBe(2)
+    const listed = applyFilter(windowOf(rows, pj!.windowMode, TODAY), pj!.filter, VIEWER)
+    expect(listed.map((ticket) => ticket.id)).toEqual(['1', '2'])
   })
 })
 

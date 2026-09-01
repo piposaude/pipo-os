@@ -5,6 +5,7 @@
  * `GET /api/search` (PD-080) takes over later without changing the palette.
  */
 
+import { toQueueNode } from './queue-node'
 import type { QueueNode } from './queue-view'
 import { SEARCH_NODE_PREFIX, type TreeNode, type TreeSection } from './tree'
 import type { TicketRow } from './ticket-row'
@@ -70,17 +71,6 @@ const treeNodes = (sections: TreeSection[]): TreeNode[] => {
   return out
 }
 
-const toQueueNode = (node: TreeNode): QueueNode => ({
-  id: node.id,
-  label: node.label,
-  filter: node.filter,
-  groupId: node.groupId,
-  windowMode: node.windowMode,
-  labelPath: node.path,
-  sort: node.sort,
-  ...(node.groupBy ? { groupBy: node.groupBy } : {}),
-})
-
 export function searchQueue(
   query: string,
   rows: TicketRow[],
@@ -94,20 +84,26 @@ export function searchQueue(
   const porEmpresa = new Map<string, { name: string; count: number }>()
 
   for (const row of rows) {
-    if (row.id.includes(needle)) {
+    // Both keys: the UUID (links, logs) and the number someone pastes from Slack.
+    const byNumber =
+      typeof row.displayNumber === 'string' && normalize(row.displayNumber).includes(needle)
+    if (row.id.includes(needle) || byNumber) {
+      const label = `Chamado ${row.displayNumber ?? row.id}`
       chamados.push({
         key: `ticket-${row.id}`,
         category: 'chamado',
-        label: `Chamado ${row.id}`,
+        label,
         detail: row.subject,
         count: null,
-        node: syntheticNode(`ticket-${row.id}`, `Chamado ${row.id}`, { ticketIds: [row.id] }),
+        node: syntheticNode(`ticket-${row.id}`, label, { ticketIds: [row.id] }),
       })
     }
     if (row.beneficiaryName && normalize(row.beneficiaryName).includes(needle)) {
-      const bucket = porPessoa.get(row.beneficiaryName)
+      // Name + company: homonyms in different companies stay two results.
+      const personKey = `${row.beneficiaryName}::${row.companyId}`
+      const bucket = porPessoa.get(personKey)
       if (bucket) bucket.push(row)
-      else porPessoa.set(row.beneficiaryName, [row])
+      else porPessoa.set(personKey, [row])
     }
     if (row.companyName && normalize(row.companyName).includes(needle)) {
       const atual = porEmpresa.get(row.companyId)
@@ -118,14 +114,17 @@ export function searchQueue(
     }
   }
 
-  const beneficiarios: SearchHit[] = [...porPessoa.entries()].map(([name, tickets]) => ({
-    key: `person-${name}`,
-    category: 'beneficiario',
-    label: name,
-    detail: tickets[0].companyName ?? '',
-    count: tickets.length,
-    node: syntheticNode(`person-${name}`, name, { ticketIds: tickets.map((t) => t.id) }),
-  }))
+  const beneficiarios: SearchHit[] = [...porPessoa.entries()].map(([personKey, tickets]) => {
+    const name = tickets[0].beneficiaryName ?? personKey
+    return {
+      key: `person-${personKey}`,
+      category: 'beneficiario',
+      label: name,
+      detail: tickets[0].companyName ?? '',
+      count: tickets.length,
+      node: syntheticNode(`person-${personKey}`, name, { ticketIds: tickets.map((t) => t.id) }),
+    }
+  })
 
   const empresas: SearchHit[] = [...porEmpresa.entries()].map(([companyId, info]) => ({
     key: `company-${companyId}`,

@@ -17,5 +17,3 @@ export const PENDING_REASON_COPY: Record<PendingReason, string> = {
   'incorrect-data': 'Dado incorreto',
   'internal-issue': 'Pendência interna',
 }
-
-export default { DISPLAY_STATUS_COPY, PENDING_REASON_COPY }

@@ -14,6 +14,8 @@ export type Vinculo = 'titular' | 'dependente' | 'grupo-familiar'
 
 export interface TicketRow {
   id: string
+  /** Human-readable id (`M000123`) — the ID column and search key. */
+  displayNumber: string | null
   enrollmentId: string
   companyId: string
   /** Status as the API stores it (8 values). Every write uses this one. */
@@ -35,6 +37,8 @@ export interface TicketRow {
   assigneeId: string | null
   groupId: string | null
   priority: Priority | null
+  /** Date-only (`YYYY-MM-DD`). Every consumer compares strings against
+   *  date-only cuts; `toTicketRow` truncates whatever the API sends. */
   actionDate: string | null
   tags: string[]
   sourceSystem: string
@@ -50,6 +54,7 @@ export interface TicketRow {
 type ApiTicketWithPending = Ticket &
   Partial<{
     title: string | null
+    displayNumber: string | null
     priority: string | null
     actionDate: string | null
     groupId: string | null
@@ -128,6 +133,7 @@ export function toTicketRow(ticket: Ticket): TicketRow {
 
   return {
     id: ticket.id,
+    displayNumber: typeof pending.displayNumber === 'string' ? pending.displayNumber : null,
     enrollmentId: ticket.enrollmentId,
     companyId: ticket.companyId,
     status: ticket.status,
@@ -155,7 +161,7 @@ export function toTicketRow(ticket: Ticket): TicketRow {
     assigneeId: ticket.assigneeId,
     groupId: typeof pending.groupId === 'string' ? pending.groupId : null,
     priority: readPriority(pending.priority),
-    actionDate: typeof pending.actionDate === 'string' ? pending.actionDate : null,
+    actionDate: typeof pending.actionDate === 'string' ? pending.actionDate.slice(0, 10) : null,
     tags: ticket.tags,
     sourceSystem: ticket.sourceSystem,
     createdAt: ticket.createdAt,

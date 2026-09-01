@@ -52,6 +52,22 @@ describe('toTicketRow — campos do próprio ticket', () => {
     expect(row.priority).toBeNull()
     expect(row.actionDate).toBeNull()
     expect(row.groupId).toBeNull()
+    expect(row.displayNumber).toBeNull()
+  })
+
+  it('should truncate a full ISO timestamp in actionDate to date-only', () => {
+    const row = toTicketRow({
+      ...apiTicket(),
+      actionDate: '2026-09-05T12:00:00.000Z',
+    } as Ticket)
+
+    expect(row.actionDate).toBe('2026-09-05')
+  })
+
+  it('should read displayNumber once the api sends it', () => {
+    const row = toTicketRow({ ...apiTicket(), displayNumber: 'M000123' } as Ticket)
+
+    expect(row.displayNumber).toBe('M000123')
   })
 
   it('should read priority, actionDate and groupId once the api sends them', () => {

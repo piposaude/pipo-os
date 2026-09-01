@@ -80,15 +80,28 @@ export type QueueAction =
  *  UI/filter boundary. */
 function decodeValues(field: FilterField, values: string[]): unknown[] {
   if (field === 'assigneeIds') return values.map((value) => (value === 'livre' ? null : value))
-  if (field === 'priorities') return values.map((value) => (value === 'sem' ? null : value))
+  if (field === 'priorities' || field === 'contractTypes')
+    return values.map((value) => (value === 'sem' ? null : value))
   return values
 }
 
+/** URLs are hand-editable: a stray `%` must not blow up the restore. */
+function unescapeValue(value: string): string {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
+}
+
 function encodeValues(field: FilterField, values: unknown[]): string[] {
+  // Free strings (tags) may carry `,` `;` `:` — the codec's own separators.
+  const escape = (value: unknown): string => encodeURIComponent(String(value))
   if (field === 'assigneeIds')
-    return values.map((value) => (value === null ? 'livre' : String(value)))
-  if (field === 'priorities') return values.map((value) => (value === null ? 'sem' : String(value)))
-  return values.map((value) => String(value))
+    return values.map((value) => (value === null ? 'livre' : escape(value)))
+  if (field === 'priorities' || field === 'contractTypes')
+    return values.map((value) => (value === null ? 'sem' : escape(value)))
+  return values.map(escape)
 }
 
 const withoutField = (filter: TicketFilter, field: FilterField): TicketFilter => {
@@ -244,7 +257,10 @@ export function fromSearch(search: QueueSearch, context: RestoreContext): QueueV
     const [field, rawValues] = chunk.split(':')
     if (!field || !rawValues) continue
     if (!FILTER_FIELDS.includes(field as FilterField)) continue
-    const values = rawValues.split(',').filter((value) => value !== '')
+    const values = rawValues
+      .split(',')
+      .filter((value) => value !== '')
+      .map(unescapeValue)
     if (values.length === 0) continue
     Object.assign(added, {
       [field]: decodeValues(field as FilterField, values),

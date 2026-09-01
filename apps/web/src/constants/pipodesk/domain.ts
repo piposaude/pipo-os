@@ -34,5 +34,3 @@ export const PRIORITY_COPY: Record<string, string> = {
   medium: 'Média',
   low: 'Baixa',
 }
-
-export default { PRODUCT_COPY, ENROLLMENT_TYPE_COPY, PORTE_COPY, VINCULO_COPY, PRIORITY_COPY }

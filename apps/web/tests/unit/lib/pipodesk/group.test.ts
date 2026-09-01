@@ -4,6 +4,7 @@ import { groupTickets } from '@/lib/pipodesk/group'
 
 function row(overrides: Partial<TicketRow> & { id: string }): TicketRow {
   return {
+    displayNumber: null,
     enrollmentId: 'e',
     companyId: 'company-1',
     status: 'broker-processing',

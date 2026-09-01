@@ -4,6 +4,7 @@ import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 
 const row = (overrides: Partial<TicketRow> & Pick<TicketRow, 'id'>): TicketRow =>
   ({
+    displayNumber: null,
     enrollmentId: 'e',
     companyId: 'a',
     status: 'carrier-processing',

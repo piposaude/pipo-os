@@ -265,6 +265,17 @@ describe('URL round trip', () => {
       field: 'priorities',
       values: ['sem', 'urgent'],
     }),
+    queueViewReducer(INITIAL_VIEW, {
+      type: 'add-filter',
+      field: 'contractTypes',
+      values: ['sem', 'pj'],
+    }),
+    // Tags are free API strings — the codec's own separators must survive.
+    queueViewReducer(INITIAL_VIEW, {
+      type: 'add-filter',
+      field: 'tags',
+      values: ['a,b', 'c;d:e', '100%'],
+    }),
   ]
 
   it('should survive a round trip through the search params', () => {

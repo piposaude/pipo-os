@@ -4,6 +4,7 @@ import { DEFAULT_SORT, TRIAGE_RANK, sortTickets } from '@/lib/pipodesk/sort'
 
 function row(overrides: Partial<TicketRow> & { id: string }): TicketRow {
   return {
+    displayNumber: null,
     enrollmentId: 'e',
     companyId: 'c',
     status: 'broker-processing',

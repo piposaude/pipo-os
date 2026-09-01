@@ -15,6 +15,7 @@ const VIEWER = 'ana@pipo.health'
 
 function row(overrides: Partial<TicketRow> & { id: string }): TicketRow {
   return {
+    displayNumber: null,
     enrollmentId: 'e',
     companyId: 'company-1',
     status: 'broker-processing',
@@ -103,6 +104,13 @@ describe('matchesFilter — single value fields', () => {
     expect(matchesFilter(row({ id: 'a', product: null }), { products: ['life'] }, VIEWER)).toBe(
       false,
     )
+  })
+
+  it('should match a missing contract when the filter lists null — the MOV PJ cut', () => {
+    const semContrato = row({ id: 'a', contractType: null })
+
+    expect(matchesFilter(semContrato, { contractTypes: ['pj', null] }, VIEWER)).toBe(true)
+    expect(matchesFilter(semContrato, { contractTypes: ['pj'] }, VIEWER)).toBe(false)
   })
 })
 

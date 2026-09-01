@@ -61,11 +61,13 @@ export const ORIGIN_COPY: Record<string, string> = {
 export const SENTINELA_NULO: Partial<Record<FilterField, string>> = {
   assigneeIds: 'livre',
   priorities: 'sem',
+  contractTypes: 'sem',
 }
 
 const NULL_LABEL: Partial<Record<FilterField, string>> = {
   assigneeIds: 'Livre no pod',
   priorities: 'Sem prioridade',
+  contractTypes: 'Sem contrato',
 }
 
 /** Analyst-facing status label (6 display states + reason), translated by
@@ -102,7 +104,8 @@ export function optionLabel(field: FilterField, value: string | null, ctx: Label
     case 'assigneeIds':
       return value === '@me' ? 'você' : ctx.userName(value)
     case 'contractTypes':
-      return value === 'pj' ? 'PJ' : 'CLT'
+      // The snapshot vocabulary is open — an unknown value shows raw, not "CLT".
+      return value === 'pj' ? 'PJ' : value === 'clt' ? 'CLT' : value
     case 'vinculos':
       return VINCULO_COPY[value] ?? value
     case 'priorities':

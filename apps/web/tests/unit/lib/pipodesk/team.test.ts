@@ -18,6 +18,7 @@ const structure: StructureState = {
 
 const row = (overrides: Partial<TicketRow> & Pick<TicketRow, 'id'>): TicketRow =>
   ({
+    displayNumber: null,
     enrollmentId: 'e',
     companyId: 'a',
     status: 'broker-processing',
