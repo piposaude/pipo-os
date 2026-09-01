@@ -1,9 +1,16 @@
 import type { Ticket } from '@pipo-os/api-client'
 
 const base = {
+  title: null,
+  priority: null,
+  actionDate: null,
   queueId: null,
+  groupId: null,
   assigneeId: null,
   tags: [],
+  pendingDocumentation: [],
+  requester: null,
+  collaborators: [],
   forceCompletion: false,
   enrollmentSnapshot: {},
   parentTicketId: null,
@@ -13,6 +20,7 @@ const base = {
 export const ticketsFixture: Ticket[] = [
   {
     id: crypto.randomUUID(),
+    displayNumber: 'M000001',
     enrollmentId: crypto.randomUUID(),
     enrollmentType: 'inclusion',
     companyId: crypto.randomUUID(),
@@ -24,6 +32,7 @@ export const ticketsFixture: Ticket[] = [
   },
   {
     id: crypto.randomUUID(),
+    displayNumber: 'M000002',
     enrollmentId: crypto.randomUUID(),
     enrollmentType: 'exclusion',
     companyId: crypto.randomUUID(),
@@ -35,6 +44,7 @@ export const ticketsFixture: Ticket[] = [
   },
   {
     id: crypto.randomUUID(),
+    displayNumber: 'M000003',
     enrollmentId: crypto.randomUUID(),
     enrollmentType: 'update',
     companyId: crypto.randomUUID(),

@@ -121,20 +121,28 @@ export interface TicketQueuesXGroup {
 }
 
 export interface Tickets {
+  action_date: Timestamp | null;
   assignee_id: string | null;
   closed_at: Timestamp | null;
+  collaborators: Generated<Json>;
   company_id: string;
   created_at: Generated<Timestamp>;
+  display_number: Generated<string>;
   enrollment_id: string;
   enrollment_snapshot: Generated<Json>;
   enrollment_type: string;
   force_completion: Generated<boolean>;
+  group_id: string | null;
   id: Generated<string>;
   parent_ticket_id: string | null;
+  pending_documentation: Generated<string[]>;
+  priority: string | null;
   queue_id: string | null;
+  requester: Json | null;
   source_system: string;
   status: string;
   tags: Generated<string[]>;
+  title: string | null;
   updated_at: Generated<Timestamp>;
 }
 
