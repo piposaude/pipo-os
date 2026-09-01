@@ -23,8 +23,7 @@ export interface QueueTableProps {
   selectedIds: string[]
   onToggleTicket: (id: string) => void
   onSelectAll: (ids: string[]) => void
-  /** Absent while there is no detail screen: the next slice wires it. */
-  onOpenTicket?: (id: string) => void
+  onOpenTicket: (id: string) => void
   today: string
   resolveName: (userId: string) => string
 }
@@ -194,7 +193,7 @@ export function QueueTable({
                                    started on a control belongs to the control. */
                   onClick={(event) => {
                     if ((event.target as HTMLElement).closest('label,input,button')) return
-                    onOpenTicket?.(row.ticket.id)
+                    onOpenTicket(row.ticket.id)
                   }}
                 >
                   <QueueRow
