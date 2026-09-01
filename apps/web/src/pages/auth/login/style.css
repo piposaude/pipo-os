@@ -1,22 +1,76 @@
 .login-page {
-  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 100vh;
   padding: var(--pipo-space-large);
-}
-
-.login-page .login-dev-error {
-  color: var(--pipo-danger-dark);
-  font-size: var(--pipo-font-size-small);
+  /* The brand beige behind the white card is what makes the door look like
+       Pipo's, not a generic centered form. */
+  background: var(--pipo-brand-primary-lightest);
+  color-scheme: light;
 }
 
 .login-page .login-card {
   width: 100%;
-  max-width: 360px;
+  max-width: 344px;
+  text-align: center;
+}
+
+/* The DS Card wraps children in its own padded div — rhythm applies there.
+   Three blocks (identity, actions, access rule) at one interval; tighter
+   inner rhythm is what groups a subject. */
+.login-page .login-card > div:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pipo-space-medium);
+}
+
+.login-identity {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--pipo-space-medium);
+  gap: var(--pipo-space-xsmall);
+}
+
+/* Label, not headline: the DS h1 is 48px serif and would fight the wordmark. */
+.login-page .login-title {
+  font-family: var(--pipo-font-body);
+  font-size: var(--pipo-fs-h3);
+  font-weight: var(--pipo-fw-bold);
+  line-height: 1.2;
+}
+
+.login-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pipo-space-xsmall);
+}
+
+/* Full width on both: Google is the path, and a card-wide button leaves no
+   doubt about the main gesture. */
+.login-actions > * {
+  width: 100%;
+}
+
+.login-footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pipo-space-xxsmall);
+  padding-top: var(--pipo-space-medium);
+  border-top: var(--pipo-border-width-small) solid var(--pipo-border);
+}
+
+/* The DS Text left-aligns by default; the container class overrides it
+   without !important. */
+.login-page .login-identity p,
+.login-page .login-identity span,
+.login-page .login-footer p,
+.login-page .login-footer span {
+  color: var(--pipo-text-secondary);
   text-align: center;
+}
+
+.login-page .login-dev-error {
+  color: var(--pipo-danger-dark);
+  font-size: var(--pipo-fs-small);
 }

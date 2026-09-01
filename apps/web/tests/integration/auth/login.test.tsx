@@ -145,6 +145,24 @@ describe('auth/login', () => {
     expect(await screen.findByText(devConstants.unavailable)).toBeInTheDocument()
   })
 
+  it('names the application and states who may enter', async () => {
+    setupApi([{ method: 'GET', path: '/api/auth/me', reply: () => jsonResponse({}, 401) }])
+    await routerRender('/login')
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: loginConstants.title }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(loginConstants.subtitle)).toBeInTheDocument()
+  })
+
+  it('spells out the access rule, so a partner knows who to ask', async () => {
+    setupApi([{ method: 'GET', path: '/api/auth/me', reply: () => jsonResponse({}, 401) }])
+    await routerRender('/login')
+
+    expect(await screen.findByText(loginConstants.footer.domains)).toBeInTheDocument()
+    expect(screen.getByText(loginConstants.footer.partners)).toBeInTheDocument()
+  })
+
   it('shows the mapped error message for a known error code', async () => {
     setupApi([{ method: 'GET', path: '/api/auth/me', reply: () => jsonResponse({}, 401) }])
 
