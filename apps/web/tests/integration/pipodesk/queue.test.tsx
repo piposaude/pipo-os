@@ -93,8 +93,11 @@ describe('fila operacional', () => {
     const user = userEvent.setup()
 
     await user.keyboard('{Control>}b{/Control}')
-
     expect(screen.queryByRole('navigation', { name: /pipodesk/i })).not.toBeInTheDocument()
+
+    // The same gesture brings it back — one key, both directions.
+    await user.keyboard('{Control>}b{/Control}')
+    expect(screen.getByRole('navigation', { name: /pipodesk/i })).toBeInTheDocument()
   })
 
   /** What a pod opens, in prototype order: the three admin links (navigation,
