@@ -153,6 +153,56 @@ describe('tickets routes', () => {
       expect(body.pageSize).toBe(20)
     })
 
+    it('returns the queue/detail fields with their defaults', async () => {
+      await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(200)
+      const [ticket] = response.json().data
+      expect(ticket.displayNumber).toMatch(/^M\d{6,}$/)
+      expect(ticket.title).toBeNull()
+      expect(ticket.priority).toBeNull()
+      expect(ticket.actionDate).toBeNull()
+      expect(ticket.groupId).toBeNull()
+      expect(ticket.pendingDocumentation).toEqual([])
+      expect(ticket.requester).toBeNull()
+      expect(ticket.collaborators).toEqual([])
+    })
+
+    it('assigns a distinct displayNumber to each ticket', async () => {
+      for (const enrollmentId of [
+        '00000000-0000-4000-8000-000000000011',
+        '00000000-0000-4000-8000-000000000012',
+      ]) {
+        await app.inject({
+          method: 'POST',
+          url: '/api/tickets',
+          payload: { ...validTicketBody, enrollmentId },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+      }
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const numbers = response.json().data.map((t: { displayNumber: string }) => t.displayNumber)
+      expect(numbers).toHaveLength(2)
+      expect(new Set(numbers).size).toBe(2)
+    })
+
     it('filters by status', async () => {
       await app.inject({
         method: 'POST',

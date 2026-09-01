@@ -18,23 +18,35 @@ export const CLOSED_STATUSES = new Set<z.infer<typeof ticketStatusSchema>>([
   'cancelled',
 ])
 
+export const ticketPrioritySchema = z
+  .enum(['urgent', 'high', 'medium', 'low'])
+  .meta({ id: 'TicketPriority' })
+
 export const ticketSchema = z
   .object({
     id: z.uuid(),
+    displayNumber: z.string(),
+    title: z.string().nullable(),
     enrollmentId: z.uuid(),
     enrollmentType: z.string(),
     status: ticketStatusSchema,
+    priority: ticketPrioritySchema.nullable(),
+    actionDate: z.iso.datetime({ offset: true }).nullable(),
     queueId: z.uuid().nullable(),
+    groupId: z.uuid().nullable(),
     assigneeId: z.string().min(1).nullable(),
     companyId: z.uuid(),
     tags: z.array(z.string()),
+    pendingDocumentation: z.array(z.string()),
+    requester: z.record(z.string(), z.unknown()).nullable(),
+    collaborators: z.array(z.record(z.string(), z.unknown())),
     forceCompletion: z.boolean(),
     enrollmentSnapshot: z.record(z.string(), z.unknown()),
     sourceSystem: z.string(),
     parentTicketId: z.uuid().nullable(),
-    closedAt: z.string().nullable(),
-    createdAt: z.string(),
-    updatedAt: z.string(),
+    closedAt: z.iso.datetime({ offset: true }).nullable(),
+    createdAt: z.iso.datetime({ offset: true }),
+    updatedAt: z.iso.datetime({ offset: true }),
   })
   .meta({ id: 'Ticket' })
 

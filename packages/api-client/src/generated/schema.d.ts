@@ -1450,18 +1450,32 @@ export interface components {
         };
         /** @enum {string} */
         TicketStatus: "broker-processing" | "carrier-processing" | "broker-open-issue" | "missing-documents" | "incorrect-data" | "completed" | "cancelled" | "submitted-cancellation";
+        /** @enum {string} */
+        TicketPriority: "urgent" | "high" | "medium" | "low";
         Ticket: {
             /** Format: uuid */
             id: string;
+            displayNumber: string;
+            title: string | null;
             /** Format: uuid */
             enrollmentId: string;
             enrollmentType: string;
             status: components["schemas"]["TicketStatus"];
+            priority: components["schemas"]["TicketPriority"] | null;
+            actionDate: string | null;
             queueId: string | null;
+            groupId: string | null;
             assigneeId: string | null;
             /** Format: uuid */
             companyId: string;
             tags: string[];
+            pendingDocumentation: string[];
+            requester: {
+                [key: string]: unknown;
+            } | null;
+            collaborators: {
+                [key: string]: unknown;
+            }[];
             forceCompletion: boolean;
             enrollmentSnapshot: {
                 [key: string]: unknown;
@@ -1469,7 +1483,9 @@ export interface components {
             sourceSystem: string;
             parentTicketId: string | null;
             closedAt: string | null;
+            /** Format: date-time */
             createdAt: string;
+            /** Format: date-time */
             updatedAt: string;
         };
         TicketList: {
