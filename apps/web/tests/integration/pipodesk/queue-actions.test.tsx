@@ -267,4 +267,34 @@ describe('busca global', () => {
 
     expect(await screen.findByRole('dialog', { name: /busca/i })).toBeInTheDocument()
   })
+
+  /** The palette is a modal: Tab must not reach the sidebar and the table
+   *  behind it, which stay operable for the mouse but not for the keyboard. */
+  it('should keep the keyboard inside the palette while it is open', async () => {
+    await renderQueue()
+    const user = userEvent.setup()
+
+    await user.keyboard('{Meta>}k{/Meta}')
+    const palette = await screen.findByRole('dialog', { name: 'Busca global' })
+    const field = within(palette).getByRole('combobox')
+    expect(field).toHaveFocus()
+
+    await user.tab()
+    expect(palette.contains(document.activeElement)).toBe(true)
+
+    await user.tab({ shift: true })
+    expect(palette.contains(document.activeElement)).toBe(true)
+  })
+
+  it('should return the focus to whoever opened it when it closes', async () => {
+    await renderQueue()
+    const user = userEvent.setup()
+
+    const trigger = screen.getByRole('button', { name: /buscar/i })
+    await user.click(trigger)
+    await screen.findByRole('dialog', { name: 'Busca global' })
+
+    await user.keyboard('{Escape}')
+    expect(trigger).toHaveFocus()
+  })
 })

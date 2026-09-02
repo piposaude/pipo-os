@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { QueueNode } from '@/lib/pipodesk/queue-view'
 import {
@@ -11,6 +11,11 @@ import {
 import type { TreeSection } from '@/lib/pipodesk/tree'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 import styles from './SearchPalette.module.css'
+
+/** Tabbable descendants. Results are `tabIndex={-1}` on purpose: in a listbox
+ *  the field keeps the focus and the arrows move the selection. */
+const FOCUSABLE =
+  'a[href], button:not([disabled]):not([tabindex="-1"]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])'
 
 /**
  * Global search palette. Selecting a result hands a synthetic node to the
@@ -31,15 +36,40 @@ export function SearchPalette({
 }) {
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
+  const modal = useRef<HTMLDivElement>(null)
+  const field = useRef<HTMLInputElement>(null)
+  /** Who had the focus when the palette opened — it gets it back on close. */
+  const opener = useRef<HTMLElement | null>(null)
 
   const groups = useMemo(() => searchQueue(query, rows, sections), [query, rows, sections])
   const empty = useMemo(() => defaultHits(sections), [sections])
   const flat: SearchHit[] = query.trim() ? groups.flatMap((group) => group.hits) : empty
 
+  /* Focus lives in an effect, not in `autoFocus`: the opener has to be read
+     before the field takes the focus, and given back when the palette closes. */
+  useEffect(() => {
+    if (!open) return
+    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    field.current?.focus()
+    return () => opener.current?.focus()
+  }, [open])
+
   useEffect(() => {
     if (!open) return
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') {
+        onClose()
+        return
+      }
+      if (event.key !== 'Tab') return
+      // A modal keeps the tab ring: the sidebar and the table behind stay
+      // reachable by mouse, never by keyboard while the palette is open.
+      const ring = [...(modal.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])]
+      if (ring.length === 0) return
+      event.preventDefault()
+      const at = ring.indexOf(document.activeElement as HTMLElement)
+      const step = event.shiftKey ? -1 : 1
+      ring[(at + step + ring.length) % ring.length].focus()
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
@@ -84,11 +114,15 @@ export function SearchPalette({
       className={styles.overlay}
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
     >
-      <div role="dialog" aria-label="Busca global" className={styles.modal}>
-        {/* `autoFocus`, not an effect: the modal mounts on open, so focusing the
-                     field is mount behavior — open and type. */}
+      <div
+        ref={modal}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Busca global"
+        className={styles.modal}
+      >
         <input
-          autoFocus
+          ref={field}
           role="combobox"
           aria-expanded="true"
           aria-controls="search-palette-results"
