@@ -7,6 +7,7 @@ import {
   optionLabel,
   type LabelContext,
 } from '@/lib/pipodesk/filter-copy'
+import { NULL_TOKEN, storedOf } from '@/lib/pipodesk/filter'
 
 const ctx: LabelContext = {
   companyName: (id) => (id === 'empresa-1' ? 'Caiçara Metalurgia' : id),
@@ -97,5 +98,32 @@ describe('filterChipsOf', () => {
 describe('DATE_WINDOWS', () => {
   it('should stop at the window that still cuts something', () => {
     expect(DATE_WINDOWS.map((window) => window.days)).toEqual([7, 30, null])
+  })
+})
+
+/**
+ * Two hand-written lists have to agree on which fields admit `null`:
+ * `NULLABLE_FIELDS` decides whether the reserved token decodes back to `null`,
+ * and `NULL_LABEL` gives that absence a name. A field in one and not the other
+ * fails silently — no label, or a token that never becomes `null`. This is the
+ * lesson of the token collision itself, applied to its own fix.
+ */
+describe('campos que admitem nulo', () => {
+  it('should name the absence in exactly the fields that decode it', () => {
+    for (const field of FILTER_FIELDS) {
+      const copyTreatsTokenAsAbsence = optionLabel(field, NULL_TOKEN, ctx) !== NULL_TOKEN
+      const filterDecodesTokenAsNull = storedOf(field, NULL_TOKEN) === null
+
+      expect(copyTreatsTokenAsAbsence, field).toBe(filterDecodesTokenAsNull)
+    }
+  })
+
+  it('should give the absence a readable name, never an empty string', () => {
+    for (const field of FILTER_FIELDS) {
+      if (storedOf(field, NULL_TOKEN) !== null) continue
+
+      expect(optionLabel(field, null, ctx), field).not.toBe('')
+      expect(optionLabel(field, null, ctx), field).not.toBe(NULL_TOKEN)
+    }
   })
 })
