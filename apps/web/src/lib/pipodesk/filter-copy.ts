@@ -7,13 +7,13 @@
 import { DISPLAY_STATUS_COPY, PENDING_REASON_COPY } from '@/constants/pipodesk/status'
 import {
   ENROLLMENT_TYPE_COPY,
-  PORTE_COPY,
+  COMPANY_SIZE_COPY,
   PRIORITY_COPY,
   PRODUCT_COPY,
   RELATIONSHIP_COPY,
 } from '@/constants/pipodesk/domain'
 import { toDisplayStatus, type ApiStatus } from './status'
-import type { FilterField, TicketFilter } from './filter'
+import { assertNever, type FilterField, type TicketFilter } from './filter'
 import type { GroupBy } from './group'
 
 /** Resolves ids to names. Each falls back to the id itself — an id on
@@ -34,7 +34,7 @@ export const FILTER_FIELD_COPY: Partial<Record<FilterField, string>> & Record<st
   carrierIds: 'Operadora',
   products: 'Produto',
   types: 'Tipo',
-  portes: 'Porte',
+  companySizes: 'Porte',
   origins: 'Origem',
   tags: 'Tag',
   assigneeIds: 'Dono',
@@ -96,8 +96,8 @@ export function optionLabel(field: FilterField, value: string | null, ctx: Label
       return PRODUCT_COPY[value] ?? value
     case 'types':
       return ENROLLMENT_TYPE_COPY[value] ?? value
-    case 'portes':
-      return PORTE_COPY[value] ?? value
+    case 'companySizes':
+      return COMPANY_SIZE_COPY[value] ?? value
     case 'origins':
       return ORIGIN_COPY[value] ?? value
     // `'@me'` is an internal token and must never reach the screen.
@@ -110,8 +110,13 @@ export function optionLabel(field: FilterField, value: string | null, ctx: Label
       return RELATIONSHIP_COPY[value] ?? value
     case 'priorities':
       return PRIORITY_COPY[value] ?? value
-    default:
+    case 'tags':
       return value
+    // Node scope, never a chip — there is no pod name to resolve.
+    case 'groupIds':
+      return value
+    default:
+      return assertNever(field)
   }
 }
 

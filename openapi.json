@@ -259,12 +259,14 @@
         "type": "object",
         "properties": {
           "statuses": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/TicketStatusInput"
             }
           },
           "companyIds": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "type": "string",
@@ -273,6 +275,7 @@
             }
           },
           "carrierIds": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "type": "string",
@@ -280,6 +283,7 @@
             }
           },
           "products": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "type": "string",
@@ -287,13 +291,15 @@
             }
           },
           "types": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "type": "string",
               "minLength": 1
             }
           },
-          "portes": {
+          "companySizes": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "type": "string",
@@ -301,6 +307,7 @@
             }
           },
           "contractTypes": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "anyOf": [
@@ -315,12 +322,14 @@
             }
           },
           "relationships": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RelationshipInput"
             }
           },
           "origins": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "type": "string",
@@ -328,6 +337,7 @@
             }
           },
           "groupIds": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "type": "string",
@@ -336,6 +346,7 @@
             }
           },
           "tags": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "type": "string",
@@ -343,6 +354,7 @@
             }
           },
           "assigneeIds": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "anyOf": [
@@ -357,6 +369,7 @@
             }
           },
           "priorities": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "anyOf": [
@@ -950,12 +963,14 @@
         "type": "object",
         "properties": {
           "statuses": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/TicketStatus"
             }
           },
           "companyIds": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "type": "string",
@@ -964,6 +979,7 @@
             }
           },
           "carrierIds": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "type": "string",
@@ -971,6 +987,7 @@
             }
           },
           "products": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "type": "string",
@@ -978,13 +995,15 @@
             }
           },
           "types": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "type": "string",
               "minLength": 1
             }
           },
-          "portes": {
+          "companySizes": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "type": "string",
@@ -992,6 +1011,7 @@
             }
           },
           "contractTypes": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "anyOf": [
@@ -1006,12 +1026,14 @@
             }
           },
           "relationships": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Relationship"
             }
           },
           "origins": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "type": "string",
@@ -1019,6 +1041,7 @@
             }
           },
           "groupIds": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "type": "string",
@@ -1027,6 +1050,7 @@
             }
           },
           "tags": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "type": "string",
@@ -1034,6 +1058,7 @@
             }
           },
           "assigneeIds": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "anyOf": [
@@ -1048,6 +1073,7 @@
             }
           },
           "priorities": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "anyOf": [

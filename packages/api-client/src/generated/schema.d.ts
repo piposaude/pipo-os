@@ -1519,7 +1519,7 @@ export interface components {
             carrierIds?: string[];
             products?: string[];
             types?: string[];
-            portes?: string[];
+            companySizes?: string[];
             contractTypes?: (string | null)[];
             relationships?: components["schemas"]["RelationshipInput"][];
             origins?: string[];
@@ -1658,7 +1658,7 @@ export interface components {
             carrierIds?: string[];
             products?: string[];
             types?: string[];
-            portes?: string[];
+            companySizes?: string[];
             contractTypes?: (string | null)[];
             relationships?: components["schemas"]["Relationship"][];
             origins?: string[];

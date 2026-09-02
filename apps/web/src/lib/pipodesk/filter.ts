@@ -28,20 +28,15 @@ export interface TicketFilter extends ApiTicketFilter {
   taxIds?: string[]
 }
 
-export type FilterField =
-  | 'statuses'
-  | 'companyIds'
-  | 'carrierIds'
-  | 'products'
-  | 'types'
-  | 'portes'
-  | 'contractTypes'
-  | 'relationships'
-  | 'origins'
-  | 'groupIds'
-  | 'tags'
-  | 'assigneeIds'
-  | 'priorities'
+export type FilterField = {
+  [K in keyof ApiTicketFilter]-?: NonNullable<ApiTicketFilter[K]> extends readonly unknown[]
+    ? K
+    : never
+}[keyof ApiTicketFilter]
+
+export function assertNever(value: never): never {
+  throw new Error(`Unhandled filter field: ${String(value)}`)
+}
 
 /** How many days ahead an action date may be before the ticket leaves
  *  today's queue. Two: it resurfaces with room to be worked. */
@@ -87,7 +82,7 @@ export function matchesFilter(ticket: TicketRow, filter: TicketFilter, viewerId:
   if (missesList(filter.carrierIds, ticket.carrierId)) return false
   if (missesList(filter.products, ticket.product)) return false
   if (missesList(filter.types, ticket.enrollmentType)) return false
-  if (missesList(filter.portes, ticket.porte)) return false
+  if (missesList(filter.companySizes, ticket.companySize)) return false
   if (filter.contractTypes?.length && !filter.contractTypes.includes(ticket.contractType))
     return false
   if (missesList(filter.relationships, ticket.relationship)) return false
@@ -153,8 +148,8 @@ const optionKeysOf = (ticket: TicketRow, field: FilterField): string[] => {
       return ticket.product ? [ticket.product] : []
     case 'types':
       return [ticket.enrollmentType]
-    case 'portes':
-      return ticket.porte ? [ticket.porte] : []
+    case 'companySizes':
+      return ticket.companySize ? [ticket.companySize] : []
     case 'contractTypes':
       return ticket.contractType ? [ticket.contractType] : []
     case 'relationships':
@@ -169,6 +164,8 @@ const optionKeysOf = (ticket: TicketRow, field: FilterField): string[] => {
       return [ticket.assigneeId ?? 'livre']
     case 'priorities':
       return [ticket.priority ?? 'sem']
+    default:
+      return assertNever(field)
   }
 }
 

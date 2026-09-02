@@ -80,7 +80,7 @@ export class QueuesRepository implements QueuesRepositoryPort {
 
     if (rows.length > 0) {
       return {
-        data: rows.map((row) => toQueue(row as unknown as Selectable<TicketQueues>)),
+        data: rows.map((row) => toQueue(row)),
         total: Number(rows[0].total_count),
       }
     }

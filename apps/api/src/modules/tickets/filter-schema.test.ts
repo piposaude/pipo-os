@@ -13,7 +13,7 @@ describe('ticketFilterSchema', () => {
       carrierIds: ['unimed'],
       products: ['health'],
       types: ['inclusion'],
-      portes: ['enterprise'],
+      companySizes: ['enterprise'],
       contractTypes: ['clt'],
       relationships: ['holder'],
       origins: ['enrollment-integrations'],
@@ -65,6 +65,10 @@ describe('ticketFilterSchema', () => {
 
   it('rejects a relationship outside the three the snapshot derives', () => {
     expect(ticketFilterSchema.safeParse({ relationships: ['conjuge'] }).success).toBe(false)
+  })
+
+  it('rejects an empty list — a saved criterion has to constrain something', () => {
+    expect(ticketFilterSchema.safeParse({ statuses: [] }).success).toBe(false)
   })
 
   it('rejects a scalar where the filter expects a list', () => {

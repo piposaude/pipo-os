@@ -16,7 +16,7 @@ const row = (overrides: Partial<TicketRow> & Pick<TicketRow, 'id'>): TicketRow =
     beneficiaryName: null,
     taxId: null,
     companyName: 'Caiçara Metalurgia',
-    porte: null,
+    companySize: null,
     carrierId: null,
     carrierName: null,
     product: null,

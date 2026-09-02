@@ -16,7 +16,7 @@ export const ENROLLMENT_TYPE_COPY: Record<string, string> = {
   registration_data_change: 'Alteração cadastral',
 }
 
-export const PORTE_COPY: Record<string, string> = {
+export const COMPANY_SIZE_COPY: Record<string, string> = {
   pme: 'PME',
   'pme-plus': 'PME+',
   enterprise: 'Empresarial',

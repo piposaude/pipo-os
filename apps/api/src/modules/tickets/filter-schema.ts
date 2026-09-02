@@ -1,8 +1,12 @@
 import { z } from 'zod'
 import { ticketPrioritySchema, ticketStatusSchema } from './schemas.js'
 
-/** `@me` resolves server-side to the caller; `null` is the unassigned ticket. */
-export const assigneeFilterValueSchema = z.string().min(1).nullable()
+/** Rejects `''` — an option nobody can select. */
+const nonEmptyText = z.string().min(1)
+
+/** `null` is the unassigned ticket. `@me` is a plain string the web client
+ *  resolves to the viewer; the server-side resolver is PD-043. */
+export const assigneeFilterValueSchema = nonEmptyText.nullable()
 
 export const relationshipSchema = z
   .enum(['holder', 'dependent', 'family-group'])
@@ -18,21 +22,21 @@ const dateCut = z.iso.date()
  */
 export const ticketFilterSchema = z
   .object({
-    statuses: z.array(ticketStatusSchema).optional(),
-    companyIds: z.array(z.uuid()).optional(),
-    carrierIds: z.array(z.string().min(1)).optional(),
-    products: z.array(z.string().min(1)).optional(),
-    types: z.array(z.string().min(1)).optional(),
-    portes: z.array(z.string().min(1)).optional(),
+    statuses: z.array(ticketStatusSchema).min(1).optional(),
+    companyIds: z.array(z.uuid()).min(1).optional(),
+    carrierIds: z.array(nonEmptyText).min(1).optional(),
+    products: z.array(nonEmptyText).min(1).optional(),
+    types: z.array(nonEmptyText).min(1).optional(),
+    companySizes: z.array(nonEmptyText).min(1).optional(),
     /** `null` = no contract in the snapshot, a value the MOV PJ cut needs. */
-    contractTypes: z.array(z.string().min(1).nullable()).optional(),
-    relationships: z.array(relationshipSchema).optional(),
-    origins: z.array(z.string().min(1)).optional(),
-    groupIds: z.array(z.uuid()).optional(),
-    tags: z.array(z.string().min(1)).optional(),
-    assigneeIds: z.array(assigneeFilterValueSchema).optional(),
+    contractTypes: z.array(nonEmptyText.nullable()).min(1).optional(),
+    relationships: z.array(relationshipSchema).min(1).optional(),
+    origins: z.array(nonEmptyText).min(1).optional(),
+    groupIds: z.array(z.uuid()).min(1).optional(),
+    tags: z.array(nonEmptyText).min(1).optional(),
+    assigneeIds: z.array(assigneeFilterValueSchema).min(1).optional(),
     /** `null` = no priority, which the queue shows as "Sem prioridade". */
-    priorities: z.array(ticketPrioritySchema.nullable()).optional(),
+    priorities: z.array(ticketPrioritySchema.nullable()).min(1).optional(),
     actionDateBefore: dateCut.optional(),
     urgentBy: dateCut.optional(),
     createdSince: dateCut.optional(),

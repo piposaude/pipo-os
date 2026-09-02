@@ -189,7 +189,7 @@ export function queueViewReducer(view: QueueView, action: QueueAction): QueueVie
 
 export interface QueueSearch {
   node?: string
-  /** Only the fields the person added: `products:life,health;portes:pme`. */
+  /** Only the fields the person added: `products:life,health;companySizes:pme`. */
   f?: string
   sort?: SortField
   dir?: 'asc' | 'desc'
@@ -197,21 +197,23 @@ export interface QueueSearch {
   win?: number
 }
 
-const FILTER_FIELDS: FilterField[] = [
-  'statuses',
-  'companyIds',
-  'carrierIds',
-  'products',
-  'types',
-  'portes',
-  'contractTypes',
-  'relationships',
-  'origins',
-  'groupIds',
-  'tags',
-  'assigneeIds',
-  'priorities',
-]
+const CODEC_FIELDS: Record<FilterField, true> = {
+  statuses: true,
+  companyIds: true,
+  carrierIds: true,
+  products: true,
+  types: true,
+  companySizes: true,
+  contractTypes: true,
+  relationships: true,
+  origins: true,
+  groupIds: true,
+  tags: true,
+  assigneeIds: true,
+  priorities: true,
+}
+
+const FILTER_FIELDS = Object.keys(CODEC_FIELDS) as FilterField[]
 
 const isArrayField = (value: unknown): value is unknown[] => Array.isArray(value)
 

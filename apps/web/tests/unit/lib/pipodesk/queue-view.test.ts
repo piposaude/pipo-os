@@ -194,7 +194,7 @@ describe('queueViewReducer — filtros', () => {
   it('should clear every added filter and keep the node filter', () => {
     const dirty = queueViewReducer(
       queueViewReducer(INITIAL_VIEW, { type: 'add-filter', field: 'products', values: ['life'] }),
-      { type: 'add-filter', field: 'portes', values: ['pme'] },
+      { type: 'add-filter', field: 'companySizes', values: ['pme'] },
     )
     const next = queueViewReducer(dirty, { type: 'clear-filters' })
 
