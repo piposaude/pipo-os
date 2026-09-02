@@ -3,14 +3,25 @@ import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from '@/routeTree.gen'
 import { queueSeed, structureFixture, FIXTURE_USER_NAMES } from '@/fixtures/pipodesk/dataset'
+import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 import { analystsOf } from '@/lib/pipodesk/permissions'
 import constants from '@/constants/pages/pipodesk/ticket'
 
-/** The first drawn ticket, straight from the DOM — the table is virtualized
- *  and only the visible window exists. */
-const firstRowId = (): string => {
+/**
+ * The first drawn row — the table is virtualized, so only the visible window
+ * exists. Waits for the table and fails loudly when there is none: the old
+ * `?? ''` turned a missing row into `getByText('')`, which matches an
+ * arbitrary element instead of saying what went wrong.
+ */
+async function firstRow(): Promise<{ id: string; ticket: TicketRow; link: HTMLElement }> {
+  await screen.findByRole('table')
   const row = document.querySelector('tr[data-ticket-id]')
-  return row?.getAttribute('data-ticket-id') ?? ''
+  const id = row?.getAttribute('data-ticket-id')
+  if (!row || !id) throw new Error('a fila não desenhou nenhuma linha')
+  // The row's own link, not a global query by text: the ID cell renders
+  // `displayNumber ?? id`, so searching by id only works while the export
+  // carries no operational number (PD-011 gives it one).
+  return { id, ticket: byId(id), link: within(row as HTMLElement).getByRole('link') }
 }
 
 vi.mock('@/lib/auth', () => ({
@@ -35,10 +46,9 @@ describe('detalhe do chamado', () => {
   it('should open from a queue row click, person in the title and id copyable below', async () => {
     const router = await renderAt('/')
     const user = userEvent.setup()
-    const id = firstRowId()
-    const ticket = byId(id)
+    const { id, ticket, link } = await firstRow()
 
-    await user.click(await screen.findByText(id))
+    await user.click(link)
 
     expect(router.state.location.pathname).toBe(`/tickets/${id}`)
     expect(
@@ -52,8 +62,8 @@ describe('detalhe do chamado', () => {
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('button', { name: 'Urgentes' }))
-    const id = firstRowId()
-    await user.click(await screen.findByText(id))
+    const { link } = await firstRow()
+    await user.click(link)
 
     const breadcrumb = screen.getByRole('navigation', { name: /breadcrumb/i })
     expect(breadcrumb).toHaveTextContent('Urgentes')
@@ -127,10 +137,9 @@ describe('detalhe do chamado', () => {
   it('should offer the analysts of the pod, from the structure and not from the load', async () => {
     await renderAt('/')
     const user = userEvent.setup()
-    const id = firstRowId()
-    const ticket = byId(id)
+    const { ticket, link } = await firstRow()
 
-    await user.click(await screen.findByText(id))
+    await user.click(link)
     await user.click(await screen.findByRole('button', { name: /^Dono:/ }))
 
     const menu = screen.getByRole('dialog', { name: 'Dono' })
@@ -156,9 +165,9 @@ describe('detalhe do chamado', () => {
   it('should explain the parked email channel in text, not only in a tooltip', async () => {
     await renderAt('/')
     const user = userEvent.setup()
-    const id = firstRowId()
+    const { link } = await firstRow()
 
-    await user.click(await screen.findByText(id))
+    await user.click(link)
     await screen.findByRole('button', { name: 'E-mail ao RH' })
 
     // The reason has to be readable without hovering — text on screen, not a title.
@@ -173,12 +182,10 @@ describe('detalhe do chamado', () => {
   it('should open the ticket from the keyboard, not only with the mouse', async () => {
     const router = await renderAt('/')
     const user = userEvent.setup()
-    const id = firstRowId()
-    const ticket = byId(id)
+    const { id, ticket, link } = await firstRow()
 
-    const link = await screen.findByRole('link', {
-      name: ticket.beneficiaryName ?? ticket.subject,
-    })
+    // The anchor is the person's name, not the internal id.
+    expect(link).toHaveAccessibleName(ticket.beneficiaryName ?? ticket.subject)
     // A real href, so ⌘-click and open-in-new-tab work like anywhere else.
     expect(link).toHaveAttribute('href', `/tickets/${id}`)
 

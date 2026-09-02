@@ -180,8 +180,13 @@ describe('sidebar fora da fila', () => {
   it('should leave the ticket detail the same way', async () => {
     const router = await renderAt('/')
     const user = userEvent.setup()
-    const id = document.querySelector('tr[data-ticket-id]')?.getAttribute('data-ticket-id') ?? ''
-    await user.click(screen.getByText(id))
+    // Waits for the table and opens through the row's own link: the `?? ''`
+    // fallback used to turn a missing row into `getByText('')`.
+    await screen.findByRole('table')
+    const row = document.querySelector('tr[data-ticket-id]')
+    const id = row?.getAttribute('data-ticket-id')
+    if (!row || !id) throw new Error('a fila não desenhou nenhuma linha')
+    await user.click(within(row as HTMLElement).getByRole('link'))
     expect(router.state.location.pathname).toBe(`/tickets/${id}`)
 
     const sidebar = screen.getByRole('navigation', { name: /pipodesk/i })
