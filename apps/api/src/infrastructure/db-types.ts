@@ -89,10 +89,24 @@ export interface TicketFormValues {
   updated_by: string | null;
 }
 
+export interface TicketGroupCompanies {
+  company_id: string;
+  created_at: Generated<Timestamp>;
+  group_id: string;
+}
+
+export interface TicketGroupMemberCompanies {
+  company_id: string;
+  created_at: Generated<Timestamp>;
+  group_id: string;
+  user_id: string;
+}
+
 export interface TicketGroupMembers {
   active: Generated<boolean>;
   created_at: Generated<Timestamp>;
   group_id: string;
+  role: Generated<string>;
   user_id: string;
 }
 
@@ -101,6 +115,7 @@ export interface TicketGroups {
   created_by: string;
   id: Generated<string>;
   name: string;
+  parent_id: string | null;
   updated_at: Generated<Timestamp>;
   updated_by: string | null;
 }
@@ -175,6 +190,8 @@ export interface DB {
   ticket_email_attachments: TicketEmailAttachments;
   ticket_emails: TicketEmails;
   ticket_form_values: TicketFormValues;
+  ticket_group_companies: TicketGroupCompanies;
+  ticket_group_member_companies: TicketGroupMemberCompanies;
   ticket_group_members: TicketGroupMembers;
   ticket_groups: TicketGroups;
   ticket_queues: TicketQueues;

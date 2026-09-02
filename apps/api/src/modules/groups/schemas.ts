@@ -14,7 +14,7 @@ export const groupSchema = z
 export const groupMemberSchema = z
   .object({
     groupId: z.uuid(),
-    userId: z.uuid(),
+    userId: z.string().min(1),
     active: z.boolean(),
     createdAt: z.iso.datetime(),
   })
@@ -30,7 +30,7 @@ export const groupParamsSchema = z.object({
 
 export const memberParamsSchema = z.object({
   id: z.uuid(),
-  memberId: z.uuid(),
+  memberId: z.string().min(1),
 })
 
 export const createGroupBodySchema = z
@@ -49,7 +49,7 @@ export const updateGroupBodySchema = z
 
 export const addMemberBodySchema = z
   .object({
-    userId: z.uuid(),
+    userId: z.string().min(1),
   })
   .strict()
   .meta({ id: 'AddGroupMemberBody' })

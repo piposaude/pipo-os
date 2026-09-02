@@ -484,7 +484,7 @@ describe('groups routes', () => {
       expect(response.statusCode).toBe(404)
     })
 
-    it('returns 400 when userId is not a valid UUID', async () => {
+    it('accepts an e-mail as userId, the way the rest of the system identifies people', async () => {
       const created = await app.inject({
         method: 'POST',
         url: '/api/groups',
@@ -496,7 +496,27 @@ describe('groups routes', () => {
       const response = await app.inject({
         method: 'POST',
         url: `/api/groups/${groupId}/members`,
-        payload: { userId: 'nao-e-uuid' },
+        payload: { userId: 'ana@pipo.health' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(201)
+      expect(response.json().userId).toBe('ana@pipo.health')
+    })
+
+    it('returns 400 for an empty userId', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Grupo' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id: groupId } = created.json()
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/groups/${groupId}/members`,
+        payload: { userId: '' },
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
 

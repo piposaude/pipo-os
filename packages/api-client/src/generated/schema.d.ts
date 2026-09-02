@@ -1503,7 +1503,6 @@ export interface components {
             name: string;
         };
         AddGroupMemberBodyInput: {
-            /** Format: uuid */
             userId: string;
         };
         UpdateGroupMemberBodyInput: {
@@ -1616,7 +1615,6 @@ export interface components {
         GroupMember: {
             /** Format: uuid */
             groupId: string;
-            /** Format: uuid */
             userId: string;
             active: boolean;
             /** Format: date-time */
