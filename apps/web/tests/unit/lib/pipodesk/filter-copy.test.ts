@@ -25,6 +25,11 @@ describe('FILTER_FIELDS', () => {
 })
 
 describe('optionLabel', () => {
+  /** A filter value comes from the URL, which is hand-editable: a status the
+   *  API does not know must read as itself, not crash the chip row. */
+  it('should show an unknown status as it came, instead of breaking the chip', () => {
+    expect(optionLabel('statuses', 'inventado', ctx)).toBe('inventado')
+  })
   it('should show names, never raw ids', () => {
     expect(optionLabel('companyIds', 'empresa-1', ctx)).toBe('Caiçara Metalurgia')
     expect(optionLabel('carrierIds', 'sulamerica', ctx)).toBe('SulAmérica')

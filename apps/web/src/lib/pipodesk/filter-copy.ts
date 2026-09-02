@@ -12,7 +12,7 @@ import {
   PRODUCT_COPY,
   VINCULO_COPY,
 } from '@/constants/pipodesk/domain'
-import { toDisplayStatus, type ApiStatus } from './status'
+import { isApiStatus, toDisplayStatus } from './status'
 import { NULL_SENTINEL, type FilterField, type TicketFilter } from './filter'
 import type { GroupBy } from './group'
 
@@ -65,8 +65,10 @@ const NULL_LABEL: Partial<Record<FilterField, string>> = {
 /** Analyst-facing status label (6 display states + reason), translated by
  *  `status.ts` — no private map here. */
 const statusLabel = (value: string): string => {
-  const display = toDisplayStatus(value as ApiStatus)
-  if (!display) return value
+  // The cast this replaced hid the fact that `value` is unvalidated, making the
+  // guard below look like dead code — one cleanup away from a crash.
+  if (!isApiStatus(value)) return value
+  const display = toDisplayStatus(value)
   const base = DISPLAY_STATUS_COPY[display.status] ?? value
   return display.reason ? `${base} · ${PENDING_REASON_COPY[display.reason]}` : base
 }
