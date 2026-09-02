@@ -42,6 +42,9 @@ export async function up(db: Kysely<unknown>): Promise<void> {
       CONSTRAINT ticket_group_member_companies_member_fkey
         FOREIGN KEY (group_id, user_id)
         REFERENCES ticket_group_members (group_id, user_id) ON DELETE CASCADE,
+      -- No ON UPDATE, so moving a company to another pod is refused while a
+      -- row here follows it: the move is then delete-and-reinsert. An
+      -- unfollowed company still moves with a plain UPDATE.
       CONSTRAINT ticket_group_member_companies_company_fkey
         FOREIGN KEY (group_id, company_id)
         REFERENCES ticket_group_companies (group_id, company_id) ON DELETE CASCADE

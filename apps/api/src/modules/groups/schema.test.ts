@@ -173,8 +173,28 @@ describe('groups schema — hierarchy and portfolio constraints', () => {
       expect(followers).toEqual([])
     })
 
-    /** The two composite FKs are jointly unsatisfiable under an UPDATE of
-     *  group_id, so the move is delete-and-reinsert, not an in-place update. */
+    it('moves an unfollowed company in place, since no sub-portfolio row blocks it', async () => {
+      const pod3 = await group(POD_3)
+      const pod5 = await group(POD_5)
+      await carry(pod3, COMPANY_A)
+
+      await app.db
+        .updateTable('ticket_group_companies')
+        .set({ group_id: pod5 })
+        .where('company_id', '=', COMPANY_A)
+        .execute()
+
+      const row = await app.db
+        .selectFrom('ticket_group_companies')
+        .select('group_id')
+        .executeTakeFirstOrThrow()
+
+      expect(row.group_id).toBe(pod5)
+    })
+
+    /** The UPDATE is refused only while a sub-portfolio row references the
+     *  company: the two composite FKs are jointly unsatisfiable then, so the
+     *  move becomes delete-and-reinsert. */
     it('refuses to move a company by updating group_id while someone follows it', async () => {
       const pod3 = await group(POD_3)
       const pod5 = await group(POD_5)
