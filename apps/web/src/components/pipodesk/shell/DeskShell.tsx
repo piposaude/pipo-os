@@ -177,7 +177,13 @@ export function DeskShell() {
     [dispatch, navigate],
   )
 
-  const handleLogout = async () => {
+  /* `async` behind a `() => void` prop would leave the promise floating — the
+     repo's eslint is not type-checked, so nothing would catch it. */
+  const handleLogout = () => {
+    void logoutAndLeave()
+  }
+
+  const logoutAndLeave = async () => {
     // Navigate even if the request fails: the person asked to leave, and
     // staying on the queue with no feedback is worse than a stale server session.
     try {

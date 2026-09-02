@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from '@/routeTree.gen'
@@ -8,6 +8,7 @@ import {
   VIEWER_GROUP_ID,
   VIEWER_ID,
 } from '@/fixtures/pipodesk/dataset'
+import { isAuthenticated, logout } from '@/lib/auth'
 
 vi.mock('@/lib/auth', () => ({
   ensureSession: vi.fn().mockResolvedValue(undefined),
@@ -357,5 +358,32 @@ describe('busca global', () => {
 
     await user.keyboard('{Escape}')
     expect(trigger).toHaveFocus()
+  })
+})
+
+describe('sair', () => {
+  afterEach(() => {
+    vi.mocked(isAuthenticated).mockReturnValue(true)
+  })
+
+  /** The person asked to leave: staying on the queue with no feedback is worse
+   *  than a stale session on the server. The store drops the local session even
+   *  when the request fails (`tests/unit/stores/session.test.ts`), so the login
+   *  route no longer bounces back. */
+  it('should reach the login screen even when the logout request fails', async () => {
+    const router = await renderQueue()
+    const user = userEvent.setup()
+    vi.mocked(logout).mockImplementationOnce(() => {
+      vi.mocked(isAuthenticated).mockReturnValue(false)
+      return Promise.reject(new Error('sem rede'))
+    })
+
+    const sidebar = screen.getByRole('navigation', { name: /pipodesk/i })
+    await user.click(within(sidebar).getByRole('button', { name: /^Conta de/ }))
+    await user.click(await screen.findByRole('button', { name: 'Sair' }))
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/login')
+    })
   })
 })
