@@ -90,6 +90,16 @@ const NULLABLE_FIELDS: ReadonlySet<FilterField> = new Set([
  *  field: only the fields above ever hold `null`. */
 export const displayOf = (value: string | null): string => value ?? NULL_TOKEN
 
+/**
+ * The values a list field holds. Indexing `TicketFilter` by a variable yields
+ * the union of every field's type, so the widening has to happen somewhere —
+ * here, once, instead of at each call site (panel, chips, saved views). Every
+ * `FilterField` is a list field: the scalar cuts (`actionDateBefore`,
+ * `urgentBy`, `createdSince`, `archived`) are deliberately not in the union.
+ */
+export const valuesOf = (filter: TicketFilter, field: FilterField): readonly (string | null)[] =>
+  filter[field] ?? []
+
 /** …and back, which DOES need the field: decoding the token is only correct
  *  where `null` is a legitimate value. */
 export const storedOf = (field: FilterField, token: string): string | null =>

@@ -13,7 +13,7 @@ import {
   RELATIONSHIP_COPY,
 } from '@/constants/pipodesk/domain'
 import { isApiStatus, toDisplayStatus } from './status'
-import { assertNever, NULL_TOKEN, type FilterField, type TicketFilter } from './filter'
+import { assertNever, NULL_TOKEN, valuesOf, type FilterField, type TicketFilter } from './filter'
 import { isPriority } from './ticket-row'
 import type { GroupBy } from './group'
 
@@ -121,7 +121,7 @@ export interface FilterChip {
 }
 
 /** Order-insensitive equality between two filter value lists. */
-const sameValues = (a: (string | null)[], b: (string | null)[]): boolean => {
+const sameValues = (a: readonly (string | null)[], b: readonly (string | null)[]): boolean => {
   if (a.length !== b.length) return false
   const rest = [...b]
   return a.every((value) => {
@@ -145,12 +145,12 @@ export function filterChipsOf(
 ): FilterChip[] {
   const chips: FilterChip[] = []
   for (const field of FILTER_FIELDS) {
-    const values = filter[field] as (string | null)[] | undefined
-    if (!values || values.length === 0) continue
-    const fromNode = nodeFilter[field] as (string | null)[] | undefined
+    const values = valuesOf(filter, field)
+    if (values.length === 0) continue
+    const fromNode = valuesOf(nodeFilter, field)
     // Compared as sets: the values are an OR, so another order is the same
     // filter — positionally, a hand-built URL grew a chip nobody added.
-    if (fromNode && sameValues(fromNode, values)) continue
+    if (fromNode.length > 0 && sameValues(fromNode, values)) continue
 
     const labels = values.map((value) => optionLabel(field, value, ctx))
     const text =

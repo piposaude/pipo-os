@@ -8,7 +8,7 @@ import {
   TableHeaderCell,
   TableRow,
 } from '@piposaude/design-system'
-import { applyFilter, type FilterField, type TicketFilter } from '@/lib/pipodesk/filter'
+import { applyFilter, valuesOf, type FilterField, type TicketFilter } from '@/lib/pipodesk/filter'
 import {
   FILTER_FIELDS,
   FILTER_FIELD_COPY,
@@ -25,7 +25,7 @@ import styles from './style.module.css'
  *  and chips use — the three say the same thing. */
 const criterioDe = (filter: TicketFilter, ctx: LabelContext): string =>
   FILTER_FIELDS.flatMap((campo: FilterField) => {
-    const valores = filter[campo] as readonly (string | null)[] | undefined
+    const valores = valuesOf(filter, campo)
     if (!valores?.length) return []
     const rotulos = valores.map((valor) => optionLabel(campo, valor, ctx))
     return [`${FILTER_FIELD_COPY[campo]}: ${rotulos.join(', ')}`]

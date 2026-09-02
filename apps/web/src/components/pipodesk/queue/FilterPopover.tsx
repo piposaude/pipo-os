@@ -11,6 +11,7 @@ import {
   applyFilter,
   countByOption,
   displayOf,
+  valuesOf,
   type FilterField,
   type TicketFilter,
 } from '@/lib/pipodesk/filter'
@@ -87,7 +88,7 @@ export function FilterPopover({
   const toDisplay = (raw: string | null) => (raw === '@me' ? viewerId : displayOf(raw))
   const toRaw = (display: string) => (display === viewerId ? '@me' : display)
 
-  const rawValues = field === null ? [] : ((filter[field] as (string | null)[] | undefined) ?? [])
+  const rawValues = field === null ? [] : valuesOf(filter, field)
   const selected = rawValues.map(toDisplay)
 
   const toggle = (value: string) => {
