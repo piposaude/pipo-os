@@ -16,6 +16,26 @@ import { toDisplayStatus } from './status'
 export type Priority = ApiPriority
 export type Relationship = ApiRelationship
 
+/** The keys are the menu, in insertion order; `true` is filler. A record is
+ *  the only shape TypeScript can demand be complete, because a literal needs a
+ *  value per key — a `Priority[]` typechecks fine while missing a level, and
+ *  `Priority` now comes from the contract. */
+const PRIORITY_LEVELS: Record<Priority, true> = {
+  urgent: true,
+  high: true,
+  medium: true,
+  low: true,
+}
+
+/** In attack order, and provably complete by the record above. Shared so the
+ *  detail menu and the filter guard cannot drift apart. */
+export const PRIORITIES = Object.keys(PRIORITY_LEVELS) as Priority[]
+
+/** Filter values come from the URL, which is hand-editable: a string is only
+ *  a `Priority` after this check. */
+export const isPriority = (value: string): value is Priority =>
+  PRIORITIES.some((priority) => priority === value)
+
 export interface TicketRow {
   id: string
   /** Human-readable id (`M000123`) — the ID column and search key. */

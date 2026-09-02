@@ -16,22 +16,9 @@ import { analystsOf } from '@/lib/pipodesk/permissions'
 import { structureFixture } from '@/fixtures/pipodesk/dataset'
 import { daysOverdue, formatDayMonth } from '@/lib/pipodesk/format'
 import { CHANNELS, CHANNEL_LABEL, timelineOf, type CommentChannel } from '@/lib/pipodesk/timeline'
-import type { Priority } from '@/lib/pipodesk/ticket-row'
+import { PRIORITIES } from '@/lib/pipodesk/ticket-row'
 import constants from '@/constants/pages/pipodesk/ticket'
 import styles from './style.module.css'
-
-/** The keys are the menu, in insertion order; `true` is filler. A record is
- *  the only shape TypeScript can demand be complete, because a literal needs a
- *  value per key — `Priority[]` typechecks fine while missing a level, and
- *  `Priority` now comes from the contract. */
-const PRIORITY_LEVELS: Record<Priority, true> = {
-  urgent: true,
-  high: true,
-  medium: true,
-  low: true,
-}
-
-const PRIORITY_ORDER = Object.keys(PRIORITY_LEVELS) as Priority[]
 
 /** One fact: label above, value below. */
 function Fact({ label, value }: { label: string; value: string }) {
@@ -260,7 +247,7 @@ export default function TicketPage() {
               >
                 {constants.context.noPriority}
               </button>
-              {PRIORITY_ORDER.map((level) => (
+              {PRIORITIES.map((level) => (
                 <button
                   key={level}
                   type="button"
@@ -271,7 +258,7 @@ export default function TicketPage() {
                     setPriorityOpen(false)
                   }}
                 >
-                  {PRIORITY_COPY[level as string]}
+                  {PRIORITY_COPY[level]}
                 </button>
               ))}
             </Popover>

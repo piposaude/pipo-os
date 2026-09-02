@@ -14,6 +14,7 @@ import {
 } from '@/constants/pipodesk/domain'
 import { isApiStatus, toDisplayStatus } from './status'
 import { assertNever, NULL_TOKEN, type FilterField, type TicketFilter } from './filter'
+import { isPriority } from './ticket-row'
 import type { GroupBy } from './group'
 
 /** Resolves ids to names. Each falls back to the id itself — an id on
@@ -103,7 +104,7 @@ export function optionLabel(field: FilterField, value: string | null, ctx: Label
     case 'relationships':
       return RELATIONSHIP_COPY[value] ?? value
     case 'priorities':
-      return PRIORITY_COPY[value] ?? value
+      return isPriority(value) ? PRIORITY_COPY[value] : value
     case 'tags':
       return value
     // Node scope, never a chip — there is no pod name to resolve.
