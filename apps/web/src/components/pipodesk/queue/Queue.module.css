@@ -18,6 +18,21 @@
 
 /* The toggle centers on the axis, not the baseline — a 24px button on the
    baseline pulls the path text down. */
+/* The visible title is the breadcrumb (fidelity to the prototype), but a `nav`
+   is not a heading — this gives the screen one without a second title on
+   screen. Not `display: none`: that would hide it from assistive tech too. */
+.pageTitle {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .crumbRow {
   display: flex;
   align-items: center;

@@ -113,6 +113,8 @@ export function QueueHeader({
             <path d="M9 3v18" stroke="currentColor" strokeWidth="1.6" />
           </svg>
         </button>
+        {/* Heading for the screen; the breadcrumb below carries it visually. */}
+        <h1 className={styles.pageTitle}>{labelPath[labelPath.length - 1]}</h1>
         <Breadcrumb separator="›">
           {labelPath.map((crumb, index) => (
             <BreadcrumbItem

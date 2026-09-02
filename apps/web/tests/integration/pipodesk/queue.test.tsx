@@ -192,4 +192,14 @@ describe('fila operacional', () => {
       .filter((row) => row.getAttribute('data-selected') === 'true')
     expect(selected.length).toBeGreaterThan(0)
   })
+
+  /** The breadcrumb is the visible title by design (fidelity to the
+   *  prototype), but it is a `nav`: without a heading the screen had no
+   *  landmark for whoever navigates by headings. */
+  it('should give the screen a heading naming the queue on show', async () => {
+    await renderQueue()
+
+    const heading = screen.getByRole('heading', { level: 1 })
+    expect(heading).toHaveTextContent('Meus tickets')
+  })
 })
