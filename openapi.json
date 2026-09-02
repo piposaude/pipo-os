@@ -247,12 +247,12 @@
         ],
         "additionalProperties": false
       },
-      "VinculoInput": {
+      "RelationshipInput": {
         "type": "string",
         "enum": [
-          "titular",
-          "dependente",
-          "grupo-familiar"
+          "holder",
+          "dependent",
+          "family-group"
         ]
       },
       "TicketFilterInput": {
@@ -314,10 +314,10 @@
               ]
             }
           },
-          "vinculos": {
+          "relationships": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VinculoInput"
+              "$ref": "#/components/schemas/RelationshipInput"
             }
           },
           "origins": {
@@ -346,10 +346,6 @@
             "type": "array",
             "items": {
               "anyOf": [
-                {
-                  "type": "string",
-                  "const": "@me"
-                },
                 {
                   "type": "string",
                   "minLength": 1
@@ -942,12 +938,12 @@
         ],
         "additionalProperties": false
       },
-      "Vinculo": {
+      "Relationship": {
         "type": "string",
         "enum": [
-          "titular",
-          "dependente",
-          "grupo-familiar"
+          "holder",
+          "dependent",
+          "family-group"
         ]
       },
       "TicketFilter": {
@@ -1009,10 +1005,10 @@
               ]
             }
           },
-          "vinculos": {
+          "relationships": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Vinculo"
+              "$ref": "#/components/schemas/Relationship"
             }
           },
           "origins": {
@@ -1041,10 +1037,6 @@
             "type": "array",
             "items": {
               "anyOf": [
-                {
-                  "type": "string",
-                  "const": "@me"
-                },
                 {
                   "type": "string",
                   "minLength": 1

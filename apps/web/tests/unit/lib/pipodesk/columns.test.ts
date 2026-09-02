@@ -46,7 +46,7 @@ describe('applyColumnPrefs', () => {
         'id',
         'assignee',
         'classification',
-        'vinculo',
+        'relationship',
         'status',
         'createdAt',
         'updatedAt',
@@ -60,11 +60,11 @@ describe('applyColumnPrefs', () => {
   it('should apply the widths the person dragged and respect the minimum', () => {
     const columns = applyColumnPrefs(base, {
       ...DEFAULT_COLUMN_PREFS,
-      widths: { company: 300, vinculo: 10 },
+      widths: { company: 300, relationship: 10 },
     })
 
     expect(columns.find((c) => c.key === 'company')?.width).toBe('300px')
-    expect(columns.find((c) => c.key === 'vinculo')?.width).toBe(`${MIN_COLUMN_WIDTH}px`)
+    expect(columns.find((c) => c.key === 'relationship')?.width).toBe(`${MIN_COLUMN_WIDTH}px`)
   })
 
   it('should never give the flex column a fixed width, since it absorbs the leftover', () => {

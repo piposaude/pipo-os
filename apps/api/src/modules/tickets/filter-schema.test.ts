@@ -6,7 +6,7 @@ describe('ticketFilterSchema', () => {
     expect(ticketFilterSchema.parse({})).toEqual({})
   })
 
-  it('accepts the twelve list fields of the queue filter panel', () => {
+  it('accepts the thirteen list fields of the queue filter panel', () => {
     const filter = {
       statuses: ['broker-processing', 'missing-documents'],
       companyIds: ['00000000-0000-4000-8000-000000000001'],
@@ -15,7 +15,7 @@ describe('ticketFilterSchema', () => {
       types: ['inclusion'],
       portes: ['enterprise'],
       contractTypes: ['clt'],
-      vinculos: ['titular'],
+      relationships: ['holder'],
       origins: ['enrollment-integrations'],
       groupIds: ['00000000-0000-4000-8000-000000000002'],
       tags: ['vip'],
@@ -61,6 +61,10 @@ describe('ticketFilterSchema', () => {
 
   it('rejects a priority outside the four levels', () => {
     expect(ticketFilterSchema.safeParse({ priorities: ['critical'] }).success).toBe(false)
+  })
+
+  it('rejects a relationship outside the three the snapshot derives', () => {
+    expect(ticketFilterSchema.safeParse({ relationships: ['conjuge'] }).success).toBe(false)
   })
 
   it('rejects a scalar where the filter expects a list', () => {

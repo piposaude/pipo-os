@@ -34,7 +34,7 @@ const row = (overrides: Partial<TicketRow> & Pick<TicketRow, 'id'>): TicketRow =
     product: null,
     enrollmentType: 'inclusion',
     contractType: 'clt',
-    vinculo: 'titular',
+    relationship: 'holder',
     assigneeId: null,
     groupId: 'pod-1',
     priority: null,

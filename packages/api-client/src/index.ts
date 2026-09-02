@@ -8,4 +8,6 @@ import type { components } from './generated/schema.js'
 
 export type Ticket = components['schemas']['Ticket']
 export type TicketStatus = components['schemas']['TicketStatus']
+export type TicketFilter = components['schemas']['TicketFilter']
+export type Relationship = components['schemas']['Relationship']
 export type AuthMe = components['schemas']['AuthMe']

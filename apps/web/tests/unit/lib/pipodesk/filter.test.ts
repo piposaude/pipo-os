@@ -31,7 +31,7 @@ function row(overrides: Partial<TicketRow> & { id: string }): TicketRow {
     product: null,
     enrollmentType: 'inclusion',
     contractType: null,
-    vinculo: null,
+    relationship: null,
     assigneeId: null,
     groupId: null,
     priority: null,
@@ -78,10 +78,10 @@ describe('matchesFilter — single value fields', () => {
       { contractTypes: ['brazil-labor-law'] },
     ],
     [
-      'vinculos',
-      { vinculo: 'dependente' },
-      { vinculos: ['dependente'] },
-      { vinculos: ['titular'] },
+      'relationships',
+      { relationship: 'dependent' },
+      { relationships: ['dependent'] },
+      { relationships: ['holder'] },
     ],
     [
       'origins',

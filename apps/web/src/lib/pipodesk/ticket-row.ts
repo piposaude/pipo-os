@@ -1,4 +1,4 @@
-import type { Ticket } from '@pipo-os/api-client'
+import type { Ticket, Relationship as ApiRelationship } from '@pipo-os/api-client'
 import type { ApiStatus, DisplayStatus, PendingReason } from './status'
 import { toDisplayStatus } from './status'
 
@@ -10,7 +10,7 @@ import { toDisplayStatus } from './status'
  */
 
 export type Priority = 'urgent' | 'high' | 'medium' | 'low'
-export type Vinculo = 'titular' | 'dependente' | 'grupo-familiar'
+export type Relationship = ApiRelationship
 
 export interface TicketRow {
   id: string
@@ -33,7 +33,7 @@ export interface TicketRow {
   product: string | null
   enrollmentType: string
   contractType: string | null
-  vinculo: Vinculo | null
+  relationship: Relationship | null
   assigneeId: string | null
   groupId: string | null
   priority: Priority | null
@@ -103,12 +103,12 @@ function readPriority(value: unknown): Priority | null {
     : null
 }
 
-function readVinculo(snapshot: Record<string, unknown>): Vinculo | null {
+function readRelationship(snapshot: Record<string, unknown>): Relationship | null {
   const memberType = readString(snapshot, ['member-type'], ['primary', 'member-type'])
   if (memberType === null) return null
-  if (memberType === 'dependent') return 'dependente'
+  if (memberType === 'dependent') return 'dependent'
   const dependents = readPath(snapshot, ['dependents'])
-  return Array.isArray(dependents) && dependents.length > 0 ? 'grupo-familiar' : 'titular'
+  return Array.isArray(dependents) && dependents.length > 0 ? 'family-group' : 'holder'
 }
 
 /** Subject shaped like the Zendesk one: carrier · product · person. */
@@ -157,7 +157,7 @@ export function toTicketRow(ticket: Ticket): TicketRow {
       ['primary', 'employment', 'contract-type'],
       ['work-contract-type'],
     ),
-    vinculo: readVinculo(snapshot),
+    relationship: readRelationship(snapshot),
     assigneeId: ticket.assigneeId,
     groupId: typeof pending.groupId === 'string' ? pending.groupId : null,
     priority: readPriority(pending.priority),

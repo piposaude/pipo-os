@@ -1512,7 +1512,7 @@ export interface components {
             active: boolean;
         };
         /** @enum {string} */
-        VinculoInput: "titular" | "dependente" | "grupo-familiar";
+        RelationshipInput: "holder" | "dependent" | "family-group";
         TicketFilterInput: {
             statuses?: components["schemas"]["TicketStatusInput"][];
             companyIds?: string[];
@@ -1521,11 +1521,11 @@ export interface components {
             types?: string[];
             portes?: string[];
             contractTypes?: (string | null)[];
-            vinculos?: components["schemas"]["VinculoInput"][];
+            relationships?: components["schemas"]["RelationshipInput"][];
             origins?: string[];
             groupIds?: string[];
             tags?: string[];
-            assigneeIds?: ("@me" | string | null)[];
+            assigneeIds?: (string | null)[];
             priorities?: (components["schemas"]["TicketPriorityInput"] | null)[];
             /** Format: date */
             actionDateBefore?: string;
@@ -1651,7 +1651,7 @@ export interface components {
             pageSize: number;
         };
         /** @enum {string} */
-        Vinculo: "titular" | "dependente" | "grupo-familiar";
+        Relationship: "holder" | "dependent" | "family-group";
         TicketFilter: {
             statuses?: components["schemas"]["TicketStatus"][];
             companyIds?: string[];
@@ -1660,11 +1660,11 @@ export interface components {
             types?: string[];
             portes?: string[];
             contractTypes?: (string | null)[];
-            vinculos?: components["schemas"]["Vinculo"][];
+            relationships?: components["schemas"]["Relationship"][];
             origins?: string[];
             groupIds?: string[];
             tags?: string[];
-            assigneeIds?: ("@me" | string | null)[];
+            assigneeIds?: (string | null)[];
             priorities?: (components["schemas"]["TicketPriority"] | null)[];
             /** Format: date */
             actionDateBefore?: string;

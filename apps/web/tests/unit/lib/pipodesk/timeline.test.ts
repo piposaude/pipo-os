@@ -20,7 +20,7 @@ const row = (overrides: Partial<TicketRow> & Pick<TicketRow, 'id'>): TicketRow =
     product: 'health',
     enrollmentType: 'inclusion',
     contractType: 'clt',
-    vinculo: 'titular',
+    relationship: 'holder',
     assigneeId: 'ana@pipo',
     groupId: 'pod-1',
     priority: null,

@@ -151,6 +151,26 @@ describe('queues routes', () => {
       expect(response.json()).toEqual({ data: [], total: 0, page: 1, pageSize: 20 })
     })
 
+    it('reads a legacy filter as empty instead of failing the whole list', async () => {
+      await app.db
+        .insertInto('ticket_queues')
+        .values({
+          name: 'Fila E',
+          filters: JSON.stringify({ status: 'active', tags: ['vip'] }),
+          created_by: DEV_LOGIN_USER_ID,
+        })
+        .execute()
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(200)
+      expect(response.json().data[0].filters).toEqual({})
+    })
+
     it('returns created queues', async () => {
       await app.inject({
         method: 'POST',

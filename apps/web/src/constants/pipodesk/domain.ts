@@ -22,10 +22,10 @@ export const PORTE_COPY: Record<string, string> = {
   enterprise: 'Empresarial',
 }
 
-export const VINCULO_COPY: Record<string, string> = {
-  titular: 'Titular',
-  dependente: 'Dependente',
-  'grupo-familiar': 'G. Familiar',
+export const RELATIONSHIP_COPY: Record<string, string> = {
+  holder: 'Titular',
+  dependent: 'Dependente',
+  'family-group': 'G. Familiar',
 }
 
 export const PRIORITY_COPY: Record<string, string> = {

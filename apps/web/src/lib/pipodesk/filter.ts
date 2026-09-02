@@ -1,5 +1,5 @@
-import type { ApiStatus } from './status'
-import type { Priority, TicketRow, Vinculo } from './ticket-row'
+import type { TicketFilter as ApiTicketFilter } from '@pipo-os/api-client'
+import type { TicketRow } from './ticket-row'
 
 /**
  * Queue filtering, plus the alive/awake window rules.
@@ -13,31 +13,16 @@ import type { Priority, TicketRow, Vinculo } from './ticket-row'
  * to the same set here and in the server-side resolver.
  */
 
-export type AssigneeFilterValue = string | null | '@me'
+/** `null` is the unassigned ticket; `@me` resolves to the viewer. */
+export type AssigneeFilterValue = NonNullable<ApiTicketFilter['assigneeIds']>[number]
 
-export interface TicketFilter {
-  statuses?: ApiStatus[]
-  companyIds?: string[]
-  carrierIds?: string[]
-  products?: string[]
-  types?: string[]
-  portes?: string[]
-  /** `null` = sem contrato no snapshot — MOV PJ filtra `['pj', null]` para a
-   *  lista bater com o tally (que conta não-CLT). */
-  contractTypes?: (string | null)[]
-  vinculos?: Vinculo[]
-  origins?: string[]
-  groupIds?: string[]
-  tags?: string[]
-  /** `null` = livre no pod; `@me` é resolvido para o viewer. */
-  assigneeIds?: AssigneeFilterValue[]
-  /** `null` = sem prioridade. */
-  priorities?: (Priority | null)[]
-  actionDateBefore?: string
-  urgentBy?: string
-  createdSince?: string
-  archived?: boolean
-  /** Global search only. */
+/**
+ * `null` is a legitimate value in `assigneeIds` (unassigned), `priorities` (no
+ * priority) and `contractTypes` (no contract in the snapshot — the MOV PJ cut
+ * filters `['pj', null]` so the list matches the tally, which counts non-CLT).
+ */
+export interface TicketFilter extends ApiTicketFilter {
+  /** Computed per render from a query result; never a saved filter. */
   ticketIds?: string[]
   taxIds?: string[]
 }
@@ -50,7 +35,7 @@ export type FilterField =
   | 'types'
   | 'portes'
   | 'contractTypes'
-  | 'vinculos'
+  | 'relationships'
   | 'origins'
   | 'groupIds'
   | 'tags'
@@ -104,7 +89,7 @@ export function matchesFilter(ticket: TicketRow, filter: TicketFilter, viewerId:
   if (missesList(filter.portes, ticket.porte)) return false
   if (filter.contractTypes?.length && !filter.contractTypes.includes(ticket.contractType))
     return false
-  if (missesList(filter.vinculos, ticket.vinculo)) return false
+  if (missesList(filter.relationships, ticket.relationship)) return false
   if (missesList(filter.origins, ticket.sourceSystem)) return false
   if (missesList(filter.groupIds, ticket.groupId)) return false
   // The two search fields carry a query RESULT, so an empty list matches
@@ -171,8 +156,8 @@ const optionKeysOf = (ticket: TicketRow, field: FilterField): string[] => {
       return ticket.porte ? [ticket.porte] : []
     case 'contractTypes':
       return ticket.contractType ? [ticket.contractType] : []
-    case 'vinculos':
-      return ticket.vinculo ? [ticket.vinculo] : []
+    case 'relationships':
+      return ticket.relationship ? [ticket.relationship] : []
     case 'origins':
       return [ticket.sourceSystem]
     case 'groupIds':

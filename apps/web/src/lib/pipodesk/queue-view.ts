@@ -205,7 +205,7 @@ const FILTER_FIELDS: FilterField[] = [
   'types',
   'portes',
   'contractTypes',
-  'vinculos',
+  'relationships',
   'origins',
   'groupIds',
   'tags',

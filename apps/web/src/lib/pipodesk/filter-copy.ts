@@ -10,7 +10,7 @@ import {
   PORTE_COPY,
   PRIORITY_COPY,
   PRODUCT_COPY,
-  VINCULO_COPY,
+  RELATIONSHIP_COPY,
 } from '@/constants/pipodesk/domain'
 import { toDisplayStatus, type ApiStatus } from './status'
 import type { FilterField, TicketFilter } from './filter'
@@ -39,7 +39,7 @@ export const FILTER_FIELD_COPY: Partial<Record<FilterField, string>> & Record<st
   tags: 'Tag',
   assigneeIds: 'Dono',
   contractTypes: 'Contrato',
-  vinculos: 'Vínculo',
+  relationships: 'Vínculo',
 }
 
 /** All filterable fields, derived from the copy table — the prototype had
@@ -106,8 +106,8 @@ export function optionLabel(field: FilterField, value: string | null, ctx: Label
     case 'contractTypes':
       // The snapshot vocabulary is open — an unknown value shows raw, not "CLT".
       return value === 'pj' ? 'PJ' : value === 'clt' ? 'CLT' : value
-    case 'vinculos':
-      return VINCULO_COPY[value] ?? value
+    case 'relationships':
+      return RELATIONSHIP_COPY[value] ?? value
     case 'priorities':
       return PRIORITY_COPY[value] ?? value
     default:

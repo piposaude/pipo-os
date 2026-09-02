@@ -2,14 +2,14 @@ import { z } from 'zod'
 import { ticketPrioritySchema, ticketStatusSchema } from './schemas.js'
 
 /** `@me` resolves server-side to the caller; `null` is the unassigned ticket. */
-export const assigneeFilterValueSchema = z.union([z.literal('@me'), z.string().min(1), z.null()])
+export const assigneeFilterValueSchema = z.string().min(1).nullable()
 
-export const vinculoSchema = z
-  .enum(['titular', 'dependente', 'grupo-familiar'])
-  .meta({ id: 'Vinculo' })
+export const relationshipSchema = z
+  .enum(['holder', 'dependent', 'family-group'])
+  .meta({ id: 'Relationship' })
 
 /** Date-only (`YYYY-MM-DD`): compared as strings against day-truncated dates. */
-const dateCut = () => z.iso.date()
+const dateCut = z.iso.date()
 
 /**
  * `statuses: [a, b]` matches a or b, and every extra field narrows further.
@@ -26,16 +26,16 @@ export const ticketFilterSchema = z
     portes: z.array(z.string().min(1)).optional(),
     /** `null` = no contract in the snapshot, a value the MOV PJ cut needs. */
     contractTypes: z.array(z.string().min(1).nullable()).optional(),
-    vinculos: z.array(vinculoSchema).optional(),
+    relationships: z.array(relationshipSchema).optional(),
     origins: z.array(z.string().min(1)).optional(),
     groupIds: z.array(z.uuid()).optional(),
     tags: z.array(z.string().min(1)).optional(),
     assigneeIds: z.array(assigneeFilterValueSchema).optional(),
     /** `null` = no priority, which the queue shows as "Sem prioridade". */
     priorities: z.array(ticketPrioritySchema.nullable()).optional(),
-    actionDateBefore: dateCut().optional(),
-    urgentBy: dateCut().optional(),
-    createdSince: dateCut().optional(),
+    actionDateBefore: dateCut.optional(),
+    urgentBy: dateCut.optional(),
+    createdSince: dateCut.optional(),
     archived: z.boolean().optional(),
   })
   .strict()
