@@ -40,8 +40,9 @@ const initialsOf = (name: string): string =>
 
 export default function TeamPage() {
   const { groupId } = useParams({ from: '/_auth/_desk/teams/$groupId' })
-  const search = useSearch({ from: '/_auth/_desk/teams/$groupId' }) as { tab?: string }
-  const tab = search.tab === 'portfolios' || search.tab === 'views' ? search.tab : 'home'
+  /* `validateSearch` already restricted this to the two tabs or nothing —
+     re-checking here would be a second source of truth for the same rule. */
+  const { tab = 'home' } = useSearch({ from: '/_auth/_desk/teams/$groupId' })
   const { rows, resolveName, today } = useDesk()
 
   const group = structureFixture.groups.find((candidate) => candidate.id === groupId)
