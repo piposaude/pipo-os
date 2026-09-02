@@ -16,16 +16,16 @@ export const ENROLLMENT_TYPE_COPY: Record<string, string> = {
   registration_data_change: 'Alteração cadastral',
 }
 
-export const PORTE_COPY: Record<string, string> = {
+export const COMPANY_SIZE_COPY: Record<string, string> = {
   pme: 'PME',
   'pme-plus': 'PME+',
   enterprise: 'Empresarial',
 }
 
-export const VINCULO_COPY: Record<string, string> = {
-  titular: 'Titular',
-  dependente: 'Dependente',
-  'grupo-familiar': 'G. Familiar',
+export const RELATIONSHIP_COPY: Record<string, string> = {
+  holder: 'Titular',
+  dependent: 'Dependente',
+  'family-group': 'G. Familiar',
 }
 
 export const PRIORITY_COPY: Record<string, string> = {

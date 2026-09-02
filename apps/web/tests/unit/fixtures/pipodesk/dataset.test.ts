@@ -63,4 +63,32 @@ describe('toSeedRows', () => {
 
     expect(row.displayNumber).toBeNull()
   })
+
+  /**
+   * The export still writes `porte` and `vinculo`, so the whole fixture reaches
+   * the queue through this translation. A key that stops matching yields
+   * `undefined`, which becomes `null` — the Vínculo column would render empty
+   * for every row and no other assertion here would notice.
+   */
+  it('should translate the field names the export still writes in Portuguese', () => {
+    const [row] = toSeedRows([raw({ porte: 'enterprise' })])
+
+    expect(row.companySize).toBe('enterprise')
+  })
+
+  it('should translate every relationship the export can write', () => {
+    const rows = toSeedRows([
+      raw({ id: 'a', vinculo: 'titular' }),
+      raw({ id: 'b', vinculo: 'dependente' }),
+      raw({ id: 'c', vinculo: 'grupo-familiar' }),
+    ])
+
+    expect(rows.map((row) => row.relationship)).toEqual(['holder', 'dependent', 'family-group'])
+  })
+
+  it('should null an unknown relationship instead of leaking the raw value', () => {
+    const [row] = toSeedRows([raw({ vinculo: 'conjuge' })])
+
+    expect(row.relationship).toBeNull()
+  })
 })

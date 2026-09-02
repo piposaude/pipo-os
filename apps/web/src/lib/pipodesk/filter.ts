@@ -1,58 +1,42 @@
-import type { ApiStatus } from './status'
-import type { Priority, TicketRow, Vinculo } from './ticket-row'
+import type { TicketFilter as ApiTicketFilter } from '@pipo-os/api-client'
+import type { TicketRow } from './ticket-row'
 
 /**
  * Queue filtering, plus the alive/awake window rules.
  *
+ * `statuses: [a, b]` matches a or b, and every extra field narrows further.
+ * `tags` is the exception: it asks for all the tags listed, not any of them.
+ * `urgentBy` matches a ticket that is urgent or already past its action date.
+ *
  * `statuses` stores the 8 API values, not the 6 UI ones — "Com o cliente"
  * writes `['missing-documents', 'incorrect-data']`, so a saved filter resolves
- * to the same set here and in the server-side resolver. `tags` is AND; every
- * other field is OR within and AND across. `null` is a legit value for
- * `assigneeIds` (free) and `priorities` (none).
+ * to the same set here and in the server-side resolver.
  */
 
-export type AssigneeFilterValue = string | null | '@me'
+/** `null` is the unassigned ticket. `@me` is not a separate member of this
+ *  type — it is a plain string that the server resolves to the viewer. */
+export type AssigneeFilterValue = NonNullable<ApiTicketFilter['assigneeIds']>[number]
 
-export interface TicketFilter {
-  statuses?: ApiStatus[]
-  companyIds?: string[]
-  carrierIds?: string[]
-  products?: string[]
-  types?: string[]
-  portes?: string[]
-  /** `null` = sem contrato no snapshot — MOV PJ filtra `['pj', null]` para a
-   *  lista bater com o tally (que conta não-CLT). */
-  contractTypes?: (string | null)[]
-  vinculos?: Vinculo[]
-  origins?: string[]
-  groupIds?: string[]
-  tags?: string[]
-  assigneeIds?: AssigneeFilterValue[]
-  priorities?: (Priority | null)[]
-  actionDateBefore?: string
-  /** The filter's only OR: urgent OR past its action date. */
-  urgentBy?: string
-  createdSince?: string
-  archived?: boolean
-  /** Global search only. */
+/**
+ * `null` is a legitimate value in `assigneeIds` (unassigned), `priorities` (no
+ * priority) and `contractTypes` (no contract in the snapshot — the MOV PJ cut
+ * filters `['pj', null]` so the list matches the tally, which counts non-CLT).
+ */
+export interface TicketFilter extends ApiTicketFilter {
+  /** Computed per render from a query result; never a saved filter. */
   ticketIds?: string[]
   taxIds?: string[]
 }
 
-export type FilterField =
-  | 'statuses'
-  | 'companyIds'
-  | 'carrierIds'
-  | 'products'
-  | 'types'
-  | 'portes'
-  | 'contractTypes'
-  | 'vinculos'
-  | 'origins'
-  | 'groupIds'
-  | 'tags'
-  | 'assigneeIds'
-  | 'priorities'
+export type FilterField = {
+  [K in keyof ApiTicketFilter]-?: NonNullable<ApiTicketFilter[K]> extends readonly unknown[]
+    ? K
+    : never
+}[keyof ApiTicketFilter]
+
+export function assertNever(value: never): never {
+  throw new Error(`Unhandled filter field: ${String(value)}`)
+}
 
 /** How many days ahead an action date may be before the ticket leaves
  *  today's queue. Two: it resurfaces with room to be worked. */
@@ -126,10 +110,10 @@ export function matchesFilter(ticket: TicketRow, filter: TicketFilter, viewerId:
   if (missesList(filter.carrierIds, ticket.carrierId)) return false
   if (missesList(filter.products, ticket.product)) return false
   if (missesList(filter.types, ticket.enrollmentType)) return false
-  if (missesList(filter.portes, ticket.porte)) return false
+  if (missesList(filter.companySizes, ticket.companySize)) return false
   if (filter.contractTypes?.length && !filter.contractTypes.includes(ticket.contractType))
     return false
-  if (missesList(filter.vinculos, ticket.vinculo)) return false
+  if (missesList(filter.relationships, ticket.relationship)) return false
   if (missesList(filter.origins, ticket.sourceSystem)) return false
   if (missesList(filter.groupIds, ticket.groupId)) return false
   // The two search fields carry a query RESULT, so an empty list matches
@@ -193,12 +177,12 @@ const optionKeysOf = (ticket: TicketRow, field: FilterField): string[] => {
       return ticket.product ? [ticket.product] : []
     case 'types':
       return [ticket.enrollmentType]
-    case 'portes':
-      return ticket.porte ? [ticket.porte] : []
+    case 'companySizes':
+      return ticket.companySize ? [ticket.companySize] : []
     case 'contractTypes':
       return [displayOf(ticket.contractType)]
-    case 'vinculos':
-      return ticket.vinculo ? [ticket.vinculo] : []
+    case 'relationships':
+      return ticket.relationship ? [ticket.relationship] : []
     case 'origins':
       return [ticket.sourceSystem]
     case 'groupIds':
@@ -209,6 +193,8 @@ const optionKeysOf = (ticket: TicketRow, field: FilterField): string[] => {
       return [displayOf(ticket.assigneeId)]
     case 'priorities':
       return [displayOf(ticket.priority)]
+    default:
+      return assertNever(field)
   }
 }
 

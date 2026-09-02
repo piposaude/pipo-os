@@ -9,6 +9,7 @@ import {
   pinsOneAssignee,
   sinceOf,
   windowOf,
+  type FilterField,
 } from '@/lib/pipodesk/filter'
 
 const TODAY = '2026-08-31'
@@ -26,13 +27,13 @@ function row(overrides: Partial<TicketRow> & { id: string }): TicketRow {
     beneficiaryName: null,
     taxId: null,
     companyName: null,
-    porte: null,
+    companySize: null,
     carrierId: null,
     carrierName: null,
     product: null,
     enrollmentType: 'inclusion',
     contractType: null,
-    vinculo: null,
+    relationship: null,
     assigneeId: null,
     groupId: null,
     priority: null,
@@ -71,7 +72,12 @@ describe('matchesFilter — single value fields', () => {
     ],
     ['products', { product: 'life' }, { products: ['life'] }, { products: ['health'] }],
     ['types', { enrollmentType: 'exclusion' }, { types: ['exclusion'] }, { types: ['inclusion'] }],
-    ['portes', { porte: 'enterprise' }, { portes: ['enterprise'] }, { portes: ['pme'] }],
+    [
+      'companySizes',
+      { companySize: 'enterprise' },
+      { companySizes: ['enterprise'] },
+      { companySizes: ['pme'] },
+    ],
     [
       'contractTypes',
       { contractType: 'services-contract' },
@@ -79,10 +85,10 @@ describe('matchesFilter — single value fields', () => {
       { contractTypes: ['brazil-labor-law'] },
     ],
     [
-      'vinculos',
-      { vinculo: 'dependente' },
-      { vinculos: ['dependente'] },
-      { vinculos: ['titular'] },
+      'relationships',
+      { relationship: 'dependent' },
+      { relationships: ['dependent'] },
+      { relationships: ['holder'] },
     ],
     [
       'origins',
@@ -100,6 +106,30 @@ describe('matchesFilter — single value fields', () => {
       expect(matchesFilter(ticket, notMatching, VIEWER)).toBe(false)
     })
   }
+
+  const FIELD_COVERAGE: Record<FilterField, 'table' | 'own-describe'> = {
+    statuses: 'table',
+    companyIds: 'table',
+    carrierIds: 'table',
+    products: 'table',
+    types: 'table',
+    companySizes: 'table',
+    contractTypes: 'table',
+    relationships: 'table',
+    origins: 'table',
+    groupIds: 'table',
+    tags: 'own-describe',
+    assigneeIds: 'own-describe',
+    priorities: 'own-describe',
+  }
+
+  it('should exercise every filter field the contract declares', () => {
+    const expected = Object.entries(FIELD_COVERAGE)
+      .filter(([, where]) => where === 'table')
+      .map(([field]) => field)
+
+    expect(cases.map(([field]) => field).sort()).toEqual(expected.sort())
+  })
 
   it('should not match when the derived field is null and the filter asks for a value', () => {
     expect(matchesFilter(row({ id: 'a', product: null }), { products: ['life'] }, VIEWER)).toBe(
@@ -243,12 +273,12 @@ describe('matchesFilter — global search fields', () => {
 
 describe('matchesFilter — fields combine with AND', () => {
   it('should require every set field to match', () => {
-    const ticket = row({ id: 'a', product: 'life', porte: 'pme' })
+    const ticket = row({ id: 'a', product: 'life', companySize: 'pme' })
 
-    expect(matchesFilter(ticket, { products: ['life'], portes: ['pme'] }, VIEWER)).toBe(true)
-    expect(matchesFilter(ticket, { products: ['life'], portes: ['enterprise'] }, VIEWER)).toBe(
-      false,
-    )
+    expect(matchesFilter(ticket, { products: ['life'], companySizes: ['pme'] }, VIEWER)).toBe(true)
+    expect(
+      matchesFilter(ticket, { products: ['life'], companySizes: ['enterprise'] }, VIEWER),
+    ).toBe(false)
   })
 })
 

@@ -1,4 +1,8 @@
-import type { Ticket } from '@pipo-os/api-client'
+import type {
+  Ticket,
+  Relationship as ApiRelationship,
+  TicketPriority as ApiPriority,
+} from '@pipo-os/api-client'
 import type { ApiStatus, DisplayStatus, PendingReason } from './status'
 import { toDisplayStatus } from './status'
 
@@ -9,8 +13,8 @@ import { toDisplayStatus } from './status'
  * (RFC PD-001) costs one file, not the whole queue.
  */
 
-export type Priority = 'urgent' | 'high' | 'medium' | 'low'
-export type Vinculo = 'titular' | 'dependente' | 'grupo-familiar'
+export type Priority = ApiPriority
+export type Relationship = ApiRelationship
 
 export interface TicketRow {
   id: string
@@ -27,13 +31,13 @@ export interface TicketRow {
   beneficiaryName: string | null
   taxId: string | null
   companyName: string | null
-  porte: string | null
+  companySize: string | null
   carrierId: string | null
   carrierName: string | null
   product: string | null
   enrollmentType: string
   contractType: string | null
-  vinculo: Vinculo | null
+  relationship: Relationship | null
   assigneeId: string | null
   groupId: string | null
   priority: Priority | null
@@ -82,12 +86,12 @@ function readString(source: Record<string, unknown>, ...paths: string[][]): stri
   return null
 }
 
-function readVinculo(snapshot: Record<string, unknown>): Vinculo | null {
+function readRelationship(snapshot: Record<string, unknown>): Relationship | null {
   const memberType = readString(snapshot, ['member-type'], ['primary', 'member-type'])
   if (memberType === null) return null
-  if (memberType === 'dependent') return 'dependente'
+  if (memberType === 'dependent') return 'dependent'
   const dependents = readPath(snapshot, ['dependents'])
-  return Array.isArray(dependents) && dependents.length > 0 ? 'grupo-familiar' : 'titular'
+  return Array.isArray(dependents) && dependents.length > 0 ? 'family-group' : 'holder'
 }
 
 /** Subject shaped like the Zendesk one: carrier · product · person. */
@@ -125,7 +129,7 @@ export function toTicketRow(ticket: Ticket): TicketRow {
     ),
     taxId: readString(snapshot, ['primary', 'profile', 'tax-id']),
     companyName: readString(snapshot, ['company', 'company-name'], ['company', 'name']),
-    porte: readString(snapshot, ['company', 'company-size'], ['company', 'porte']),
+    companySize: readString(snapshot, ['company', 'company-size'], ['company', 'porte']),
     carrierId: readString(snapshot, ['carrier-id'], ['carrier', 'id']),
     carrierName: readString(snapshot, ['carrier-name'], ['carrier', 'name']),
     product: readString(snapshot, ['contract', 'product-type'], ['product-type']),
@@ -135,7 +139,7 @@ export function toTicketRow(ticket: Ticket): TicketRow {
       ['primary', 'employment', 'contract-type'],
       ['work-contract-type'],
     ),
-    vinculo: readVinculo(snapshot),
+    relationship: readRelationship(snapshot),
     assigneeId: ticket.assigneeId,
     groupId: ticket.groupId,
     priority: ticket.priority,

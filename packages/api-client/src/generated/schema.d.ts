@@ -1459,6 +1459,8 @@ export interface components {
     schemas: {
         /** @enum {string} */
         TicketStatusInput: "broker-processing" | "carrier-processing" | "broker-open-issue" | "missing-documents" | "incorrect-data" | "completed" | "cancelled" | "submitted-cancellation";
+        /** @enum {string} */
+        TicketPriorityInput: "urgent" | "high" | "medium" | "low";
         CreateTicketBodyInput: {
             /** Format: uuid */
             enrollmentId: string;
@@ -1509,17 +1511,37 @@ export interface components {
         UpdateGroupMemberBodyInput: {
             active: boolean;
         };
+        /** @enum {string} */
+        RelationshipInput: "holder" | "dependent" | "family-group";
+        TicketFilterInput: {
+            statuses?: components["schemas"]["TicketStatusInput"][];
+            companyIds?: string[];
+            carrierIds?: string[];
+            products?: string[];
+            types?: string[];
+            companySizes?: string[];
+            contractTypes?: (string | null)[];
+            relationships?: components["schemas"]["RelationshipInput"][];
+            origins?: string[];
+            groupIds?: string[];
+            tags?: string[];
+            assigneeIds?: (string | null)[];
+            priorities?: (components["schemas"]["TicketPriorityInput"] | null)[];
+            /** Format: date */
+            actionDateBefore?: string;
+            /** Format: date */
+            urgentBy?: string;
+            /** Format: date */
+            createdSince?: string;
+            archived?: boolean;
+        };
         CreateQueueBodyInput: {
             name: string;
-            filters?: {
-                [key: string]: unknown;
-            };
+            filters?: components["schemas"]["TicketFilterInput"];
         };
         UpdateQueueBodyInput: {
             name?: string;
-            filters?: {
-                [key: string]: unknown;
-            };
+            filters?: components["schemas"]["TicketFilterInput"];
         };
         AddQueueGroupBodyInput: {
             /** Format: uuid */
@@ -1628,13 +1650,35 @@ export interface components {
             page: number;
             pageSize: number;
         };
+        /** @enum {string} */
+        Relationship: "holder" | "dependent" | "family-group";
+        TicketFilter: {
+            statuses?: components["schemas"]["TicketStatus"][];
+            companyIds?: string[];
+            carrierIds?: string[];
+            products?: string[];
+            types?: string[];
+            companySizes?: string[];
+            contractTypes?: (string | null)[];
+            relationships?: components["schemas"]["Relationship"][];
+            origins?: string[];
+            groupIds?: string[];
+            tags?: string[];
+            assigneeIds?: (string | null)[];
+            priorities?: (components["schemas"]["TicketPriority"] | null)[];
+            /** Format: date */
+            actionDateBefore?: string;
+            /** Format: date */
+            urgentBy?: string;
+            /** Format: date */
+            createdSince?: string;
+            archived?: boolean;
+        };
         Queue: {
             /** Format: uuid */
             id: string;
             name: string;
-            filters: {
-                [key: string]: unknown;
-            };
+            filters: components["schemas"]["TicketFilter"] | null;
             createdBy: string;
             updatedBy: string | null;
             /** Format: date-time */

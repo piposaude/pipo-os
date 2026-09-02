@@ -48,7 +48,7 @@ describe('applyColumnPrefs', () => {
         'id',
         'assignee',
         'classification',
-        'vinculo',
+        'relationship',
         'status',
         'createdAt',
         'updatedAt',
@@ -62,11 +62,11 @@ describe('applyColumnPrefs', () => {
   it('should apply the widths the person dragged and respect the minimum', () => {
     const columns = applyColumnPrefs(base, {
       ...DEFAULT_COLUMN_PREFS,
-      widths: { company: 300, vinculo: 10 },
+      widths: { company: 300, relationship: 10 },
     })
 
     expect(columns.find((c) => c.key === 'company')?.width).toBe('300px')
-    expect(columns.find((c) => c.key === 'vinculo')?.width).toBe(`${MIN_COLUMN_WIDTH}px`)
+    expect(columns.find((c) => c.key === 'relationship')?.width).toBe(`${MIN_COLUMN_WIDTH}px`)
   })
 
   it('should never give the flex column a fixed width, since it absorbs the leftover', () => {
@@ -136,7 +136,7 @@ describe('hasCustomColumns', () => {
    *  and is still a custom display. */
   it('should see a swap of the same size as customized', () => {
     expect(hasCustomColumns(DEFAULT_COLUMN_PREFS.hidden)).toBe(false)
-    expect(hasCustomColumns(['createdAt', 'vinculo'])).toBe(true)
+    expect(hasCustomColumns(['createdAt', 'relationship'])).toBe(true)
     expect(hasCustomColumns([])).toBe(true)
   })
 })

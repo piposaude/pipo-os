@@ -104,7 +104,7 @@ describe('toTicketRow — derivação do enrollmentSnapshot', () => {
     expect(row.beneficiaryName).toBe('Renata Henriques Junqueira')
     expect(row.taxId).toBe('266.348.750-73')
     expect(row.companyName).toBe('Caiçara Metalurgia')
-    expect(row.porte).toBe('enterprise')
+    expect(row.companySize).toBe('enterprise')
     expect(row.carrierId).toBe('carrier-unimed')
     expect(row.carrierName).toBe('Unimed Mineira')
     expect(row.product).toBe('life')
@@ -138,7 +138,7 @@ describe('toTicketRow — derivação do enrollmentSnapshot', () => {
     expect(row.beneficiaryName).toBe('Ana')
     expect(row.taxId).toBe('111')
     expect(row.companyName).toBe('Empresa X')
-    expect(row.porte).toBe('pme')
+    expect(row.companySize).toBe('pme')
     expect(row.carrierName).toBe('SulAmérica')
   })
 
@@ -150,36 +150,36 @@ describe('toTicketRow — derivação do enrollmentSnapshot', () => {
     expect(row.carrierId).toBeNull()
     expect(row.product).toBeNull()
     expect(row.contractType).toBeNull()
-    expect(row.porte).toBeNull()
-    expect(row.vinculo).toBeNull()
+    expect(row.companySize).toBeNull()
+    expect(row.relationship).toBeNull()
   })
 })
 
-describe('toTicketRow — vínculo derivado', () => {
-  it('should be titular for a primary member without dependents', () => {
+describe('toTicketRow — derived relationship', () => {
+  it('should be holder for a primary member without dependents', () => {
     const row = toTicketRow(
       apiTicket({ enrollmentSnapshot: { 'member-type': 'primary', dependents: [] } }),
     )
 
-    expect(row.vinculo).toBe('titular')
+    expect(row.relationship).toBe('holder')
   })
 
-  it('should be grupo-familiar for a primary member that brings dependents along', () => {
+  it('should be family-group for a primary member that brings dependents along', () => {
     const row = toTicketRow(
       apiTicket({
         enrollmentSnapshot: { 'member-type': 'primary', dependents: [{ 'member-id': 'd1' }] },
       }),
     )
 
-    expect(row.vinculo).toBe('grupo-familiar')
+    expect(row.relationship).toBe('family-group')
   })
 
-  it('should be dependente when the moved member is the dependent', () => {
+  it('should be dependent when the moved member is the dependent', () => {
     const row = toTicketRow(
       apiTicket({ enrollmentSnapshot: { 'member-type': 'dependent', dependents: [] } }),
     )
 
-    expect(row.vinculo).toBe('dependente')
+    expect(row.relationship).toBe('dependent')
   })
 })
 

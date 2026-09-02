@@ -9,7 +9,7 @@
 
 import { isApiStatus, toDisplayStatus } from '@/lib/pipodesk/status'
 import type { StructureState } from '@/lib/pipodesk/structure'
-import type { Priority, TicketRow, Vinculo } from '@/lib/pipodesk/ticket-row'
+import type { Priority, Relationship, TicketRow } from '@/lib/pipodesk/ticket-row'
 import raw from './dataset.json'
 
 interface RawRow {
@@ -86,6 +86,14 @@ for (const membership of structureFixture.memberships) {
  * exists and out of reach of every error boundary. The fixture is regenerated
  * by a script in the prototype repo, so a drift there is a real possibility.
  */
+/** The prototype's exporter still writes `porte` and `vinculo` in Portuguese,
+ *  so the translation lives here and dataset.json stays regenerable. */
+const RELATIONSHIP_OF: Record<string, Relationship> = {
+  titular: 'holder',
+  dependente: 'dependent',
+  'grupo-familiar': 'family-group',
+}
+
 export function toSeedRows(rows: RawRow[]): TicketRow[] {
   const seed: TicketRow[] = []
   for (const row of rows) {
@@ -96,13 +104,15 @@ export function toSeedRows(rows: RawRow[]): TicketRow[] {
       continue
     }
     const display = toDisplayStatus(row.status)
+    const { porte, vinculo, ...rest } = row
     seed.push({
       displayNumber: null,
-      ...row,
+      ...rest,
       status: row.status,
       display: display.status,
       reason: display.reason,
-      vinculo: row.vinculo as Vinculo | null,
+      companySize: porte,
+      relationship: vinculo === null ? null : (RELATIONSHIP_OF[vinculo] ?? null),
       priority: row.priority as Priority | null,
     })
   }
