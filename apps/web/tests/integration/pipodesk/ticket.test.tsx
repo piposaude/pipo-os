@@ -164,4 +164,28 @@ describe('detalhe do chamado', () => {
     // The reason has to be readable without hovering — text on screen, not a title.
     expect(screen.getByText(constants.timeline.emailPending)).toBeInTheDocument()
   })
+
+  /**
+   * The row's `onClick` is a mouse convenience: a `<tr>` takes no focus and
+   * does not activate with Enter, so keyboard-only people had no way to open a
+   * ticket at all. The person's name in the Assunto cell is the anchor.
+   */
+  it('should open the ticket from the keyboard, not only with the mouse', async () => {
+    const router = await renderAt('/')
+    const user = userEvent.setup()
+    const id = firstRowId()
+    const ticket = byId(id)
+
+    const link = await screen.findByRole('link', {
+      name: ticket.beneficiaryName ?? ticket.subject,
+    })
+    // A real href, so ⌘-click and open-in-new-tab work like anywhere else.
+    expect(link).toHaveAttribute('href', `/tickets/${id}`)
+
+    link.focus()
+    expect(link).toHaveFocus()
+    await user.keyboard('{Enter}')
+
+    expect(router.state.location.pathname).toBe(`/tickets/${id}`)
+  })
 })

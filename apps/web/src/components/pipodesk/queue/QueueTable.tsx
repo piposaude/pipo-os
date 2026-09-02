@@ -190,9 +190,10 @@ export function QueueTable({
                   data-ticket-id={row.ticket.id}
                   data-selected={selected.has(row.ticket.id) ? 'true' : undefined}
                   /* The whole row opens the ticket, with the usual guard: a click that
-                                   started on a control belongs to the control. */
+                                   started on a control belongs to the control — `a`
+                                   included, or the subject link would navigate twice. */
                   onClick={(event) => {
-                    if ((event.target as HTMLElement).closest('label,input,button')) return
+                    if ((event.target as HTMLElement).closest('label,input,button,a')) return
                     onOpenTicket(row.ticket.id)
                   }}
                 >

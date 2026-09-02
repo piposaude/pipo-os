@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { CarrierLogo, Status } from '@piposaude/design-system'
 import { DISPLAY_STATUS_COPY, PENDING_REASON_COPY } from '@/constants/pipodesk/status'
 import { ENROLLMENT_TYPE_COPY, PRODUCT_COPY, RELATIONSHIP_COPY } from '@/constants/pipodesk/domain'
@@ -117,7 +118,18 @@ export function QueueRow({
               {PRODUCT_COPY[ticket.product] ?? ticket.product}
             </span>
           )}
-          <span className={styles.subjectName}>{ticket.beneficiaryName ?? ticket.subject}</span>
+          {/* The anchor of the row: a `<tr>` takes no focus and does not activate
+                       with Enter, so the row's click is a mouse convenience and this is
+                       what makes the queue navigable by keyboard. Styled to look like
+                       the text it replaced — the affordance shows on hover and focus. */}
+          <Link
+            to="/tickets/$id"
+            params={{ id: ticket.id }}
+            className={styles.subjectName}
+            title={ticket.subject}
+          >
+            {ticket.beneficiaryName ?? ticket.subject}
+          </Link>
         </div>
       </td>
     ),
