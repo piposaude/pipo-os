@@ -36,6 +36,9 @@ describe('groups routes', () => {
     delete process.env.DEV_LOGIN_ENABLED
   })
 
+  /* Leaf tables first, because the FKs demand it: `member_companies` points at
+     both `companies` and `members`. A table added in the wrong position here
+     reintroduces FK violations that read as unrelated test failures. */
   afterEach(async () => {
     await app.db.deleteFrom('ticket_group_member_companies').execute()
     await app.db.deleteFrom('ticket_group_companies').execute()
@@ -92,6 +95,31 @@ describe('groups routes', () => {
       })
 
       expect(response.statusCode).toBe(400)
+    })
+
+    /** `min(1)` counts characters, and a space is a character: without a trim
+     *  the group is created named " " and no search ever finds it. */
+    it('returns 400 when name is only whitespace', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: '   ' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+
+    it('stores the name trimmed, so two groups cannot differ by a space', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: '  Operações  ' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(201)
+      expect(response.json().name).toBe('Operações')
     })
 
     it('returns 400 for unknown field (strict schema)', async () => {
@@ -577,6 +605,40 @@ describe('groups routes', () => {
       })
 
       expect(response.statusCode).toBe(404)
+    })
+
+    /**
+     * Identity in this domain is the e-mail (decision D on `users`), so the
+     * path param carries an `@`. Both forms have to reach the same member:
+     * `@` is legal in a path segment, and a client that percent-encodes it is
+     * equally right — the router decodes before the handler sees it.
+     */
+    it.each([
+      ['raw', (email: string) => email],
+      ['percent-encoded', (email: string) => encodeURIComponent(email)],
+    ])('removes a member whose id is an e-mail, %s in the path', async (_form, encode) => {
+      const email = 'ana@pipo.health'
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Grupo' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id: groupId } = created.json()
+      await app.inject({
+        method: 'POST',
+        url: `/api/groups/${groupId}/members`,
+        payload: { userId: email },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/groups/${groupId}/members/${encode(email)}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(204)
     })
   })
 

@@ -11,6 +11,9 @@ export const groupSchema = z
   })
   .meta({ id: 'Group' })
 
+/** Response shape, read from the row — no `.trim()` here on purpose: trimming
+ *  on the way out would hide a bad value instead of rejecting it on the way
+ *  in. The guard belongs to `addMemberBodySchema`. */
 export const groupMemberSchema = z
   .object({
     groupId: z.uuid(),
@@ -30,26 +33,28 @@ export const groupParamsSchema = z.object({
 
 export const memberParamsSchema = z.object({
   id: z.uuid(),
-  memberId: z.string().min(1),
+  /** `.trim()` before `.min(1)`: `min` counts characters and a space is one,
+   *  so `"   "` was a valid member id that no query could ever match. */
+  memberId: z.string().trim().min(1),
 })
 
 export const createGroupBodySchema = z
   .object({
-    name: z.string().min(1).max(255),
+    name: z.string().trim().min(1).max(255),
   })
   .strict()
   .meta({ id: 'CreateGroupBody' })
 
 export const updateGroupBodySchema = z
   .object({
-    name: z.string().min(1).max(255),
+    name: z.string().trim().min(1).max(255),
   })
   .strict()
   .meta({ id: 'UpdateGroupBody' })
 
 export const addMemberBodySchema = z
   .object({
-    userId: z.string().min(1),
+    userId: z.string().trim().min(1),
   })
   .strict()
   .meta({ id: 'AddGroupMemberBody' })
