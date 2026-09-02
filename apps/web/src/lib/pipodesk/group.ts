@@ -1,6 +1,7 @@
 import { DISPLAY_STATUS_COPY } from '@/constants/pipodesk/status'
 import { PRODUCT_COPY } from '@/constants/pipodesk/domain'
 import { DISPLAY_STATUSES, type DisplayStatus } from './status'
+import { NULL_TOKEN } from './filter'
 import type { TicketRow } from './ticket-row'
 
 /**
@@ -36,10 +37,10 @@ function keyAndLabelOf(
     case 'product':
       return ticket.product
         ? { key: ticket.product, label: PRODUCT_COPY[ticket.product] ?? ticket.product }
-        : { key: 'sem-produto', label: 'Sem produto' }
+        : { key: NULL_TOKEN, label: 'Sem produto' }
     case 'assignee':
       return ticket.assigneeId === null
-        ? { key: 'livre', label: 'Livre no pod' }
+        ? { key: NULL_TOKEN, label: 'Livre no pod' }
         : {
             key: ticket.assigneeId,
             label: resolveName?.(ticket.assigneeId) ?? ticket.assigneeId,

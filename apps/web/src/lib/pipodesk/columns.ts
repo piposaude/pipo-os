@@ -50,6 +50,39 @@ export const DEFAULT_COLUMN_PREFS: ColumnPrefs = {
   widths: {},
 }
 
+const isStringArray = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.every((item) => typeof item === 'string')
+
+/**
+ * Stored preferences, field by field. Valid JSON in the wrong shape used to
+ * throw on every render, and the error screen's "reload" read the same storage
+ * back — the person had no way out through the interface.
+ */
+export function readColumnPrefs(stored: unknown): ColumnPrefs {
+  if (stored === null || typeof stored !== 'object') return DEFAULT_COLUMN_PREFS
+  const raw = stored as Partial<Record<keyof ColumnPrefs, unknown>>
+  const widths = raw.widths
+
+  return {
+    hidden: isStringArray(raw.hidden) ? raw.hidden : DEFAULT_COLUMN_PREFS.hidden,
+    order: isStringArray(raw.order) ? raw.order : DEFAULT_COLUMN_PREFS.order,
+    widths:
+      typeof widths === 'object' && widths !== null && !Array.isArray(widths)
+        ? Object.fromEntries(
+            Object.entries(widths).filter(([, value]) => typeof value === 'number'),
+          )
+        : {},
+  }
+}
+
+/** True when the columns no longer match the default set — the panel lights a
+ *  dot. Compared as a set: swapping one hidden column for another keeps the
+ *  count and still is a custom display. */
+export function hasCustomColumns(hidden: string[]): boolean {
+  const base = new Set(DEFAULT_COLUMN_PREFS.hidden)
+  return hidden.length !== base.size || hidden.some((key) => !base.has(key))
+}
+
 export const isResizable = (key: string): boolean => key !== FIXED_COLUMN && key !== FLEX_COLUMN
 
 /** Base layout. `showAssignee` is false when the queue is pinned to one
