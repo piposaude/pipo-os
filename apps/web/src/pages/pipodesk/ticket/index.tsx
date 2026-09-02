@@ -65,7 +65,9 @@ export default function TicketPage() {
   }
 
   const personName = ticket.beneficiaryName ?? ticket.subject
-  const overdue = ticket.actionDate ? daysOverdue(ticket.actionDate, today) : 0
+  /* `null` for no action date AND for one that cannot be read — an unreadable
+     date is not an overdue deadline. */
+  const overdue = ticket.actionDate === null ? null : daysOverdue(ticket.actionDate, today)
   const activeChannel = CHANNELS.find((option) => option.value === channel)!
 
   /** Analysts of the ticket's pod — the owner can move among them. */
@@ -351,10 +353,10 @@ export default function TicketPage() {
         </Breadcrumb>
       </header>
 
-      {overdue > 0 && (
+      {overdue !== null && overdue > 0 && ticket.actionDate !== null && (
         <div className={styles.banners}>
           <Banner variant="alert">
-            {constants.overdue(overdue, ticket.actionDate!.split('-').reverse().join('/'))}
+            {constants.overdue(overdue, ticket.actionDate.split('-').reverse().join('/'))}
           </Banner>
         </div>
       )}
