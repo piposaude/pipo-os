@@ -12,6 +12,8 @@ const COMPANY_C = '00000000-0000-4000-8000-00000000000c'
 const UNIQUE_VIOLATION = '23505'
 const FK_VIOLATION = '23503'
 const CHECK_VIOLATION = '23514'
+/** `RAISE EXCEPTION` without a condition name — what the cycle trigger throws. */
+const RAISED_EXCEPTION = 'P0001'
 
 /** The pg error code of a rejected write, so a test names the constraint that
  *  fired instead of only asserting that something failed. */
@@ -96,6 +98,13 @@ describe('groups schema — hierarchy and portfolio constraints', () => {
       expect(roots).toEqual([{ name: 'Gestão de Benefícios' }])
     })
 
+    /**
+     * Self-parenting is a cycle of one hop, so the trigger owns it too — and a
+     * BEFORE trigger runs ahead of constraint validation, which is why the
+     * code is the trigger's and not the CHECK's. One code for every cycle
+     * length is also what the handler in PD-050 will want to map. The CHECK
+     * from 0024 stays as the cheap guard that survives a disabled trigger.
+     */
     it('refuses a group that is its own parent', async () => {
       const id = await group(POD_3)
 
@@ -103,7 +112,64 @@ describe('groups schema — hierarchy and portfolio constraints', () => {
         app.db.updateTable('ticket_groups').set({ parent_id: id }).where('id', '=', id).execute(),
       )
 
-      expect(code).toBe(CHECK_VIOLATION)
+      expect(code).toBe(RAISED_EXCEPTION)
+    })
+
+    /**
+     * The CHECK only covers depth 1 (`parent_id <> id`). A cycle needs to walk
+     * the ancestors, so it is a trigger — and it has to live in the database:
+     * the API is not the only thing that writes here (migrations, backfills
+     * and psql sessions do too).
+     */
+    it('refuses a cycle two levels up', async () => {
+      const geben = await group('Gestão de Benefícios')
+      const pod = await group(POD_3, geben)
+
+      const code = await codeOf(
+        app.db
+          .updateTable('ticket_groups')
+          .set({ parent_id: pod })
+          .where('id', '=', geben)
+          .execute(),
+      )
+
+      expect(code).toBe(RAISED_EXCEPTION)
+    })
+
+    it('refuses a longer cycle, three levels up', async () => {
+      const geben = await group('Gestão de Benefícios')
+      const pod = await group(POD_3, geben)
+      const squad = await group('Squad', pod)
+
+      const code = await codeOf(
+        app.db
+          .updateTable('ticket_groups')
+          .set({ parent_id: squad })
+          .where('id', '=', geben)
+          .execute(),
+      )
+
+      expect(code).toBe(RAISED_EXCEPTION)
+    })
+
+    it('still accepts a deeper tree that is not a cycle', async () => {
+      const geben = await group('Gestão de Benefícios')
+      const pod = await group(POD_3, geben)
+
+      await expect(group('Squad', pod)).resolves.toBeTruthy()
+    })
+
+    /**
+     * NOT enforced, and on purpose: a unique partial index on
+     * `parent_id IS NULL` cannot coexist with the parentless groups
+     * `POST /api/groups` creates today. This test states the gap instead of
+     * leaving it to be discovered — PD-050 decides whether the API refuses a
+     * second root or the schema starts to.
+     */
+    it('accepts a second root today, which the schema does not prevent', async () => {
+      await group('Gestão de Benefícios')
+
+      await expect(group('Outra raiz')).resolves.toBeTruthy()
     })
 
     it('refuses to delete a group that still has children', async () => {
@@ -119,7 +185,9 @@ describe('groups schema — hierarchy and portfolio constraints', () => {
   })
 
   describe('member role', () => {
-    it('makes a new membership an analyst', async () => {
+    /** `analyst` is not a role: the CHECK admits `admin | member`, and the
+     *  default is the second. The old title invented a third. */
+    it('defaults the role of a new membership to member', async () => {
       const pod = await group(POD_3)
       await member(pod, ANA)
 
@@ -285,6 +353,34 @@ describe('groups schema — hierarchy and portfolio constraints', () => {
 
       expect(rows).toEqual([])
     })
+  })
+
+  /**
+   * `company_id` has no foreign key and cannot have one: companies live in
+   * another service, so there is no table to reference. The column being
+   * `uuid` is all the database can guarantee — that it is a UUID, never that
+   * it names a company. The validation belongs to the edge that will write it
+   * (PD-051); this test states the limit so nobody reads the missing FK as an
+   * oversight.
+   */
+  it('accepts a company id that names no company, because no table can be referenced', async () => {
+    const pod = await group(POD_3)
+    const semDono = '00000000-0000-4000-8000-0000000000ff'
+
+    await expect(carry(pod, semDono)).resolves.toBeTruthy()
+  })
+
+  it('still refuses a company id that is not a uuid', async () => {
+    const pod = await group(POD_3)
+
+    const code = await codeOf(
+      app.db
+        .insertInto('ticket_group_companies')
+        .values({ group_id: pod, company_id: 'empresa-1' as never })
+        .execute(),
+    )
+
+    expect(code).toBeDefined()
   })
 
   it('stores an e-mail as the member id', async () => {

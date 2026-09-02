@@ -90,6 +90,9 @@ export interface TicketFormValues {
 }
 
 export interface TicketGroupCompanies {
+  /**
+   * No foreign key, and none is possible: companies live in another service, so there is no table to reference. Being a uuid is all the database guarantees — never that it names a company. Validation belongs to the edge that writes it (PD-051).
+   */
   company_id: string;
   created_at: Generated<Timestamp>;
   group_id: string;
@@ -115,6 +118,9 @@ export interface TicketGroups {
   created_by: string;
   id: Generated<string>;
   name: string;
+  /**
+   * Cycles are refused by the ticket_groups_no_cycle trigger. A single root is NOT enforced: a unique partial index on parent_id IS NULL cannot coexist with the parentless groups POST /api/groups creates. PD-050 decides whether the API refuses a second root.
+   */
   parent_id: string | null;
   updated_at: Generated<Timestamp>;
   updated_by: string | null;
