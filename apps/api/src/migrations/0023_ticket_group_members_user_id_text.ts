@@ -6,8 +6,11 @@ export async function up(db: Kysely<unknown>): Promise<void> {
   )
 }
 
-export async function down(): Promise<void> {
-  throw new Error(
-    'Migration 0023 is irreversible: user_id is part of the primary key, so an e-mail that cannot be cast back to uuid has no valid value to fall back to',
+/** Reverts while every user_id still casts, and fails loudly once one does
+ *  not: user_id is part of the primary key, so an e-mail has no uuid to fall
+ *  back to and nothing may be silently dropped. */
+export async function down(db: Kysely<unknown>): Promise<void> {
+  await sql`ALTER TABLE ticket_group_members ALTER COLUMN user_id TYPE uuid USING user_id::uuid`.execute(
+    db,
   )
 }

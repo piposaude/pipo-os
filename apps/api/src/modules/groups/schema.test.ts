@@ -147,23 +147,50 @@ describe('groups schema — hierarchy and portfolio constraints', () => {
       expect(await codeOf(carry(pod5, COMPANY_A))).toBe(UNIQUE_VIOLATION)
     })
 
-    it('moves a company between pods by updating the row', async () => {
+    it('moves a company between pods by delete and reinsert, dropping who followed it', async () => {
       const pod3 = await group(POD_3)
       const pod5 = await group(POD_5)
+      await member(pod3, ANA)
       await carry(pod3, COMPANY_A)
+      await assign(pod3, ANA, COMPANY_A)
 
       await app.db
-        .updateTable('ticket_group_companies')
-        .set({ group_id: pod5 })
+        .deleteFrom('ticket_group_companies')
         .where('company_id', '=', COMPANY_A)
         .execute()
+      await carry(pod5, COMPANY_A)
 
-      const row = await app.db
+      const carried = await app.db
         .selectFrom('ticket_group_companies')
         .select('group_id')
         .executeTakeFirstOrThrow()
+      const followers = await app.db
+        .selectFrom('ticket_group_member_companies')
+        .selectAll()
+        .execute()
 
-      expect(row.group_id).toBe(pod5)
+      expect(carried.group_id).toBe(pod5)
+      expect(followers).toEqual([])
+    })
+
+    /** The two composite FKs are jointly unsatisfiable under an UPDATE of
+     *  group_id, so the move is delete-and-reinsert, not an in-place update. */
+    it('refuses to move a company by updating group_id while someone follows it', async () => {
+      const pod3 = await group(POD_3)
+      const pod5 = await group(POD_5)
+      await member(pod3, ANA)
+      await carry(pod3, COMPANY_A)
+      await assign(pod3, ANA, COMPANY_A)
+
+      const code = await codeOf(
+        app.db
+          .updateTable('ticket_group_companies')
+          .set({ group_id: pod5 })
+          .where('company_id', '=', COMPANY_A)
+          .execute(),
+      )
+
+      expect(code).toBe(FK_VIOLATION)
     })
 
     it('refuses to delete a pod that still carries companies', async () => {

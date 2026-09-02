@@ -1,6 +1,10 @@
 import { sql, type Kysely } from 'kysely'
 
 export async function up(db: Kysely<unknown>): Promise<void> {
+  // The CHECK covers depth 1 only. "Exactly one root" and "no cycles" stay
+  // conventions the API enforces (PD-050): a unique partial index on
+  // parent_id IS NULL cannot coexist with the parentless groups POST
+  // /api/groups creates today, and a cycle needs a recursive-CTE trigger.
   await sql`
     ALTER TABLE ticket_groups
       ADD COLUMN parent_id uuid REFERENCES ticket_groups(id) ON DELETE RESTRICT,
@@ -42,6 +46,13 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         FOREIGN KEY (group_id, company_id)
         REFERENCES ticket_group_companies (group_id, company_id) ON DELETE CASCADE
     )
+  `.execute(db)
+
+  // The PK starts with (group_id, user_id), so the company side of the FK has
+  // no index of its own — the one the CASCADE walks.
+  await sql`
+    CREATE INDEX ix_ticket_group_member_companies_company
+      ON ticket_group_member_companies (group_id, company_id)
   `.execute(db)
 }
 
