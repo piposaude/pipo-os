@@ -1,6 +1,11 @@
 import { useState, useRef } from 'react'
 import { Popover } from '@/components/pipodesk/primitives'
-import { API_STATUSES, toDisplayStatus, type ApiStatus } from '@/lib/pipodesk/status'
+import {
+  API_STATUSES,
+  FINAL_STATUSES,
+  toDisplayStatus,
+  type ApiStatus,
+} from '@/lib/pipodesk/status'
 import { DISPLAY_STATUS_COPY, PENDING_REASON_COPY } from '@/constants/pipodesk/status'
 import { formatCount } from '@/lib/pipodesk/format'
 import styles from './Queue.module.css'
@@ -200,10 +205,11 @@ export function BatchBar({
                     </button>
                     <span>Mudar status</span>
                   </div>
-                  {/* `completed` is out: closing goes through the gates (PD-031); a batch
-                                         that closes unvalidated is the exact defect gates exist
-                                         to prevent. */}
-                  {API_STATUSES.filter((status) => status !== 'completed').map((status) =>
+                  {/* No FINAL status here: closing goes through the gates (PD-031), and
+                                         `cancelled` closes the ticket the same way `completed` does.
+                                         A batch that closes a whole cut unvalidated is the exact
+                                         defect the gates exist to prevent. */}
+                  {API_STATUSES.filter((status) => !FINAL_STATUSES.includes(status)).map((status) =>
                     item(statusLabel(status), () => act(() => onStatus(status)), status),
                   )}
                 </>

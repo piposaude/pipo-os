@@ -174,6 +174,24 @@ describe('barra de lote', () => {
     expect(screen.queryByRole('dialog', { name: 'Ações em lote' })).not.toBeInTheDocument()
   })
 
+  /** `completed` is out because closing goes through the gates — and
+   *  `cancelled` closes the ticket exactly the same way (`FINAL_STATUSES`),
+   *  so offering it let a whole cut be closed in batch, unvalidated. */
+  it('should not offer a final status in the batch status list', async () => {
+    await renderQueue()
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('checkbox', { name: /selecionar todos/i }))
+    const barra = await screen.findByRole('group', { name: 'Ações em lote' })
+    await user.click(within(barra).getByRole('button', { name: 'Ações' }))
+    await user.click(screen.getByRole('button', { name: 'Mudar status' }))
+
+    const painel = screen.getByRole('dialog', { name: 'Ações em lote' })
+    expect(within(painel).getByRole('button', { name: /Na operadora/ })).toBeInTheDocument()
+    expect(within(painel).queryByRole('button', { name: /^Cancelada/ })).not.toBeInTheDocument()
+    expect(within(painel).queryByRole('button', { name: /^Concluída/ })).not.toBeInTheDocument()
+  })
+
   it('should change status in batch, keeping the sidebar count honest', async () => {
     await renderQueue()
     const user = userEvent.setup()
