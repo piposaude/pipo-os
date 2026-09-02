@@ -20,7 +20,18 @@ import type { Priority } from '@/lib/pipodesk/ticket-row'
 import constants from '@/constants/pages/pipodesk/ticket'
 import styles from './style.module.css'
 
-const PRIORITY_ORDER: Priority[] = ['urgent', 'high', 'medium', 'low']
+/** The keys are the menu, in insertion order; `true` is filler. A record is
+ *  the only shape TypeScript can demand be complete, because a literal needs a
+ *  value per key — `Priority[]` typechecks fine while missing a level, and
+ *  `Priority` now comes from the contract. */
+const PRIORITY_LEVELS: Record<Priority, true> = {
+  urgent: true,
+  high: true,
+  medium: true,
+  low: true,
+}
+
+const PRIORITY_ORDER = Object.keys(PRIORITY_LEVELS) as Priority[]
 
 /** One fact: label above, value below. */
 function Fact({ label, value }: { label: string; value: string }) {
