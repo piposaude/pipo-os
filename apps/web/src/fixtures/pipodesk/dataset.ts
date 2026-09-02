@@ -7,7 +7,7 @@
  * prototype repo.
  */
 
-import { toDisplayStatus, type ApiStatus } from '@/lib/pipodesk/status'
+import { isApiStatus, toDisplayStatus } from '@/lib/pipodesk/status'
 import type { StructureState } from '@/lib/pipodesk/structure'
 import type { Priority, TicketRow, Vinculo } from '@/lib/pipodesk/ticket-row'
 import raw from './dataset.json'
@@ -78,17 +78,35 @@ for (const membership of structureFixture.memberships) {
   ;(ANALYSTS_BY_POD[membership.groupId] ??= []).push(membership.userId)
 }
 
-/** JSON carries the API status; `display`/`reason` are derived on load —
- *  same contract as `ticket-row`. */
-export const queueSeed: TicketRow[] = data.rows.map((row) => {
-  const display = toDisplayStatus(row.status as ApiStatus)
-  return {
-    displayNumber: null,
-    ...row,
-    status: row.status as ApiStatus,
-    display: display.status,
-    reason: display.reason,
-    vinculo: row.vinculo as Vinculo | null,
-    priority: row.priority as Priority | null,
+/**
+ * JSON carries the API status; `display`/`reason` are derived on load — same
+ * contract as `ticket-row`. A row whose status is outside the vocabulary is
+ * dropped with an error in the console, never mapped to a guess: this runs at
+ * module scope, so throwing here kills the app during the import, before React
+ * exists and out of reach of every error boundary. The fixture is regenerated
+ * by a script in the prototype repo, so a drift there is a real possibility.
+ */
+export function toSeedRows(rows: RawRow[]): TicketRow[] {
+  const seed: TicketRow[] = []
+  for (const row of rows) {
+    if (!isApiStatus(row.status)) {
+      console.error(
+        `dataset: chamado ${row.id} ignorado — status "${row.status}" fora do vocabulário da API. Regere a fixture com o script do protótipo.`,
+      )
+      continue
+    }
+    const display = toDisplayStatus(row.status)
+    seed.push({
+      displayNumber: null,
+      ...row,
+      status: row.status,
+      display: display.status,
+      reason: display.reason,
+      vinculo: row.vinculo as Vinculo | null,
+      priority: row.priority as Priority | null,
+    })
   }
-})
+  return seed
+}
+
+export const queueSeed: TicketRow[] = toSeedRows(data.rows)
