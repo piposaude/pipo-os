@@ -10,3 +10,6 @@ openapi.json
 packages/api-client/src/generated
 apps/web/src/routeTree.gen.ts
 apps/web/public/
+
+# fixture gerada pelo protótipo (scripts/export-pipo-os.ts) — como os demais gerados
+apps/web/src/fixtures/pipodesk/dataset.json

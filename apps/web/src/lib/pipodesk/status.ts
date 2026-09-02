@@ -64,6 +64,12 @@ const TO_DISPLAY: Record<ApiStatus, DisplayState> = {
  *  submitted cancellation is still in flight, awaiting the carrier. */
 export const FINAL_STATUSES: ApiStatus[] = ['completed', 'cancelled']
 
+/** Filter values arrive from the URL, which is hand-editable: a status string
+ *  is only an `ApiStatus` after this check. */
+export function isApiStatus(value: string): value is ApiStatus {
+  return Object.prototype.hasOwnProperty.call(TO_DISPLAY, value)
+}
+
 export function toDisplayStatus(status: ApiStatus): DisplayState {
   return TO_DISPLAY[status]
 }

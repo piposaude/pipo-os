@@ -11,8 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as PublicRouteImport } from './routes/_public'
-import { Route as PublicIndexRouteImport } from './routes/_public/index'
-import { Route as AuthTicketsIndexRouteImport } from './routes/_auth/tickets/index'
+import { Route as AuthDeskRouteImport } from './routes/_auth/_desk'
+import { Route as AuthDeskIndexRouteImport } from './routes/_auth/_desk/index'
 import { Route as PublicLoginIndexRouteImport } from './routes/_public/login/index'
 
 const AuthRoute = AuthRouteImport.update({
@@ -23,15 +23,14 @@ const PublicRoute = PublicRouteImport.update({
   id: '/_public',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PublicIndexRoute = PublicIndexRouteImport.update({
+const AuthDeskRoute = AuthDeskRouteImport.update({
+  id: '/_desk',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthDeskIndexRoute = AuthDeskIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => PublicRoute,
-} as any)
-const AuthTicketsIndexRoute = AuthTicketsIndexRouteImport.update({
-  id: '/tickets/',
-  path: '/tickets/',
-  getParentRoute: () => AuthRoute,
+  getParentRoute: () => AuthDeskRoute,
 } as any)
 const PublicLoginIndexRoute = PublicLoginIndexRouteImport.update({
   id: '/login/',
@@ -40,34 +39,32 @@ const PublicLoginIndexRoute = PublicLoginIndexRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof PublicIndexRoute
-  '/tickets/': typeof AuthTicketsIndexRoute
+  '/': typeof AuthDeskIndexRoute
   '/login/': typeof PublicLoginIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof PublicIndexRoute
-  '/tickets': typeof AuthTicketsIndexRoute
+  '/': typeof AuthDeskIndexRoute
   '/login': typeof PublicLoginIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_auth': typeof AuthRouteWithChildren
   '/_public': typeof PublicRouteWithChildren
-  '/_public/': typeof PublicIndexRoute
-  '/_auth/tickets/': typeof AuthTicketsIndexRoute
+  '/_auth/_desk': typeof AuthDeskRouteWithChildren
+  '/_auth/_desk/': typeof AuthDeskIndexRoute
   '/_public/login/': typeof PublicLoginIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/tickets/' | '/login/'
+  fullPaths: '/' | '/login/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/tickets' | '/login'
+  to: '/' | '/login'
   id:
     | '__root__'
     | '/_auth'
     | '/_public'
-    | '/_public/'
-    | '/_auth/tickets/'
+    | '/_auth/_desk'
+    | '/_auth/_desk/'
     | '/_public/login/'
   fileRoutesById: FileRoutesById
 }
@@ -92,19 +89,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_public/': {
-      id: '/_public/'
+    '/_auth/_desk': {
+      id: '/_auth/_desk'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthDeskRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/_desk/': {
+      id: '/_auth/_desk/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof PublicIndexRouteImport
-      parentRoute: typeof PublicRoute
-    }
-    '/_auth/tickets/': {
-      id: '/_auth/tickets/'
-      path: '/tickets'
-      fullPath: '/tickets/'
-      preLoaderRoute: typeof AuthTicketsIndexRouteImport
-      parentRoute: typeof AuthRoute
+      preLoaderRoute: typeof AuthDeskIndexRouteImport
+      parentRoute: typeof AuthDeskRoute
     }
     '/_public/login/': {
       id: '/_public/login/'
@@ -116,23 +113,33 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthDeskRouteChildren {
+  AuthDeskIndexRoute: typeof AuthDeskIndexRoute
+}
+
+const AuthDeskRouteChildren: AuthDeskRouteChildren = {
+  AuthDeskIndexRoute: AuthDeskIndexRoute,
+}
+
+const AuthDeskRouteWithChildren = AuthDeskRoute._addFileChildren(
+  AuthDeskRouteChildren,
+)
+
 interface AuthRouteChildren {
-  AuthTicketsIndexRoute: typeof AuthTicketsIndexRoute
+  AuthDeskRoute: typeof AuthDeskRouteWithChildren
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
-  AuthTicketsIndexRoute: AuthTicketsIndexRoute,
+  AuthDeskRoute: AuthDeskRouteWithChildren,
 }
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 interface PublicRouteChildren {
-  PublicIndexRoute: typeof PublicIndexRoute
   PublicLoginIndexRoute: typeof PublicLoginIndexRoute
 }
 
 const PublicRouteChildren: PublicRouteChildren = {
-  PublicIndexRoute: PublicIndexRoute,
   PublicLoginIndexRoute: PublicLoginIndexRoute,
 }
 

@@ -8,6 +8,8 @@ import {
   isResizable,
   moveColumn,
   type QueueColumn,
+  readColumnPrefs,
+  hasCustomColumns,
 } from '@/lib/pipodesk/columns'
 
 const keys = (columns: QueueColumn[]): string[] => columns.map((c) => c.key)
@@ -106,5 +108,35 @@ describe('isResizable', () => {
     expect(isResizable('select')).toBe(false)
     expect(isResizable(FLEX_COLUMN)).toBe(false)
     expect(isResizable('company')).toBe(true)
+  })
+})
+
+describe('readColumnPrefs', () => {
+  /** Valid JSON in the wrong shape used to throw on every render, and the error
+   *  screen's "reload" read the same storage back. */
+  it('should fall back per field when the stored shape is wrong', () => {
+    expect(readColumnPrefs({ hidden: null })).toEqual(DEFAULT_COLUMN_PREFS)
+    expect(readColumnPrefs('nada')).toEqual(DEFAULT_COLUMN_PREFS)
+    expect(readColumnPrefs({ hidden: ['status'], order: 'errado' })).toEqual({
+      hidden: ['status'],
+      order: DEFAULT_COLUMN_PREFS.order,
+      widths: {},
+    })
+  })
+
+  it('should keep only the widths that are numbers', () => {
+    expect(readColumnPrefs({ widths: { company: 220, status: 'larga' } }).widths).toEqual({
+      company: 220,
+    })
+  })
+})
+
+describe('hasCustomColumns', () => {
+  /** Compared as a set: swapping one hidden column for another keeps the count
+   *  and is still a custom display. */
+  it('should see a swap of the same size as customized', () => {
+    expect(hasCustomColumns(DEFAULT_COLUMN_PREFS.hidden)).toBe(false)
+    expect(hasCustomColumns(['createdAt', 'relationship'])).toBe(true)
+    expect(hasCustomColumns([])).toBe(true)
   })
 })

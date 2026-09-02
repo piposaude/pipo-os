@@ -5,29 +5,30 @@ import { toTicketRow } from '@/lib/pipodesk/ticket-row'
 function apiTicket(overrides: Partial<Ticket> = {}): Ticket {
   return {
     id: 'ticket-1',
+    displayNumber: 'M000001',
+    title: null,
     enrollmentId: 'enrollment-1',
     enrollmentType: 'inclusion',
     status: 'broker-processing',
+    priority: null,
+    actionDate: null,
     queueId: null,
+    groupId: null,
     assigneeId: null,
     companyId: 'company-1',
     tags: [],
+    pendingDocumentation: [],
+    requester: null,
+    collaborators: [],
     forceCompletion: false,
     enrollmentSnapshot: {},
     sourceSystem: 'enrollment-integrations',
     parentTicketId: null,
     closedAt: null,
-    title: null,
-    priority: null,
-    actionDate: null,
-    groupId: null,
-    pendingDocumentation: [],
-    requester: null,
-    collaborators: [],
     createdAt: '2026-08-10T14:30:00.000Z',
     updatedAt: '2026-08-11T09:00:00.000Z',
     ...overrides,
-  } as Ticket
+  }
 }
 
 describe('toTicketRow — campos do próprio ticket', () => {
@@ -53,37 +54,29 @@ describe('toTicketRow — campos do próprio ticket', () => {
     expect(toTicketRow(apiTicket({ status: 'broker-open-issue' })).reason).toBe('internal-issue')
   })
 
-  it('should default the columns that only exist after the schema migration', () => {
+  it('should keep an empty ticket empty: no priority, no schedule, no pod', () => {
     const row = toTicketRow(apiTicket())
 
     expect(row.priority).toBeNull()
     expect(row.actionDate).toBeNull()
     expect(row.groupId).toBeNull()
-    expect(row.displayNumber).toBeNull()
   })
 
+  /** The API sends a timestamp; filter, tree and timeline compare date-only. */
   it('should truncate a full ISO timestamp in actionDate to date-only', () => {
-    const row = toTicketRow({
-      ...apiTicket(),
-      actionDate: '2026-09-05T12:00:00.000Z',
-    } as Ticket)
+    const row = toTicketRow(apiTicket({ actionDate: '2026-09-05T12:00:00.000Z' }))
 
     expect(row.actionDate).toBe('2026-09-05')
   })
 
-  it('should read displayNumber once the api sends it', () => {
-    const row = toTicketRow({ ...apiTicket(), displayNumber: 'M000123' } as Ticket)
-
-    expect(row.displayNumber).toBe('M000123')
+  it('should carry the operational number the api generates', () => {
+    expect(toTicketRow(apiTicket({ displayNumber: 'M000123' })).displayNumber).toBe('M000123')
   })
 
-  it('should read priority, actionDate and groupId once the api sends them', () => {
-    const row = toTicketRow({
-      ...apiTicket(),
-      priority: 'urgent',
-      actionDate: '2026-09-01',
-      groupId: 'pod-5',
-    } as Ticket)
+  it('should carry priority, action date and pod', () => {
+    const row = toTicketRow(
+      apiTicket({ priority: 'urgent', actionDate: '2026-09-01', groupId: 'pod-5' }),
+    )
 
     expect(row.priority).toBe('urgent')
     expect(row.actionDate).toBe('2026-09-01')
@@ -192,7 +185,7 @@ describe('toTicketRow — derived relationship', () => {
 
 describe('toTicketRow — assunto da linha', () => {
   it('should use the ticket title when the api provides one', () => {
-    const row = toTicketRow({ ...apiTicket(), title: 'Assunto vindo do EI' } as Ticket)
+    const row = toTicketRow(apiTicket({ title: 'Assunto vindo do EI' }))
 
     expect(row.subject).toBe('Assunto vindo do EI')
   })

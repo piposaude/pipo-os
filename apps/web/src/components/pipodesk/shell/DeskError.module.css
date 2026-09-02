@@ -1,0 +1,42 @@
+.screen {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--pipo-space-small);
+  padding: var(--pipo-space-xxlarge);
+  background: var(--desk-panel);
+}
+
+.title {
+  margin: 0;
+  color: var(--pipo-text-primary);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-large);
+  font-weight: var(--pipo-fw-semibold);
+}
+
+.body {
+  max-width: 52ch;
+  margin: 0;
+  color: var(--pipo-text-secondary);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-small);
+}
+
+.hint {
+  margin: 0;
+  color: var(--pipo-text-secondary);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-xsmall);
+}
+
+/* The message is for the person to paste into Slack when reporting it. */
+.detail {
+  max-width: 100%;
+  margin: 0;
+  overflow-x: auto;
+  color: var(--pipo-text-secondary);
+  font-size: var(--pipo-fs-xsmall);
+}

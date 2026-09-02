@@ -1,9 +1,0 @@
-.actionsCell {
-  display: flex;
-  align-items: center;
-  gap: var(--pipo-space-xxsmall);
-}
-
-.createdAt {
-  white-space: nowrap;
-}

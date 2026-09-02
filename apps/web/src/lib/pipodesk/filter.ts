@@ -67,6 +67,34 @@ export function windowOf(tickets: TicketRow[], mode: WindowMode, today: string):
     : live.filter((ticket) => !isSleeping(ticket, today))
 }
 
+/**
+ * The token that stands for `null` in the panel and in the URL — `null` is a
+ * real value in three fields (no owner, no priority, no contract). Reserved
+ * and `@`-prefixed, in the same family as `'@me'`: a plain word like `sem`
+ * lived in the same space as the data, so a contract type actually called
+ * `sem` decoded as "no contract". The per-field WORDING lives in the copy
+ * table, not here.
+ */
+export const NULL_TOKEN = '@none'
+
+/** The only fields where `null` is a real value. Everywhere else the token is
+ *  just data — `tags` carries free API strings, and a tag named `@none` must
+ *  not decode as "no value". */
+const NULLABLE_FIELDS: ReadonlySet<FilterField> = new Set([
+  'assigneeIds',
+  'priorities',
+  'contractTypes',
+])
+
+/** Stored value → the token the panel and the URL carry. Encoding needs no
+ *  field: only the fields above ever hold `null`. */
+export const displayOf = (value: string | null): string => value ?? NULL_TOKEN
+
+/** …and back, which DOES need the field: decoding the token is only correct
+ *  where `null` is a legitimate value. */
+export const storedOf = (field: FilterField, token: string): string | null =>
+  token === NULL_TOKEN && NULLABLE_FIELDS.has(field) ? null : token
+
 const missesList = <T>(wanted: T[] | undefined, value: T | null): boolean =>
   !!wanted?.length && (value === null || !wanted.includes(value))
 
@@ -135,7 +163,8 @@ export function pinsOneAssignee(filter: TicketFilter, viewerId: string): boolean
   return new Set(ids.map((id) => (id === '@me' ? viewerId : id))).size === 1
 }
 
-/** `'livre'` and `'sem'` are the display sentinels for `null`. */
+/** Keys a ticket contributes to the option counts. A `null` with a sentinel
+ *  becomes an option of its own; without one the ticket does not participate. */
 const optionKeysOf = (ticket: TicketRow, field: FilterField): string[] => {
   switch (field) {
     case 'statuses':
@@ -151,7 +180,7 @@ const optionKeysOf = (ticket: TicketRow, field: FilterField): string[] => {
     case 'companySizes':
       return ticket.companySize ? [ticket.companySize] : []
     case 'contractTypes':
-      return ticket.contractType ? [ticket.contractType] : []
+      return [displayOf(ticket.contractType)]
     case 'relationships':
       return ticket.relationship ? [ticket.relationship] : []
     case 'origins':
@@ -161,9 +190,9 @@ const optionKeysOf = (ticket: TicketRow, field: FilterField): string[] => {
     case 'tags':
       return ticket.tags
     case 'assigneeIds':
-      return [ticket.assigneeId ?? 'livre']
+      return [displayOf(ticket.assigneeId)]
     case 'priorities':
-      return [ticket.priority ?? 'sem']
+      return [displayOf(ticket.priority)]
     default:
       return assertNever(field)
   }

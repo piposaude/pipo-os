@@ -51,19 +51,6 @@ export interface TicketRow {
   closedAt: string | null
 }
 
-/**
- * Columns the schema does not have yet (PD-011 migration). Read tolerantly:
- * they arrive as `null` today and light up without further changes.
- */
-type ApiTicketWithPending = Ticket &
-  Partial<{
-    title: string | null
-    displayNumber: string | null
-    priority: string | null
-    actionDate: string | null
-    groupId: string | null
-  }>
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
@@ -99,14 +86,6 @@ function readString(source: Record<string, unknown>, ...paths: string[][]): stri
   return null
 }
 
-const PRIORITIES: Priority[] = ['urgent', 'high', 'medium', 'low']
-
-function readPriority(value: unknown): Priority | null {
-  return typeof value === 'string' && (PRIORITIES as string[]).includes(value)
-    ? (value as Priority)
-    : null
-}
-
 function readRelationship(snapshot: Record<string, unknown>): Relationship | null {
   const memberType = readString(snapshot, ['member-type'], ['primary', 'member-type'])
   if (memberType === null) return null
@@ -116,7 +95,7 @@ function readRelationship(snapshot: Record<string, unknown>): Relationship | nul
 }
 
 /** Subject shaped like the Zendesk one: carrier · product · person. */
-function buildSubject(ticket: ApiTicketWithPending, snapshot: Record<string, unknown>): string {
+function buildSubject(ticket: Ticket, snapshot: Record<string, unknown>): string {
   const explicit =
     typeof ticket.title === 'string' && ticket.title.trim() !== '' ? ticket.title : null
   if (explicit) return explicit
@@ -131,19 +110,18 @@ function buildSubject(ticket: ApiTicketWithPending, snapshot: Record<string, unk
 }
 
 export function toTicketRow(ticket: Ticket): TicketRow {
-  const pending = ticket as ApiTicketWithPending
   const snapshot = isRecord(ticket.enrollmentSnapshot) ? ticket.enrollmentSnapshot : {}
   const { status: display, reason } = toDisplayStatus(ticket.status)
 
   return {
     id: ticket.id,
-    displayNumber: typeof pending.displayNumber === 'string' ? pending.displayNumber : null,
+    displayNumber: ticket.displayNumber,
     enrollmentId: ticket.enrollmentId,
     companyId: ticket.companyId,
     status: ticket.status,
     display,
     reason,
-    subject: buildSubject(pending, snapshot),
+    subject: buildSubject(ticket, snapshot),
     beneficiaryName: readString(
       snapshot,
       ['primary', 'profile', 'preferred-name'],
@@ -163,9 +141,10 @@ export function toTicketRow(ticket: Ticket): TicketRow {
     ),
     relationship: readRelationship(snapshot),
     assigneeId: ticket.assigneeId,
-    groupId: typeof pending.groupId === 'string' ? pending.groupId : null,
-    priority: readPriority(pending.priority),
-    actionDate: typeof pending.actionDate === 'string' ? pending.actionDate.slice(0, 10) : null,
+    groupId: ticket.groupId,
+    priority: ticket.priority,
+    // The API sends a timestamp; every cut here compares date-only.
+    actionDate: ticket.actionDate?.slice(0, 10) ?? null,
     tags: ticket.tags,
     sourceSystem: ticket.sourceSystem,
     createdAt: ticket.createdAt,
