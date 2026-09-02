@@ -192,6 +192,34 @@ describe('barra de lote', () => {
     expect(within(painel).queryByRole('button', { name: /^Concluída/ })).not.toBeInTheDocument()
   })
 
+  /** The reassign menu listed the viewer's own pod wherever the queue was:
+   *  in POD 1 it offered POD 5 analysts and handed them POD 1 tickets. */
+  it('should offer the analysts of the pod the queue belongs to', async () => {
+    await renderQueue()
+    const user = userEvent.setup()
+
+    const sidebar = screen.getByRole('navigation', { name: /pipodesk/i })
+    await user.click(within(sidebar).getByRole('button', { name: 'Expandir POD 1' }))
+    await user.click(await within(sidebar).findByRole('button', { name: /^Chamados/ }))
+
+    await user.click(screen.getByRole('checkbox', { name: /selecionar todos/i }))
+    const barra = await screen.findByRole('group', { name: 'Ações em lote' })
+    await user.click(within(barra).getByRole('button', { name: 'Ações' }))
+    await user.click(screen.getByRole('button', { name: 'Reatribuir' }))
+
+    const painel = screen.getByRole('dialog', { name: 'Ações em lote' })
+    const doPod = ANALYSTS_BY_POD['pod-1'].map((id) => FIXTURE_USER_NAMES[id])
+    const deFora = ANALYSTS_BY_POD[VIEWER_GROUP_ID].filter(
+      (id) => !ANALYSTS_BY_POD['pod-1'].includes(id),
+    )
+    expect(within(painel).getByRole('button', { name: doPod[0] })).toBeInTheDocument()
+    for (const id of deFora) {
+      expect(
+        within(painel).queryByRole('button', { name: FIXTURE_USER_NAMES[id] }),
+      ).not.toBeInTheDocument()
+    }
+  })
+
   it('should change status in batch, keeping the sidebar count honest', async () => {
     await renderQueue()
     const user = userEvent.setup()
