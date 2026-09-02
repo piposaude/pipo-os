@@ -92,7 +92,7 @@ describe('toTicketRow — derivação do enrollmentSnapshot', () => {
       employment: { 'contract-type': 'brazil-labor-law' },
     },
     dependents: [],
-    company: { 'company-name': 'Caiçara Metalurgia', 'company-size': 'enterprise' },
+    company: { 'company-name': 'Caiçara Metalurgia', 'company-size': 'corporate' },
     'carrier-id': 'carrier-unimed',
     'carrier-name': 'Unimed Mineira',
     contract: { 'product-type': 'life' },
@@ -108,7 +108,7 @@ describe('toTicketRow — derivação do enrollmentSnapshot', () => {
     expect(row.carrierId).toBe('carrier-unimed')
     expect(row.carrierName).toBe('Unimed Mineira')
     expect(row.product).toBe('life')
-    expect(row.contractType).toBe('brazil-labor-law')
+    expect(row.contractType).toBe('clt')
   })
 
   it('should prefer the social name over the registered name', () => {
@@ -123,13 +123,39 @@ describe('toTicketRow — derivação do enrollmentSnapshot', () => {
     expect(row.beneficiaryName).toBe('Nome Social')
   })
 
+  it('should translate the EI vocabulary into the one the app speaks', () => {
+    const row = toTicketRow(
+      apiTicket({
+        enrollmentSnapshot: {
+          company: { 'company-size': 'smb-plus' },
+          contract: { 'product-type': 'pet-insurance' },
+          primary: { employment: { 'contract-type': 'services-contract' } },
+        },
+      }),
+    )
+
+    expect(row.companySize).toBe('pme-plus')
+    expect(row.product).toBe('pet')
+    expect(row.contractType).toBe('pj')
+  })
+
+  it('should pass an unmapped value through instead of dropping it', () => {
+    const row = toTicketRow(
+      apiTicket({
+        enrollmentSnapshot: { primary: { employment: { 'contract-type': 'intern' } } },
+      }),
+    )
+
+    expect(row.contractType).toBe('intern')
+  })
+
   it('should accept camelCase keys as well, since the snapshot contract is not frozen yet', () => {
     const row = toTicketRow(
       apiTicket({
         enrollmentSnapshot: {
           memberType: 'primary',
           primary: { profile: { name: 'Ana', taxId: '111' } },
-          company: { companyName: 'Empresa X', companySize: 'pme' },
+          company: { companyName: 'Empresa X', companySize: 'smb' },
           carrierName: 'SulAmérica',
         },
       }),
@@ -147,10 +173,10 @@ describe('toTicketRow — derivação do enrollmentSnapshot', () => {
 
     expect(row.beneficiaryName).toBeNull()
     expect(row.companyName).toBeNull()
+    expect(row.companySize).toBeNull()
     expect(row.carrierId).toBeNull()
     expect(row.product).toBeNull()
     expect(row.contractType).toBeNull()
-    expect(row.companySize).toBeNull()
     expect(row.relationship).toBeNull()
   })
 })

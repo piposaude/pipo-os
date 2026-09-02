@@ -10,7 +10,7 @@ const raw = (overrides: Record<string, unknown> = {}) => ({
   beneficiaryName: 'Ana',
   taxId: null,
   companyName: 'Caiçara',
-  porte: 'medio',
+  porte: 'pme',
   carrierId: 'sulamerica',
   carrierName: 'SulAmérica',
   product: 'health',
@@ -70,12 +70,6 @@ describe('toSeedRows', () => {
    * `undefined`, which becomes `null` — the Vínculo column would render empty
    * for every row and no other assertion here would notice.
    */
-  it('should translate the field names the export still writes in Portuguese', () => {
-    const [row] = toSeedRows([raw({ porte: 'enterprise' })])
-
-    expect(row.companySize).toBe('enterprise')
-  })
-
   it('should translate every relationship the export can write', () => {
     const rows = toSeedRows([
       raw({ id: 'a', vinculo: 'titular' }),

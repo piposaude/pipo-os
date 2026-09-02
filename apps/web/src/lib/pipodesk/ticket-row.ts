@@ -78,6 +78,33 @@ function readPath(source: Record<string, unknown>, path: string[]): unknown {
   return current
 }
 
+/**
+ * The EI speaks its own vocabulary; the app speaks the prototype's. Each map
+ * translates one incoming set into ours at the boundary, so nothing downstream
+ * ever sees the foreign value. Unknown values pass through: a benefit we have
+ * no name for shows raw instead of vanishing.
+ */
+const COMPANY_SIZE_FROM_EI: Record<string, string> = {
+  smb: 'pme',
+  'smb-plus': 'pme-plus',
+  corporate: 'enterprise',
+}
+
+const CONTRACT_TYPE_FROM_EI: Record<string, string> = {
+  'brazil-labor-law': 'clt',
+  'services-contract': 'pj',
+}
+
+const PRODUCT_FROM_EI: Record<string, string> = {
+  'health-insurance': 'health',
+  'dental-insurance': 'dental',
+  'life-insurance': 'life',
+  'pet-insurance': 'pet',
+}
+
+const translated = (map: Record<string, string>, value: string | null): string | null =>
+  value === null ? null : (map[value] ?? value)
+
 function readString(source: Record<string, unknown>, ...paths: string[][]): string | null {
   for (const path of paths) {
     const value = readPath(source, path)
@@ -129,15 +156,20 @@ export function toTicketRow(ticket: Ticket): TicketRow {
     ),
     taxId: readString(snapshot, ['primary', 'profile', 'tax-id']),
     companyName: readString(snapshot, ['company', 'company-name'], ['company', 'name']),
-    companySize: readString(snapshot, ['company', 'company-size'], ['company', 'porte']),
+    companySize: translated(
+      COMPANY_SIZE_FROM_EI,
+      readString(snapshot, ['company', 'company-size'], ['company', 'porte']),
+    ),
     carrierId: readString(snapshot, ['carrier-id'], ['carrier', 'id']),
     carrierName: readString(snapshot, ['carrier-name'], ['carrier', 'name']),
-    product: readString(snapshot, ['contract', 'product-type'], ['product-type']),
+    product: translated(
+      PRODUCT_FROM_EI,
+      readString(snapshot, ['contract', 'product-type'], ['product-type']),
+    ),
     enrollmentType: ticket.enrollmentType,
-    contractType: readString(
-      snapshot,
-      ['primary', 'employment', 'contract-type'],
-      ['work-contract-type'],
+    contractType: translated(
+      CONTRACT_TYPE_FROM_EI,
+      readString(snapshot, ['primary', 'employment', 'contract-type'], ['work-contract-type']),
     ),
     relationship: readRelationship(snapshot),
     assigneeId: ticket.assigneeId,

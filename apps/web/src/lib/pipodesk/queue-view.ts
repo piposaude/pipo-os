@@ -187,7 +187,7 @@ export function queueViewReducer(view: QueueView, action: QueueAction): QueueVie
 
 export interface QueueSearch {
   node?: string
-  /** Only the fields the person added: `products:life,health;companySizes:pme`. */
+  /** Only the fields the person added: `products:life,health;companySizes:smb`. */
   f?: string
   sort?: SortField
   dir?: 'asc' | 'desc'
