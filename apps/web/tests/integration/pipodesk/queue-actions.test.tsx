@@ -85,6 +85,21 @@ describe('painel de filtros', () => {
 
     expect(items[0]).toHaveTextContent(/Aberto em/)
   })
+
+  it('should return the focus to the trigger when the panel closes', async () => {
+    await renderQueue()
+    const user = userEvent.setup()
+
+    const trigger = screen.getByRole('button', { name: 'Filtros' })
+    await user.click(trigger)
+    // Focus inside the panel: it is the field the panel unmounts under the
+    // person's feet, which is what left the focus on `<body>`.
+    await user.click(screen.getByRole('button', { name: 'Contrato' }))
+    expect(screen.getByRole('button', { name: /^CLT/ })).toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+    expect(trigger).toHaveFocus()
+  })
 })
 
 describe('painel de exibição', () => {

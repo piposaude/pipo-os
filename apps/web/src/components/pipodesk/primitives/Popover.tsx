@@ -55,6 +55,23 @@ export function Popover({
     }
   }, [open, onClose, anchor])
 
+  /* Focus restore, apart from the listeners: it must NOT re-run when `onClose`
+     changes identity (callers pass inline arrows), or the focus would jump to
+     the trigger mid-interaction. Only when the panel had it does it give it
+     back — an item that navigates or opens another panel keeps its own. */
+  useEffect(() => {
+    if (!open) return
+    const node = panel.current
+    // Read at open time: the trigger is mounted for as long as the panel is.
+    const trigger = anchor?.current
+    return () => {
+      const active = document.activeElement
+      if (active === null || active === document.body || node?.contains(active)) {
+        trigger?.focus()
+      }
+    }
+  }, [open, anchor])
+
   if (!open) return null
 
   return (
