@@ -40,7 +40,10 @@ describe('QueueTable', () => {
       unobserve() {}
       disconnect() {}
     }
-    vi.stubGlobal('ResizeObserver', RecordingResizeObserver)
+    // Save and restore this one global: `vi.unstubAllGlobals()` would also drop
+    // the `Request` stub `tests/setup.ts` installs for every later test.
+    const NativeResizeObserver = globalThis.ResizeObserver
+    globalThis.ResizeObserver = RecordingResizeObserver as unknown as typeof ResizeObserver
 
     const { rerender } = render(table([]))
     expect(screen.getByText(constants.empty.title)).toBeInTheDocument()
@@ -48,6 +51,6 @@ describe('QueueTable', () => {
     rerender(table([{ key: 'all', label: '', tickets: queueSeed.slice(0, 3) }]))
 
     expect(observed).toContain(screen.getByRole('table').parentElement)
-    vi.unstubAllGlobals()
+    globalThis.ResizeObserver = NativeResizeObserver
   })
 })
