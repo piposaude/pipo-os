@@ -19,18 +19,22 @@ export const DEFAULT_SORT: TicketSort = { by: 'actionDate', direction: 'asc' }
 /**
  * Triage order for the Status column — whose ball it is, in attack order.
  * Deliberately different from the canonical order group headers use.
+ *
+ * A `Record`, not an array with `satisfies`: `satisfies` only checks that each
+ * entry IS a `DisplayStatus`, so a seventh status would compile and sort at
+ * rank 0 — top of the queue, silently. This way the compiler asks for it.
  */
+const TRIAGE_ORDER: Record<DisplayStatus, number> = {
+  'broker-processing': 0,
+  'client-pending': 1,
+  'carrier-processing': 2,
+  'submitted-cancellation': 3,
+  completed: 4,
+  cancelled: 5,
+}
+
 export const TRIAGE_RANK = new Map<DisplayStatus, number>(
-  (
-    [
-      'broker-processing',
-      'client-pending',
-      'carrier-processing',
-      'submitted-cancellation',
-      'completed',
-      'cancelled',
-    ] satisfies DisplayStatus[]
-  ).map((status, index) => [status, index] as const),
+  Object.entries(TRIAGE_ORDER).map(([status, rank]) => [status as DisplayStatus, rank]),
 )
 
 type PlainSortField = Exclude<SortField, 'actionDate'>
@@ -44,13 +48,15 @@ function comparePlain(a: TicketRow, b: TicketRow, by: PlainSortField): number {
     case 'company':
       return (a.companyName ?? '').localeCompare(b.companyName ?? '', 'pt-BR')
     case 'status':
-      return (TRIAGE_RANK.get(a.display) ?? 0) - (TRIAGE_RANK.get(b.display) ?? 0)
+      return TRIAGE_ORDER[a.display] - TRIAGE_ORDER[b.display]
   }
 }
 
 export function sortTickets(tickets: TicketRow[], sort: TicketSort): TicketRow[] {
   const factor = sort.direction === 'desc' ? -1 : 1
-  const byId = (a: TicketRow, b: TicketRow): number => a.id.localeCompare(b.id)
+  /* Code-point order, not `localeCompare`: the tie-break has to be the same on
+     every machine, and collation is locale-dependent. */
+  const byId = (a: TicketRow, b: TicketRow): number => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
   const by = sort.by
 
   if (by === 'actionDate') {
