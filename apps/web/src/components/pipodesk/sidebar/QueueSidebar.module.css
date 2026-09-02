@@ -8,6 +8,14 @@
   background: var(--desk-canvas);
 }
 
+/* The `display: flex` above outranks the UA rule for `[hidden]`, so the
+   collapsed tree stayed in the accessibility tree and in the tab order —
+   invisible only because the shell gives the aside 0px. Author style has to
+   answer author style. */
+.sidebar[hidden] {
+  display: none;
+}
+
 /* Logo band: 240px wide, glyph 16px from the edge. */
 .brand {
   display: flex;
