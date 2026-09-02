@@ -2,6 +2,23 @@
  * `.desk-root` — login and the rest of PipOS carry none of this. Hex literals
  * here are the documented exception until the DS absorbs them. */
 
+/* Except these: the search palette renders in a portal under `document.body`,
+ * outside `.desk-root`, where a scoped custom property resolves to nothing and
+ * takes its whole declaration with it — an invalid `z-index` falls back to
+ * `auto` and the batch bar paints over the modal. Custom properties inherit
+ * through the DOM, not through the React tree. Neither carries color, so at the
+ * root they change nothing outside the desk. */
+:root {
+  /* Explicit z ruler, or every component invents a number. Table header above
+     the rows, below the batch bar and the popovers. */
+  --desk-z-table-header: 2;
+  --desk-z-batch-bar: 10;
+  --desk-z-popover: 20;
+  --desk-z-modal: 30;
+
+  --desk-shadow-panel: 0 4px 12px rgb(19 19 18 / 8%), 0 1px 3px rgb(19 19 18 / 6%);
+}
+
 .desk-root {
   /* Slightly warm gray behind panels; DS white is for raised surfaces. */
   --desk-canvas: #efeff0;
@@ -17,15 +34,6 @@
   --desk-shadow-surface:
     0 0 0 1px rgb(19 19 18 / 4%), 0 1px 2px rgb(19 19 18 / 4%), 0 4px 8px rgb(19 19 18 / 3%),
     0 12px 24px rgb(19 19 18 / 3%);
-  --desk-shadow-panel: 0 4px 12px rgb(19 19 18 / 8%), 0 1px 3px rgb(19 19 18 / 6%);
-
-  /* Explicit z ruler, or every component invents a number. */
-  /* Above the rows, below the batch bar and the popovers. */
-  --desk-z-table-header: 2;
-  --desk-z-batch-bar: 10;
-  --desk-z-popover: 20;
-  --desk-z-modal: 30;
-
   --sidebar-w: 240px;
 
   background: var(--desk-canvas);
