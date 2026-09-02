@@ -5,11 +5,11 @@ import { useDesk } from '@/components/pipodesk/shell/desk-context'
 import { Popover } from '@/components/pipodesk/primitives'
 import { DISPLAY_STATUS_COPY, PENDING_REASON_COPY } from '@/constants/pipodesk/status'
 import {
+  COMPANY_SIZE_COPY,
   ENROLLMENT_TYPE_COPY,
-  PORTE_COPY,
   PRIORITY_COPY,
   PRODUCT_COPY,
-  VINCULO_COPY,
+  RELATIONSHIP_COPY,
 } from '@/constants/pipodesk/domain'
 import { ORIGIN_COPY } from '@/lib/pipodesk/filter-copy'
 import { analystsOf } from '@/lib/pipodesk/permissions'
@@ -113,12 +113,14 @@ export default function TicketPage() {
           value={ticket.contractType ? ticket.contractType.toUpperCase() : '—'}
         />
         <Fact
-          label={constants.facts.vinculo}
-          value={ticket.vinculo ? VINCULO_COPY[ticket.vinculo] : '—'}
+          label={constants.facts.relationship}
+          value={ticket.relationship ? RELATIONSHIP_COPY[ticket.relationship] : '—'}
         />
         <Fact
-          label={constants.facts.porte}
-          value={ticket.porte ? (PORTE_COPY[ticket.porte] ?? ticket.porte) : '—'}
+          label={constants.facts.companySize}
+          value={
+            ticket.companySize ? (COMPANY_SIZE_COPY[ticket.companySize] ?? ticket.companySize) : '—'
+          }
         />
         <Fact
           label={constants.facts.actionDate}
