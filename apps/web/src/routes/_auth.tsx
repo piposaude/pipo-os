@@ -1,6 +1,5 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
 import { ensureSession, isAuthenticated } from '@/lib/auth'
-import { AuthTopBar } from '@/components/layout/AuthTopBar'
 
 // Pathless layout guarding every protected route: hydrates the session once
 // (GET /api/auth/me, deduped by ensureSession) and redirects to the public
@@ -12,10 +11,7 @@ export const Route = createFileRoute('/_auth')({
       throw redirect({ to: '/login', search: { redirect: location.href } })
     }
   },
-  component: () => (
-    <>
-      <AuthTopBar />
-      <Outlet />
-    </>
-  ),
+  // No top bar: the shell carries identity in the sidebar footer, like the
+  // prototype. A platform bar would stack two brands and cost 56px of queue.
+  component: Outlet,
 })

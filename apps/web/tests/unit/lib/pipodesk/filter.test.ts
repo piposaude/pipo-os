@@ -1,6 +1,7 @@
 // @vitest-environment node
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 import {
+  NULL_TOKEN,
   applyFilter,
   countByOption,
   isSleeping,
@@ -332,10 +333,20 @@ describe('applyFilter and countByOption', () => {
     )
   })
 
-  it('should use sentinels for the null options, so the popover can offer them', () => {
-    const rows = [row({ id: 'a', assigneeId: null, priority: null })]
+  it('should count the null options under the reserved token, so the popover can offer them', () => {
+    const rows = [row({ id: 'a', assigneeId: null, priority: null, contractType: null })]
 
-    expect(countByOption(rows, 'assigneeIds').get('livre')).toBe(1)
-    expect(countByOption(rows, 'priorities').get('sem')).toBe(1)
+    expect(countByOption(rows, 'assigneeIds').get(NULL_TOKEN)).toBe(1)
+    expect(countByOption(rows, 'priorities').get(NULL_TOKEN)).toBe(1)
+    expect(countByOption(rows, 'contractTypes').get(NULL_TOKEN)).toBe(1)
+  })
+
+  /** The token is reserved, so a real value that looks like the old word
+   *  sentinel stays a value. */
+  it('should not confuse a real contract type with the absence of one', () => {
+    const rows = [row({ id: 'a', contractType: 'sem' })]
+
+    expect(countByOption(rows, 'contractTypes').get('sem')).toBe(1)
+    expect(countByOption(rows, 'contractTypes').get(NULL_TOKEN)).toBeUndefined()
   })
 })

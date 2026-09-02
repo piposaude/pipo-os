@@ -5,6 +5,7 @@ import { RouterProvider } from '@tanstack/react-router'
 import { initSentryReact, SentryErrorBoundary } from '@pipo-os/observability/sentry-react'
 import '@piposaude/design-system/tokens.css'
 import '@piposaude/design-system/index.css'
+import './styles/global.css'
 import { router } from './router'
 
 initSentryReact({

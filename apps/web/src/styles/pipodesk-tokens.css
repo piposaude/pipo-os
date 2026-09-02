@@ -1,0 +1,90 @@
+/* Operation tokens the design system does not expose yet (PD-312). Scoped to
+ * `.desk-root` — login and the rest of PipOS carry none of this. Hex literals
+ * here are the documented exception until the DS absorbs them. */
+
+/* Except these: custom properties inherit through the DOM, not the React tree,
+ * and the search palette portals under `document.body` — a `.desk-root`-scoped
+ * token resolves to nothing there and voids the whole declaration. Neither
+ * carries color, so at the root they change nothing outside the desk. */
+:root {
+  /* Explicit z ruler, or every component invents a number. Table header above
+     the rows, below the batch bar and the popovers. */
+  --desk-z-table-header: 2;
+  --desk-z-batch-bar: 10;
+  --desk-z-popover: 20;
+  --desk-z-modal: 30;
+
+  --desk-shadow-panel: 0 4px 12px rgb(19 19 18 / 8%), 0 1px 3px rgb(19 19 18 / 6%);
+}
+
+.desk-root {
+  /* Slightly warm gray behind panels; DS white is for raised surfaces. */
+  --desk-canvas: #efeff0;
+  /* The panel is NOT white: near-white like the prototype. Pure white is for
+       surfaces that rise above it (pill, inbox card, popover). */
+  --desk-panel: #f9f9fa;
+  --desk-hover: #f4f4f5;
+  --desk-selected: #eef2ff;
+
+  /* Logical 1px, 0.5px on high-dpi — a dense table grid gets too heavy otherwise. */
+  --desk-hairline: 1px;
+
+  --desk-shadow-surface:
+    0 0 0 1px rgb(19 19 18 / 4%), 0 1px 2px rgb(19 19 18 / 4%), 0 4px 8px rgb(19 19 18 / 3%),
+    0 12px 24px rgb(19 19 18 / 3%);
+  --sidebar-w: 240px;
+
+  background: var(--desk-canvas);
+  /* Explicit text color: we paint our own background, so never inherit a dark host. */
+  color: var(--pipo-text-primary, #131312);
+  /* No dark palette in the DS yet. `light` keeps native controls (select,
+       scrollbar) from following a dark OS over our light canvas. */
+  color-scheme: light;
+}
+
+@media (min-resolution: 2dppx) {
+  .desk-root {
+    --desk-hairline: 0.5px;
+  }
+}
+
+/* The shell owns the viewport: 100dvh, only the main scrolls. Without a
+   bounded ancestor the sidebar footer ends up below the fold. */
+.desk-root {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* The DS layout grid is min-height:100%, so it grows with the main content
+   and pushes the batch bar off screen. Locked to 100% so the main scrolls.
+   Child selector because the DS exposes no class for the root (PD-314). */
+.desk-root > div {
+  height: 100%;
+}
+
+/* The content wrapper fills the main: without a bounded height the queue's
+   height:100% resolves to auto and the bottom-anchored batch bar is invisible. */
+.desk-root main > div {
+  height: 100%;
+}
+
+/* The DS aside scrolls as a whole, dragging the footer with the tree. Only
+   the tree scrolls here; logo, search and identity stay pinned. Element
+   selector: the DS exposes no hook for the aside (PD-314). */
+.desk-root aside {
+  overflow: hidden;
+  border-right-color: var(--desk-hairline-color, var(--pipo-border));
+}
+
+/* The content is a panel over the canvas: rounded, shallow shadow, with the
+   transparent sidebar beside it. Element selector — PD-314. */
+.desk-root main {
+  margin: 0 var(--pipo-space-xsmall) var(--pipo-space-xsmall) 0;
+  border-radius: var(--pipo-radius-small);
+  background: var(--desk-panel);
+  box-shadow: var(--desk-shadow-panel);
+}
+
+.desk-root > div {
+  padding-top: var(--pipo-space-xsmall);
+}

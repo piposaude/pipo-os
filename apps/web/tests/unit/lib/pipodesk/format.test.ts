@@ -114,6 +114,47 @@ describe('slaOf', () => {
   })
 })
 
+/**
+ * `Date.parse` returns `NaN` for anything it cannot read, and NaN comparisons
+ * are all false — so an unreadable date used to render "em NaNd" in the Prazo
+ * column and read as `ok` in the SLA. Every reading must say "I don't know"
+ * instead of guessing the safe side.
+ */
+describe('datas que não parseiam', () => {
+  const BROKEN = ['', '   ', 'ontem', '2026-13-99', '31/08/2026']
+
+  it('should have no day count', () => {
+    for (const value of BROKEN) {
+      expect(daysBetween(value, TODAY), value).toBeNull()
+      expect(daysBetween(TODAY, value), value).toBeNull()
+      expect(daysOverdue(value, TODAY), value).toBeNull()
+      expect(daysOpenOf(value, TODAY), value).toBeNull()
+    }
+  })
+
+  it('should show a dash in the deadline, never "NaN"', () => {
+    for (const value of BROKEN) {
+      expect(formatPrazo(value, TODAY), value).toBe('—')
+    }
+  })
+
+  it('should have no deadline color, so the row shows no chip', () => {
+    for (const value of BROKEN) {
+      expect(prazoVariant(value, TODAY), value).toBeNull()
+    }
+  })
+
+  /** The dangerous one: `state: 'ok'` on an unreadable date announces a ticket
+   *  as within SLA. Not knowing is not the same as being fine. */
+  it('should have no SLA state when the ticket age is unknown', () => {
+    const reading = slaOf({ createdAt: '' }, { hours: 48, hasPenalty: true }, TODAY)
+
+    expect(reading.daysOpen).toBeNull()
+    expect(reading.state).toBeNull()
+    expect(reading.limitHours).toBe(48)
+  })
+})
+
 describe('displayNameFromEmail', () => {
   it('should build a readable name from a pipo email while there is no users endpoint', () => {
     expect(displayNameFromEmail('ana.souza@pipo.health')).toBe('Ana Souza')

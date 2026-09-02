@@ -1,0 +1,112 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--desk-z-modal);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+  background: rgb(0 0 0 / 24%);
+}
+
+.modal {
+  display: flex;
+  width: min(560px, calc(100vw - 32px));
+  max-height: 60vh;
+  flex-direction: column;
+  border-radius: var(--pipo-radius-medium);
+  background: var(--pipo-surface);
+  box-shadow: var(--desk-shadow-panel);
+  overflow: hidden;
+}
+
+.input {
+  padding: var(--pipo-space-small);
+  border: none;
+  border-bottom: var(--pipo-border-width-small) solid var(--pipo-border);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-medium);
+  outline: none;
+}
+
+/* The only `outline: none` of the queue without a replacement — coming back to
+   the field with Shift+Tab showed nothing. */
+.input:focus-visible {
+  box-shadow: var(--pipo-shadow-focus-primary);
+}
+
+.results {
+  overflow-y: auto;
+  padding: var(--pipo-space-xxsmall);
+}
+
+.groupLabel {
+  margin: var(--pipo-space-xxsmall) 0 2px;
+  padding: 0 var(--pipo-space-xsmall);
+  color: var(--pipo-text-secondary);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-xxsmall, 10px);
+  font-weight: var(--pipo-fw-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.groupMore {
+  font-weight: var(--pipo-fw-regular);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.hit {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--pipo-space-xsmall);
+  padding: var(--pipo-space-xxsmall) var(--pipo-space-xsmall);
+  border: none;
+  border-radius: var(--pipo-radius-xsmall);
+  background: transparent;
+  font-family: var(--pipo-font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+
+.hit[data-active='true'] {
+  background: var(--pipo-neutral-lightest);
+}
+
+.hitText {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.hitLabel {
+  overflow: hidden;
+  color: var(--pipo-neutral-darkest);
+  font-size: var(--pipo-fs-xsmall);
+  font-weight: var(--pipo-fw-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hitDetail {
+  overflow: hidden;
+  color: var(--pipo-text-secondary);
+  font-size: var(--pipo-fs-xxsmall, 11px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hitCount {
+  margin-left: auto;
+  color: var(--pipo-text-secondary);
+  font-size: var(--pipo-fs-xsmall);
+  font-variant-numeric: tabular-nums;
+}
+
+.nothing {
+  padding: var(--pipo-space-small);
+  color: var(--pipo-text-secondary);
+  font-size: var(--pipo-fs-xsmall);
+}
