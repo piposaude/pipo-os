@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { QueueColumn } from '@/lib/pipodesk/columns'
 import type { TicketGroup } from '@/lib/pipodesk/group'
 import type { TicketSort, SortField } from '@/lib/pipodesk/sort'
@@ -74,6 +74,13 @@ export function QueueTable({
 
   const allIds = groups.flatMap((group) => group.tickets.map((ticket) => ticket.id))
   const allSelected = allIds.length > 0 && allIds.every((id) => selected.has(id))
+  /* Partial selection is a third state, and it only exists as a DOM property:
+     without it the header reads "nothing selected" while the batch bar counts N. */
+  const someSelected = !allSelected && allIds.some((id) => selected.has(id))
+  const selectAll = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (selectAll.current) selectAll.current.indeterminate = someSelected
+  }, [someSelected])
 
   const sortOf = (key: string): 'ascending' | 'descending' | 'none' | undefined => {
     const field = SORTABLE[key]
@@ -119,6 +126,7 @@ export function QueueTable({
                 column.key === 'select' ? (
                   <th key="select" scope="col">
                     <input
+                      ref={selectAll}
                       type="checkbox"
                       checked={allSelected}
                       aria-label={constants.selectAll}
