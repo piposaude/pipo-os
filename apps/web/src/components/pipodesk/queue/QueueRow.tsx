@@ -39,6 +39,18 @@ export interface QueueRowProps {
   resolveName: (userId: string) => string
 }
 
+/** The deadline chip, or nothing. `prazoVariant` is the single decision: it
+ *  returns `null` both for no action date and for one that cannot be read. */
+function prazoOf(actionDate: string | null, today: string) {
+  const variant = prazoVariant(actionDate, today)
+  if (variant === null || actionDate === null) return null
+  return (
+    <Status variant={variant} className={styles.rowChip}>
+      {formatPrazo(actionDate, today)}
+    </Status>
+  )
+}
+
 export function QueueRow({
   ticket,
   columns,
@@ -147,15 +159,12 @@ export function QueueRow({
         {formatDayMonth(ticket.updatedAt, today)}
       </td>
     ),
-    /* Empty on most rows, no dash — a column of dashes is noise. Color comes
-           from `prazoVariant`, a pure function tests can reach. */
+    /* Empty on most rows, no dash — a column of dashes is noise. The variant
+           decides whether there is a chip at all: no date, or a date that does
+           not read, means no deadline to show. */
     prazo: (
       <td key="prazo" className={`${styles.num} ${styles.right}`}>
-        {ticket.actionDate && (
-          <Status variant={prazoVariant(ticket.actionDate, today)!} className={styles.rowChip}>
-            {formatPrazo(ticket.actionDate, today)}
-          </Status>
-        )}
+        {prazoOf(ticket.actionDate, today)}
       </td>
     ),
   }
