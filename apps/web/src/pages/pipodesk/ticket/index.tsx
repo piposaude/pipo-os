@@ -12,6 +12,8 @@ import {
   VINCULO_COPY,
 } from '@/constants/pipodesk/domain'
 import { ORIGIN_COPY } from '@/lib/pipodesk/filter-copy'
+import { analystsOf } from '@/lib/pipodesk/permissions'
+import { structureFixture } from '@/fixtures/pipodesk/dataset'
 import { daysOverdue, formatDayMonth } from '@/lib/pipodesk/format'
 import { CHANNELS, CHANNEL_LABEL, timelineOf, type CommentChannel } from '@/lib/pipodesk/timeline'
 import type { Priority } from '@/lib/pipodesk/ticket-row'
@@ -70,14 +72,13 @@ export default function TicketPage() {
   const overdue = ticket.actionDate === null ? null : daysOverdue(ticket.actionDate, today)
   const activeChannel = CHANNELS.find((option) => option.value === channel)!
 
-  /** Analysts of the ticket's pod — the owner can move among them. */
-  const podAnalysts = [
-    ...new Set(
-      rows
-        .filter((row) => row.groupId === ticket.groupId && row.assigneeId !== null)
-        .map((row) => row.assigneeId as string),
-    ),
-  ]
+  /** Analysts of the ticket's pod, from the structure — the same source the
+   *  queue's batch reassign uses. Deriving it from who currently HOLDS a
+   *  ticket would hide the analyst with an empty queue, who is exactly the
+   *  person you want to hand work to. */
+  const podAnalysts = analystsOf(structureFixture, ticket.groupId ?? '').map(
+    (membership) => membership.userId,
+  )
 
   const copyId = async () => {
     try {
@@ -165,13 +166,15 @@ export default function TicketPage() {
                                promising one to screen readers would be a lie. */
               aria-pressed={channel === option.value}
               disabled={option.value === 'email'}
-              title={option.value === 'email' ? constants.timeline.emailPending : undefined}
               onClick={() => setChannel(option.value)}
             >
               {option.label}
             </button>
           ))}
         </div>
+        {/* On screen, not in a `title`: a disabled button takes no focus and its
+                     tooltip is not reliably announced, so the reason was mouse-only. */}
+        <p className={styles.composerHint}>{constants.timeline.emailPending}</p>
         <p className={styles.composerHint}>{activeChannel.hint}</p>
         <textarea
           className={styles.composerInput}
@@ -283,6 +286,9 @@ export default function TicketPage() {
               anchor={ownerTrigger}
               label={constants.context.owner}
             >
+              {podAnalysts.length === 0 && (
+                <p className={styles.menuEmpty}>{constants.context.noAnalysts}</p>
+              )}
               {podAnalysts.map((userId) => (
                 <button
                   key={userId}

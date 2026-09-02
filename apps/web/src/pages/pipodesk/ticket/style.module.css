@@ -163,6 +163,15 @@
   display: inline-flex;
 }
 
+.menuEmpty {
+  margin: 0;
+  padding: var(--pipo-space-xsmall) var(--pipo-space-small);
+  max-width: 28ch;
+  color: var(--pipo-text-secondary);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-xsmall);
+}
+
 .menuItem {
   display: flex;
   width: 100%;

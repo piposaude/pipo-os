@@ -2,7 +2,9 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from '@/routeTree.gen'
-import { queueSeed } from '@/fixtures/pipodesk/dataset'
+import { queueSeed, structureFixture, FIXTURE_USER_NAMES } from '@/fixtures/pipodesk/dataset'
+import { analystsOf } from '@/lib/pipodesk/permissions'
+import constants from '@/constants/pages/pipodesk/ticket'
 
 /** The first drawn ticket, straight from the DOM — the table is virtualized
  *  and only the visible window exists. */
@@ -115,5 +117,51 @@ describe('detalhe do chamado', () => {
     await renderAt('/tickets/000000')
 
     expect(await screen.findByText(/não existe chamado com o id/i)).toBeInTheDocument()
+  })
+
+  /**
+   * The roster answers "who may own this ticket", and that comes from the pod's
+   * membership — not from whoever happens to hold a ticket right now. An
+   * analyst with an empty queue is exactly who you want to hand work to.
+   */
+  it('should offer the analysts of the pod, from the structure and not from the load', async () => {
+    await renderAt('/')
+    const user = userEvent.setup()
+    const id = firstRowId()
+    const ticket = byId(id)
+
+    await user.click(await screen.findByText(id))
+    await user.click(await screen.findByRole('button', { name: /^Dono:/ }))
+
+    const menu = screen.getByRole('dialog', { name: 'Dono' })
+    const esperados = analystsOf(structureFixture, ticket.groupId ?? '').map(
+      (membership) => FIXTURE_USER_NAMES[membership.userId],
+    )
+    expect(esperados.length).toBeGreaterThan(0)
+    for (const name of esperados) {
+      expect(within(menu).getByRole('button', { name }), name).toBeInTheDocument()
+    }
+    // Coordination is not in the analyst rotation — same rule as the queue.
+    const coordenacao = structureFixture.memberships
+      .filter((m) => m.groupId === ticket.groupId && m.role === 'admin')
+      .map((m) => FIXTURE_USER_NAMES[m.userId])
+    for (const name of coordenacao) {
+      expect(within(menu).queryByRole('button', { name }), name).not.toBeInTheDocument()
+    }
+  })
+
+  /** The email channel is parked until Fase 6. A `disabled` button with the
+   *  reason in `title` explains it to the mouse only: it takes no focus and
+   *  the title is not reliably announced. */
+  it('should explain the parked email channel in text, not only in a tooltip', async () => {
+    await renderAt('/')
+    const user = userEvent.setup()
+    const id = firstRowId()
+
+    await user.click(await screen.findByText(id))
+    await screen.findByRole('button', { name: 'E-mail ao RH' })
+
+    // The reason has to be readable without hovering — text on screen, not a title.
+    expect(screen.getByText(constants.timeline.emailPending)).toBeInTheDocument()
   })
 })

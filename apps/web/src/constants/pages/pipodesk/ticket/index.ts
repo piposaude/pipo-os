@@ -31,6 +31,7 @@ export default {
     properties: 'Propriedades',
     situation: 'Situação',
     priority: 'Prioridade',
+    noAnalysts: 'Este pod não tem analista para receber o chamado.',
     noPriority: 'Sem prioridade',
     owner: 'Dono',
     free: 'Livre no pod',
