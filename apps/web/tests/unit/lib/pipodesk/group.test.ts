@@ -1,6 +1,7 @@
 // @vitest-environment node
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 import { groupTickets } from '@/lib/pipodesk/group'
+import { NULL_TOKEN } from '@/lib/pipodesk/filter'
 
 function row(overrides: Partial<TicketRow> & { id: string }): TicketRow {
   return {
@@ -98,7 +99,7 @@ describe('groupTickets', () => {
 
     const groups = groupTickets(rows, 'assignee')
 
-    expect(groups.map((g) => g.key)).toEqual(['ana.souza@pipo.health', 'livre'])
+    expect(groups.map((g) => g.key)).toEqual(['ana.souza@pipo.health', NULL_TOKEN])
     expect(groups[1].label).toBe('Livre no pod')
   })
 
@@ -122,5 +123,19 @@ describe('groupTickets', () => {
     const groups = groupTickets(rows, 'product')
 
     expect(groups[0].tickets.map((t) => t.id)).toEqual(['primeiro', 'segundo'])
+  })
+
+  /** Same reason as the filter token: a key that is a plain word shares the
+   *  space with real data, so an analyst named `livre` would land in the
+   *  "Livre no pod" group. */
+  it('should not put a real assignee in the no-owner group because of its name', () => {
+    const groups = groupTickets(
+      [row({ id: 'a', assigneeId: null }), row({ id: 'b', assigneeId: 'livre' })],
+      'assignee',
+      (id) => id,
+    )
+
+    expect(groups).toHaveLength(2)
+    expect(groups.find((group) => group.label === 'Livre no pod')?.tickets).toHaveLength(1)
   })
 })

@@ -81,23 +81,20 @@ export function FilterPopover({
       .sort((a, b) => b.count - a.count)
   }, [base, field, filter, query, viewerId, ctx])
 
-  /** Stored value → the option's token, resolving `null` per field. */
-  const toToken = (target: FilterField, raw: string | null) => displayOf(target, raw)
-  /** …and how it reads on screen: `'@me'` shows as the viewer. Picking
+  /** …and how the token reads on screen: `'@me'` shows as the viewer. Picking
    *  yourself writes `'@me'` back — or the queue would become someone's
    *  personal queue. */
-  const toDisplay = (target: FilterField, raw: string | null) =>
-    raw === '@me' ? viewerId : toToken(target, raw)
+  const toDisplay = (raw: string | null) => (raw === '@me' ? viewerId : displayOf(raw))
   const toRaw = (display: string) => (display === viewerId ? '@me' : display)
 
   const rawValues = field === null ? [] : ((filter[field] as (string | null)[] | undefined) ?? [])
-  const selected = field === null ? [] : rawValues.map((raw) => toDisplay(field, raw))
+  const selected = rawValues.map(toDisplay)
 
   const toggle = (value: string) => {
     if (field === null) return
     const next = selected.includes(value)
-      ? rawValues.filter((raw) => toDisplay(field, raw) !== value).map((raw) => toToken(field, raw))
-      : [...rawValues.map((raw) => toToken(field, raw)), toRaw(value)]
+      ? rawValues.filter((raw) => toDisplay(raw) !== value).map(displayOf)
+      : [...rawValues.map(displayOf), toRaw(value)]
     if (next.length === 0) onRemove(field)
     else onApply(field, next)
   }

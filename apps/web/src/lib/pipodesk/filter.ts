@@ -83,22 +83,21 @@ export function windowOf(tickets: TicketRow[], mode: WindowMode, today: string):
     : live.filter((ticket) => !isSleeping(ticket, today))
 }
 
-/** Display token for each field's `null` — one name per field, or a ticket
- *  with no priority would read "Livre no pod". Single source: panel, URL codec
- *  and option counts all resolve the sentinel through here. */
-export const NULL_SENTINEL: Partial<Record<FilterField, string>> = {
-  assigneeIds: 'livre',
-  priorities: 'sem',
-  contractTypes: 'sem',
-}
+/**
+ * The token that stands for `null` in the panel and in the URL — `null` is a
+ * real value in three fields (no owner, no priority, no contract). Reserved
+ * and `@`-prefixed, in the same family as `'@me'`: a plain word like `sem`
+ * lived in the same space as the data, so a contract type actually called
+ * `sem` decoded as "no contract". The per-field WORDING lives in the copy
+ * table, not here.
+ */
+export const NULL_TOKEN = '@none'
 
 /** Stored value → the token the panel and the URL carry. */
-export const displayOf = (field: FilterField, value: string | null): string =>
-  value ?? NULL_SENTINEL[field] ?? 'null'
+export const displayOf = (value: string | null): string => value ?? NULL_TOKEN
 
-/** …and back: only the field's own sentinel decodes to `null`. */
-export const storedOf = (field: FilterField, token: string): string | null =>
-  token === NULL_SENTINEL[field] ? null : token
+/** …and back. */
+export const storedOf = (token: string): string | null => (token === NULL_TOKEN ? null : token)
 
 const missesList = <T>(wanted: T[] | undefined, value: T | null): boolean =>
   !!wanted?.length && (value === null || !wanted.includes(value))
@@ -185,7 +184,7 @@ const optionKeysOf = (ticket: TicketRow, field: FilterField): string[] => {
     case 'portes':
       return ticket.porte ? [ticket.porte] : []
     case 'contractTypes':
-      return [displayOf(field, ticket.contractType)]
+      return [displayOf(ticket.contractType)]
     case 'vinculos':
       return ticket.vinculo ? [ticket.vinculo] : []
     case 'origins':
@@ -195,9 +194,9 @@ const optionKeysOf = (ticket: TicketRow, field: FilterField): string[] => {
     case 'tags':
       return ticket.tags
     case 'assigneeIds':
-      return [displayOf(field, ticket.assigneeId)]
+      return [displayOf(ticket.assigneeId)]
     case 'priorities':
-      return [displayOf(field, ticket.priority)]
+      return [displayOf(ticket.priority)]
   }
 }
 

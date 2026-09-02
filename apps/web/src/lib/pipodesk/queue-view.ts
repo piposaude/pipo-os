@@ -1,4 +1,10 @@
-import { displayOf, storedOf, type FilterField, type TicketFilter, type WindowMode } from './filter'
+import {
+  NULL_TOKEN,
+  storedOf,
+  type FilterField,
+  type TicketFilter,
+  type WindowMode,
+} from './filter'
 import type { GroupBy } from './group'
 import { DEFAULT_SORT, type SortField, type TicketSort } from './sort'
 import type { Priority } from './ticket-row'
@@ -76,9 +82,9 @@ export type QueueAction =
   | { type: 'set-selection'; ids: string[] }
   | { type: 'clear-selection' }
 
-/** Sentinels are translated at the UI/filter boundary, per field. */
-function decodeValues(field: FilterField, values: string[]): unknown[] {
-  return values.map((value) => storedOf(field, value))
+/** The reserved null token is translated at the UI/filter boundary. */
+function decodeValues(values: string[]): unknown[] {
+  return values.map(storedOf)
 }
 
 /** URLs are hand-editable: a stray `%` must not blow up the restore. */
@@ -90,11 +96,9 @@ function unescapeValue(value: string): string {
   }
 }
 
-function encodeValues(field: FilterField, values: unknown[]): string[] {
+function encodeValues(values: unknown[]): string[] {
   // Free strings (tags) may carry `,` `;` `:` — the codec's own separators.
-  return values.map((value) =>
-    value === null ? displayOf(field, null) : encodeURIComponent(String(value)),
-  )
+  return values.map((value) => (value === null ? NULL_TOKEN : encodeURIComponent(String(value))))
 }
 
 const withoutField = (filter: TicketFilter, field: FilterField): TicketFilter => {
@@ -131,7 +135,7 @@ export function queueViewReducer(view: QueueView, action: QueueAction): QueueVie
         ...view,
         filter: {
           ...view.filter,
-          [action.field]: decodeValues(action.field, action.values),
+          [action.field]: decodeValues(action.values),
         } as TicketFilter,
       }
     case 'remove-filter': {
@@ -216,7 +220,7 @@ export function toSearch(view: QueueView): QueueSearch {
     const fromNode = view.nodeFilter[field]
     if (!isArrayField(current) || current.length === 0) continue
     if (JSON.stringify(current) === JSON.stringify(fromNode)) continue
-    parts.push(`${field}:${encodeValues(field, current).join(',')}`)
+    parts.push(`${field}:${encodeValues(current).join(',')}`)
   }
 
   const search: QueueSearch = { node: view.nodeId }
@@ -253,7 +257,7 @@ export function fromSearch(search: QueueSearch, context: RestoreContext): QueueV
       .map(unescapeValue)
     if (values.length === 0) continue
     Object.assign(added, {
-      [field]: decodeValues(field as FilterField, values),
+      [field]: decodeValues(values),
     })
   }
 

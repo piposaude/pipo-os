@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { NULL_TOKEN } from '@/lib/pipodesk/filter'
 import {
   INITIAL_VIEW,
   fromSearch,
@@ -167,11 +168,11 @@ describe('queueViewReducer — filtros', () => {
     expect(next.filter).toEqual({ assigneeIds: ['@me'] })
   })
 
-  it('should translate the null sentinels when writing the filter', () => {
+  it('should translate the reserved null token when writing the filter', () => {
     const next = queueViewReducer(INITIAL_VIEW, {
       type: 'add-filter',
       field: 'assigneeIds',
-      values: ['livre', 'ana@pipo.health'],
+      values: [NULL_TOKEN, 'ana@pipo.health'],
     })
 
     expect(next.filter.assigneeIds).toEqual([null, 'ana@pipo.health'])
@@ -273,16 +274,20 @@ describe('URL round trip', () => {
       { type: 'set-group-by', groupBy: 'status' },
     ),
     queueViewReducer(INITIAL_VIEW, { type: 'set-date-window', days: 30, today: '2026-08-31' }),
-    queueViewReducer(INITIAL_VIEW, { type: 'add-filter', field: 'assigneeIds', values: ['livre'] }),
+    queueViewReducer(INITIAL_VIEW, {
+      type: 'add-filter',
+      field: 'assigneeIds',
+      values: [NULL_TOKEN],
+    }),
     queueViewReducer(INITIAL_VIEW, {
       type: 'add-filter',
       field: 'priorities',
-      values: ['sem', 'urgent'],
+      values: [NULL_TOKEN, 'urgent'],
     }),
     queueViewReducer(INITIAL_VIEW, {
       type: 'add-filter',
       field: 'contractTypes',
-      values: ['sem', 'pj'],
+      values: [NULL_TOKEN, 'pj'],
     }),
     // Tags are free API strings — the codec's own separators must survive.
     queueViewReducer(INITIAL_VIEW, {
@@ -307,6 +312,35 @@ describe('URL round trip', () => {
 
       expect(restored).toEqual(view)
     }
+  })
+
+  /**
+   * The token that stands for `null` used to be a plain word (`sem`, `livre`),
+   * living in the same space as real values: a contract type actually called
+   * `sem` decoded as "no contract", so a shared link reopened on a different
+   * filter. The reserved token cannot be confused with data.
+   */
+  it('should keep a real value that looks like the null token', () => {
+    const view = queueViewReducer(INITIAL_VIEW, {
+      type: 'add-filter',
+      field: 'contractTypes',
+      values: ['sem', 'livre', 'pj'],
+    })
+
+    expect(view.filter.contractTypes).toEqual(['sem', 'livre', 'pj'])
+
+    const restored = fromSearch(toSearch(view), {
+      nodeId: view.nodeId,
+      label: view.label,
+      filter: view.nodeFilter,
+      groupId: view.groupId,
+      windowMode: view.windowMode,
+      labelPath: view.labelPath,
+      sort: { by: 'actionDate', direction: 'asc' },
+      today: '2026-08-31',
+    })
+
+    expect(restored.filter.contractTypes).toEqual(['sem', 'livre', 'pj'])
   })
 
   /** A link without `sort` means "sort like this node", not the app default —
