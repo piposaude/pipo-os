@@ -23,3 +23,8 @@ export function initSentryReact(options: InitSentryReactOptions): void {
 }
 
 export const SentryErrorBoundary = Sentry.ErrorBoundary
+
+/** For boundaries that catch below `SentryErrorBoundary` (a route's
+ *  `errorComponent`): without reporting by hand, the error is handled and
+ *  never reaches Sentry. No-op when Sentry was not initialized. */
+export const captureException = Sentry.captureException
