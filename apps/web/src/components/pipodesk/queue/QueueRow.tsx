@@ -1,6 +1,6 @@
 import { CarrierLogo, Status } from '@piposaude/design-system'
 import { DISPLAY_STATUS_COPY, PENDING_REASON_COPY } from '@/constants/pipodesk/status'
-import { ENROLLMENT_TYPE_COPY, PRODUCT_COPY, VINCULO_COPY } from '@/constants/pipodesk/domain'
+import { ENROLLMENT_TYPE_COPY, PRODUCT_COPY, RELATIONSHIP_COPY } from '@/constants/pipodesk/domain'
 import type { QueueColumn } from '@/lib/pipodesk/columns'
 import { formatDayMonth, formatPrazo, prazoVariant } from '@/lib/pipodesk/format'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
@@ -131,9 +131,9 @@ export function QueueRow({
         </Status>
       </td>
     ),
-    vinculo: (
-      <td key="vinculo" className={styles.secondary}>
-        {ticket.vinculo ? VINCULO_COPY[ticket.vinculo] : constants.empty_cell}
+    relationship: (
+      <td key="relationship" className={styles.secondary}>
+        {ticket.relationship ? RELATIONSHIP_COPY[ticket.relationship] : constants.empty_cell}
       </td>
     ),
     company: (

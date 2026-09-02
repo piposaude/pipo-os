@@ -2,6 +2,7 @@ import { sql, type Kysely, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { TicketQueues, TicketQueuesXGroup } from '../../infrastructure/db-types.js'
 import { ConflictError, NotFoundError } from '../../shared/errors.js'
+import { ticketFilterSchema } from '../tickets/filter-schema.js'
 import type {
   CreateQueueBody,
   Queue,
@@ -13,10 +14,11 @@ import type {
 const PG_FK_VIOLATION = '23503'
 
 function toQueue(row: Selectable<TicketQueues>): Queue {
+  const filters = ticketFilterSchema.safeParse(row.filters)
   return {
     id: row.id,
     name: row.name,
-    filters: row.filters as Record<string, unknown>,
+    filters: filters.success ? filters.data : null,
     createdBy: row.created_by,
     updatedBy: row.updated_by,
     createdAt: row.created_at.toISOString(),
@@ -78,7 +80,7 @@ export class QueuesRepository implements QueuesRepositoryPort {
 
     if (rows.length > 0) {
       return {
-        data: rows.map((row) => toQueue(row as unknown as Selectable<TicketQueues>)),
+        data: rows.map((row) => toQueue(row)),
         total: Number(rows[0].total_count),
       }
     }

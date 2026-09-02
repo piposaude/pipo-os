@@ -45,6 +45,12 @@ describe('optionLabel', () => {
     expect(optionLabel('contractTypes', 'pj', ctx)).toBe('PJ')
   })
 
+  it('should label every relationship the snapshot derives', () => {
+    expect(optionLabel('relationships', 'holder', ctx)).toBe('Titular')
+    expect(optionLabel('relationships', 'dependent', ctx)).toBe('Dependente')
+    expect(optionLabel('relationships', 'family-group', ctx)).toBe('G. Familiar')
+  })
+
   /** Each field's null has its own name — no "Prioridade é Livre no pod". */
   it('should resolve null with the sentinel of that field', () => {
     expect(optionLabel('assigneeIds', null, ctx)).toBe('Livre no pod')
