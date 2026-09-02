@@ -1093,7 +1093,14 @@
             "type": "string"
           },
           "filters": {
-            "$ref": "#/components/schemas/TicketFilter"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TicketFilter"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "createdBy": {
             "type": "string"

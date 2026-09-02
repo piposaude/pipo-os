@@ -18,7 +18,7 @@ function toQueue(row: Selectable<TicketQueues>): Queue {
   return {
     id: row.id,
     name: row.name,
-    filters: filters.success ? filters.data : {},
+    filters: filters.success ? filters.data : null,
     createdBy: row.created_by,
     updatedBy: row.updated_by,
     createdAt: row.created_at.toISOString(),

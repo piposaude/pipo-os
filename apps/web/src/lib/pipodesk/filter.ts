@@ -13,7 +13,8 @@ import type { TicketRow } from './ticket-row'
  * to the same set here and in the server-side resolver.
  */
 
-/** `null` is the unassigned ticket; `@me` resolves to the viewer. */
+/** `null` is the unassigned ticket. `@me` is not a separate member of this
+ *  type — it is a plain string that the server resolves to the viewer. */
 export type AssigneeFilterValue = NonNullable<ApiTicketFilter['assigneeIds']>[number]
 
 /**

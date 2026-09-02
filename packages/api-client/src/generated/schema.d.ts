@@ -1678,7 +1678,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: string;
-            filters: components["schemas"]["TicketFilter"];
+            filters: components["schemas"]["TicketFilter"] | null;
             createdBy: string;
             updatedBy: string | null;
             /** Format: date-time */

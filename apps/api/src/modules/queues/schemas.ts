@@ -5,7 +5,7 @@ export const queueSchema = z
   .object({
     id: z.uuid(),
     name: z.string(),
-    filters: ticketFilterSchema,
+    filters: ticketFilterSchema.nullable(),
     createdBy: z.string(),
     updatedBy: z.string().min(1).nullable(),
     createdAt: z.iso.datetime(),
