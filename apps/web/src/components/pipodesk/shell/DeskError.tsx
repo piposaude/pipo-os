@@ -26,6 +26,9 @@ function dropDeskPreferences(): void {
 export interface DeskErrorProps {
   error: Error
   reset: () => void
+  /** Set on the layout fallback only: there the sidebar is gone with the
+   *  shell, so this is the only way out of the desk. */
+  onExit?: () => void
 }
 
 /**
@@ -33,7 +36,7 @@ export interface DeskErrorProps {
  * region instead of blanking the app, and so the way out is an action and not
  * a reload — a reload reads the same stored preference back.
  */
-export function DeskError({ error, reset }: DeskErrorProps) {
+export function DeskError({ error, reset, onExit }: DeskErrorProps) {
   // This boundary sits below `SentryErrorBoundary`, which no longer sees the
   // error: handling it here would otherwise make it disappear from Sentry.
   useEffect(() => {
@@ -54,6 +57,11 @@ export function DeskError({ error, reset }: DeskErrorProps) {
         {constants.retry}
       </Button>
       <p className={styles.hint}>{constants.retryHint}</p>
+      {onExit && (
+        <Button variant="secondary" onClick={onExit}>
+          {constants.exit}
+        </Button>
+      )}
       <pre className={styles.detail}>{error.message}</pre>
     </div>
   )
