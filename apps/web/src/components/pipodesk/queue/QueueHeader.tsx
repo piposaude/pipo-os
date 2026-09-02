@@ -206,6 +206,7 @@ export function QueueHeader({
                 viewerId={viewerId}
                 ctx={ctx}
                 onApply={onApplyFilter}
+                onRemove={onRemoveFilter}
                 dateWindowDays={dateWindowDays}
                 onSetDateWindow={onSetDateWindow}
               />

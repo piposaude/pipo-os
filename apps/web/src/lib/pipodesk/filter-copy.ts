@@ -13,7 +13,7 @@ import {
   VINCULO_COPY,
 } from '@/constants/pipodesk/domain'
 import { toDisplayStatus, type ApiStatus } from './status'
-import type { FilterField, TicketFilter } from './filter'
+import { NULL_SENTINEL, type FilterField, type TicketFilter } from './filter'
 import type { GroupBy } from './group'
 
 /** Resolves ids to names. Each falls back to the id itself — an id on
@@ -56,14 +56,6 @@ export const ORIGIN_COPY: Record<string, string> = {
   web: 'Manual',
 }
 
-/** Per-field display sentinels for `null` — each field's null has its own
- *  name, or a ticket without priority reads "Prioridade é Livre no pod". */
-export const SENTINELA_NULO: Partial<Record<FilterField, string>> = {
-  assigneeIds: 'livre',
-  priorities: 'sem',
-  contractTypes: 'sem',
-}
-
 const NULL_LABEL: Partial<Record<FilterField, string>> = {
   assigneeIds: 'Livre no pod',
   priorities: 'Sem prioridade',
@@ -82,7 +74,7 @@ const statusLabel = (value: string): string => {
 /** Option label for chips and panel. Accepts `null` and resolves it here —
  *  this function knows each field's null. */
 export function optionLabel(field: FilterField, value: string | null, ctx: LabelContext): string {
-  if (value === null || value === SENTINELA_NULO[field]) {
+  if (value === null || value === NULL_SENTINEL[field]) {
     return NULL_LABEL[field] ?? value ?? ''
   }
   switch (field) {
@@ -158,8 +150,7 @@ export function filterChipsOf(
 
     /* A single null value drops the field name: the label is already the whole
            sentence — "Prioridade é Sem prioridade" stutters. */
-    const soNulo =
-      values.length === 1 && (values[0] === null || values[0] === SENTINELA_NULO[field])
+    const soNulo = values.length === 1 && (values[0] === null || values[0] === NULL_SENTINEL[field])
     chips.push({ field, text: soNulo ? labels[0] : `${FILTER_FIELD_COPY[field]} é ${text}` })
   }
   return chips

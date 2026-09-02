@@ -1,4 +1,4 @@
-import type { FilterField, TicketFilter, WindowMode } from './filter'
+import { displayOf, storedOf, type FilterField, type TicketFilter, type WindowMode } from './filter'
 import type { GroupBy } from './group'
 import { DEFAULT_SORT, type SortField, type TicketSort } from './sort'
 import type { Priority } from './ticket-row'
@@ -76,13 +76,10 @@ export type QueueAction =
   | { type: 'set-selection'; ids: string[] }
   | { type: 'clear-selection' }
 
-/** `'livre'` and `'sem'` are display sentinels for `null`, translated at the
- *  UI/filter boundary. */
+/** Sentinels are translated at the UI/filter boundary — `NULL_SENTINEL` says
+ *  which token each field uses. */
 function decodeValues(field: FilterField, values: string[]): unknown[] {
-  if (field === 'assigneeIds') return values.map((value) => (value === 'livre' ? null : value))
-  if (field === 'priorities' || field === 'contractTypes')
-    return values.map((value) => (value === 'sem' ? null : value))
-  return values
+  return values.map((value) => storedOf(field, value))
 }
 
 /** URLs are hand-editable: a stray `%` must not blow up the restore. */
@@ -96,12 +93,9 @@ function unescapeValue(value: string): string {
 
 function encodeValues(field: FilterField, values: unknown[]): string[] {
   // Free strings (tags) may carry `,` `;` `:` — the codec's own separators.
-  const escape = (value: unknown): string => encodeURIComponent(String(value))
-  if (field === 'assigneeIds')
-    return values.map((value) => (value === null ? 'livre' : escape(value)))
-  if (field === 'priorities' || field === 'contractTypes')
-    return values.map((value) => (value === null ? 'sem' : escape(value)))
-  return values.map(escape)
+  return values.map((value) =>
+    value === null ? displayOf(field, null) : encodeURIComponent(String(value)),
+  )
 }
 
 const withoutField = (filter: TicketFilter, field: FilterField): TicketFilter => {

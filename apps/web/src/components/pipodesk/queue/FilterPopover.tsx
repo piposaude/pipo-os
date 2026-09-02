@@ -10,6 +10,7 @@ import {
 import {
   applyFilter,
   countByOption,
+  displayOf,
   type FilterField,
   type TicketFilter,
 } from '@/lib/pipodesk/filter'
@@ -35,6 +36,9 @@ export interface FilterPopoverProps {
   viewerId: string
   ctx: LabelContext
   onApply: (field: FilterField, values: string[]) => void
+  /** Unchecking the last option removes the field instead of writing `[]` —
+   *  an empty list reads as "no restriction" and would show the whole pod. */
+  onRemove: (field: FilterField) => void
   dateWindowDays: number | null
   onSetDateWindow: (days: number | null) => void
 }
@@ -47,6 +51,7 @@ export function FilterPopover({
   viewerId,
   ctx,
   onApply,
+  onRemove,
   dateWindowDays,
   onSetDateWindow,
   anchor,
@@ -76,20 +81,29 @@ export function FilterPopover({
       .sort((a, b) => b.count - a.count)
   }, [base, field, filter, query, viewerId, ctx])
 
-  /** `'@me'` resolves to the viewer for display only; picking yourself writes
-   *  `'@me'` back — or the queue would become someone's personal queue. */
-  const toDisplay = (raw: string | null) => (raw === '@me' ? viewerId : (raw ?? 'livre'))
+  /** Stored value → the option's token: `null` becomes the FIELD's sentinel
+   *  (`livre` for Dono, `sem` for Prioridade and Contrato), never a literal —
+   *  the wrong one travels as a value and silently empties the cut. */
+  const toToken = (target: FilterField, raw: string | null) => displayOf(target, raw)
+  /** …and how it reads on screen: `'@me'` shows as the viewer. Picking
+   *  yourself writes `'@me'` back — or the queue would become someone's
+   *  personal queue. */
+  const toDisplay = (target: FilterField, raw: string | null) =>
+    raw === '@me' ? viewerId : toToken(target, raw)
   const toRaw = (display: string) => (display === viewerId ? '@me' : display)
 
   const rawValues = field === null ? [] : ((filter[field] as (string | null)[] | undefined) ?? [])
-  const selected = rawValues.map(toDisplay)
+  const selected = field === null ? [] : rawValues.map((raw) => toDisplay(field, raw))
 
   const toggle = (value: string) => {
     if (field === null) return
     const next = selected.includes(value)
-      ? rawValues.filter((raw) => toDisplay(raw) !== value).map((raw) => raw ?? 'livre')
-      : [...rawValues.map((raw) => raw ?? 'livre'), toRaw(value)]
-    onApply(field, next)
+      ? rawValues.filter((raw) => toDisplay(field, raw) !== value).map((raw) => toToken(field, raw))
+      : [...rawValues.map((raw) => toToken(field, raw)), toRaw(value)]
+    // An empty list is not a filter: `matchesFilter` ignores it and the node's
+    // own cut would go with it, breadcrumb still announcing it.
+    if (next.length === 0) onRemove(field)
+    else onApply(field, next)
   }
 
   return (
