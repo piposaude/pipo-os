@@ -37,7 +37,10 @@ export function CarteirasTab({
 }) {
   const [query, setQuery] = useState('')
 
-  const linhas = useMemo(() => {
+  /* Two memos on purpose: the tally walks every open ticket of the pod and does
+     not depend on the search, so keeping it in the same memo made each
+     keystroke re-count thousands of rows to filter twenty companies. */
+  const carteira = useMemo(() => {
     const group = structure.groups.find((candidate) => candidate.id === groupId)
     if (!group) return []
 
@@ -60,13 +63,19 @@ export function CarteirasTab({
         dono: ownerOf.get(companyId) ?? null,
         abertos: abertos.get(companyId) ?? 0,
       }))
-      .filter((linha) => linha.nome.toLowerCase().includes(query.toLowerCase()))
       .sort((a, b) => {
         // Unowned first; within each half, heaviest load first.
         if ((a.dono === null) !== (b.dono === null)) return a.dono === null ? -1 : 1
         return b.abertos - a.abertos
       })
-  }, [structure, groupId, rows, companyName, query])
+  }, [structure, groupId, rows, companyName])
+
+  const linhas = useMemo(() => {
+    const needle = query.toLowerCase()
+    return needle === ''
+      ? carteira
+      : carteira.filter((linha) => linha.nome.toLowerCase().includes(needle))
+  }, [carteira, query])
 
   return (
     <div className={styles.panel}>
