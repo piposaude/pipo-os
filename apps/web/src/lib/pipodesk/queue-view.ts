@@ -82,9 +82,10 @@ export type QueueAction =
   | { type: 'set-selection'; ids: string[] }
   | { type: 'clear-selection' }
 
-/** The reserved null token is translated at the UI/filter boundary. */
-function decodeValues(values: string[]): unknown[] {
-  return values.map(storedOf)
+/** The reserved null token is translated at the UI/filter boundary, and only
+ *  in the fields where `null` is a real value. */
+function decodeValues(field: FilterField, values: string[]): unknown[] {
+  return values.map((value) => storedOf(field, value))
 }
 
 /** URLs are hand-editable: a stray `%` must not blow up the restore. */
@@ -135,7 +136,7 @@ export function queueViewReducer(view: QueueView, action: QueueAction): QueueVie
         ...view,
         filter: {
           ...view.filter,
-          [action.field]: decodeValues(action.values),
+          [action.field]: decodeValues(action.field, action.values),
         } as TicketFilter,
       }
     case 'remove-filter': {
@@ -257,7 +258,7 @@ export function fromSearch(search: QueueSearch, context: RestoreContext): QueueV
       .map(unescapeValue)
     if (values.length === 0) continue
     Object.assign(added, {
-      [field]: decodeValues(values),
+      [field]: decodeValues(field as FilterField, values),
     })
   }
 

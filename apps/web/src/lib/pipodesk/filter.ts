@@ -93,11 +93,23 @@ export function windowOf(tickets: TicketRow[], mode: WindowMode, today: string):
  */
 export const NULL_TOKEN = '@none'
 
-/** Stored value → the token the panel and the URL carry. */
+/** The only fields where `null` is a real value. Everywhere else the token is
+ *  just data — `tags` carries free API strings, and a tag named `@none` must
+ *  not decode as "no value". */
+const NULLABLE_FIELDS: ReadonlySet<FilterField> = new Set([
+  'assigneeIds',
+  'priorities',
+  'contractTypes',
+])
+
+/** Stored value → the token the panel and the URL carry. Encoding needs no
+ *  field: only the fields above ever hold `null`. */
 export const displayOf = (value: string | null): string => value ?? NULL_TOKEN
 
-/** …and back. */
-export const storedOf = (token: string): string | null => (token === NULL_TOKEN ? null : token)
+/** …and back, which DOES need the field: decoding the token is only correct
+ *  where `null` is a legitimate value. */
+export const storedOf = (field: FilterField, token: string): string | null =>
+  token === NULL_TOKEN && NULLABLE_FIELDS.has(field) ? null : token
 
 const missesList = <T>(wanted: T[] | undefined, value: T | null): boolean =>
   !!wanted?.length && (value === null || !wanted.includes(value))

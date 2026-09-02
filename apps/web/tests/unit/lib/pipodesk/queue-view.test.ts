@@ -343,6 +343,21 @@ describe('URL round trip', () => {
     expect(restored.filter.contractTypes).toEqual(['sem', 'livre', 'pj'])
   })
 
+  /**
+   * `tags` carries free API strings, and only three fields admit `null` at
+   * all. Translating the token everywhere made a tag literally named `@none`
+   * decode as "no value" — the same collision, one field over.
+   */
+  it('should keep the reserved token as a value in a field that cannot be null', () => {
+    const next = queueViewReducer(INITIAL_VIEW, {
+      type: 'add-filter',
+      field: 'tags',
+      values: [NULL_TOKEN, 'urgente'],
+    })
+
+    expect(next.filter.tags).toEqual([NULL_TOKEN, 'urgente'])
+  })
+
   /** A link without `sort` means "sort like this node", not the app default —
    *  a pasted link must open like a tree click. */
   it('should fall back to the sort and grouping of the node, not to the global default', () => {
