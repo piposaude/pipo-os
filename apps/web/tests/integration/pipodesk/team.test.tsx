@@ -131,6 +131,36 @@ describe('abas do pod', () => {
   })
 })
 
+/** The three pod links share a pathname and differ only in `?tab=`, so the
+ *  router's own `activeProps` would light all three. This pins the one that
+ *  should be lit. */
+describe('link ativo do pod na sidebar', () => {
+  it('should mark only the tab the person is on', async () => {
+    await renderAt('/teams/pod-1?tab=portfolios')
+    const user = userEvent.setup()
+
+    const sidebar = screen.getByRole('navigation', { name: /pipodesk/i })
+    await user.click(within(sidebar).getByText('POD 1'))
+    const carteiras = await within(sidebar).findByRole('link', { name: 'Carteiras' })
+    expect(carteiras).toHaveAttribute('aria-current', 'page')
+    expect(within(sidebar).getByRole('link', { name: 'Home' })).not.toHaveAttribute('aria-current')
+    expect(within(sidebar).getByRole('link', { name: 'Views' })).not.toHaveAttribute('aria-current')
+  })
+
+  it('should mark Home when the tab param is absent', async () => {
+    await renderAt('/teams/pod-1')
+    const user = userEvent.setup()
+
+    const sidebar = screen.getByRole('navigation', { name: /pipodesk/i })
+    await user.click(within(sidebar).getByText('POD 1'))
+
+    expect(await within(sidebar).findByRole('link', { name: 'Home' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+  })
+})
+
 describe('sidebar fora da fila', () => {
   /** Selecting a node means leaving the current page: without navigation next
    *  to the dispatch, the click updated state and the screen sat still. */
