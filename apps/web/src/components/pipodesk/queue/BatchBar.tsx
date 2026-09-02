@@ -205,10 +205,8 @@ export function BatchBar({
                     </button>
                     <span>Mudar status</span>
                   </div>
-                  {/* No FINAL status here: closing goes through the gates (PD-031), and
-                                         `cancelled` closes the ticket the same way `completed` does.
-                                         A batch that closes a whole cut unvalidated is the exact
-                                         defect the gates exist to prevent. */}
+                  {/* No FINAL status: both close the ticket, and closing goes through
+                                         the gates (PD-031). */}
                   {API_STATUSES.filter((status) => !FINAL_STATUSES.includes(status)).map((status) =>
                     item(statusLabel(status), () => act(() => onStatus(status)), status),
                   )}

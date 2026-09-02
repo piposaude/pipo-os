@@ -2,12 +2,10 @@
  * `.desk-root` — login and the rest of PipOS carry none of this. Hex literals
  * here are the documented exception until the DS absorbs them. */
 
-/* Except these: the search palette renders in a portal under `document.body`,
- * outside `.desk-root`, where a scoped custom property resolves to nothing and
- * takes its whole declaration with it — an invalid `z-index` falls back to
- * `auto` and the batch bar paints over the modal. Custom properties inherit
- * through the DOM, not through the React tree. Neither carries color, so at the
- * root they change nothing outside the desk. */
+/* Except these: custom properties inherit through the DOM, not the React tree,
+ * and the search palette portals under `document.body` — a `.desk-root`-scoped
+ * token resolves to nothing there and voids the whole declaration. Neither
+ * carries color, so at the root they change nothing outside the desk. */
 :root {
   /* Explicit z ruler, or every component invents a number. Table header above
      the rows, below the batch bar and the popovers. */

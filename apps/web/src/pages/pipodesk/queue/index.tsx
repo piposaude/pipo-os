@@ -149,9 +149,8 @@ export default function QueuePage() {
     applyPatch(selectedVisible, patch)
   }
 
-  /* The pod the queue is showing, not the viewer's: in POD 1 the reassign menu
-       offered POD 5 analysts and handed them POD 1 tickets. Outside a pod
-       (Meus tickets, Todos) there is no owner pod, so the viewer's own answers. */
+  /* The pod the queue is showing, not the viewer's. Nodes outside a pod
+       (Meus tickets, Todos) have no owner pod, so the viewer's own answers. */
   const analysts = (ANALYSTS_BY_POD[view.groupId ?? VIEWER_GROUP_ID] ?? []).map((id) => ({
     id,
     name: resolveName(id),

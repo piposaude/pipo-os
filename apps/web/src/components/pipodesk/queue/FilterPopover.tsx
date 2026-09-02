@@ -81,9 +81,7 @@ export function FilterPopover({
       .sort((a, b) => b.count - a.count)
   }, [base, field, filter, query, viewerId, ctx])
 
-  /** Stored value → the option's token: `null` becomes the FIELD's sentinel
-   *  (`livre` for Dono, `sem` for Prioridade and Contrato), never a literal —
-   *  the wrong one travels as a value and silently empties the cut. */
+  /** Stored value → the option's token, resolving `null` per field. */
   const toToken = (target: FilterField, raw: string | null) => displayOf(target, raw)
   /** …and how it reads on screen: `'@me'` shows as the viewer. Picking
    *  yourself writes `'@me'` back — or the queue would become someone's
@@ -100,8 +98,6 @@ export function FilterPopover({
     const next = selected.includes(value)
       ? rawValues.filter((raw) => toDisplay(field, raw) !== value).map((raw) => toToken(field, raw))
       : [...rawValues.map((raw) => toToken(field, raw)), toRaw(value)]
-    // An empty list is not a filter: `matchesFilter` ignores it and the node's
-    // own cut would go with it, breadcrumb still announcing it.
     if (next.length === 0) onRemove(field)
     else onApply(field, next)
   }

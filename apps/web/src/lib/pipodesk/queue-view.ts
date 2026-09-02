@@ -76,8 +76,7 @@ export type QueueAction =
   | { type: 'set-selection'; ids: string[] }
   | { type: 'clear-selection' }
 
-/** Sentinels are translated at the UI/filter boundary — `NULL_SENTINEL` says
- *  which token each field uses. */
+/** Sentinels are translated at the UI/filter boundary, per field. */
 function decodeValues(field: FilterField, values: string[]): unknown[] {
   return values.map((value) => storedOf(field, value))
 }

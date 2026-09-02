@@ -8,10 +8,8 @@
   background: var(--desk-canvas);
 }
 
-/* The `display: flex` above outranks the UA rule for `[hidden]`, so the
-   collapsed tree stayed in the accessibility tree and in the tab order —
-   invisible only because the shell gives the aside 0px. Author style has to
-   answer author style. */
+/* The `display: flex` above outranks the UA rule for `[hidden]`: without this
+   the collapsed tree stays in the tab order and in the accessibility tree. */
 .sidebar[hidden] {
   display: none;
 }

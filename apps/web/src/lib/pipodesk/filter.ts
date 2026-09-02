@@ -83,14 +83,9 @@ export function windowOf(tickets: TicketRow[], mode: WindowMode, today: string):
     : live.filter((ticket) => !isSleeping(ticket, today))
 }
 
-/**
- * Display token for each field's `null`. `null` is a real value in three
- * fields (no owner, no priority, no contract) and needs a name that survives
- * the URL, the panel and the counts — one name per field, or a ticket with no
- * priority would read "Livre no pod". This table is the single source: panel,
- * codec and counts all read it, and a field-specific literal spread across
- * them is how `'livre'` ended up written into a contract filter.
- */
+/** Display token for each field's `null` — one name per field, or a ticket
+ *  with no priority would read "Livre no pod". Single source: panel, URL codec
+ *  and option counts all resolve the sentinel through here. */
 export const NULL_SENTINEL: Partial<Record<FilterField, string>> = {
   assigneeIds: 'livre',
   priorities: 'sem',
@@ -173,9 +168,8 @@ export function pinsOneAssignee(filter: TicketFilter, viewerId: string): boolean
   return new Set(ids.map((id) => (id === '@me' ? viewerId : id))).size === 1
 }
 
-/** Keys a ticket contributes to the panel's option counts. A `null` that has
- *  a sentinel becomes an option of its own; without one the ticket simply does
- *  not participate in that field. */
+/** Keys a ticket contributes to the option counts. A `null` with a sentinel
+ *  becomes an option of its own; without one the ticket does not participate. */
 const optionKeysOf = (ticket: TicketRow, field: FilterField): string[] => {
   switch (field) {
     case 'statuses':

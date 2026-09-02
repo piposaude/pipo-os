@@ -1,14 +1,9 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-/**
- * Custom properties inherit through the DOM, not through the React tree: the
- * search palette renders in a portal under `document.body`, outside
- * `.desk-root`, so a token scoped to the shell resolves to nothing there and
- * takes its whole declaration with it — an invalid `z-index` falls back to
- * `auto` and the batch bar paints over the modal. jsdom does not resolve
- * `var()` from stylesheets, so the guard reads the CSS itself.
- */
+/** A token scoped to `.desk-root` resolves to nothing in a portal and voids
+ *  its declaration. jsdom does not resolve `var()` from stylesheets, so the
+ *  guard reads the CSS itself. */
 const read = (path: string): string => readFileSync(resolve(process.cwd(), path), 'utf8')
 
 const PORTALED = ['src/components/pipodesk/queue/SearchPalette.module.css']
