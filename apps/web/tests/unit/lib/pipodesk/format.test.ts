@@ -5,6 +5,7 @@ import {
   daysOverdue,
   displayNameFromEmail,
   formatCount,
+  formatDate,
   formatDayMonth,
   formatPrazo,
   prazoVariant,
@@ -51,6 +52,21 @@ describe('formatDayMonth', () => {
   it('should return a dash for an unusable value', () => {
     expect(formatDayMonth(null, TODAY)).toBe('—')
     expect(formatDayMonth('not-a-date', TODAY)).toBe('—')
+  })
+})
+
+describe('formatDate', () => {
+  it('should show the full date, day first', () => {
+    expect(formatDate('2026-08-11')).toBe('11/08/2026')
+    expect(formatDate('2025-12-03T10:00:00.000Z')).toBe('03/12/2025')
+  })
+
+  /** The reversed-split it replaced turned these into `//` and `etad-a-ton`
+   *  on screen — it had no notion of an unreadable date. */
+  it('should return a dash for an unusable value', () => {
+    expect(formatDate(null)).toBe('—')
+    expect(formatDate('')).toBe('—')
+    expect(formatDate('not-a-date')).toBe('—')
   })
 })
 

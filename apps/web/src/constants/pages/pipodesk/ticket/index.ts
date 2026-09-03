@@ -1,7 +1,10 @@
+import type { CommentChannel } from '@/lib/pipodesk/timeline'
+
 export default {
   notFound: (id: string) => `Não existe chamado com o id ${id}.`,
   copyId: (id: string) => `Copiar o ID ${id}`,
   copied: 'Copiado',
+  copyGlyph: '⧉',
   overdue: (days: number, date: string) =>
     `Movimentação está atrasada em ${days} ${days === 1 ? 'dia' : 'dias'}. Registrada para ${date}.`,
   tabs: {
@@ -28,6 +31,10 @@ export default {
     origin: 'Origem',
   },
   context: {
+    region: 'Contexto do chamado',
+    /** What a screen reader announces on an editable pill: the field, its
+     *  current value, and that it opens. Copy, so it lives here. */
+    changeLabel: (field: string, value: string) => `${field}: ${value}. Trocar`,
     properties: 'Propriedades',
     situation: 'Situação',
     priority: 'Prioridade',
@@ -40,10 +47,19 @@ export default {
   timeline: {
     heading: 'Linha do tempo',
     channelGroup: 'Canal do comentário',
-    placeholder: 'Escreva…',
-    placeholderEmail: 'Escreva o e-mail ao RH…',
-    submit: 'Comentar',
-    submitEmail: 'Enviar e-mail',
+    /** Keyed by channel, not `x` plus `xEmail`: the pair of ternaries this
+     *  replaced could only ever pick the non-e-mail side, because the parked
+     *  channel never becomes the active one. */
+    placeholder: {
+      internal: 'Escreva…',
+      public: 'Escreva…',
+      email: 'Escreva o e-mail ao RH…',
+    } satisfies Record<CommentChannel, string>,
+    submit: {
+      internal: 'Comentar',
+      public: 'Comentar',
+      email: 'Enviar e-mail',
+    } satisfies Record<CommentChannel, string>,
     /** E-mail is Phase 6 (PD-112): the backend answers 501 until then, and
      *  faking the send would teach a gesture that does not exist. */
     emailPending: 'O e-mail ao RH chega com a Fase 6 (PD-112).',

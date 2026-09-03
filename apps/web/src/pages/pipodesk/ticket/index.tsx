@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Banner, Breadcrumb, BreadcrumbItem, Button, Heading, Tabs } from '@piposaude/design-system'
 import { Link, useParams } from '@tanstack/react-router'
 import { useDesk } from '@/components/pipodesk/shell/desk-context'
@@ -14,8 +14,14 @@ import {
 import { ORIGIN_COPY } from '@/lib/pipodesk/filter-copy'
 import { analystsOf } from '@/lib/pipodesk/permissions'
 import { structureFixture } from '@/fixtures/pipodesk/dataset'
-import { daysOverdue, formatDayMonth } from '@/lib/pipodesk/format'
-import { CHANNELS, CHANNEL_LABEL, timelineOf, type CommentChannel } from '@/lib/pipodesk/timeline'
+import { daysOverdue, formatDate, formatDayMonth } from '@/lib/pipodesk/format'
+import {
+  CHANNELS,
+  CHANNEL_LABEL,
+  CHANNEL_ORDER,
+  timelineOf,
+  type CommentChannel,
+} from '@/lib/pipodesk/timeline'
 import { PRIORITIES } from '@/lib/pipodesk/ticket-row'
 import constants from '@/constants/pages/pipodesk/ticket'
 import styles from './style.module.css'
@@ -56,6 +62,24 @@ export default function TicketPage() {
     [ticket, comments, resolveName],
   )
 
+  /** Analysts of the ticket's pod, from the structure — the same source the
+   *  queue's batch reassign uses. Deriving it from who currently HOLDS a
+   *  ticket would hide the analyst with an empty queue, who is exactly the
+   *  person you want to hand work to. Above the early return because it is a
+   *  hook: an absent ticket has no pod, and `''` matches no group. */
+  const podAnalysts = useMemo(
+    () => analystsOf(structureFixture, ticket?.groupId ?? '').map(({ userId }) => userId),
+    [ticket?.groupId],
+  )
+
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(
+    () => () => {
+      if (copiedTimer.current !== null) clearTimeout(copiedTimer.current)
+    },
+    [],
+  )
+
   if (!ticket) {
     return (
       <div className={`${styles.screen} ${styles.missing}`}>
@@ -68,21 +92,16 @@ export default function TicketPage() {
   /* `null` for no action date AND for one that cannot be read — an unreadable
      date is not an overdue deadline. */
   const overdue = ticket.actionDate === null ? null : daysOverdue(ticket.actionDate, today)
-  const activeChannel = CHANNELS.find((option) => option.value === channel)!
-
-  /** Analysts of the ticket's pod, from the structure — the same source the
-   *  queue's batch reassign uses. Deriving it from who currently HOLDS a
-   *  ticket would hide the analyst with an empty queue, who is exactly the
-   *  person you want to hand work to. */
-  const podAnalysts = analystsOf(structureFixture, ticket.groupId ?? '').map(
-    (membership) => membership.userId,
-  )
+  const activeChannel = CHANNELS[channel]
 
   const copyId = async () => {
     try {
       await navigator.clipboard.writeText(ticket.id)
       setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
+      /* Cleared before rearming and on unmount: copying and leaving inside the
+         window used to set state on a gone component. */
+      if (copiedTimer.current !== null) clearTimeout(copiedTimer.current)
+      copiedTimer.current = setTimeout(() => setCopied(false), 1500)
     } catch {
       // No clipboard (permission, iframe): the id stays selectable on screen.
     }
@@ -120,10 +139,7 @@ export default function TicketPage() {
             ticket.companySize ? (COMPANY_SIZE_COPY[ticket.companySize] ?? ticket.companySize) : '—'
           }
         />
-        <Fact
-          label={constants.facts.actionDate}
-          value={ticket.actionDate ? ticket.actionDate.split('-').reverse().join('/') : '—'}
-        />
+        <Fact label={constants.facts.actionDate} value={formatDate(ticket.actionDate)} />
         <Fact label={constants.facts.createdAt} value={formatDayMonth(ticket.createdAt, today)} />
         <Fact
           label={constants.facts.origin}
@@ -157,18 +173,18 @@ export default function TicketPage() {
           role="group"
           aria-label={constants.timeline.channelGroup}
         >
-          {CHANNELS.map((option) => (
+          {CHANNEL_ORDER.map((value) => (
             <button
-              key={option.value}
+              key={value}
               type="button"
               className={styles.composerChannel}
               /* aria-pressed, not role="tab": there is no tabpanel to switch, and
                                promising one to screen readers would be a lie. */
-              aria-pressed={channel === option.value}
-              disabled={option.value === 'email'}
-              onClick={() => setChannel(option.value)}
+              aria-pressed={channel === value}
+              disabled={CHANNELS[value].parked === true}
+              onClick={() => setChannel(value)}
             >
-              {option.label}
+              {CHANNELS[value].label}
             </button>
           ))}
         </div>
@@ -180,11 +196,7 @@ export default function TicketPage() {
           className={styles.composerInput}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder={
-            channel === 'email'
-              ? constants.timeline.placeholderEmail
-              : constants.timeline.placeholder
-          }
+          placeholder={constants.timeline.placeholder[channel]}
           rows={4}
         />
         <div className={styles.composerActions}>
@@ -196,7 +208,7 @@ export default function TicketPage() {
               setDraft('')
             }}
           >
-            {channel === 'email' ? constants.timeline.submitEmail : constants.timeline.submit}
+            {constants.timeline.submit[channel]}
           </Button>
         </div>
       </div>
@@ -204,7 +216,7 @@ export default function TicketPage() {
   )
 
   const contexto = (
-    <aside className={styles.context} aria-label="Contexto do chamado">
+    <aside className={styles.context} aria-label={constants.context.region}>
       <section className={styles.contextGroup}>
         <h2 className={styles.contextTitle}>{constants.context.properties}</h2>
 
@@ -220,9 +232,10 @@ export default function TicketPage() {
               type="button"
               ref={priorityTrigger}
               className={styles.pillAction}
-              aria-label={`${constants.context.priority}: ${
-                ticket.priority ? PRIORITY_COPY[ticket.priority] : constants.context.noPriority
-              }. Trocar`}
+              aria-label={constants.context.changeLabel(
+                constants.context.priority,
+                ticket.priority ? PRIORITY_COPY[ticket.priority] : constants.context.noPriority,
+              )}
               aria-expanded={priorityOpen}
               onClick={() => setPriorityOpen((current) => !current)}
             >
@@ -272,9 +285,10 @@ export default function TicketPage() {
               type="button"
               ref={ownerTrigger}
               className={styles.pillAction}
-              aria-label={`${constants.context.owner}: ${
-                ticket.assigneeId ? resolveName(ticket.assigneeId) : constants.context.free
-              }. Trocar`}
+              aria-label={constants.context.changeLabel(
+                constants.context.owner,
+                ticket.assigneeId ? resolveName(ticket.assigneeId) : constants.context.free,
+              )}
               aria-expanded={ownerOpen}
               onClick={() => setOwnerOpen((current) => !current)}
             >
@@ -362,7 +376,7 @@ export default function TicketPage() {
       {overdue !== null && overdue > 0 && ticket.actionDate !== null && (
         <div className={styles.banners}>
           <Banner variant="alert">
-            {constants.overdue(overdue, ticket.actionDate.split('-').reverse().join('/'))}
+            {constants.overdue(overdue, formatDate(ticket.actionDate))}
           </Banner>
         </div>
       )}
@@ -377,7 +391,7 @@ export default function TicketPage() {
             aria-label={constants.copyId(ticket.id)}
             onClick={copyId}
           >
-            {copied ? constants.copied : '⧉'}
+            {copied ? constants.copied : constants.copyGlyph}
           </button>
         </p>
       </div>

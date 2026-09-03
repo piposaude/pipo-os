@@ -57,6 +57,18 @@ export function formatDayMonth(iso: string | null, today: string): string {
   return year === today.slice(0, 4) ? `${day}/${month}` : `${day}/${month}/${year.slice(2)}`
 }
 
+/** `11/08/2026` — the full date, for when the year carries meaning (a filed
+ *  action date, an overdue banner). Same `—` fallback as its siblings: a date
+ *  that cannot be read is not a date, and reversing the parts by hand turned
+ *  an unreadable one into visible garbage. */
+export function formatDate(iso: string | null): string {
+  if (!iso) return '—'
+  const date = iso.slice(0, 10)
+  if (Number.isNaN(Date.parse(date))) return '—'
+  const [year, month, day] = date.split('-')
+  return `${day}/${month}/${year}`
+}
+
 /* ── SLA contratual ────────────────────────────────────────────────────────── */
 
 export type SlaState = 'ok' | 'warning' | 'breached'
