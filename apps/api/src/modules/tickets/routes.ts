@@ -2,6 +2,7 @@ import type { ZodTypeProvider } from '@fastify/type-provider-zod'
 import type { FastifyInstance } from 'fastify'
 import { UnauthorizedError } from '../../shared/errors.js'
 import { getSession } from '../auth/session.js'
+import { ticketRowsQuerySchema, ticketRowsSchema } from './rows-schema.js'
 import {
   createTicketBodySchema,
   errorResponseSchema,
@@ -30,6 +31,21 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
       // TODO: enforce tenant scope from session claims before this endpoint goes to production
       // Any authenticated user can currently list tickets from any company by omitting companyId
       return service.list(request.query)
+    },
+  )
+
+  server.get(
+    '/api/tickets/rows',
+    {
+      schema: {
+        querystring: ticketRowsQuerySchema,
+        response: { 200: ticketRowsSchema, 401: errorResponseSchema },
+      },
+    },
+    async (request) => {
+      const { email } = getSession(request)
+      const today = new Date().toISOString().slice(0, 10)
+      return service.rows(request.query, email, today)
     },
   )
 

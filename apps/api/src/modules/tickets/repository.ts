@@ -3,6 +3,8 @@ import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
 import { ConflictError } from '../../shared/errors.js'
 import { movementFieldsOf, relationshipOf } from './enrollment-snapshot.js'
+import { actionDateWindowCondition, ticketFilterConditions } from './filter-resolver.js'
+import type { TicketRowPayload, TicketRowsQuery } from './rows-schema.js'
 import { toClient } from './vocabulary.js'
 import {
   CLOSED_STATUSES,
@@ -71,6 +73,11 @@ export interface TicketsRepositoryPort {
     reason?: string,
   ): Promise<ChangeStatusResult>
   findMany(query: ListTicketsQuery): Promise<{ data: Ticket[]; total: number }>
+  findRows(
+    query: TicketRowsQuery,
+    viewerId: string,
+    today: string,
+  ): Promise<{ data: TicketRowPayload[]; total: number }>
 }
 
 export class TicketsRepository implements TicketsRepositoryPort {
@@ -141,6 +148,96 @@ export class TicketsRepository implements TicketsRepositoryPort {
       .executeTakeFirstOrThrow()
 
     return { data: [], total: Number(count) }
+  }
+
+  /** Three values have no column yet, so they are dug out of the jsonb here. */
+  async findRows(
+    query: TicketRowsQuery,
+    viewerId: string,
+    today: string,
+  ): Promise<{ data: TicketRowPayload[]; total: number }> {
+    const { window, limit, ...filter } = query
+
+    const rows = await this.db
+      .selectFrom('tickets')
+      .where((eb) => {
+        const parts = ticketFilterConditions(eb, filter, viewerId)
+        const slice = actionDateWindowCondition(window, today)
+        return eb.and(slice ? [...parts, slice] : parts)
+      })
+      .select([
+        'id',
+        'display_number',
+        'title',
+        'enrollment_id',
+        'enrollment_type',
+        'status',
+        'priority',
+        'action_date',
+        'group_id',
+        'assignee_id',
+        'company_id',
+        'carrier_id',
+        'carrier_name',
+        'product',
+        'contract_type',
+        'company_size',
+        'relationship',
+        'tags',
+        'source_system',
+        'closed_at',
+        'created_at',
+        'updated_at',
+      ])
+      .select([
+        sql<string | null>`coalesce(
+          enrollment_snapshot #>> '{company,company_name}',
+          enrollment_snapshot #>> '{company,company-name}'
+        )`.as('company_name'),
+        sql<string | null>`coalesce(
+          enrollment_snapshot #>> '{primary,profile,preferred_name}',
+          enrollment_snapshot #>> '{primary,profile,preferred-name}',
+          enrollment_snapshot #>> '{primary,profile,name}'
+        )`.as('beneficiary_name'),
+        sql<string | null>`coalesce(
+          enrollment_snapshot #>> '{primary,profile,tax_id}',
+          enrollment_snapshot #>> '{primary,profile,tax-id}'
+        )`.as('tax_id'),
+      ])
+      .orderBy('created_at', 'desc')
+      .orderBy('id', 'desc')
+      .limit(limit)
+      .execute()
+
+    const data = rows.map((row) => ({
+      id: row.id,
+      displayNumber: row.display_number,
+      title: row.title,
+      enrollmentId: row.enrollment_id,
+      enrollmentType: row.enrollment_type,
+      status: row.status as TicketStatus,
+      priority: row.priority as TicketRowPayload['priority'],
+      actionDate: row.action_date ? row.action_date.toISOString() : null,
+      groupId: row.group_id,
+      assigneeId: row.assignee_id,
+      companyId: row.company_id,
+      companyName: row.company_name,
+      beneficiaryName: row.beneficiary_name,
+      taxId: row.tax_id,
+      carrierId: row.carrier_id,
+      carrierName: row.carrier_name,
+      product: toClient('product', row.product),
+      contractType: toClient('contractType', row.contract_type),
+      companySize: toClient('companySize', row.company_size),
+      relationship: relationshipSchema.safeParse(row.relationship).data ?? null,
+      tags: row.tags as string[],
+      sourceSystem: row.source_system,
+      closedAt: row.closed_at ? row.closed_at.toISOString() : null,
+      createdAt: row.created_at.toISOString(),
+      updatedAt: row.updated_at.toISOString(),
+    }))
+
+    return { data, total: data.length }
   }
 
   async create(data: CreateTicketBody): Promise<Ticket> {
