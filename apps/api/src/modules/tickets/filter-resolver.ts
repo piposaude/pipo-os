@@ -22,7 +22,8 @@ export class UnsupportedFilterField extends UnprocessableEntityError {
   }
 }
 
-/** Twin of SLEEP_DAYS in web/src/lib/pipodesk/filter.ts. */
+/** Twin of SLEEP_DAYS in web/src/lib/pipodesk/filter.ts. The two boundary
+ *  tickets in contract/ticket-filter-cases.json fail whichever side moves alone. */
 export const SLEEP_DAYS = 2
 
 type Eb = ExpressionBuilder<Database, 'tickets'>

@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { applyFilter, type TicketFilter } from '@/lib/pipodesk/filter'
+import { applyFilter, windowOf, type TicketFilter, type WindowMode } from '@/lib/pipodesk/filter'
 import type { Priority, TicketRow } from '@/lib/pipodesk/ticket-row'
 
 /** Twin of filter-resolver.contract.test.ts in apps/api: change one, change both. */
@@ -27,8 +27,9 @@ type FixtureTicket = {
 
 type CaseFile = {
   viewerId: string
+  today: string
   tickets: FixtureTicket[]
-  cases: { name: string; filter: TicketFilter; expected: string[] }[]
+  cases: { name: string; filter: TicketFilter; window?: WindowMode; expected: string[] }[]
 }
 
 const fixture = JSON.parse(readFileSync(CASES_PATH, 'utf8')) as CaseFile
@@ -70,7 +71,11 @@ describe('the shared filter corpus, resolved in memory', () => {
   it.each(fixture.cases.map((testCase) => [testCase.name, testCase] as const))(
     'should select the expected set for: %s',
     (_name, testCase) => {
-      const selected = applyFilter(rows, testCase.filter, fixture.viewerId)
+      const selected = windowOf(
+        applyFilter(rows, testCase.filter, fixture.viewerId),
+        testCase.window ?? 'all',
+        fixture.today,
+      )
         .map((row) => row.id)
         .sort()
 

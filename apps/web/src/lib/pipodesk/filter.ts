@@ -39,7 +39,8 @@ export function assertNever(value: never): never {
 }
 
 /** How many days ahead an action date may be before the ticket leaves
- *  today's queue. Two: it resurfaces with room to be worked. */
+ *  today's queue. Two: it resurfaces with room to be worked. Pinned with the
+ *  API by the boundary tickets in contract/ticket-filter-cases.json. */
 export const SLEEP_DAYS = 2
 
 const addDays = (isoDate: string, days: number): string =>

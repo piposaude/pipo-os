@@ -5,7 +5,11 @@ import type { FastifyInstance } from 'fastify'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
 import type { TicketFilter } from './filter-schema.js'
-import { ticketFilterConditions } from './filter-resolver.js'
+import {
+  actionDateWindowCondition,
+  ticketFilterConditions,
+  type ActionDateWindow,
+} from './filter-resolver.js'
 
 /** Twin of filter-contract.test.ts in apps/web: change one, change both. */
 const CASES_PATH = fileURLToPath(
@@ -29,9 +33,10 @@ type FixtureTicket = {
 
 type CaseFile = {
   viewerId: string
+  today: string
   groupA: string
   tickets: FixtureTicket[]
-  cases: { name: string; filter: TicketFilter; expected: string[] }[]
+  cases: { name: string; filter: TicketFilter; window?: ActionDateWindow; expected: string[] }[]
 }
 
 const fixture = JSON.parse(readFileSync(CASES_PATH, 'utf8')) as CaseFile
@@ -83,7 +88,13 @@ describe('the shared filter corpus, resolved in SQL', () => {
       const rows = await app.db
         .selectFrom('tickets')
         .select('title')
-        .where((eb) => eb.and(ticketFilterConditions(eb, testCase.filter, fixture.viewerId)))
+        .where((eb) => {
+          const parts = ticketFilterConditions(eb, testCase.filter, fixture.viewerId)
+          const window = testCase.window
+            ? actionDateWindowCondition(testCase.window, fixture.today)
+            : null
+          return eb.and(window ? [...parts, window] : parts)
+        })
         .execute()
       const selected = rows.map((row) => row.title!).sort()
 
