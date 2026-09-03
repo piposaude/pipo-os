@@ -29,7 +29,7 @@ const PRIORITY_LEVELS: Record<Priority, true> = {
 
 /** In attack order, and provably complete by the record above. Shared so the
  *  detail menu and the filter guard cannot drift apart. */
-export const PRIORITIES = Object.keys(PRIORITY_LEVELS) as Priority[]
+export const PRIORITIES: readonly Priority[] = Object.keys(PRIORITY_LEVELS) as Priority[]
 
 /** Filter values come from the URL, which is hand-editable: a string is only
  *  a `Priority` after this check. */

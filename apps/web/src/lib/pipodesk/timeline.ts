@@ -71,7 +71,7 @@ export const CHANNELS: Record<CommentChannel, ChannelOption> = {
 }
 
 /** The channels in button order, provably complete by the record above. */
-export const CHANNEL_ORDER = Object.keys(CHANNELS) as CommentChannel[]
+export const CHANNEL_ORDER: readonly CommentChannel[] = Object.keys(CHANNELS) as CommentChannel[]
 
 const plusHours = (iso: string, hours: number): string =>
   new Date(Date.parse(iso) + hours * 3_600_000).toISOString()
