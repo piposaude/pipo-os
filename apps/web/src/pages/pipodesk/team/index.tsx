@@ -13,7 +13,7 @@ import {
   TableRow,
   Text,
 } from '@piposaude/design-system'
-import { useParams, useSearch } from '@tanstack/react-router'
+import { Link, useParams, useSearch } from '@tanstack/react-router'
 import { useDesk } from '@/components/pipodesk/shell/desk-context'
 import { ancestorsOf } from '@/lib/pipodesk/permissions'
 import { membersWithLoad, unownedCompaniesOf } from '@/lib/pipodesk/team'
@@ -60,8 +60,16 @@ export default function TeamPage() {
   )
 
   const openCount = inGroup.length
-  const unowned = unownedCompaniesOf(structureFixture, groupId, inGroup)
-  const members = membersWithLoad(structureFixture, groupId, inGroup)
+  /* Memoized like `inGroup` they derive from: both walk the structure and the
+     pod's open tickets, and the page re-renders on every context change. */
+  const unowned = useMemo(
+    () => unownedCompaniesOf(structureFixture, groupId, inGroup),
+    [groupId, inGroup],
+  )
+  const members = useMemo(
+    () => membersWithLoad(structureFixture, groupId, inGroup),
+    [groupId, inGroup],
+  )
 
   const ctx = useMemo<LabelContext>(() => {
     const companies = new Map<string, string>()
@@ -76,8 +84,6 @@ export default function TeamPage() {
       userName: resolveName,
     }
   }, [rows, resolveName])
-  const trail = group ? [...ancestorsOf(structureFixture, groupId)].reverse() : []
-
   if (!group) {
     return (
       <div className={`${styles.screen} ${styles.missing}`}>
@@ -86,12 +92,20 @@ export default function TeamPage() {
     )
   }
 
+  const trail = [...ancestorsOf(structureFixture, groupId)].reverse()
+
   return (
     <div className={styles.screen}>
       <div className={styles.topbar}>
         <Breadcrumb separator="›">
+          {/* Every ancestor is a group with its own page now, so the trail
+                         navigates instead of just describing. */}
           {trail.map((ancestor) => (
-            <BreadcrumbItem key={ancestor.id}>{ancestor.name}</BreadcrumbItem>
+            <BreadcrumbItem key={ancestor.id}>
+              <Link to="/teams/$groupId" params={{ groupId: ancestor.id }}>
+                {ancestor.name}
+              </Link>
+            </BreadcrumbItem>
           ))}
           <BreadcrumbItem current>{group.name}</BreadcrumbItem>
         </Breadcrumb>
@@ -109,8 +123,10 @@ export default function TeamPage() {
         <p className={styles.acao}>{constants.editableBy(group.name)}</p>
       </header>
 
+      {/* `note`, not `status`: the count is fixed at load, and a live region with
+               nothing to announce competes with the text for the accessible name. */}
       {unowned.companies > 0 && (
-        <div className={styles.pendencia} role="status" aria-label={constants.unowned.label}>
+        <div className={styles.pendencia} role="note" aria-label={constants.unowned.label}>
           <div className={styles.pendenciaTexto}>
             <strong>{constants.unowned.title(unowned.companies, unowned.tickets)}</strong>
             <span>{constants.unowned.body}</span>

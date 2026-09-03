@@ -33,7 +33,9 @@ describe('home do pod', () => {
   it('should warn about the companies of the pod that nobody carries', async () => {
     await renderAt('/teams/pod-1')
 
-    expect(screen.getByRole('status', { name: /empresas sem dono/i })).toHaveTextContent(
+    /* `note`, not `status`: the count is fixed at load, so there is nothing for a
+       live region to announce. */
+    expect(screen.getByRole('note', { name: /empresas sem dono/i })).toHaveTextContent(
       /\d+ empresas sem dono · \d+ chamados/,
     )
   })
