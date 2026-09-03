@@ -23,6 +23,10 @@ type FixtureTicket = {
   actionDate: string | null
   createdAt: string
   closedAt: string | null
+  carrierId: string
+  relationship: string
+  stored: { product: string; contractType: string | null; companySize: string }
+  client: { product: string; contractType: string | null; companySize: string }
 }
 
 type CaseFile = {
@@ -46,13 +50,13 @@ const toRow = (seed: FixtureTicket): TicketRow => ({
   beneficiaryName: null,
   taxId: null,
   companyName: null,
-  companySize: null,
-  carrierId: null,
+  companySize: seed.client.companySize,
+  carrierId: seed.carrierId,
   carrierName: null,
-  product: null,
+  product: seed.client.product,
   enrollmentType: seed.enrollmentType,
-  contractType: null,
-  relationship: null,
+  contractType: seed.client.contractType,
+  relationship: seed.relationship as TicketRow['relationship'],
   assigneeId: seed.assigneeId,
   groupId: seed.groupId,
   priority: seed.priority as Priority | null,
