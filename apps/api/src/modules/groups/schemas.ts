@@ -1,8 +1,7 @@
 import { z } from 'zod'
 
-/** `.trim()` is a transform, so OpenAPI carries only `minLength: 1` — which
- *  `"   "` satisfies and the server rejects. The description is the only place
- *  the spec can say so. */
+/** `"   "` satisfies the `minLength: 1` that OpenAPI can express and fails the
+ *  `.trim()` that it cannot — hence the description. */
 const trimmedInput = (): z.ZodString =>
   z.string().trim().min(1).describe('Trimmed before validation: whitespace only is rejected.')
 
@@ -17,9 +16,8 @@ export const groupSchema = z
   })
   .meta({ id: 'Group' })
 
-/** Response shape, read from the row — no `.trim()` here on purpose: trimming
- *  on the way out would hide a bad value instead of rejecting it on the way
- *  in. The guard belongs to `addMemberBodySchema`. */
+/** Response only, so no `trimmedInput()` here: trimming on the way out would
+ *  hide a bad row instead of rejecting it on the way in. */
 export const groupMemberSchema = z
   .object({
     groupId: z.uuid(),
