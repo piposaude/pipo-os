@@ -98,48 +98,12 @@ function readPath(source: Record<string, unknown>, path: string[]): unknown {
   return current
 }
 
-/**
- * The app keeps its own vocabulary; what arrives from outside is translated
- * here, the only place a snapshot crosses in. An unmapped value passes through
- * so a benefit with no name here shows raw instead of vanishing.
- */
-export const COMPANY_SIZE_FROM_EI: Record<string, string> = {
-  smb: 'pme',
-  'smb-plus': 'pme-plus',
-  corporate: 'enterprise',
-}
-
-export const CONTRACT_TYPE_FROM_EI: Record<string, string> = {
-  'brazil-labor-law': 'clt',
-  'services-contract': 'pj',
-}
-
-export const PRODUCT_FROM_EI: Record<string, string> = {
-  'health-insurance': 'health',
-  'dental-insurance': 'dental',
-  'life-insurance': 'life',
-  'pet-insurance': 'pet',
-}
-
-const translated = (map: Record<string, string>, value: string | null): string | null => {
-  if (value === null) return null
-  return Object.prototype.hasOwnProperty.call(map, value) ? map[value] : value
-}
-
 function readString(source: Record<string, unknown>, ...paths: string[][]): string | null {
   for (const path of paths) {
     const value = readPath(source, path)
     if (typeof value === 'string' && value.trim() !== '') return value
   }
   return null
-}
-
-function readRelationship(snapshot: Record<string, unknown>): Relationship | null {
-  const memberType = readString(snapshot, ['member-type'], ['primary', 'member-type'])
-  if (memberType === null) return null
-  if (memberType.toLowerCase() === 'dependent') return 'dependent'
-  const dependents = readPath(snapshot, ['dependents'])
-  return Array.isArray(dependents) && dependents.length > 0 ? 'family-group' : 'holder'
 }
 
 /** Subject shaped like the Zendesk one: carrier · product · person. */
@@ -149,8 +113,8 @@ function buildSubject(ticket: Ticket, snapshot: Record<string, unknown>): string
   if (explicit) return explicit
 
   const parts = [
-    readString(snapshot, ['carrier-name'], ['carrier', 'name']),
-    readString(snapshot, ['contract', 'product-type'], ['product-type']),
+    ticket.carrierName,
+    ticket.product,
     readString(snapshot, ['primary', 'profile', 'preferred-name'], ['primary', 'profile', 'name']),
   ].filter((part): part is string => part !== null)
 
@@ -177,22 +141,13 @@ export function toTicketRow(ticket: Ticket): TicketRow {
     ),
     taxId: readString(snapshot, ['primary', 'profile', 'tax-id']),
     companyName: readString(snapshot, ['company', 'company-name'], ['company', 'name']),
-    companySize: translated(
-      COMPANY_SIZE_FROM_EI,
-      readString(snapshot, ['company', 'company-size'], ['company', 'porte']),
-    ),
-    carrierId: readString(snapshot, ['carrier-id'], ['carrier', 'id']),
-    carrierName: readString(snapshot, ['carrier-name'], ['carrier', 'name']),
-    product: translated(
-      PRODUCT_FROM_EI,
-      readString(snapshot, ['contract', 'product-type'], ['product-type']),
-    ),
+    companySize: ticket.companySize,
+    carrierId: ticket.carrierId,
+    carrierName: ticket.carrierName,
+    product: ticket.product,
     enrollmentType: ticket.enrollmentType,
-    contractType: translated(
-      CONTRACT_TYPE_FROM_EI,
-      readString(snapshot, ['primary', 'employment', 'contract-type'], ['work-contract-type']),
-    ),
-    relationship: readRelationship(snapshot),
+    contractType: ticket.contractType,
+    relationship: ticket.relationship,
     assigneeId: ticket.assigneeId,
     groupId: ticket.groupId,
     priority: ticket.priority,
