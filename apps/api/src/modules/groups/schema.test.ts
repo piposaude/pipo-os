@@ -13,8 +13,6 @@ const UNIQUE_VIOLATION = '23505'
 const FK_VIOLATION = '23503'
 const CHECK_VIOLATION = '23514'
 
-/** The pg error code of a rejected write, so a test names the constraint that
- *  fired instead of only asserting that something failed. */
 async function codeOf(write: Promise<unknown>): Promise<string | undefined> {
   try {
     await write
@@ -302,14 +300,8 @@ describe('groups schema — hierarchy and portfolio constraints', () => {
     })
   })
 
-  /**
-   * `company_id` has no foreign key and cannot have one: companies live in
-   * another service, so there is no table to reference. The column being
-   * `uuid` is all the database can guarantee — that it is a UUID, never that
-   * it names a company. The validation belongs to the edge that will write it
-   * (PD-051); this test states the limit so nobody reads the missing FK as an
-   * oversight.
-   */
+  /** No table because companies live in another service. Validating that the id
+   *  names a real company belongs to whoever writes it (PD-051). */
   it('accepts a company id that names no company, because no table can be referenced', async () => {
     const pod = await group(POD_3)
     const semDono = '00000000-0000-4000-8000-0000000000ff'
