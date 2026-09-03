@@ -28,14 +28,6 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     )
   `.execute(db)
 
-  /* Written where whoever asks "why is there no foreign key here?" will look:
-     `\d+` in psql. A comment in the repository does not reach the person
-     reading the database. */
-  await sql`
-    COMMENT ON COLUMN ticket_group_companies.company_id IS
-      'No foreign key, and none is possible: companies live in another service, so there is no table to reference. Being a uuid is all the database guarantees — never that it names a company. Validation belongs to the edge that writes it (PD-051).'
-  `.execute(db)
-
   await sql`
     CREATE TABLE ticket_group_member_companies (
       group_id   uuid NOT NULL,

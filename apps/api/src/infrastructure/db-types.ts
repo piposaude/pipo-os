@@ -90,9 +90,6 @@ export interface TicketFormValues {
 }
 
 export interface TicketGroupCompanies {
-  /**
-   * No foreign key, and none is possible: companies live in another service, so there is no table to reference. Being a uuid is all the database guarantees — never that it names a company. Validation belongs to the edge that writes it (PD-051).
-   */
   company_id: string;
   created_at: Generated<Timestamp>;
   group_id: string;
