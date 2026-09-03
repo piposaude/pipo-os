@@ -150,6 +150,27 @@ describe('detalhe do chamado', () => {
     expect(within(entry).getByText('Comentário público')).toBeInTheDocument()
   })
 
+  /**
+   * The field had no accessible name at all — a placeholder is not one, so a
+   * screen reader announced a bare text box. The name follows the channel, the
+   * same way the placeholder and the submit button already do.
+   */
+  it('should name the composer field, and rename it with the channel', async () => {
+    await renderAt('/tickets/700003')
+    const user = userEvent.setup()
+
+    expect(
+      await screen.findByRole('textbox', { name: constants.timeline.label.internal }),
+    ).toBeInTheDocument()
+
+    const composer = screen.getByRole('group', { name: 'Canal do comentário' })
+    await user.click(within(composer).getByRole('button', { name: 'Comentário público' }))
+
+    expect(
+      screen.getByRole('textbox', { name: constants.timeline.label.public }),
+    ).toBeInTheDocument()
+  })
+
   /** The parked channel takes no click, so it can never become the active one
    *  — the reason it is parked is on screen instead of in a tooltip. */
   it('should keep the e-mail channel unclickable while it is parked', async () => {

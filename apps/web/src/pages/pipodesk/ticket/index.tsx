@@ -194,6 +194,10 @@ export default function TicketPage() {
         <p className={styles.composerHint}>{activeChannel.hint}</p>
         <textarea
           className={styles.composerInput}
+          /* `aria-label` and not the hidden `<label>` Carteiras uses: that one
+             exists because the DS `TextInput` drops `aria-label`; a native
+             `textarea` keeps it. */
+          aria-label={constants.timeline.label[channel]}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           placeholder={constants.timeline.placeholder[channel]}

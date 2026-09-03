@@ -47,6 +47,12 @@ export default {
   timeline: {
     heading: 'Linha do tempo',
     channelGroup: 'Canal do comentário',
+    /** The field's accessible name — a placeholder is not one. */
+    label: {
+      internal: 'Anotação interna',
+      public: 'Comentário público',
+      email: 'E-mail ao RH',
+    } satisfies Record<CommentChannel, string>,
     /** Keyed by channel, not `x` plus `xEmail`: the pair of ternaries this
      *  replaced could only ever pick the non-e-mail side, because the parked
      *  channel never becomes the active one. */
