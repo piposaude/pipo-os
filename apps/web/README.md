@@ -30,7 +30,7 @@ Além do que o README da raiz pede, o frontend precisa de duas coisas:
   `read:packages`, em `~/.npmrc`. Sem ele o `pnpm install` falha ao resolver
   `@piposaude/design-system`.
 
-  ```
+  ```ini
   //npm.pkg.github.com/:_authToken=SEU_TOKEN
   ```
 
@@ -65,7 +65,7 @@ estão em
 
 ## Onde as coisas moram
 
-```
+```text
 src/
   routes/           rotas file-based (a árvore em routeTree.gen.ts é GERADA — não editar)
   pages/            o corpo de cada tela (queue, ticket, team, auth/login)
@@ -103,7 +103,7 @@ tests/integration   uma suíte por fluxo, com a routeTree real e fetch mockado
 
 A API já tem CRUD de tickets, filtros de listagem, grupos e filas, mas o
 frontend ainda não está ligado a ela: faltam a projeção leve da fila
-(`GET /tickets/rows`, em andamento na ACE-181) e a costura do lado do web
+(`GET /api/tickets/rows`, em andamento na ACE-181) e a costura do lado do web
 (PD-102). Até lá, a fila, o time e o detalhe leem
 `src/fixtures/pipodesk/dataset.json`: **o dataset gerado pelo protótipo
 `pipodesk`, exportado de lá** com o vocabulário já traduzido (6 status + motivo
