@@ -552,6 +552,25 @@ describe('groups routes', () => {
 
       expect(response.statusCode).toBe(400)
     })
+
+    it('returns 400 for a userId longer than 255 characters', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Grupo' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id: groupId } = created.json()
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/groups/${groupId}/members`,
+        payload: { userId: 'a'.repeat(256) },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
   })
 
   // ---------------------------------------------------------------------------

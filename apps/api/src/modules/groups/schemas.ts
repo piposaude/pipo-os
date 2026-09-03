@@ -58,7 +58,7 @@ export const updateGroupBodySchema = z
 
 export const addMemberBodySchema = z
   .object({
-    userId: trimmedInput(),
+    userId: trimmedInput().max(255),
   })
   .strict()
   .meta({ id: 'AddGroupMemberBody' })

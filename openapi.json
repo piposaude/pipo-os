@@ -229,6 +229,7 @@
           "userId": {
             "type": "string",
             "minLength": 1,
+            "maxLength": 255,
             "description": "Trimmed before validation: whitespace only is rejected."
           }
         },
