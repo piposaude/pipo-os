@@ -19,8 +19,8 @@ export type AssigneeFilterValue = NonNullable<ApiTicketFilter['assigneeIds']>[nu
 
 /**
  * `null` is a legitimate value in `assigneeIds` (unassigned), `priorities` (no
- * priority) and `contractTypes` (no contract in the snapshot — the MOV PJ cut
- * filters `['pj', null]` so the list matches the tally, which counts non-CLT).
+ * priority) and `contractTypes` (no contract in the snapshot) — an option in
+ * the panel, though no saved cut uses it.
  */
 export interface TicketFilter extends ApiTicketFilter {
   /** Computed per render from a query result; never a saved filter. */
@@ -39,7 +39,8 @@ export function assertNever(value: never): never {
 }
 
 /** How many days ahead an action date may be before the ticket leaves
- *  today's queue. Two: it resurfaces with room to be worked. */
+ *  today's queue. Two: it resurfaces with room to be worked. Pinned with the
+ *  API by the boundary tickets in contract/ticket-filter-cases.json. */
 export const SLEEP_DAYS = 2
 
 const addDays = (isoDate: string, days: number): string =>

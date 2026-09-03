@@ -1,0 +1,260 @@
+{
+  "readme": "Shared corpus proving the product invariant of PD-043: a saved TicketFilter selects the same set in apps/web (matchesFilter, in memory) and in apps/api (ticketFilterConditions, in SQL). Both suites read this file and assert the same expected ids, so a divergence fails a test instead of surfacing as a node that announces one number and lists another. Only fields the resolver already handles appear here; the five snapshot-derived ones are refused server-side and cannot be compared yet. A case may also carry a window (awake | sleeping | all), applied with today: the two tickets due on 09-02 and 09-03 sit on either side of the SLEEP_DAYS cut, so a side that moves the constant alone fails here. A day is a UTC calendar day, read off the ISO string: the ticket due at 01:30Z on 09-03 already sleeps.",
+  "viewerId": "ana@pipo.health",
+  "today": "2026-08-31",
+  "companyA": "00000000-0000-4000-8000-0000000000a1",
+  "companyB": "00000000-0000-4000-8000-0000000000b2",
+  "groupA": "00000000-0000-4000-8000-0000000000c3",
+  "tickets": [
+    {
+      "id": "livre-urgente",
+      "status": "broker-processing",
+      "companyId": "00000000-0000-4000-8000-0000000000a1",
+      "enrollmentType": "inclusion",
+      "sourceSystem": "enrollment-integrations",
+      "groupId": "00000000-0000-4000-8000-0000000000c3",
+      "assigneeId": null,
+      "priority": "urgent",
+      "tags": ["vip"],
+      "actionDate": null,
+      "createdAt": "2026-08-30T09:00:00.000Z",
+      "closedAt": null
+    },
+    {
+      "id": "da-ana-atrasado",
+      "status": "missing-documents",
+      "companyId": "00000000-0000-4000-8000-0000000000a1",
+      "enrollmentType": "exclusion",
+      "sourceSystem": "broker",
+      "groupId": "00000000-0000-4000-8000-0000000000c3",
+      "assigneeId": "ana@pipo.health",
+      "priority": "low",
+      "tags": ["vip", "retorno"],
+      "actionDate": "2026-08-20T10:00:00.000Z",
+      "createdAt": "2026-08-01T09:00:00.000Z",
+      "closedAt": null
+    },
+    {
+      "id": "da-ana-sem-prioridade",
+      "status": "carrier-processing",
+      "companyId": "00000000-0000-4000-8000-0000000000b2",
+      "enrollmentType": "inclusion",
+      "sourceSystem": "web",
+      "groupId": null,
+      "assigneeId": "ana@pipo.health",
+      "priority": null,
+      "tags": [],
+      "actionDate": "2026-09-20T10:00:00.000Z",
+      "createdAt": "2026-08-31T09:00:00.000Z",
+      "closedAt": null
+    },
+    {
+      "id": "do-bruno",
+      "status": "incorrect-data",
+      "companyId": "00000000-0000-4000-8000-0000000000b2",
+      "enrollmentType": "plan_change",
+      "sourceSystem": "automation-failure",
+      "groupId": "00000000-0000-4000-8000-0000000000c3",
+      "assigneeId": "bruno@pipo.health",
+      "priority": "high",
+      "tags": ["retorno"],
+      "actionDate": "2026-08-31T10:00:00.000Z",
+      "createdAt": "2026-08-29T09:00:00.000Z",
+      "closedAt": null
+    },
+    {
+      "id": "fechado",
+      "status": "completed",
+      "companyId": "00000000-0000-4000-8000-0000000000a1",
+      "enrollmentType": "inclusion",
+      "sourceSystem": "enrollment-integrations",
+      "groupId": "00000000-0000-4000-8000-0000000000c3",
+      "assigneeId": "ana@pipo.health",
+      "priority": null,
+      "tags": ["vip"],
+      "actionDate": null,
+      "createdAt": "2026-08-10T09:00:00.000Z",
+      "closedAt": "2026-08-15T09:00:00.000Z"
+    },
+    {
+      "id": "acorda-no-limite",
+      "status": "carrier-processing",
+      "companyId": "00000000-0000-4000-8000-0000000000b2",
+      "enrollmentType": "exclusion",
+      "sourceSystem": "web",
+      "groupId": null,
+      "assigneeId": "carla@pipo.health",
+      "priority": "medium",
+      "tags": [],
+      "actionDate": "2026-09-02T10:00:00.000Z",
+      "createdAt": "2026-08-15T09:00:00.000Z",
+      "closedAt": null
+    },
+    {
+      "id": "dorme-um-dia-alem",
+      "status": "carrier-processing",
+      "companyId": "00000000-0000-4000-8000-0000000000b2",
+      "enrollmentType": "exclusion",
+      "sourceSystem": "web",
+      "groupId": null,
+      "assigneeId": "carla@pipo.health",
+      "priority": "medium",
+      "tags": [],
+      "actionDate": "2026-09-03T10:00:00.000Z",
+      "createdAt": "2026-08-15T09:00:00.000Z",
+      "closedAt": null
+    },
+    {
+      "id": "vira-o-dia-em-utc",
+      "status": "carrier-processing",
+      "companyId": "00000000-0000-4000-8000-0000000000b2",
+      "enrollmentType": "exclusion",
+      "sourceSystem": "web",
+      "groupId": null,
+      "assigneeId": "carla@pipo.health",
+      "priority": "medium",
+      "tags": [],
+      "actionDate": "2026-09-03T01:30:00.000Z",
+      "createdAt": "2026-08-15T09:00:00.000Z",
+      "closedAt": null
+    }
+  ],
+  "cases": [
+    {
+      "name": "no criteria keeps everything",
+      "filter": {},
+      "expected": [
+        "acorda-no-limite",
+        "da-ana-atrasado",
+        "da-ana-sem-prioridade",
+        "do-bruno",
+        "dorme-um-dia-alem",
+        "fechado",
+        "livre-urgente",
+        "vira-o-dia-em-utc"
+      ]
+    },
+    {
+      "name": "a list is an OR",
+      "filter": { "statuses": ["missing-documents", "incorrect-data"] },
+      "expected": ["da-ana-atrasado", "do-bruno"]
+    },
+    {
+      "name": "two fields are an AND",
+      "filter": {
+        "statuses": ["missing-documents", "incorrect-data"],
+        "companyIds": ["00000000-0000-4000-8000-0000000000a1"]
+      },
+      "expected": ["da-ana-atrasado"]
+    },
+    {
+      "name": "tags asks for all of them, not any",
+      "filter": { "tags": ["vip", "retorno"] },
+      "expected": ["da-ana-atrasado"]
+    },
+    {
+      "name": "a single tag still matches every ticket carrying it",
+      "filter": { "tags": ["vip"] },
+      "expected": ["da-ana-atrasado", "fechado", "livre-urgente"]
+    },
+    {
+      "name": "null is a value in assigneeIds",
+      "filter": { "assigneeIds": [null] },
+      "expected": ["livre-urgente"]
+    },
+    {
+      "name": "null rides along with a real assignee",
+      "filter": { "assigneeIds": ["bruno@pipo.health", null] },
+      "expected": ["do-bruno", "livre-urgente"]
+    },
+    {
+      "name": "@me resolves to the viewer",
+      "filter": { "assigneeIds": ["@me"] },
+      "expected": ["da-ana-atrasado", "da-ana-sem-prioridade", "fechado"]
+    },
+    {
+      "name": "null is a value in priorities",
+      "filter": { "priorities": [null, "high"] },
+      "expected": ["da-ana-sem-prioridade", "do-bruno", "fechado"]
+    },
+    {
+      "name": "groupIds narrows to the pod",
+      "filter": { "groupIds": ["00000000-0000-4000-8000-0000000000c3"] },
+      "expected": ["da-ana-atrasado", "do-bruno", "fechado", "livre-urgente"]
+    },
+    {
+      "name": "types and origins",
+      "filter": { "types": ["inclusion"], "origins": ["enrollment-integrations"] },
+      "expected": ["fechado", "livre-urgente"]
+    },
+    {
+      "name": "actionDateBefore cuts by day and drops the ones with no date",
+      "filter": { "actionDateBefore": "2026-08-31" },
+      "expected": ["da-ana-atrasado"]
+    },
+    {
+      "name": "urgentBy is urgent OR overdue, the filter's only cross-field OR",
+      "filter": { "urgentBy": "2026-08-31" },
+      "expected": ["da-ana-atrasado", "livre-urgente"]
+    },
+    {
+      "name": "createdSince cuts by creation day",
+      "filter": { "createdSince": "2026-08-29" },
+      "expected": ["da-ana-sem-prioridade", "do-bruno", "livre-urgente"]
+    },
+    {
+      "name": "archived false keeps the open ones",
+      "filter": { "archived": false },
+      "expected": [
+        "acorda-no-limite",
+        "da-ana-atrasado",
+        "da-ana-sem-prioridade",
+        "do-bruno",
+        "dorme-um-dia-alem",
+        "livre-urgente",
+        "vira-o-dia-em-utc"
+      ]
+    },
+    {
+      "name": "archived true keeps the closed ones",
+      "filter": { "archived": true },
+      "expected": ["fechado"]
+    },
+    {
+      "name": "the MOV-shaped cut: mine, open, in the pod",
+      "filter": {
+        "assigneeIds": ["@me"],
+        "groupIds": ["00000000-0000-4000-8000-0000000000c3"],
+        "archived": false
+      },
+      "expected": ["da-ana-atrasado"]
+    },
+    {
+      "name": "awake keeps the open ones due within SLEEP_DAYS, or with no date",
+      "filter": {},
+      "window": "awake",
+      "expected": ["acorda-no-limite", "da-ana-atrasado", "do-bruno", "livre-urgente"]
+    },
+    {
+      "name": "sleeping keeps the open ones due after SLEEP_DAYS",
+      "filter": {},
+      "window": "sleeping",
+      "expected": ["da-ana-sem-prioridade", "dorme-um-dia-alem", "vira-o-dia-em-utc"]
+    },
+    {
+      "name": "all crosses the window, closed ones included",
+      "filter": {},
+      "window": "all",
+      "expected": [
+        "acorda-no-limite",
+        "da-ana-atrasado",
+        "da-ana-sem-prioridade",
+        "do-bruno",
+        "dorme-um-dia-alem",
+        "fechado",
+        "livre-urgente",
+        "vira-o-dia-em-utc"
+      ]
+    }
+  ]
+}

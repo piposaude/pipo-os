@@ -49,10 +49,26 @@ describe('tallyPods', () => {
     expect(tally.get('pod-1')).toMatchObject({ total: 1, clt: 0, pj: 1, mb: 1 })
   })
 
-  it('should treat an unknown contract type as PJ, the way the prototype does', () => {
-    const tally = tallyPods([row({ id: '1', contractType: null })])
+  it('should count a contract type outside clt and pj in neither cut', () => {
+    const tally = tallyPods([
+      row({ id: '1', contractType: null }),
+      row({ id: '2', contractType: 'partner' }),
+      row({ id: '3', contractType: 'intern' }),
+    ])
 
-    expect(tally.get('pod-1')).toMatchObject({ clt: 0, pj: 1 })
+    expect(tally.get('pod-1')).toMatchObject({ total: 3, clt: 0, pj: 0 })
+  })
+
+  it('should leave clt + pj short of the total, so the gap is visible', () => {
+    const tally = tallyPods([
+      row({ id: '1', contractType: 'clt' }),
+      row({ id: '2', contractType: 'pj' }),
+      row({ id: '3', contractType: 'on-leave' }),
+    ])
+    const pod = tally.get('pod-1')!
+
+    expect(pod.clt + pod.pj).toBe(2)
+    expect(pod.total).toBe(3)
   })
 
   it('should break the pod down by assignee, leaving the unassigned out', () => {

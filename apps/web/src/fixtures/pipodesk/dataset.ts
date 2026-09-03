@@ -8,7 +8,7 @@
  */
 
 import { isApiStatus, toDisplayStatus } from '@/lib/pipodesk/status'
-import type { StructureState } from '@/lib/pipodesk/structure'
+import type { Queue, StructureState } from '@/lib/pipodesk/structure'
 import type { Priority, Relationship, TicketRow } from '@/lib/pipodesk/ticket-row'
 import raw from './dataset.json'
 
@@ -63,7 +63,23 @@ export const COMPANY_NAMES: Record<string, string> = Object.fromEntries(
   data.companies.map((company) => [company.id, company.tradeName]),
 )
 
-export const structureFixture: StructureState = data.structure
+/** The prototype's MOV PJ filters `['pj', null]`, from back when the tally
+ *  counted every non-CLT as PJ. See tally.ts — the `null` comes out here, and
+ *  only where it rides along with `pj`: a cut that is just `[null]` means "no
+ *  contract in the snapshot" and would become `[]`, which reads as no cut. */
+export function withoutLegacyPjNull(queue: Queue): Queue {
+  const contractTypes = queue.filter?.contractTypes
+  if (!contractTypes?.includes(null) || !contractTypes.includes('pj')) return queue
+  return {
+    ...queue,
+    filter: { ...queue.filter, contractTypes: contractTypes.filter((type) => type !== null) },
+  }
+}
+
+export const structureFixture: StructureState = {
+  ...data.structure,
+  queues: data.structure.queues.map(withoutLegacyPjNull),
+}
 
 export const ROOT_GROUP_ID =
   structureFixture.groups.find((group) => group.parentId === null)?.id ?? 'group-geben'
@@ -86,8 +102,7 @@ for (const membership of structureFixture.memberships) {
  * exists and out of reach of every error boundary. The fixture is regenerated
  * by a script in the prototype repo, so a drift there is a real possibility.
  */
-/** The prototype's exporter still writes `porte` and `vinculo` in Portuguese,
- *  so the translation lives here and dataset.json stays regenerable. */
+/** Here and not in the exporter, so dataset.json stays regenerable. */
 const RELATIONSHIP_OF: Record<string, Relationship> = {
   titular: 'holder',
   dependente: 'dependent',

@@ -1,5 +1,7 @@
 // @vitest-environment node
-import { toSeedRows } from '@/fixtures/pipodesk/dataset'
+import { toSeedRows, withoutLegacyPjNull } from '@/fixtures/pipodesk/dataset'
+import { DEFAULT_SORT } from '@/lib/pipodesk/sort'
+import type { Queue } from '@/lib/pipodesk/structure'
 
 const raw = (overrides: Record<string, unknown> = {}) => ({
   id: 'ticket-1',
@@ -10,7 +12,7 @@ const raw = (overrides: Record<string, unknown> = {}) => ({
   beneficiaryName: 'Ana',
   taxId: null,
   companyName: 'Caiçara',
-  porte: 'medio',
+  porte: 'pme',
   carrierId: 'sulamerica',
   carrierName: 'SulAmérica',
   product: 'health',
@@ -64,18 +66,8 @@ describe('toSeedRows', () => {
     expect(row.displayNumber).toBeNull()
   })
 
-  /**
-   * The export still writes `porte` and `vinculo`, so the whole fixture reaches
-   * the queue through this translation. A key that stops matching yields
-   * `undefined`, which becomes `null` — the Vínculo column would render empty
-   * for every row and no other assertion here would notice.
-   */
-  it('should translate the field names the export still writes in Portuguese', () => {
-    const [row] = toSeedRows([raw({ porte: 'enterprise' })])
-
-    expect(row.companySize).toBe('enterprise')
-  })
-
+  /** A key that stops matching yields null, emptying the Vínculo column for
+   *  every row — silently, since no other assertion here would notice. */
   it('should translate every relationship the export can write', () => {
     const rows = toSeedRows([
       raw({ id: 'a', vinculo: 'titular' }),
@@ -90,5 +82,35 @@ describe('toSeedRows', () => {
     const [row] = toSeedRows([raw({ vinculo: 'conjuge' })])
 
     expect(row.relationship).toBeNull()
+  })
+})
+
+describe('withoutLegacyPjNull', () => {
+  const queue = (contractTypes?: (string | null)[]): Queue => ({
+    id: 'queue-pod-1-pj',
+    name: 'MOV PJ',
+    groupId: 'pod-1',
+    ownerId: null,
+    subscriberIds: [],
+    filter: contractTypes === undefined ? {} : { contractTypes },
+    sort: DEFAULT_SORT,
+  })
+
+  it('should drop the null that rode along with pj in the prototype', () => {
+    expect(withoutLegacyPjNull(queue(['pj', null])).filter.contractTypes).toEqual(['pj'])
+  })
+
+  /** `[null]` is a real cut — "no contract in the snapshot". Stripped, it
+   *  would be `[]`, which matchesFilter reads as no criterion at all. */
+  it('should keep a cut that is only null', () => {
+    expect(withoutLegacyPjNull(queue([null])).filter.contractTypes).toEqual([null])
+  })
+
+  it('should return the same queue when there is nothing to patch', () => {
+    const clt = queue(['clt'])
+    const bare = queue()
+
+    expect(withoutLegacyPjNull(clt)).toBe(clt)
+    expect(withoutLegacyPjNull(bare)).toBe(bare)
   })
 })

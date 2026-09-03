@@ -273,12 +273,12 @@ describe('matchesFilter — global search fields', () => {
 
 describe('matchesFilter — fields combine with AND', () => {
   it('should require every set field to match', () => {
-    const ticket = row({ id: 'a', product: 'life', companySize: 'pme' })
+    const ticket = row({ id: 'a', product: 'life', companySize: 'enterprise' })
 
-    expect(matchesFilter(ticket, { products: ['life'], companySizes: ['pme'] }, VIEWER)).toBe(true)
     expect(
       matchesFilter(ticket, { products: ['life'], companySizes: ['enterprise'] }, VIEWER),
-    ).toBe(false)
+    ).toBe(true)
+    expect(matchesFilter(ticket, { products: ['life'], companySizes: ['pme'] }, VIEWER)).toBe(false)
   })
 })
 
