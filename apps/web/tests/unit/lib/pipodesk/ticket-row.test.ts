@@ -1,6 +1,13 @@
 // @vitest-environment node
 import type { Ticket } from '@pipo-os/api-client'
-import { toTicketRow } from '@/lib/pipodesk/ticket-row'
+import { optionLabel, type LabelContext } from '@/lib/pipodesk/filter-copy'
+import type { FilterField } from '@/lib/pipodesk/filter'
+import {
+  COMPANY_SIZE_FROM_EI,
+  CONTRACT_TYPE_FROM_EI,
+  PRODUCT_FROM_EI,
+  toTicketRow,
+} from '@/lib/pipodesk/ticket-row'
 
 function apiTicket(overrides: Partial<Ticket> = {}): Ticket {
   return {
@@ -139,6 +146,14 @@ describe('toTicketRow — derivação do enrollmentSnapshot', () => {
     expect(row.contractType).toBe('pj')
   })
 
+  it('should read member-type without depending on case, as the EI does not fix it', () => {
+    const row = toTicketRow(
+      apiTicket({ enrollmentSnapshot: { 'member-type': 'Dependent', dependents: [] } }),
+    )
+
+    expect(row.relationship).toBe('dependent')
+  })
+
   it('should pass an unmapped value through instead of dropping it', () => {
     const row = toTicketRow(
       apiTicket({
@@ -232,5 +247,28 @@ describe('toTicketRow — assunto da linha', () => {
 
   it('should fall back to the ticket id when there is nothing to build a subject from', () => {
     expect(toTicketRow(apiTicket()).subject).toBe('ticket-1')
+  })
+})
+
+/**
+ * The mapper must land on a value the rest of the app can name. Without this,
+ * a de-para pointing at a word no copy table knows renders the raw code and
+ * nobody notices — which is how the product gap in this file was missed once.
+ */
+describe('the EI maps translate into values the app can label', () => {
+  const ctx: LabelContext = {
+    companyName: (id) => id,
+    carrierName: (id) => id,
+    userName: (id) => id,
+  }
+
+  it.each([
+    ['companySizes' as FilterField, COMPANY_SIZE_FROM_EI],
+    ['contractTypes' as FilterField, CONTRACT_TYPE_FROM_EI],
+    ['products' as FilterField, PRODUCT_FROM_EI],
+  ])('should give every %s target a label of its own', (field, map) => {
+    for (const target of Object.values(map)) {
+      expect(optionLabel(field, target, ctx)).not.toBe(target)
+    }
   })
 })

@@ -1,6 +1,6 @@
 import { sql, type Expression, type ExpressionBuilder, type SqlBool } from 'kysely'
-import { UnprocessableEntityError } from '../../shared/errors.js'
 import type { Database } from '../../infrastructure/db.js'
+import { UnprocessableEntityError } from '../../shared/errors.js'
 import type { TicketFilter } from './filter-schema.js'
 
 /** Filter fields derived from `enrollment_snapshot` instead of a column. The

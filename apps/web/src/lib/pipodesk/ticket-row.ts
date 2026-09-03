@@ -79,23 +79,22 @@ function readPath(source: Record<string, unknown>, path: string[]): unknown {
 }
 
 /**
- * The EI speaks its own vocabulary; the app speaks the prototype's. Each map
- * translates one incoming set into ours at the boundary, so nothing downstream
- * ever sees the foreign value. Unknown values pass through: a benefit we have
- * no name for shows raw instead of vanishing.
+ * The app keeps its own vocabulary; what arrives from outside is translated
+ * here, the only place a snapshot crosses in. An unmapped value passes through
+ * so a benefit with no name here shows raw instead of vanishing.
  */
-const COMPANY_SIZE_FROM_EI: Record<string, string> = {
+export const COMPANY_SIZE_FROM_EI: Record<string, string> = {
   smb: 'pme',
   'smb-plus': 'pme-plus',
   corporate: 'enterprise',
 }
 
-const CONTRACT_TYPE_FROM_EI: Record<string, string> = {
+export const CONTRACT_TYPE_FROM_EI: Record<string, string> = {
   'brazil-labor-law': 'clt',
   'services-contract': 'pj',
 }
 
-const PRODUCT_FROM_EI: Record<string, string> = {
+export const PRODUCT_FROM_EI: Record<string, string> = {
   'health-insurance': 'health',
   'dental-insurance': 'dental',
   'life-insurance': 'life',
@@ -116,7 +115,7 @@ function readString(source: Record<string, unknown>, ...paths: string[][]): stri
 function readRelationship(snapshot: Record<string, unknown>): Relationship | null {
   const memberType = readString(snapshot, ['member-type'], ['primary', 'member-type'])
   if (memberType === null) return null
-  if (memberType === 'dependent') return 'dependent'
+  if (memberType.toLowerCase() === 'dependent') return 'dependent'
   const dependents = readPath(snapshot, ['dependents'])
   return Array.isArray(dependents) && dependents.length > 0 ? 'family-group' : 'holder'
 }
