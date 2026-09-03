@@ -5,6 +5,7 @@ import {
   daysOverdue,
   displayNameFromEmail,
   formatCount,
+  formatDate,
   formatDayMonth,
   formatPrazo,
   prazoVariant,
@@ -51,6 +52,35 @@ describe('formatDayMonth', () => {
   it('should return a dash for an unusable value', () => {
     expect(formatDayMonth(null, TODAY)).toBe('—')
     expect(formatDayMonth('not-a-date', TODAY)).toBe('—')
+  })
+})
+
+describe('formatDate', () => {
+  it('should show the full date, day first', () => {
+    expect(formatDate('2026-08-11')).toBe('11/08/2026')
+    expect(formatDate('2025-12-03T10:00:00.000Z')).toBe('03/12/2025')
+  })
+
+  /** The reversed-split it replaced turned these into `//` and `etad-a-ton`
+   *  on screen — it had no notion of an unreadable date. */
+  it('should return a dash for an unusable value', () => {
+    expect(formatDate(null)).toBe('—')
+    expect(formatDate('')).toBe('—')
+    expect(formatDate('not-a-date')).toBe('—')
+  })
+
+  /** `Date.parse` takes `11/08/2026`, but splitting it on `-` yields one part
+   *  and printing by position gave `undefined/undefined/11/08/2026`. Checking
+   *  the shape is what the `—` fallback always claimed to do. */
+  it('should not print garbage for a real date written in another shape', () => {
+    expect(formatDate('11/08/2026')).toBe('—')
+    expect(formatDate('2026/08/11')).toBe('—')
+    expect(formatDayMonth('11/08/2026', '2026-08-07')).toBe('—')
+    // An out-of-range part is what `Date.parse` still catches for us.
+    expect(formatDate('2026-13-01')).toBe('—')
+    // But `2026-02-30` it rolls into March. The parts are printed as given, so
+    // the date shows what was filed instead of silently moving a day.
+    expect(formatDate('2026-02-30')).toBe('30/02/2026')
   })
 })
 

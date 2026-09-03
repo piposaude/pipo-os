@@ -385,6 +385,19 @@
   color: var(--pipo-text-secondary);
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* Keeps the row's own color and no underline: at rest it is exactly the text
+     it replaced. The affordance shows on hover and on focus. */
+  text-decoration: none;
+}
+
+.subjectName:hover {
+  text-decoration: underline;
+}
+
+.subjectName:focus-visible {
+  border-radius: var(--pipo-radius-xsmall);
+  outline: none;
+  box-shadow: var(--pipo-shadow-focus-primary);
 }
 
 .table .rowChip {
