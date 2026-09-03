@@ -12,6 +12,7 @@ const COMPANY_C = '00000000-0000-4000-8000-00000000000c'
 const UNIQUE_VIOLATION = '23505'
 const FK_VIOLATION = '23503'
 const CHECK_VIOLATION = '23514'
+const INVALID_TEXT_REPRESENTATION = '22P02'
 
 async function codeOf(write: Promise<unknown>): Promise<string | undefined> {
   try {
@@ -321,7 +322,7 @@ describe('groups schema — hierarchy and portfolio constraints', () => {
         .execute(),
     )
 
-    expect(code).toBeDefined()
+    expect(code).toBe(INVALID_TEXT_REPRESENTATION)
   })
 
   it('stores an e-mail as the member id', async () => {
