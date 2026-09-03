@@ -607,12 +607,8 @@ describe('groups routes', () => {
       expect(response.statusCode).toBe(404)
     })
 
-    /**
-     * Identity in this domain is the e-mail (decision D on `users`), so the
-     * path param carries an `@`. Both forms have to reach the same member:
-     * `@` is legal in a path segment, and a client that percent-encodes it is
-     * equally right — the router decodes before the handler sees it.
-     */
+    /** Two forms because both are correct: `@` is legal raw in a path segment,
+     *  and a client that percent-encodes it must reach the same member. */
     it.each([
       ['raw', (email: string) => email],
       ['percent-encoded', (email: string) => encodeURIComponent(email)],
