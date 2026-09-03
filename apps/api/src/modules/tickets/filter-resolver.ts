@@ -3,9 +3,11 @@ import type { Database } from '../../infrastructure/db.js'
 import { UnprocessableEntityError } from '../../shared/errors.js'
 import type { TicketFilter } from './filter-schema.js'
 
-/** Not columns yet. Refused instead of ignored: a dropped criterion widens the
- *  queue in silence, and the count would stop matching the list. */
-export const SNAPSHOT_FIELDS = [
+/** Values the EI sends but that have no column yet — they still live inside
+ *  enrollment_snapshot. ACE-181 gives each one a column and empties this list.
+ *  Refused instead of ignored meanwhile: a dropped criterion widens the queue
+ *  in silence, and the count would stop matching the list. */
+export const FIELDS_AWAITING_COLUMN = [
   'carrierIds',
   'products',
   'companySizes',
@@ -47,7 +49,7 @@ export function ticketFilterConditions(
   filter: TicketFilter,
   viewerId: string,
 ): Expression<SqlBool>[] {
-  for (const field of SNAPSHOT_FIELDS) {
+  for (const field of FIELDS_AWAITING_COLUMN) {
     if (filter[field] !== undefined) throw new UnsupportedFilterField(field)
   }
 

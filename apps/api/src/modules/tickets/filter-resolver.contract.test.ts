@@ -12,7 +12,7 @@ const CASES_PATH = fileURLToPath(
   new URL('../../../../../contract/ticket-filter-cases.json', import.meta.url),
 )
 
-type Seed = {
+type FixtureTicket = {
   id: string
   status: string
   companyId: string
@@ -27,14 +27,14 @@ type Seed = {
   closedAt: string | null
 }
 
-type Corpus = {
+type CaseFile = {
   viewerId: string
   groupA: string
-  tickets: Seed[]
+  tickets: FixtureTicket[]
   cases: { name: string; filter: TicketFilter; expected: string[] }[]
 }
 
-const corpus = JSON.parse(readFileSync(CASES_PATH, 'utf8')) as Corpus
+const fixture = JSON.parse(readFileSync(CASES_PATH, 'utf8')) as CaseFile
 
 describe('the shared filter corpus, resolved in SQL', () => {
   let app: FastifyInstance
@@ -46,13 +46,13 @@ describe('the shared filter corpus, resolved in SQL', () => {
     // tickets.group_id carries an FK, so the pod has to exist before the rows do.
     await app.db
       .insertInto('ticket_groups')
-      .values({ id: corpus.groupA, name: 'POD contrato', created_by: corpus.viewerId })
+      .values({ id: fixture.groupA, name: 'POD contrato', created_by: fixture.viewerId })
       .onConflict((oc) => oc.column('id').doNothing())
       .execute()
     await app.db
       .insertInto('tickets')
       .values(
-        corpus.tickets.map((seed) => ({
+        fixture.tickets.map((seed) => ({
           enrollment_id: randomUUID(),
           enrollment_type: seed.enrollmentType,
           company_id: seed.companyId,
@@ -73,17 +73,17 @@ describe('the shared filter corpus, resolved in SQL', () => {
 
   afterAll(async () => {
     await app.db.deleteFrom('tickets').execute()
-    await app.db.deleteFrom('ticket_groups').where('id', '=', corpus.groupA).execute()
+    await app.db.deleteFrom('ticket_groups').where('id', '=', fixture.groupA).execute()
     await app.close()
   })
 
-  it.each(corpus.cases.map((testCase) => [testCase.name, testCase] as const))(
+  it.each(fixture.cases.map((testCase) => [testCase.name, testCase] as const))(
     'should select the expected set for: %s',
     async (_name, testCase) => {
       const rows = await app.db
         .selectFrom('tickets')
         .select('title')
-        .where((eb) => eb.and(ticketFilterConditions(eb, testCase.filter, corpus.viewerId)))
+        .where((eb) => eb.and(ticketFilterConditions(eb, testCase.filter, fixture.viewerId)))
         .execute()
       const selected = rows.map((row) => row.title!).sort()
 

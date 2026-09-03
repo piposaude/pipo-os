@@ -10,7 +10,7 @@ const CASES_PATH = fileURLToPath(
   new URL('../../../../../../contract/ticket-filter-cases.json', import.meta.url),
 )
 
-type Seed = {
+type FixtureTicket = {
   id: string
   status: string
   companyId: string
@@ -25,15 +25,15 @@ type Seed = {
   closedAt: string | null
 }
 
-type Corpus = {
+type CaseFile = {
   viewerId: string
-  tickets: Seed[]
+  tickets: FixtureTicket[]
   cases: { name: string; filter: TicketFilter; expected: string[] }[]
 }
 
-const corpus = JSON.parse(readFileSync(CASES_PATH, 'utf8')) as Corpus
+const fixture = JSON.parse(readFileSync(CASES_PATH, 'utf8')) as CaseFile
 
-const toRow = (seed: Seed): TicketRow => ({
+const toRow = (seed: FixtureTicket): TicketRow => ({
   id: seed.id,
   displayNumber: null,
   enrollmentId: 'e',
@@ -65,12 +65,12 @@ const toRow = (seed: Seed): TicketRow => ({
 })
 
 describe('the shared filter corpus, resolved in memory', () => {
-  const rows = corpus.tickets.map(toRow)
+  const rows = fixture.tickets.map(toRow)
 
-  it.each(corpus.cases.map((testCase) => [testCase.name, testCase] as const))(
+  it.each(fixture.cases.map((testCase) => [testCase.name, testCase] as const))(
     'should select the expected set for: %s',
     (_name, testCase) => {
-      const selected = applyFilter(rows, testCase.filter, corpus.viewerId)
+      const selected = applyFilter(rows, testCase.filter, fixture.viewerId)
         .map((row) => row.id)
         .sort()
 
