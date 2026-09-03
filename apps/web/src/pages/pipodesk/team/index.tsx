@@ -25,12 +25,7 @@ import { COMPANY_NAMES, structureFixture } from '@/fixtures/pipodesk/dataset'
 import constants from '@/constants/pages/pipodesk/team'
 import styles from './style.module.css'
 
-/**
- * A pod's Home: who is on the team, with how much portfolio and load. The
- * unowned-companies warning sits ABOVE the table — it is the group's one
- * coordination debt, and a warning inside the tab you already opened warns
- * nobody. Read-only; editing is the rest of PD-105.
- */
+/** Up to two initials for the avatar, from the first two words of the name. */
 const initialsOf = (name: string): string =>
   name
     .split(/\s+/)
@@ -38,6 +33,12 @@ const initialsOf = (name: string): string =>
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('')
 
+/**
+ * A pod's Home: who is on the team, with how much portfolio and load. The
+ * unowned-companies warning sits ABOVE the table — it is the group's one
+ * coordination debt, and a warning inside the tab you already opened warns
+ * nobody. Read-only; editing is the rest of PD-105.
+ */
 export default function TeamPage() {
   const { groupId } = useParams({ from: '/_auth/_desk/teams/$groupId' })
   /* `validateSearch` already restricted this to the two tabs or nothing —
