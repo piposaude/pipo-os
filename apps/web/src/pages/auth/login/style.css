@@ -4,8 +4,6 @@
   justify-content: center;
   min-height: 100vh;
   padding: var(--pipo-space-large);
-  /* The brand beige behind the white card is what makes the door look like
-       Pipo's, not a generic centered form. */
   background: var(--pipo-brand-primary-lightest);
   color-scheme: light;
 }
@@ -16,9 +14,7 @@
   text-align: center;
 }
 
-/* The DS Card wraps children in its own padded div — rhythm applies there.
-   Three blocks (identity, actions, access rule) at one interval; tighter
-   inner rhythm is what groups a subject. */
+/* The DS Card wraps children in its own padded div; the layout applies there. */
 .login-page .login-card > div:last-child {
   display: flex;
   flex-direction: column;
@@ -46,8 +42,6 @@
   gap: var(--pipo-space-xsmall);
 }
 
-/* Full width on both: Google is the path, and a card-wide button leaves no
-   doubt about the main gesture. */
 .login-actions > * {
   width: 100%;
 }
@@ -60,8 +54,7 @@
   border-top: var(--pipo-border-width-small) solid var(--pipo-border);
 }
 
-/* The DS Text left-aligns by default; the container class overrides it
-   without !important. */
+/* The DS Text sets text-align: left itself; the card's centering does not inherit. */
 .login-page .login-identity p,
 .login-page .login-identity span,
 .login-page .login-footer p,

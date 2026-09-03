@@ -18,12 +18,6 @@ function errorMessage(code: string | undefined): string | null {
   return constants.errors[code as LoginErrorCode] ?? constants.errors.generic
 }
 
-/**
- * The Pipodesk door. Three things must be visible before the click: where you
- * are, how you get in, who may enter. Typography note: the app name is an h1
- * but NOT display type — the DS h1 is 48px serif and would fight the wordmark
- * right above it. Label, not headline: sans, 24px.
- */
 export default function LoginPage({ redirect, error }: LoginPageProps) {
   const googleHref = `/api/auth/google${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''}`
   const message = errorMessage(error)
@@ -36,8 +30,6 @@ export default function LoginPage({ redirect, error }: LoginPageProps) {
         paddingHorizontal="var(--pipo-space-large)"
       >
         <header className="login-identity">
-          {/* The Logo carries aria-label="Pipo Saúde": the page has an accessible
-                         name even before the heading. */}
           <Logo variant="color" size="sm" />
           <Heading level="h1" textAlign="center" className="login-title">
             {constants.title}
@@ -57,8 +49,8 @@ export default function LoginPage({ redirect, error }: LoginPageProps) {
           >
             {constants.googleButton}
           </Button>
-          {/* Statically replaced by Vite: the dev button and its imports leave the
-                         production bundle. */}
+          {/* Statically replaced by Vite: the dev button and everything it
+              imports are eliminated from the production bundle. */}
           {import.meta.env.DEV && <DevLoginButton redirect={redirect} />}
         </div>
 
