@@ -146,6 +146,14 @@ describe('toTicketRow — derivação do enrollmentSnapshot', () => {
     expect(row.contractType).toBe('pj')
   })
 
+  it('should not read a value off Object.prototype when the map has no entry', () => {
+    const row = toTicketRow(
+      apiTicket({ enrollmentSnapshot: { contract: { 'product-type': 'constructor' } } }),
+    )
+
+    expect(row.product).toBe('constructor')
+  })
+
   it('should read member-type without depending on case, as the EI does not fix it', () => {
     const row = toTicketRow(
       apiTicket({ enrollmentSnapshot: { 'member-type': 'Dependent', dependents: [] } }),

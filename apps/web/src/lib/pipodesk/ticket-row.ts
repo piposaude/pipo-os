@@ -101,8 +101,10 @@ export const PRODUCT_FROM_EI: Record<string, string> = {
   'pet-insurance': 'pet',
 }
 
-const translated = (map: Record<string, string>, value: string | null): string | null =>
-  value === null ? null : (map[value] ?? value)
+const translated = (map: Record<string, string>, value: string | null): string | null => {
+  if (value === null) return null
+  return Object.prototype.hasOwnProperty.call(map, value) ? map[value] : value
+}
 
 function readString(source: Record<string, unknown>, ...paths: string[][]): string | null {
   for (const path of paths) {
