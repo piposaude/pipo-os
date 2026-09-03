@@ -16,6 +16,9 @@ import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 import constants from '@/constants/pages/pipodesk/team'
 import styles from './style.module.css'
 
+/** Fixed so the hidden label can point at it; the tab renders one search. */
+const SEARCH_ID = 'carteira-busca'
+
 /**
  * Carteiras tab — the company as the primary noun. Here the row is the company
  * and the question is "who answers for it"; Home is the same relation read
@@ -80,9 +83,15 @@ export function CarteirasTab({
   return (
     <div className={styles.panel}>
       <div className={styles.search}>
+        {/* Own `label`, not the component's `aria-label`: the DS TextInput
+                     forwards a fixed set of props to its `input` and that is not one of
+                     them, so the field had no accessible name at all. `id` IS
+                     forwarded, so this names it without showing a second label. */}
+        <label htmlFor={SEARCH_ID} className={styles.srOnly}>
+          {constants.carteiras.search}
+        </label>
         <TextInput
-          label=""
-          aria-label={constants.carteiras.search}
+          id={SEARCH_ID}
           placeholder={constants.carteiras.search}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -98,6 +107,13 @@ export function CarteirasTab({
           </TableRow>
         </TableHead>
         <TableBody>
+          {linhas.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={3}>
+                <span className={styles.muted}>{constants.carteiras.noMatch(query)}</span>
+              </TableCell>
+            </TableRow>
+          )}
           {linhas.map((linha) => (
             <TableRow key={linha.id}>
               <TableCell>{linha.nome}</TableCell>

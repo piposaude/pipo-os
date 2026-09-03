@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from '@/routeTree.gen'
+import constants from '@/constants/pages/pipodesk/team'
 
 vi.mock('@/lib/auth', () => ({
   ensureSession: vi.fn().mockResolvedValue(undefined),
@@ -111,6 +112,28 @@ describe('abas do pod', () => {
     // Unowned first — the group's coordination debt.
     const firstRow = within(table).getAllByRole('row')[1]
     expect(within(firstRow).getByText('Na rotação')).toBeInTheDocument()
+  })
+
+  /** The two memos behind this are split on purpose: the tally walks every open
+   *  ticket of the pod and must not re-run per keystroke. Nothing pinned either
+   *  the filter or the empty state before. */
+  it('should filter the portfolio by company and say so when nothing matches', async () => {
+    await renderAt('/teams/pod-1?tab=portfolios')
+    const user = userEvent.setup()
+
+    const busca = await screen.findByRole('textbox', { name: constants.carteiras.search })
+    const todas = screen.getAllByRole('row').length
+
+    const primeira = screen.getAllByRole('row')[1]
+    const nome = within(primeira).getAllByRole('cell')[0].textContent!
+
+    await user.type(busca, nome)
+    expect(screen.getAllByRole('row').length).toBeLessThan(todas)
+    expect(screen.getByText(nome)).toBeInTheDocument()
+
+    await user.clear(busca)
+    await user.type(busca, 'zzz-nao-existe')
+    expect(screen.getByText(constants.carteiras.noMatch('zzz-nao-existe'))).toBeInTheDocument()
   })
 
   it('should open Views, spelling out the criterion of each saved view', async () => {

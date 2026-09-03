@@ -139,3 +139,16 @@
   margin: 0;
   border-color: var(--pipo-border);
 }
+
+/* The design system's TextInput forwards only a fixed set of props to its
+   `input` — `aria-label` is not among them, so an unlabelled search field
+   stayed unlabelled. It does forward `id`, so the name comes from a real
+   `label` that is hidden visually and present for a screen reader. */
+.srOnly {
+  position: absolute;
+  overflow: hidden;
+  clip-path: inset(50%);
+  width: 1px;
+  height: 1px;
+  white-space: nowrap;
+}

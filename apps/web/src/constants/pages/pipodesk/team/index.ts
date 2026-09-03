@@ -36,6 +36,9 @@ export default {
   },
   carteiras: {
     search: 'Buscar empresa…',
+    /** Echoes the term back: an empty table with only headers reads as a
+     *  broken tab, not as "nothing matched what you typed". */
+    noMatch: (query: string) => `Nenhuma empresa da carteira casa com “${query}”.`,
     company: 'Empresa',
     owner: 'Dono',
     /** No owner here is not an error: it is rotation. The alert color is for
