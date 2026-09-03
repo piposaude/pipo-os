@@ -213,6 +213,14 @@ describe('toTicketRow — derived relationship', () => {
     expect(row.relationship).toBe('holder')
   })
 
+  /** The EI serializes Dependents with `omitempty`, so a primary with none
+   *  arrives without the key at all — never as an empty array. */
+  it('should be holder when the dependents key is absent, not just empty', () => {
+    const row = toTicketRow(apiTicket({ enrollmentSnapshot: { 'member-type': 'primary' } }))
+
+    expect(row.relationship).toBe('holder')
+  })
+
   it('should be family-group for a primary member that brings dependents along', () => {
     const row = toTicketRow(
       apiTicket({
