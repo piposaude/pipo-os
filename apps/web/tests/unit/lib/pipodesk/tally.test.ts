@@ -49,11 +49,6 @@ describe('tallyPods', () => {
     expect(tally.get('pod-1')).toMatchObject({ total: 1, clt: 0, pj: 1, mb: 1 })
   })
 
-  /**
-   * The EI tags pj_mov only for services-contract and marks nothing otherwise,
-   * so partner, intern, on-leave, other and a missing value belong to neither
-   * cut. Counting them as PJ invented an answer the operation never gave.
-   */
   it('should count a contract type outside clt and pj in neither cut', () => {
     const tally = tallyPods([
       row({ id: '1', contractType: null }),

@@ -266,11 +266,6 @@ describe('toTicketRow — assunto da linha', () => {
   })
 })
 
-/**
- * The mapper must land on a value the rest of the app can name. Without this,
- * a de-para pointing at a word no copy table knows renders the raw code and
- * nobody notices — which is how the product gap in this file was missed once.
- */
 describe('the EI maps translate into values the app can label', () => {
   const ctx: LabelContext = {
     companyName: (id) => id,

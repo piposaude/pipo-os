@@ -3,9 +3,8 @@ import type { Database } from '../../infrastructure/db.js'
 import { UnprocessableEntityError } from '../../shared/errors.js'
 import type { TicketFilter } from './filter-schema.js'
 
-/** Filter fields derived from `enrollment_snapshot` instead of a column. The
- *  resolver refuses them rather than ignoring them: a dropped criterion widens
- *  a saved queue silently, which is the one failure the queue must not have. */
+/** Not columns yet. Refused instead of ignored: a dropped criterion widens the
+ *  queue in silence, and the count would stop matching the list. */
 export const SNAPSHOT_FIELDS = [
   'carrierIds',
   'products',
@@ -21,8 +20,7 @@ export class UnsupportedFilterField extends UnprocessableEntityError {
   }
 }
 
-/** How many days ahead an action date may be while the ticket is still awake.
- *  Mirrors SLEEP_DAYS in web/src/lib/pipodesk/filter.ts. */
+/** Twin of SLEEP_DAYS in web/src/lib/pipodesk/filter.ts. */
 export const SLEEP_DAYS = 2
 
 type Eb = ExpressionBuilder<Database, 'tickets'>
@@ -42,12 +40,8 @@ function inOrNull(eb: Eb, column: 'assignee_id' | 'priority', values: (string | 
   return eb.or(parts)
 }
 
-/**
- * Translates a saved `TicketFilter` into the conditions the queue applies.
- * Every field narrows (AND between fields); within a list the values are an OR,
- * except `tags`, which asks for all of them, and `urgentBy`, which is itself an
- * OR between urgent and overdue.
- */
+/** Fields are an AND, values inside a list are an OR. Two exceptions: `tags`
+ *  asks for all of them, and `urgentBy` is itself an OR. */
 export function ticketFilterConditions(
   eb: Eb,
   filter: TicketFilter,
@@ -78,8 +72,8 @@ export function ticketFilterConditions(
     conditions.push(inOrNull(eb, 'priority', filter.priorities))
   }
 
-  // The cuts are date-only and the column is timestamptz, so both sides are
-  // truncated — otherwise the time of day moves the boundary.
+  // Both sides truncated: the column is timestamptz and the cut is date-only,
+  // so without `::date` the time of day moves the boundary.
   if (filter.actionDateBefore !== undefined) {
     conditions.push(sql<SqlBool>`action_date::date < ${filter.actionDateBefore}::date`)
   }
@@ -99,8 +93,6 @@ export function ticketFilterConditions(
   return conditions
 }
 
-/** Which slice of time a queue node sees. `awake` is the default queue: what
- *  is open now, plus what comes due within SLEEP_DAYS. */
 export type ActionDateWindow = 'awake' | 'sleeping' | 'all'
 
 export function actionDateWindowCondition(

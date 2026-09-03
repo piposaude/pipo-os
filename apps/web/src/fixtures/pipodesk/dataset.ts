@@ -63,9 +63,8 @@ export const COMPANY_NAMES: Record<string, string> = Object.fromEntries(
   data.companies.map((company) => [company.id, company.tradeName]),
 )
 
-/** The prototype's MOV PJ filters `['pj', null]` because its tally counted
- *  every non-CLT as PJ. The EI tags pj_mov only for services-contract, so a
- *  ticket with no contract type is not PJ — the `null` comes out here. */
+/** The prototype's MOV PJ filters `['pj', null]`, from back when the tally
+ *  counted every non-CLT as PJ. See tally.ts — the `null` comes out here. */
 export const structureFixture: StructureState = {
   ...data.structure,
   queues: data.structure.queues.map((queue) => {

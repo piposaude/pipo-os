@@ -47,9 +47,9 @@ export function tallyPods(base: TicketRow[]): Map<string, PodTally> {
     }
 
     const isMB = ticket.product !== null && PRODUCT_FAMILY[ticket.product] === 'multi-benefit'
-    // Both affirmative, mirroring the EI: it tags pj_mov only for services-contract
-    // and marks nothing otherwise. partner, intern, on-leave and other fall in
-    // neither, so clt + pj < total is the visible sign of an unclassified case.
+    // Both affirmative, as the EI tags pj_mov only for services-contract. The
+    // other four types land in neither, so clt + pj < total is not a bug — it
+    // is the visible sign of a contract type nobody classified.
     const isClt = ticket.contractType === 'clt'
     const isPJ = ticket.contractType === 'pj'
 

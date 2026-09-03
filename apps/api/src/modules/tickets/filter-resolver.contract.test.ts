@@ -7,12 +7,7 @@ import { buildApp } from '../../app.js'
 import type { TicketFilter } from './filter-schema.js'
 import { ticketFilterConditions } from './filter-resolver.js'
 
-/**
- * The SQL half of the PD-043 invariant. The web half runs `matchesFilter` over
- * the same tickets and the same cases; both assert the same ids, so the two
- * implementations cannot drift into a node that announces one number and lists
- * another.
- */
+/** Twin of filter-contract.test.ts in apps/web: change one, change both. */
 const CASES_PATH = fileURLToPath(
   new URL('../../../../../contract/ticket-filter-cases.json', import.meta.url),
 )

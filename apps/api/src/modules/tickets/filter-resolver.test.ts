@@ -68,8 +68,6 @@ describe('ticketFilterConditions — the saved filter, resolved in SQL', () => {
       .execute()
   }
 
-  /** Runs the resolved filter and returns the seeded ids it selected, so a
-   *  case reads as "this filter keeps exactly these tickets". */
   const matching = async (filter: TicketFilter, window?: ActionDateWindow): Promise<string[]> => {
     const rows = await app.db
       .selectFrom('tickets')
@@ -108,8 +106,6 @@ describe('ticketFilterConditions — the saved filter, resolved in SQL', () => {
     ).toEqual(['a'])
   })
 
-  /** The one field that is not an OR. The older listTicketsQuery.tags uses `&&`
-   *  and means "any", so copying it here would widen every saved queue. */
   it('asks for all the tags listed, not any of them', async () => {
     await seed([
       { id: 'ambos', tags: ['vip', 'urgente'] },
@@ -204,16 +200,13 @@ describe('ticketFilterConditions — the saved filter, resolved in SQL', () => {
     })
   })
 
-  /** Dropping a criterion would widen the queue in silence, which is the one
-   *  failure the count-equals-list invariant cannot take. */
   it('refuses a snapshot-derived field instead of ignoring it', async () => {
     await seed([{ id: 'a' }])
 
     await expect(matching({ carrierIds: ['unimed'] })).rejects.toThrow(UnsupportedFilterField)
     await expect(matching({ relationships: ['holder'] })).rejects.toThrow(UnsupportedFilterField)
 
-    // 422, not 500: a saved filter the server cannot resolve is the client's
-    // data, and the error handler maps by DomainError.statusCode.
+    // 422 and not 500: an unresolvable saved filter is the client's data.
     await expect(matching({ carrierIds: ['unimed'] })).rejects.toMatchObject({
       statusCode: 422,
     })

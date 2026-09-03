@@ -5,12 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { applyFilter, type TicketFilter } from '@/lib/pipodesk/filter'
 import type { Priority, TicketRow } from '@/lib/pipodesk/ticket-row'
 
-/**
- * The web half of the PD-043 invariant. The API half seeds the same tickets
- * into Postgres and runs the resolver against the same cases; both assert the
- * same ids, so `matchesFilter` and `ticketFilterConditions` cannot drift into
- * announcing one number and listing another.
- */
+/** Twin of filter-resolver.contract.test.ts in apps/api: change one, change both. */
 const CASES_PATH = fileURLToPath(
   new URL('../../../../../../contract/ticket-filter-cases.json', import.meta.url),
 )
