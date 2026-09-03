@@ -126,7 +126,8 @@ export function QueueRow({
             to="/tickets/$id"
             params={{ id: ticket.id }}
             className={styles.subjectName}
-            title={ticket.subject}
+            /* Only when it adds something: with no beneficiary the text IS the subject. */
+            title={ticket.beneficiaryName ? ticket.subject : undefined}
           >
             {ticket.beneficiaryName ?? ticket.subject}
           </Link>

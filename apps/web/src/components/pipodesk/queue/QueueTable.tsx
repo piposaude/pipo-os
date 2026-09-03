@@ -194,6 +194,10 @@ export function QueueTable({
                                    included, or the subject link would navigate twice. */
                   onClick={(event) => {
                     if ((event.target as HTMLElement).closest('label,input,button,a')) return
+                    /* ⌘/ctrl/shift-click means "somewhere else" — `navigate` would
+                                       ignore that and steal the tab. The subject link handles
+                                       those, so the row simply stands aside. */
+                    if (event.metaKey || event.ctrlKey || event.shiftKey) return
                     onOpenTicket(row.ticket.id)
                   }}
                 >
