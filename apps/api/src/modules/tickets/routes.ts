@@ -2,6 +2,7 @@ import type { ZodTypeProvider } from '@fastify/type-provider-zod'
 import type { FastifyInstance } from 'fastify'
 import { UnauthorizedError } from '../../shared/errors.js'
 import { getSession } from '../auth/session.js'
+import { businessToday } from '../../shared/business-date.js'
 import { ticketRowsQuerySchema, ticketRowsSchema } from './rows-schema.js'
 import {
   createTicketBodySchema,
@@ -44,8 +45,10 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
     },
     async (request) => {
       const { email } = getSession(request)
-      const today = new Date().toISOString().slice(0, 10)
-      return service.rows(request.query, email, today)
+      // TODO: enforce tenant scope from session claims before this endpoint goes to production
+      // Any authenticated user can currently read rows from any company, and this one
+      // answers up to 5000 of them at once, with beneficiary name and tax id
+      return service.rows(request.query, email, businessToday())
     },
   )
 

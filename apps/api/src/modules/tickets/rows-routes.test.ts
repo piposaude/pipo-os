@@ -204,13 +204,20 @@ describe('GET /api/tickets/rows', () => {
     expect(titles((await get('?window=all')).body)).toEqual(['futura', 'hoje', 'sem-data'])
   })
 
-  it('honours the limit and reports how many came back', async () => {
+  /** `total` counts what matched, so the caller can tell the limit cut. */
+  it('cuts at the limit but still reports how many matched', async () => {
     await seed([{ title: 'a' }, { title: 'b' }, { title: 'c' }])
 
     const { body } = await get('?limit=2')
 
     expect(body.data).toHaveLength(2)
-    expect(body.total).toBe(2)
+    expect(body.total).toBe(3)
+  })
+
+  it('reads a camelCase snapshot too, not only snake and kebab', async () => {
+    await seed([{ title: 'a', snapshot: { primary: { profile: { taxId: '111', name: 'Ana' } } } }])
+
+    expect((await get()).body.data[0].taxId).toBe('111')
   })
 
   it('refuses a status the contract does not know instead of ignoring it', async () => {

@@ -71,7 +71,11 @@ export const ticketRowSchema = z
   .meta({ id: 'TicketRow' })
 
 export const ticketRowsSchema = z
-  .object({ data: z.array(ticketRowSchema), total: z.number().int() })
+  .object({
+    data: z.array(ticketRowSchema),
+    /** How many matched, which is more than `data` when `limit` cut. */
+    total: z.number().int(),
+  })
   .meta({ id: 'TicketRows' })
 
 export type TicketRowsQuery = z.infer<typeof ticketRowsQuerySchema>

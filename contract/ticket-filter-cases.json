@@ -382,6 +382,14 @@
       ]
     },
     {
+      "name": "the window narrows on top of a filter, it does not replace it",
+      "filter": {
+        "assigneeIds": ["@me"]
+      },
+      "window": "awake",
+      "expected": ["da-ana-atrasado"]
+    },
+    {
       "name": "carrier needs no translation",
       "filter": {
         "carrierIds": ["carrier-amil"]

@@ -192,18 +192,23 @@ export class TicketsRepository implements TicketsRepositoryPort {
       .select([
         sql<string | null>`coalesce(
           enrollment_snapshot #>> '{company,company_name}',
-          enrollment_snapshot #>> '{company,company-name}'
+          enrollment_snapshot #>> '{company,company-name}',
+          enrollment_snapshot #>> '{company,companyName}',
+          enrollment_snapshot #>> '{company,name}'
         )`.as('company_name'),
         sql<string | null>`coalesce(
           enrollment_snapshot #>> '{primary,profile,preferred_name}',
           enrollment_snapshot #>> '{primary,profile,preferred-name}',
+          enrollment_snapshot #>> '{primary,profile,preferredName}',
           enrollment_snapshot #>> '{primary,profile,name}'
         )`.as('beneficiary_name'),
         sql<string | null>`coalesce(
           enrollment_snapshot #>> '{primary,profile,tax_id}',
-          enrollment_snapshot #>> '{primary,profile,tax-id}'
+          enrollment_snapshot #>> '{primary,profile,tax-id}',
+          enrollment_snapshot #>> '{primary,profile,taxId}'
         )`.as('tax_id'),
       ])
+      .select(sql<string>`count(*) over ()`.as('total_count'))
       .orderBy('created_at', 'desc')
       .orderBy('id', 'desc')
       .limit(limit)
@@ -237,7 +242,9 @@ export class TicketsRepository implements TicketsRepositoryPort {
       updatedAt: row.updated_at.toISOString(),
     }))
 
-    return { data, total: data.length }
+    // The window function counts what matched, not what fit: with more rows than
+    // the limit, data.length < total is how the caller learns it was cut.
+    return { data, total: rows.length > 0 ? Number(rows[0].total_count) : 0 }
   }
 
   async create(data: CreateTicketBody): Promise<Ticket> {
