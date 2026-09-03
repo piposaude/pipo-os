@@ -20,6 +20,14 @@
           "submitted-cancellation"
         ]
       },
+      "RelationshipInput": {
+        "type": "string",
+        "enum": [
+          "holder",
+          "dependent",
+          "family-group"
+        ]
+      },
       "TicketPriorityInput": {
         "type": "string",
         "enum": [
@@ -54,6 +62,26 @@
               "type": "string"
             },
             "additionalProperties": {}
+          },
+          "carrierId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "carrierName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "product": {
+            "type": "string",
+            "minLength": 1
+          },
+          "contractType": {
+            "type": "string",
+            "minLength": 1
+          },
+          "companySize": {
+            "type": "string",
+            "minLength": 1
           },
           "status": {
             "$ref": "#/components/schemas/TicketStatusInput"
@@ -249,14 +277,6 @@
           "active"
         ],
         "additionalProperties": false
-      },
-      "RelationshipInput": {
-        "type": "string",
-        "enum": [
-          "holder",
-          "dependent",
-          "family-group"
-        ]
       },
       "TicketFilterInput": {
         "type": "object",
@@ -485,6 +505,14 @@
           "submitted-cancellation"
         ]
       },
+      "Relationship": {
+        "type": "string",
+        "enum": [
+          "holder",
+          "dependent",
+          "family-group"
+        ]
+      },
       "TicketPriority": {
         "type": "string",
         "enum": [
@@ -634,6 +662,66 @@
             },
             "additionalProperties": {}
           },
+          "carrierId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "carrierName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "product": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contractType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "companySize": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "relationship": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Relationship"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "sourceSystem": {
             "type": "string"
           },
@@ -691,6 +779,12 @@
           "collaborators",
           "forceCompletion",
           "enrollmentSnapshot",
+          "carrierId",
+          "carrierName",
+          "product",
+          "contractType",
+          "companySize",
+          "relationship",
           "sourceSystem",
           "parentTicketId",
           "closedAt",
@@ -952,14 +1046,6 @@
           "pageSize"
         ],
         "additionalProperties": false
-      },
-      "Relationship": {
-        "type": "string",
-        "enum": [
-          "holder",
-          "dependent",
-          "family-group"
-        ]
       },
       "TicketFilter": {
         "type": "object",

@@ -2,6 +2,8 @@ import { sql, type Kysely, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
 import { ConflictError } from '../../shared/errors.js'
+import { relationshipOf } from './relationship.js'
+import { toClient } from './vocabulary.js'
 import {
   CLOSED_STATUSES,
   type CreateTicketBody,
@@ -36,6 +38,12 @@ function toTicket(row: Selectable<Tickets>): Ticket {
     collaborators: row.collaborators as Array<Record<string, unknown>>,
     forceCompletion: row.force_completion,
     enrollmentSnapshot: row.enrollment_snapshot as Record<string, unknown>,
+    carrierId: row.carrier_id,
+    carrierName: row.carrier_name,
+    product: toClient('product', row.product),
+    contractType: toClient('contractType', row.contract_type),
+    companySize: toClient('companySize', row.company_size),
+    relationship: row.relationship as Ticket['relationship'],
     sourceSystem: row.source_system,
     parentTicketId: row.parent_ticket_id,
     closedAt: row.closed_at ? row.closed_at.toISOString() : null,
@@ -139,6 +147,12 @@ export class TicketsRepository implements TicketsRepositoryPort {
           company_id: data.companyId,
           source_system: data.sourceSystem,
           enrollment_snapshot: JSON.stringify(data.enrollmentSnapshot),
+          carrier_id: data.carrierId,
+          carrier_name: data.carrierName,
+          product: data.product,
+          contract_type: data.contractType,
+          company_size: data.companySize,
+          relationship: relationshipOf(data.enrollmentSnapshot),
           status: data.status ?? 'broker-processing',
           queue_id: data.queueId,
           assignee_id: data.assigneeId,

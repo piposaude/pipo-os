@@ -1,8 +1,3 @@
-/**
- * The EI's words, stored as they arrive and translated only at the edge: out on
- * the way to the web client, back again when a filter comes in.
- */
-
 const own = (map: Record<string, string>, key: string): boolean =>
   Object.prototype.hasOwnProperty.call(map, key)
 
@@ -23,10 +18,9 @@ const fromTable = (table: Record<string, string>): Vocabulary => ({
   },
 })
 
-/** The EI names the same benefit twice — the short form of its Go payload
- *  (`health`) and the canonical Clojure one (`health-insurance`) — and either
- *  may be stored. A rule and not a table, so a benefit added over there needs
- *  no entry over here. */
+/** The EI names the same benefit twice, the short form of its Go payload
+ *  (`health`) and the canonical Clojure one (`health-insurance`), and either
+ *  may be stored. */
 const insuranceSuffix: Vocabulary = {
   toClient: (stored) => stored.replace(/-insurance$/, ''),
   toStored: (clientValue) =>

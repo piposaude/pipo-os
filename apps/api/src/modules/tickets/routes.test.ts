@@ -830,4 +830,74 @@ describe('tickets routes', () => {
       expect(response.json().error).toBe('UnprocessableEntityError')
     })
   })
+
+  describe('os campos da movimentação', () => {
+    it('guarda o que o EI manda e traduz só na resposta', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: {
+          ...validTicketBody,
+          carrierId: 'carrier-unimed',
+          carrierName: 'Unimed Mineira',
+          product: 'health-insurance',
+          contractType: 'services-contract',
+          companySize: 'corporate',
+        },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const ticket = created.json()
+
+      expect(created.statusCode).toBe(201)
+      expect(ticket).toMatchObject({
+        carrierId: 'carrier-unimed',
+        carrierName: 'Unimed Mineira',
+        product: 'health',
+        contractType: 'pj',
+        companySize: 'enterprise',
+      })
+
+      const stored = await app.db
+        .selectFrom('tickets')
+        .select(['product', 'contract_type', 'company_size'])
+        .where('id', '=', ticket.id)
+        .executeTakeFirstOrThrow()
+
+      expect(stored).toEqual({
+        product: 'health-insurance',
+        contract_type: 'services-contract',
+        company_size: 'corporate',
+      })
+    })
+
+    it('deriva o vínculo do snapshot em vez de recebê-lo', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: {
+          ...validTicketBody,
+          enrollmentSnapshot: { member_type: 'primary', dependents: [{ id: 'd1' }] },
+        },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.json().relationship).toBe('family-group')
+    })
+
+    it('deixa os campos nulos quando o EI não os manda', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.json()).toMatchObject({
+        carrierId: null,
+        product: null,
+        companySize: null,
+        relationship: null,
+      })
+    })
+  })
 })

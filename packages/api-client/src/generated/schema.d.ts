@@ -1462,6 +1462,8 @@ export interface components {
         /** @enum {string} */
         TicketStatusInput: "broker-processing" | "carrier-processing" | "broker-open-issue" | "missing-documents" | "incorrect-data" | "completed" | "cancelled" | "submitted-cancellation";
         /** @enum {string} */
+        RelationshipInput: "holder" | "dependent" | "family-group";
+        /** @enum {string} */
         TicketPriorityInput: "urgent" | "high" | "medium" | "low";
         CreateTicketBodyInput: {
             /** Format: uuid */
@@ -1473,6 +1475,11 @@ export interface components {
             enrollmentSnapshot: {
                 [key: string]: unknown;
             };
+            carrierId?: string;
+            carrierName?: string;
+            product?: string;
+            contractType?: string;
+            companySize?: string;
             status?: components["schemas"]["TicketStatusInput"];
             /** Format: uuid */
             queueId?: string;
@@ -1515,8 +1522,6 @@ export interface components {
         UpdateGroupMemberBodyInput: {
             active: boolean;
         };
-        /** @enum {string} */
-        RelationshipInput: "holder" | "dependent" | "family-group";
         TicketFilterInput: {
             statuses?: components["schemas"]["TicketStatusInput"][];
             companyIds?: string[];
@@ -1559,6 +1564,8 @@ export interface components {
         /** @enum {string} */
         TicketStatus: "broker-processing" | "carrier-processing" | "broker-open-issue" | "missing-documents" | "incorrect-data" | "completed" | "cancelled" | "submitted-cancellation";
         /** @enum {string} */
+        Relationship: "holder" | "dependent" | "family-group";
+        /** @enum {string} */
         TicketPriority: "urgent" | "high" | "medium" | "low";
         Ticket: {
             /** Format: uuid */
@@ -1588,6 +1595,12 @@ export interface components {
             enrollmentSnapshot: {
                 [key: string]: unknown;
             };
+            carrierId: string | null;
+            carrierName: string | null;
+            product: string | null;
+            contractType: string | null;
+            companySize: string | null;
+            relationship: components["schemas"]["Relationship"] | null;
             sourceSystem: string;
             parentTicketId: string | null;
             closedAt: string | null;
@@ -1653,8 +1666,6 @@ export interface components {
             page: number;
             pageSize: number;
         };
-        /** @enum {string} */
-        Relationship: "holder" | "dependent" | "family-group";
         TicketFilter: {
             statuses?: components["schemas"]["TicketStatus"][];
             companyIds?: string[];
