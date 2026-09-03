@@ -18,7 +18,9 @@ async function codeOf(write: Promise<unknown>): Promise<string | undefined> {
     await write
     return undefined
   } catch (err) {
-    return err instanceof Error && 'code' in err ? (err.code as string) : undefined
+    if (err instanceof Error && 'code' in err) return err.code as string
+    // No Postgres code means the test itself is broken, not a constraint firing.
+    throw err
   }
 }
 
