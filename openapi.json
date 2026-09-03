@@ -199,7 +199,8 @@
           "name": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 255
+            "maxLength": 255,
+            "description": "Trimmed before validation: whitespace only is rejected."
           }
         },
         "required": [
@@ -213,7 +214,8 @@
           "name": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 255
+            "maxLength": 255,
+            "description": "Trimmed before validation: whitespace only is rejected."
           }
         },
         "required": [
@@ -226,7 +228,8 @@
         "properties": {
           "userId": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "description": "Trimmed before validation: whitespace only is rejected."
           }
         },
         "required": [
@@ -1780,7 +1783,8 @@
             },
             "in": "path",
             "name": "memberId",
-            "required": true
+            "required": true,
+            "description": "Trimmed before validation: whitespace only is rejected."
           }
         ],
         "responses": {
@@ -1838,7 +1842,8 @@
             },
             "in": "path",
             "name": "memberId",
-            "required": true
+            "required": true,
+            "description": "Trimmed before validation: whitespace only is rejected."
           }
         ],
         "responses": {

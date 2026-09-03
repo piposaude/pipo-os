@@ -1,5 +1,11 @@
 import { z } from 'zod'
 
+/** `.trim()` is a transform, so OpenAPI carries only `minLength: 1` — which
+ *  `"   "` satisfies and the server rejects. The description is the only place
+ *  the spec can say so. */
+const trimmedInput = (): z.ZodString =>
+  z.string().trim().min(1).describe('Trimmed before validation: whitespace only is rejected.')
+
 export const groupSchema = z
   .object({
     id: z.uuid(),
@@ -35,26 +41,26 @@ export const memberParamsSchema = z.object({
   id: z.uuid(),
   /** `.trim()` before `.min(1)`: `min` counts characters and a space is one,
    *  so `"   "` was a valid member id that no query could ever match. */
-  memberId: z.string().trim().min(1),
+  memberId: trimmedInput(),
 })
 
 export const createGroupBodySchema = z
   .object({
-    name: z.string().trim().min(1).max(255),
+    name: trimmedInput().max(255),
   })
   .strict()
   .meta({ id: 'CreateGroupBody' })
 
 export const updateGroupBodySchema = z
   .object({
-    name: z.string().trim().min(1).max(255),
+    name: trimmedInput().max(255),
   })
   .strict()
   .meta({ id: 'UpdateGroupBody' })
 
 export const addMemberBodySchema = z
   .object({
-    userId: z.string().trim().min(1),
+    userId: trimmedInput(),
   })
   .strict()
   .meta({ id: 'AddGroupMemberBody' })
