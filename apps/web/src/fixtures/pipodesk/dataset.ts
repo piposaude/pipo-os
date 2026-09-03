@@ -8,7 +8,7 @@
  */
 
 import { isApiStatus, toDisplayStatus } from '@/lib/pipodesk/status'
-import type { StructureState } from '@/lib/pipodesk/structure'
+import type { Queue, StructureState } from '@/lib/pipodesk/structure'
 import type { Priority, Relationship, TicketRow } from '@/lib/pipodesk/ticket-row'
 import raw from './dataset.json'
 
@@ -64,17 +64,21 @@ export const COMPANY_NAMES: Record<string, string> = Object.fromEntries(
 )
 
 /** The prototype's MOV PJ filters `['pj', null]`, from back when the tally
- *  counted every non-CLT as PJ. See tally.ts — the `null` comes out here. */
+ *  counted every non-CLT as PJ. See tally.ts — the `null` comes out here, and
+ *  only where it rides along with `pj`: a cut that is just `[null]` means "no
+ *  contract in the snapshot" and would become `[]`, which reads as no cut. */
+export function withoutLegacyPjNull(queue: Queue): Queue {
+  const contractTypes = queue.filter?.contractTypes
+  if (!contractTypes?.includes(null) || !contractTypes.includes('pj')) return queue
+  return {
+    ...queue,
+    filter: { ...queue.filter, contractTypes: contractTypes.filter((type) => type !== null) },
+  }
+}
+
 export const structureFixture: StructureState = {
   ...data.structure,
-  queues: data.structure.queues.map((queue) => {
-    const contractTypes = queue.filter?.contractTypes
-    if (!contractTypes?.includes(null)) return queue
-    return {
-      ...queue,
-      filter: { ...queue.filter, contractTypes: contractTypes.filter((type) => type !== null) },
-    }
-  }),
+  queues: data.structure.queues.map(withoutLegacyPjNull),
 }
 
 export const ROOT_GROUP_ID =
