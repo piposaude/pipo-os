@@ -23,8 +23,7 @@ export interface QueueTableProps {
   selectedIds: string[]
   onToggleTicket: (id: string) => void
   onSelectAll: (ids: string[]) => void
-  /** Absent while there is no detail screen: the next slice wires it. */
-  onOpenTicket?: (id: string) => void
+  onOpenTicket: (id: string) => void
   today: string
   resolveName: (userId: string) => string
 }
@@ -191,10 +190,15 @@ export function QueueTable({
                   data-ticket-id={row.ticket.id}
                   data-selected={selected.has(row.ticket.id) ? 'true' : undefined}
                   /* The whole row opens the ticket, with the usual guard: a click that
-                                   started on a control belongs to the control. */
+                                   started on a control belongs to the control — `a`
+                                   included, or the subject link would navigate twice. */
                   onClick={(event) => {
-                    if ((event.target as HTMLElement).closest('label,input,button')) return
-                    onOpenTicket?.(row.ticket.id)
+                    if ((event.target as HTMLElement).closest('label,input,button,a')) return
+                    /* ⌘/ctrl/shift-click means "somewhere else" — `navigate` would
+                                       ignore that and steal the tab. The subject link handles
+                                       those, so the row simply stands aside. */
+                    if (event.metaKey || event.ctrlKey || event.shiftKey) return
+                    onOpenTicket(row.ticket.id)
                   }}
                 >
                   <QueueRow

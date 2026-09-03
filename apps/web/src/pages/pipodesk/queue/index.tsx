@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { QueueHeader } from '@/components/pipodesk/queue/QueueHeader'
 import { QueueTable } from '@/components/pipodesk/queue/QueueTable'
 import { BatchBar, type PodOption } from '@/components/pipodesk/queue/BatchBar'
@@ -47,6 +48,7 @@ function findNode(sections: TreeSection[], id: string): TreeNode | null {
  * number stops describing the list.
  */
 export default function QueuePage() {
+  const navigate = useNavigate()
   const {
     sections,
     view,
@@ -232,6 +234,7 @@ export default function QueuePage() {
         selectedIds={selectedVisible}
         onToggleTicket={(id) => dispatch({ type: 'toggle-ticket', id })}
         onSelectAll={(ids) => dispatch({ type: 'set-selection', ids })}
+        onOpenTicket={(id) => navigate({ to: '/tickets/$id', params: { id } })}
         today={today}
         resolveName={resolveName}
       />

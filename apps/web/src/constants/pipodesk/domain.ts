@@ -1,3 +1,4 @@
+import type { Priority } from '@/lib/pipodesk/ticket-row'
 /** pt-BR copy for domain values from the snapshot. Missing keys fall back to
  *  the raw value — EI may ship a product before the UI learns its name. */
 export const PRODUCT_COPY: Record<string, string> = {
@@ -28,7 +29,9 @@ export const RELATIONSHIP_COPY: Record<string, string> = {
   'family-group': 'G. Familiar',
 }
 
-export const PRIORITY_COPY: Record<string, string> = {
+/** `Record<Priority, …>`, não `Record<string, …>`: uma prioridade nova sem
+ *  entrada aqui passa a ser erro de compilação, não rótulo vazio. */
+export const PRIORITY_COPY: Record<Priority, string> = {
   urgent: 'Urgente',
   high: 'Alta',
   medium: 'Média',

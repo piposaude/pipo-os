@@ -35,24 +35,43 @@ export const CHANNEL_LABEL: Record<CommentChannel, string> = {
   email: 'E-mail',
 }
 
-/** Composer channels. Default is the internal note, faithful to Zendesk. */
-export const CHANNELS: { value: CommentChannel; label: string; hint: string }[] = [
-  {
-    value: 'internal',
+export interface ChannelOption {
+  /** The composer button. Deliberately not `CHANNEL_LABEL`: the timeline chip
+   *  says `E-mail`, the button that sends one says `E-mail ao RH`. */
+  label: string
+  hint: string
+  /** Parked channels take no click and cannot become the active channel, so
+   *  the flag lives here instead of as a comparison against the name at each
+   *  of the four places that used to ask "is this the e-mail one?". */
+  parked?: true
+}
+
+/**
+ * Composer channels, keyed rather than listed: a `Record` is what lets the
+ * compiler demand an entry per `CommentChannel`, and it removes the
+ * `find(…)!` that a lookup by value needed. Insertion order is the button
+ * order — internal note first, faithful to Zendesk.
+ */
+export const CHANNELS: Record<CommentChannel, ChannelOption> = {
+  internal: {
     label: 'Anotação interna',
     hint: 'Só a operação vê. É onde a coordenação entre analistas acontece.',
   },
-  {
-    value: 'public',
+  public: {
     label: 'Comentário público',
     hint: 'O RH vê na plataforma.',
   },
-  {
-    value: 'email',
+  email: {
     label: 'E-mail ao RH',
     hint: 'Sai da plataforma, e entra nesta mesma linha do tempo.',
+    /** Phase 6 (PD-112): the backend answers 501 until then, and faking the
+     *  send would teach a gesture that does not exist. */
+    parked: true,
   },
-]
+}
+
+/** The channels in button order, provably complete by the record above. */
+export const CHANNEL_ORDER: readonly CommentChannel[] = Object.keys(CHANNELS) as CommentChannel[]
 
 const plusHours = (iso: string, hours: number): string =>
   new Date(Date.parse(iso) + hours * 3_600_000).toISOString()
