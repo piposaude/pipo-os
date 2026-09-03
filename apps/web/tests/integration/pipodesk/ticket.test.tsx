@@ -52,7 +52,12 @@ describe('detalhe do chamado', () => {
 
     expect(router.state.location.pathname).toBe(`/tickets/${id}`)
     expect(
-      await screen.findByRole('heading', { level: 1, name: ticket.beneficiaryName ?? '' }),
+      // The same expression the page renders, not `?? ''`: an empty name matches
+      // nothing, so the assertion would fail for the wrong reason.
+      await screen.findByRole('heading', {
+        level: 1,
+        name: ticket.beneficiaryName ?? ticket.subject,
+      }),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: `Copiar o ID ${id}` })).toBeInTheDocument()
   })
