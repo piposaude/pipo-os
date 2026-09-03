@@ -48,25 +48,42 @@ export function prazoVariant(actionDate: string | null, today: string): PrazoVar
   return days === 0 ? 'warning' : 'neutral'
 }
 
+/**
+ * The three parts of an ISO date, or `null` when the string is not one. The
+ * SHAPE is checked, not only whether `Date.parse` accepts it: both readers
+ * below split on `-` and print the parts by position, so `11/08/2026` — a
+ * real date the parser takes — split into a single part and printed
+ * `undefined/undefined/11/08/2026`. `Date.parse` still runs, and is what
+ * rejects an out-of-range part (`2026-13-01`, `2026-01-32`). It does NOT
+ * reject `2026-02-30` — it rolls that into March — but the parts are printed
+ * as given, never re-read off the parsed date, so a filed date shows what was
+ * filed instead of silently moving a day.
+ *
+ * `atMidnight` above needs no such guard: it appends `T00:00:00Z` before
+ * parsing, which is already unparseable for anything but this shape.
+ */
+const partsOf = (iso: string | null): { year: string; month: string; day: string } | null => {
+  if (!iso) return null
+  const date = iso.slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) return null
+  const [year, month, day] = date.split('-')
+  return { year, month, day }
+}
+
 /** `11/08`, or `03/12/25` when the year differs — never silently dropped. */
 export function formatDayMonth(iso: string | null, today: string): string {
-  if (!iso) return '—'
-  const date = iso.slice(0, 10)
-  if (Number.isNaN(Date.parse(date))) return '—'
-  const [year, month, day] = date.split('-')
+  const parts = partsOf(iso)
+  if (parts === null) return '—'
+  const { year, month, day } = parts
   return year === today.slice(0, 4) ? `${day}/${month}` : `${day}/${month}/${year.slice(2)}`
 }
 
 /** `11/08/2026` — the full date, for when the year carries meaning (a filed
- *  action date, an overdue banner). Same `—` fallback as its siblings: a date
- *  that cannot be read is not a date, and reversing the parts by hand turned
- *  an unreadable one into visible garbage. */
+ *  action date, an overdue banner). */
 export function formatDate(iso: string | null): string {
-  if (!iso) return '—'
-  const date = iso.slice(0, 10)
-  if (Number.isNaN(Date.parse(date))) return '—'
-  const [year, month, day] = date.split('-')
-  return `${day}/${month}/${year}`
+  const parts = partsOf(iso)
+  if (parts === null) return '—'
+  return `${parts.day}/${parts.month}/${parts.year}`
 }
 
 /* ── SLA contratual ────────────────────────────────────────────────────────── */
