@@ -64,12 +64,8 @@ describe('toSeedRows', () => {
     expect(row.displayNumber).toBeNull()
   })
 
-  /**
-   * The export still writes `porte` and `vinculo`, so the whole fixture reaches
-   * the queue through this translation. A key that stops matching yields
-   * `undefined`, which becomes `null` — the Vínculo column would render empty
-   * for every row and no other assertion here would notice.
-   */
+  /** A key that stops matching yields null, emptying the Vínculo column for
+   *  every row — silently, since no other assertion here would notice. */
   it('should translate every relationship the export can write', () => {
     const rows = toSeedRows([
       raw({ id: 'a', vinculo: 'titular' }),

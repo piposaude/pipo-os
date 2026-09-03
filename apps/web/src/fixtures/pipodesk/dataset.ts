@@ -98,8 +98,7 @@ for (const membership of structureFixture.memberships) {
  * exists and out of reach of every error boundary. The fixture is regenerated
  * by a script in the prototype repo, so a drift there is a real possibility.
  */
-/** The prototype's exporter still writes `porte` and `vinculo` in Portuguese,
- *  so the translation lives here and dataset.json stays regenerable. */
+/** Here and not in the exporter, so dataset.json stays regenerable. */
 const RELATIONSHIP_OF: Record<string, Relationship> = {
   titular: 'holder',
   dependente: 'dependent',
