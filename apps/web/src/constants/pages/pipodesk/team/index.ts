@@ -39,6 +39,11 @@ export default {
     /** Echoes the term back: an empty table with only headers reads as a
      *  broken tab, not as "nothing matched what you typed". */
     noMatch: (query: string) => `Nenhuma empresa da carteira casa com “${query}”.`,
+    /** A group with no portfolio of its own is not a failed search — the
+     *  breadcrumb of any pod leads to the directorate above it, which holds
+     *  none. Saying `casa com “”` there quoted a search nobody made. */
+    noPortfolio:
+      'Este grupo não tem carteira própria. As empresas ficam nas carteiras dos times abaixo dele.',
     company: 'Empresa',
     owner: 'Dono',
     /** No owner here is not an error: it is rotation. The alert color is for

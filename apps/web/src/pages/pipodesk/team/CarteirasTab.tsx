@@ -107,10 +107,18 @@ export function CarteirasTab({
           </TableRow>
         </TableHead>
         <TableBody>
+          {/* Two different questions, so two different answers: an empty
+              PORTFOLIO is the normal state of a group that delegates its
+              companies, while an empty RESULT is about what was typed. Sharing
+              one branch made the directorate announce `casa com “”`. */}
           {linhas.length === 0 && (
             <TableRow>
               <TableCell colSpan={3}>
-                <span className={styles.muted}>{constants.carteiras.noMatch(query)}</span>
+                <span className={styles.muted}>
+                  {carteira.length === 0
+                    ? constants.carteiras.noPortfolio
+                    : constants.carteiras.noMatch(query)}
+                </span>
               </TableCell>
             </TableRow>
           )}

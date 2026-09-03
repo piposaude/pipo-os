@@ -138,6 +138,32 @@ describe('abas do pod', () => {
     expect(screen.getByText(constants.carteiras.noMatch('zzz-nao-existe'))).toBeInTheDocument()
   })
 
+  /**
+   * The breadcrumb of a pod leads to the directorate above it, and a
+   * directorate holds no companies of its own. That empty table used to share
+   * the "nothing matched your search" branch and announced `casa com “”` —
+   * a search nobody had made, quoted around nothing.
+   */
+  it('should say a group has no portfolio instead of blaming an empty search', async () => {
+    await renderAt('/teams/group-geben?tab=portfolios')
+
+    const table = await screen.findByRole('table')
+    expect(within(table).getByText(constants.carteiras.noPortfolio)).toBeInTheDocument()
+    expect(within(table).queryByText(constants.carteiras.noMatch(''))).not.toBeInTheDocument()
+  })
+
+  /** The screen above is two clicks from any pod, so it is not a URL only a
+   *  test visits. */
+  it('should reach the parent group from the breadcrumb of a pod', async () => {
+    const router = await renderAt('/teams/pod-1')
+    const user = userEvent.setup()
+
+    const breadcrumb = await screen.findByRole('navigation', { name: /breadcrumb/i })
+    await user.click(within(breadcrumb).getByRole('link', { name: 'Gestão de Benefícios' }))
+
+    expect(router.state.location.pathname).toBe('/teams/group-geben')
+  })
+
   it('should open Views, spelling out the criterion of each saved view', async () => {
     await renderAt('/teams/pod-1?tab=views')
 
