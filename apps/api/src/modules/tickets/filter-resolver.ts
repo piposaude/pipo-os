@@ -1,25 +1,28 @@
 import { sql, type Expression, type ExpressionBuilder, type RawBuilder, type SqlBool } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
-import { UnprocessableEntityError } from '../../shared/errors.js'
 import type { TicketFilter } from './filter-schema.js'
+import { toStored } from './vocabulary.js'
 
-/** Values the EI sends but that have no column yet — they still live inside
- *  enrollment_snapshot. ACE-181 gives each one a column and empties this list.
- *  Refused instead of ignored meanwhile: a dropped criterion widens the queue
- *  in silence, and the count would stop matching the list. */
-export const FIELDS_AWAITING_COLUMN = [
-  'carrierIds',
-  'products',
-  'companySizes',
-  'contractTypes',
-  'relationships',
-] as const
-
-export class UnsupportedFilterField extends UnprocessableEntityError {
-  constructor(readonly field: string) {
-    super(`Filter field "${field}" is not resolvable server-side yet`)
-    this.name = 'UnsupportedFilterField'
-  }
+/** A field added to the schema and forgotten here breaks the build, instead of
+ *  being dropped from the query in silence. */
+export const HANDLED_FIELDS: Record<keyof TicketFilter, true> = {
+  statuses: true,
+  companyIds: true,
+  carrierIds: true,
+  products: true,
+  types: true,
+  companySizes: true,
+  contractTypes: true,
+  relationships: true,
+  origins: true,
+  groupIds: true,
+  tags: true,
+  assigneeIds: true,
+  priorities: true,
+  actionDateBefore: true,
+  urgentBy: true,
+  createdSince: true,
+  archived: true,
 }
 
 /** Twin of SLEEP_DAYS in web/src/lib/pipodesk/filter.ts. The two boundary
@@ -52,6 +55,21 @@ function inOrNull(eb: Eb, column: 'assignee_id' | 'priority', values: (string | 
   return eb.or(parts)
 }
 
+/** Column holds the EI's word, filter arrives in the client's. */
+function translatedIn(
+  eb: Eb,
+  column: 'company_size' | 'contract_type' | 'product',
+  name: 'companySize' | 'contractType' | 'product',
+  values: (string | null)[],
+): Expression<SqlBool> {
+  const present = values.filter((value): value is string => value !== null)
+  const stored = present.flatMap((value) => toStored(name, value))
+  const parts: Expression<SqlBool>[] = []
+  if (stored.length > 0) parts.push(eb(column, 'in', stored))
+  if (values.length !== present.length) parts.push(eb(column, 'is', null))
+  return eb.or(parts)
+}
+
 /** Fields are an AND, values inside a list are an OR. Two exceptions: `tags`
  *  asks for all of them, and `urgentBy` is itself an OR. */
 export function ticketFilterConditions(
@@ -59,10 +77,6 @@ export function ticketFilterConditions(
   filter: TicketFilter,
   viewerId: string,
 ): Expression<SqlBool>[] {
-  for (const field of FIELDS_AWAITING_COLUMN) {
-    if (filter[field] !== undefined) throw new UnsupportedFilterField(field)
-  }
-
   const conditions: Expression<SqlBool>[] = []
 
   if (filter.statuses?.length) conditions.push(eb('status', 'in', filter.statuses))
@@ -70,6 +84,17 @@ export function ticketFilterConditions(
   if (filter.types?.length) conditions.push(eb('enrollment_type', 'in', filter.types))
   if (filter.origins?.length) conditions.push(eb('source_system', 'in', filter.origins))
   if (filter.groupIds?.length) conditions.push(eb('group_id', 'in', filter.groupIds))
+  if (filter.carrierIds?.length) conditions.push(eb('carrier_id', 'in', filter.carrierIds))
+  if (filter.relationships?.length) conditions.push(eb('relationship', 'in', filter.relationships))
+  if (filter.products?.length) {
+    conditions.push(translatedIn(eb, 'product', 'product', filter.products))
+  }
+  if (filter.companySizes?.length) {
+    conditions.push(translatedIn(eb, 'company_size', 'companySize', filter.companySizes))
+  }
+  if (filter.contractTypes?.length) {
+    conditions.push(translatedIn(eb, 'contract_type', 'contractType', filter.contractTypes))
+  }
 
   // `@>` is contains, not `&&`: the contract asks for every tag listed, while
   // the older listTicketsQuery.tags is an overlap and stays an OR.
