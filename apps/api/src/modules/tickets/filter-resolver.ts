@@ -96,8 +96,6 @@ export function ticketFilterConditions(
     conditions.push(translatedIn(eb, 'contract_type', 'contractType', filter.contractTypes))
   }
 
-  // `@>` is contains, not `&&`: the contract asks for every tag listed, while
-  // the older listTicketsQuery.tags is an overlap and stays an OR.
   if (filter.tags?.length) {
     conditions.push(sql<SqlBool>`tags @> ${filter.tags}::text[]`)
   }
