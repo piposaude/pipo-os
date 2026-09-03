@@ -1,5 +1,10 @@
 import { z } from 'zod'
 
+/** `"   "` satisfies the `minLength: 1` that OpenAPI can express and fails the
+ *  `.trim()` that it cannot — hence the description. */
+const trimmedInput = (): z.ZodString =>
+  z.string().trim().min(1).describe('Trimmed before validation: whitespace only is rejected.')
+
 export const groupSchema = z
   .object({
     id: z.uuid(),
@@ -11,10 +16,12 @@ export const groupSchema = z
   })
   .meta({ id: 'Group' })
 
+/** Response only, so no `trimmedInput()` here: trimming on the way out would
+ *  hide a bad row instead of rejecting it on the way in. */
 export const groupMemberSchema = z
   .object({
     groupId: z.uuid(),
-    userId: z.uuid(),
+    userId: z.string().min(1),
     active: z.boolean(),
     createdAt: z.iso.datetime(),
   })
@@ -30,26 +37,29 @@ export const groupParamsSchema = z.object({
 
 export const memberParamsSchema = z.object({
   id: z.uuid(),
-  memberId: z.uuid(),
+  /** `.trim()` before `.min(1)`: `min` counts characters and a space is one,
+   *  so `"   "` was a valid member id that no query could ever match. No `.max`:
+   *  the router's `maxParamLength` in app.ts answers 414 before Zod runs. */
+  memberId: trimmedInput(),
 })
 
 export const createGroupBodySchema = z
   .object({
-    name: z.string().min(1).max(255),
+    name: trimmedInput().max(255),
   })
   .strict()
   .meta({ id: 'CreateGroupBody' })
 
 export const updateGroupBodySchema = z
   .object({
-    name: z.string().min(1).max(255),
+    name: trimmedInput().max(255),
   })
   .strict()
   .meta({ id: 'UpdateGroupBody' })
 
 export const addMemberBodySchema = z
   .object({
-    userId: z.uuid(),
+    userId: trimmedInput().max(255),
   })
   .strict()
   .meta({ id: 'AddGroupMemberBody' })

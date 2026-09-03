@@ -36,7 +36,12 @@ describe('groups routes', () => {
     delete process.env.DEV_LOGIN_ENABLED
   })
 
+  /* Leaf tables first, because the FKs demand it: `member_companies` points at
+     both `companies` and `members`. A table added in the wrong position here
+     reintroduces FK violations that read as unrelated test failures. */
   afterEach(async () => {
+    await app.db.deleteFrom('ticket_group_member_companies').execute()
+    await app.db.deleteFrom('ticket_group_companies').execute()
     await app.db.deleteFrom('ticket_group_members').execute()
     await app.db.deleteFrom('ticket_groups').execute()
   })
@@ -90,6 +95,31 @@ describe('groups routes', () => {
       })
 
       expect(response.statusCode).toBe(400)
+    })
+
+    /** `min(1)` counts characters, and a space is a character: without a trim
+     *  the group is created named " " and no search ever finds it. */
+    it('returns 400 when name is only whitespace', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: '   ' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+
+    it('stores the name trimmed, so two groups cannot differ by a space', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: '  Operações  ' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(201)
+      expect(response.json().name).toBe('Operações')
     })
 
     it('returns 400 for unknown field (strict schema)', async () => {
@@ -484,7 +514,7 @@ describe('groups routes', () => {
       expect(response.statusCode).toBe(404)
     })
 
-    it('returns 400 when userId is not a valid UUID', async () => {
+    it('accepts an e-mail as userId, the way the rest of the system identifies people', async () => {
       const created = await app.inject({
         method: 'POST',
         url: '/api/groups',
@@ -496,7 +526,65 @@ describe('groups routes', () => {
       const response = await app.inject({
         method: 'POST',
         url: `/api/groups/${groupId}/members`,
-        payload: { userId: 'nao-e-uuid' },
+        payload: { userId: 'ana@pipo.health' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(201)
+      expect(response.json().userId).toBe('ana@pipo.health')
+    })
+
+    it('returns 400 for an empty userId', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Grupo' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id: groupId } = created.json()
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/groups/${groupId}/members`,
+        payload: { userId: '' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+
+    it('returns 400 for a whitespace-only userId', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Grupo' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id: groupId } = created.json()
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/groups/${groupId}/members`,
+        payload: { userId: '   ' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+
+    it('returns 400 for a userId longer than 255 characters', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Grupo' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id: groupId } = created.json()
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/groups/${groupId}/members`,
+        payload: { userId: 'a'.repeat(256) },
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
 
@@ -555,6 +643,64 @@ describe('groups routes', () => {
       })
 
       expect(response.statusCode).toBe(404)
+    })
+
+    /** Two forms because both are correct: `@` is legal raw in a path segment,
+     *  and a client that percent-encodes it must reach the same member. */
+    it.each([
+      ['raw', (email: string) => email],
+      ['percent-encoded', (email: string) => encodeURIComponent(email)],
+    ])('removes a member whose id is an e-mail, %s in the path', async (_form, encode) => {
+      const email = 'ana@pipo.health'
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Grupo' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id: groupId } = created.json()
+      await app.inject({
+        method: 'POST',
+        url: `/api/groups/${groupId}/members`,
+        payload: { userId: email },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/groups/${groupId}/members/${encode(email)}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(204)
+    })
+
+    /** The router's default `maxParamLength` of 100 answered 414 here, for a
+     *  member the POST had just accepted. */
+    it('removes a member whose id is 255 characters long, the most the POST accepts', async () => {
+      const longId = 'a'.repeat(255)
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Grupo' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id: groupId } = created.json()
+      const added = await app.inject({
+        method: 'POST',
+        url: `/api/groups/${groupId}/members`,
+        payload: { userId: longId },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(added.statusCode).toBe(201)
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/groups/${groupId}/members/${longId}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(204)
     })
   })
 
