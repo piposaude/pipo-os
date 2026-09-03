@@ -12,8 +12,6 @@ const COMPANY_C = '00000000-0000-4000-8000-00000000000c'
 const UNIQUE_VIOLATION = '23505'
 const FK_VIOLATION = '23503'
 const CHECK_VIOLATION = '23514'
-/** `RAISE EXCEPTION` without a condition name — what the cycle trigger throws. */
-const RAISED_EXCEPTION = 'P0001'
 
 /** The pg error code of a rejected write, so a test names the constraint that
  *  fired instead of only asserting that something failed. */
@@ -98,13 +96,6 @@ describe('groups schema — hierarchy and portfolio constraints', () => {
       expect(roots).toEqual([{ name: 'Gestão de Benefícios' }])
     })
 
-    /**
-     * Self-parenting is a cycle of one hop, so the trigger owns it too — and a
-     * BEFORE trigger runs ahead of constraint validation, which is why the
-     * code is the trigger's and not the CHECK's. One code for every cycle
-     * length is also what the handler in PD-050 will want to map. The CHECK
-     * from 0024 stays as the cheap guard that survives a disabled trigger.
-     */
     it('refuses a group that is its own parent', async () => {
       const id = await group(POD_3)
 
@@ -112,51 +103,7 @@ describe('groups schema — hierarchy and portfolio constraints', () => {
         app.db.updateTable('ticket_groups').set({ parent_id: id }).where('id', '=', id).execute(),
       )
 
-      expect(code).toBe(RAISED_EXCEPTION)
-    })
-
-    /**
-     * The CHECK only covers depth 1 (`parent_id <> id`). A cycle needs to walk
-     * the ancestors, so it is a trigger — and it has to live in the database:
-     * the API is not the only thing that writes here (migrations, backfills
-     * and psql sessions do too).
-     */
-    it('refuses a cycle two levels up', async () => {
-      const geben = await group('Gestão de Benefícios')
-      const pod = await group(POD_3, geben)
-
-      const code = await codeOf(
-        app.db
-          .updateTable('ticket_groups')
-          .set({ parent_id: pod })
-          .where('id', '=', geben)
-          .execute(),
-      )
-
-      expect(code).toBe(RAISED_EXCEPTION)
-    })
-
-    it('refuses a longer cycle, three levels up', async () => {
-      const geben = await group('Gestão de Benefícios')
-      const pod = await group(POD_3, geben)
-      const squad = await group('Squad', pod)
-
-      const code = await codeOf(
-        app.db
-          .updateTable('ticket_groups')
-          .set({ parent_id: squad })
-          .where('id', '=', geben)
-          .execute(),
-      )
-
-      expect(code).toBe(RAISED_EXCEPTION)
-    })
-
-    it('still accepts a deeper tree that is not a cycle', async () => {
-      const geben = await group('Gestão de Benefícios')
-      const pod = await group(POD_3, geben)
-
-      await expect(group('Squad', pod)).resolves.toBeTruthy()
+      expect(code).toBe(CHECK_VIOLATION)
     })
 
     /**

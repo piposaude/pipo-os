@@ -1,10 +1,6 @@
 import { sql, type Kysely } from 'kysely'
 
 export async function up(db: Kysely<unknown>): Promise<void> {
-  // The CHECK covers depth 1 only. "Exactly one root" and "no cycles" stay
-  // conventions the API enforces (PD-050): a unique partial index on
-  // parent_id IS NULL cannot coexist with the parentless groups POST
-  // /api/groups creates today, and a cycle needs a recursive-CTE trigger.
   await sql`
     ALTER TABLE ticket_groups
       ADD COLUMN parent_id uuid REFERENCES ticket_groups(id) ON DELETE RESTRICT,
@@ -32,6 +28,14 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     )
   `.execute(db)
 
+  /* Written where whoever asks "why is there no foreign key here?" will look:
+     `\d+` in psql. A comment in the repository does not reach the person
+     reading the database. */
+  await sql`
+    COMMENT ON COLUMN ticket_group_companies.company_id IS
+      'No foreign key, and none is possible: companies live in another service, so there is no table to reference. Being a uuid is all the database guarantees — never that it names a company. Validation belongs to the edge that writes it (PD-051).'
+  `.execute(db)
+
   await sql`
     CREATE TABLE ticket_group_member_companies (
       group_id   uuid NOT NULL,
@@ -42,17 +46,14 @@ export async function up(db: Kysely<unknown>): Promise<void> {
       CONSTRAINT ticket_group_member_companies_member_fkey
         FOREIGN KEY (group_id, user_id)
         REFERENCES ticket_group_members (group_id, user_id) ON DELETE CASCADE,
-      -- No ON UPDATE, so moving a company to another pod is refused while a
-      -- row here follows it: the move is then delete-and-reinsert. An
-      -- unfollowed company still moves with a plain UPDATE.
+      -- No ON UPDATE on purpose: adding it would make the cascade violate
+      -- member_fkey, since the person is not a member of the destination pod.
       CONSTRAINT ticket_group_member_companies_company_fkey
         FOREIGN KEY (group_id, company_id)
         REFERENCES ticket_group_companies (group_id, company_id) ON DELETE CASCADE
     )
   `.execute(db)
 
-  // The PK starts with (group_id, user_id), so the company side of the FK has
-  // no index of its own — the one the CASCADE walks.
   await sql`
     CREATE INDEX ix_ticket_group_member_companies_company
       ON ticket_group_member_companies (group_id, company_id)
