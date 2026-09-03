@@ -257,7 +257,6 @@ function Node({
               activeOptions={{ explicitUndefined: true }}
               className={styles.item}
               style={{ '--depth': node.depth + 1 } as CSSProperties}
-              onClick={(event) => event.stopPropagation()}
             >
               <span className={styles.icon}>{glyph}</span>
               <span className={styles.label}>{label}</span>
