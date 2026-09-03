@@ -655,6 +655,34 @@ describe('groups routes', () => {
 
       expect(response.statusCode).toBe(204)
     })
+
+    /** The router's default `maxParamLength` of 100 answered 414 here, for a
+     *  member the POST had just accepted. */
+    it('removes a member whose id is 255 characters long, the most the POST accepts', async () => {
+      const longId = 'a'.repeat(255)
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        payload: { name: 'Grupo' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id: groupId } = created.json()
+      const added = await app.inject({
+        method: 'POST',
+        url: `/api/groups/${groupId}/members`,
+        payload: { userId: longId },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(added.statusCode).toBe(201)
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/groups/${groupId}/members/${longId}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(204)
+    })
   })
 
   // ---------------------------------------------------------------------------

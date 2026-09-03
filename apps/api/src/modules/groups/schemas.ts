@@ -38,7 +38,8 @@ export const groupParamsSchema = z.object({
 export const memberParamsSchema = z.object({
   id: z.uuid(),
   /** `.trim()` before `.min(1)`: `min` counts characters and a space is one,
-   *  so `"   "` was a valid member id that no query could ever match. */
+   *  so `"   "` was a valid member id that no query could ever match. No `.max`:
+   *  the router's `maxParamLength` in app.ts answers 414 before Zod runs. */
   memberId: trimmedInput(),
 })
 
