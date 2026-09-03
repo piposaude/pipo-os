@@ -586,6 +586,7 @@ export interface paths {
                 header?: never;
                 path: {
                     id: string;
+                    /** @description Trimmed before validation: whitespace only is rejected. */
                     memberId: string;
                 };
                 cookie?: never;
@@ -627,6 +628,7 @@ export interface paths {
                 header?: never;
                 path: {
                     id: string;
+                    /** @description Trimmed before validation: whitespace only is rejected. */
                     memberId: string;
                 };
                 cookie?: never;
@@ -1499,13 +1501,15 @@ export interface components {
             body: string;
         };
         CreateGroupBodyInput: {
+            /** @description Trimmed before validation: whitespace only is rejected. */
             name: string;
         };
         UpdateGroupBodyInput: {
+            /** @description Trimmed before validation: whitespace only is rejected. */
             name: string;
         };
         AddGroupMemberBodyInput: {
-            /** Format: uuid */
+            /** @description Trimmed before validation: whitespace only is rejected. */
             userId: string;
         };
         UpdateGroupMemberBodyInput: {
@@ -1638,7 +1642,6 @@ export interface components {
         GroupMember: {
             /** Format: uuid */
             groupId: string;
-            /** Format: uuid */
             userId: string;
             active: boolean;
             /** Format: date-time */

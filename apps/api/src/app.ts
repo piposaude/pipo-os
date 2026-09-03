@@ -61,6 +61,9 @@ export function buildApp(): FastifyInstance {
     logger: createLoggerOptions(),
     logController: new LogController({ requestIdLogLabel: 'request-id' }),
     genReqId: genRequestId,
+    // A member id is an e-mail capped at 255 in addMemberBodySchema; the router
+    // default of 100 answered 414 for a member the POST had just accepted.
+    routerOptions: { maxParamLength: 255 },
   })
 
   app.setValidatorCompiler(validatorCompiler)
