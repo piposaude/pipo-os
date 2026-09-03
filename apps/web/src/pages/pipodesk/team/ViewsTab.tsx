@@ -26,7 +26,7 @@ import styles from './style.module.css'
 const criterioDe = (filter: TicketFilter, ctx: LabelContext): string =>
   FILTER_FIELDS.flatMap((campo: FilterField) => {
     const valores = valuesOf(filter, campo)
-    if (!valores?.length) return []
+    if (valores.length === 0) return []
     const rotulos = valores.map((valor) => optionLabel(campo, valor, ctx))
     return [`${FILTER_FIELD_COPY[campo]}: ${rotulos.join(', ')}`]
   }).join(' · ')
