@@ -43,7 +43,7 @@ async function renderAt(path: string) {
 const byId = (id: string) => queueSeed.find((row) => row.id === id)!
 
 describe('detalhe do chamado', () => {
-  it('should open from a queue row click, person in the title and id copyable below', async () => {
+  it('should open from a queue row click, with the person in the title and a copy button for the id', async () => {
     const router = await renderAt('/')
     const user = userEvent.setup()
     const { id, ticket, link } = await firstRow()
@@ -121,6 +121,99 @@ describe('detalhe do chamado', () => {
     expect(screen.getByText('Liguei na operadora, protocolo 123.')).toBeInTheDocument()
     // The field clears for the next note.
     expect(screen.getByPlaceholderText('Escreva…')).toHaveValue('')
+  })
+
+  /** The composer writes the channel it is on, and the timeline shows which one
+   *  — the PR claims both work, so both are exercised. */
+  it('should add a public comment on the channel the composer is switched to', async () => {
+    await renderAt('/tickets/700003')
+    const user = userEvent.setup()
+
+    const composer = await screen.findByRole('group', { name: 'Canal do comentário' })
+    await user.click(within(composer).getByRole('button', { name: 'Comentário público' }))
+
+    expect(within(composer).getByRole('button', { name: 'Comentário público' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(within(composer).getByRole('button', { name: 'Anotação interna' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+
+    const body = 'Enviamos a carteirinha para o RH.'
+    await user.type(screen.getByPlaceholderText('Escreva…'), body)
+    await user.click(screen.getByRole('button', { name: 'Comentar' }))
+
+    // The entry lands on the public channel, not on the default internal one.
+    const entry = screen.getByText(body).closest('li')!
+    expect(within(entry).getByText('Comentário público')).toBeInTheDocument()
+  })
+
+  /** The parked channel takes no click, so it can never become the active one
+   *  — the reason it is parked is on screen instead of in a tooltip. */
+  it('should keep the e-mail channel unclickable while it is parked', async () => {
+    await renderAt('/tickets/700003')
+
+    const composer = await screen.findByRole('group', { name: 'Canal do comentário' })
+    const email = within(composer).getByRole('button', { name: 'E-mail ao RH' })
+
+    expect(email).toBeDisabled()
+    expect(email).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByText(constants.timeline.emailPending)).toBeInTheDocument()
+  })
+
+  /** Every seeded ticket starts with no priority, so the round trip is the only
+   *  way to reach the patch that clears it — and "Sem prioridade" is disabled
+   *  exactly while it is already the value. */
+  it('should clear the priority again from the menu', async () => {
+    await renderAt('/tickets/700003')
+    const user = userEvent.setup()
+
+    const contexto = await screen.findByRole('complementary', { name: 'Contexto do chamado' })
+    const trigger = within(contexto).getByRole('button', { name: /prioridade/i })
+
+    await user.click(trigger)
+    expect(await screen.findByRole('button', { name: constants.context.noPriority })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Urgente' }))
+    expect(trigger).toHaveTextContent('Urgente')
+
+    await user.click(trigger)
+    await user.click(await screen.findByRole('button', { name: constants.context.noPriority }))
+
+    expect(trigger).toHaveTextContent(constants.context.noPriority)
+  })
+
+  it('should hand the ticket to another analyst and then release it to the pod', async () => {
+    await renderAt('/tickets/700003')
+    const user = userEvent.setup()
+
+    const contexto = await screen.findByRole('complementary', { name: 'Contexto do chamado' })
+    const trigger = within(contexto).getByRole('button', { name: /dono/i })
+
+    const [, second] = analystsOf(structureFixture, byId('700003').groupId ?? '').map(
+      ({ userId }) => FIXTURE_USER_NAMES[userId],
+    )
+    await user.click(trigger)
+    await user.click(await screen.findByRole('button', { name: second }))
+    expect(trigger).toHaveTextContent(second)
+
+    await user.click(trigger)
+    await user.click(
+      await screen.findByRole('button', { name: constants.context.removeAssignment }),
+    )
+
+    expect(trigger).toHaveTextContent(constants.context.free)
+  })
+
+  it('should put the id on the clipboard when the copy button is pressed', async () => {
+    await renderAt('/tickets/700003')
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: constants.copyId('700003') }))
+
+    await expect(navigator.clipboard.readText()).resolves.toBe('700003')
+    expect(screen.getByText(constants.copied)).toBeInTheDocument()
   })
 
   it('should say plainly when the id does not exist', async () => {
