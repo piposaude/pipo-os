@@ -179,6 +179,7 @@ describe('ticketFilterConditions — the saved filter, resolved in SQL', () => {
       { id: 'hoje', actionDate: '2026-09-02T10:00:00.000Z' },
       { id: 'no-limite', actionDate: '2026-09-04T10:00:00.000Z' },
       { id: 'futura', actionDate: '2026-09-05T10:00:00.000Z' },
+      { id: 'fechado-sem-data', actionDate: null, closedAt: '2026-09-01T10:00:00.000Z' },
     ]
 
     it('keeps what is due within two days awake, plus what has no date', async () => {
@@ -196,7 +197,13 @@ describe('ticketFilterConditions — the saved filter, resolved in SQL', () => {
     it('crosses the window when the node asks for everything', async () => {
       await seed(rows)
 
-      expect(await matching({}, 'all')).toEqual(['futura', 'hoje', 'no-limite', 'sem-data'])
+      expect(await matching({}, 'all')).toEqual([
+        'fechado-sem-data',
+        'futura',
+        'hoje',
+        'no-limite',
+        'sem-data',
+      ])
     })
   })
 

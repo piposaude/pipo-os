@@ -103,7 +103,9 @@ export function actionDateWindowCondition(
 ): Expression<SqlBool> | null {
   if (window === 'all') return null
   const cut = sql`${today}::date + ${SLEEP_DAYS}::int`
+  // A closed ticket is in neither window, as in windowOf on the web — `all` is
+  // the only mode that crosses to it.
   return window === 'sleeping'
-    ? sql<SqlBool>`action_date IS NOT NULL AND action_date::date > ${cut}`
-    : sql<SqlBool>`(action_date IS NULL OR action_date::date <= ${cut})`
+    ? sql<SqlBool>`closed_at IS NULL AND action_date IS NOT NULL AND action_date::date > ${cut}`
+    : sql<SqlBool>`closed_at IS NULL AND (action_date IS NULL OR action_date::date <= ${cut})`
 }
