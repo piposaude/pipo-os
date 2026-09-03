@@ -281,7 +281,7 @@ describe('buildTree — o invariante: contagem do nó = lista que a tela monta',
     }
   })
 
-  it('should hold for MOV PJ, where a missing contract counts as PJ (filter [pj, null])', () => {
+  it('should hold for MOV PJ, which is services-contract only (filter [pj])', () => {
     const state = structure({
       queues: [
         {
@@ -290,7 +290,7 @@ describe('buildTree — o invariante: contagem do nó = lista que a tela monta',
           groupId: 'pod-1',
           ownerId: null,
           subscriberIds: [],
-          filter: { contractTypes: ['pj', null] },
+          filter: { contractTypes: ['pj'] },
           sort: { by: 'actionDate', direction: 'asc' },
         },
       ],
@@ -303,9 +303,9 @@ describe('buildTree — o invariante: contagem do nó = lista que a tela monta',
     const sections = build(rows, state)
     const pj = nodeById(sections, 'queue-pod-1-pj')
 
-    expect(pj?.count).toBe(2)
+    expect(pj?.count).toBe(1)
     const listed = applyFilter(windowOf(rows, pj!.windowMode, TODAY), pj!.filter, VIEWER)
-    expect(listed.map((ticket) => ticket.id)).toEqual(['1', '2'])
+    expect(listed.map((ticket) => ticket.id)).toEqual(['1'])
   })
 })
 

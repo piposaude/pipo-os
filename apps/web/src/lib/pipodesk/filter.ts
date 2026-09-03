@@ -19,8 +19,9 @@ export type AssigneeFilterValue = NonNullable<ApiTicketFilter['assigneeIds']>[nu
 
 /**
  * `null` is a legitimate value in `assigneeIds` (unassigned), `priorities` (no
- * priority) and `contractTypes` (no contract in the snapshot — the MOV PJ cut
- * filters `['pj', null]` so the list matches the tally, which counts non-CLT).
+ * priority) and `contractTypes` (no contract in the snapshot). It stays an
+ * option in the panel, but no saved cut uses it: the EI tags pj_mov only for
+ * services-contract, so a ticket with no contract type is not PJ.
  */
 export interface TicketFilter extends ApiTicketFilter {
   /** Computed per render from a query result; never a saved filter. */

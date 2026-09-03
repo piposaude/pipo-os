@@ -47,12 +47,15 @@ export function tallyPods(base: TicketRow[]): Map<string, PodTally> {
     }
 
     const isMB = ticket.product !== null && PRODUCT_FAMILY[ticket.product] === 'multi-benefit'
-    // `clt` is the only affirmative value: missing/unknown counts as PJ, like the prototype.
+    // Both affirmative, mirroring the EI: it tags pj_mov only for services-contract
+    // and marks nothing otherwise. partner, intern, on-leave and other fall in
+    // neither, so clt + pj < total is the visible sign of an unclassified case.
     const isClt = ticket.contractType === 'clt'
+    const isPJ = ticket.contractType === 'pj'
 
     pod.total += 1
     if (isClt) pod.clt += 1
-    else pod.pj += 1
+    else if (isPJ) pod.pj += 1
     if (isMB) pod.mb += 1
 
     if (ticket.assigneeId !== null) {
@@ -62,7 +65,7 @@ export function tallyPods(base: TicketRow[]): Map<string, PodTally> {
         pod.byAssignee.set(ticket.assigneeId, person)
       }
       if (isClt) person.clt += 1
-      else person.pj += 1
+      else if (isPJ) person.pj += 1
       if (isMB) person.mb += 1
     }
   }
