@@ -1,4 +1,5 @@
 import { useState, type CSSProperties, useRef } from 'react'
+import { Link } from '@tanstack/react-router'
 import { Badge, Button, Text } from '@piposaude/design-system'
 import { PipoOsWordmark } from '@/components/pipodesk/shell/PipoOsWordmark'
 import { Popover } from '@/components/pipodesk/primitives'
@@ -239,18 +240,27 @@ function Node({
                  filter or count would break the count-equals-list invariant. */}
       {open && nodeGroup !== undefined && (
         <div className={styles.children} style={style}>
-          {/* Inert until the team page exists — the slice that adds it turns
-                         these into real links. */}
+          {/* `Link`, not button+navigate: real navigation gives ⌘-click and
+                         open-in-new-tab for free. */}
           {ADMIN_LINKS.map(({ key, label, glyph }) => (
-            <span
+            /* The three links share a pathname and differ only in `?tab=`. The
+                           router's own `aria-current` ignores a `tab: undefined`
+                           ("don't care"), so Home lit up on every tab; with
+                           `explicitUndefined` absence has to match absence, and the
+                           router marks exactly one — no hand-rolled comparison, and no
+                           location subscription per tree node. */
+            <Link
               key={key}
+              to="/teams/$groupId"
+              params={{ groupId: nodeGroup.id }}
+              search={{ tab: key === 'home' ? undefined : key }}
+              activeOptions={{ explicitUndefined: true }}
               className={styles.item}
-              aria-disabled="true"
               style={{ '--depth': node.depth + 1 } as CSSProperties}
             >
               <span className={styles.icon}>{glyph}</span>
               <span className={styles.label}>{label}</span>
-            </span>
+            </Link>
           ))}
         </div>
       )}
