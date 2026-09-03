@@ -29,35 +29,41 @@ export default function LoginPage({ redirect, error }: LoginPageProps) {
         paddingVertical="var(--pipo-space-large)"
         paddingHorizontal="var(--pipo-space-large)"
       >
-        <header className="login-identity">
-          <Logo variant="color" size="sm" />
-          <Heading level="h1" textAlign="center" className="login-title">
-            {constants.title}
-          </Heading>
-          <Text variant="bodySmall">{constants.subtitle}</Text>
-        </header>
+        <div className="login-stack">
+          <header className="login-identity">
+            <Logo variant="color" size="sm" />
+            <Heading level="h1" textAlign="center" className="login-title">
+              {constants.title}
+            </Heading>
+            <Text variant="bodySmall" textAlign="center" color="var(--pipo-text-secondary)">
+              {constants.subtitle}
+            </Text>
+          </header>
 
-        {message && <Banner variant="alert">{message}</Banner>}
+          {message && <Banner variant="alert">{message}</Banner>}
 
-        <div className="login-actions">
-          <Button
-            variant="primary"
-            leftIcon={<GoogleIcon />}
-            onClick={() => {
-              window.location.assign(googleHref)
-            }}
-          >
-            {constants.googleButton}
-          </Button>
-          {/* Statically replaced by Vite: the dev button and everything it
-              imports are eliminated from the production bundle. */}
-          {import.meta.env.DEV && <DevLoginButton redirect={redirect} />}
+          <div className="login-actions">
+            <Button
+              variant="primary"
+              leftIcon={<GoogleIcon />}
+              onClick={() => {
+                window.location.assign(googleHref)
+              }}
+            >
+              {constants.googleButton}
+            </Button>
+            {import.meta.env.DEV && <DevLoginButton redirect={redirect} />}
+          </div>
+
+          <footer className="login-footer">
+            <Text variant="bodySmall" textAlign="center" color="var(--pipo-text-secondary)">
+              {constants.footer.domains}
+            </Text>
+            <Text variant="bodySmall" textAlign="center" color="var(--pipo-text-secondary)">
+              {constants.footer.partners}
+            </Text>
+          </footer>
         </div>
-
-        <footer className="login-footer">
-          <Text variant="bodySmall">{constants.footer.domains}</Text>
-          <Text variant="bodySmall">{constants.footer.partners}</Text>
-        </footer>
       </Card>
     </main>
   )

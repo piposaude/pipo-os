@@ -14,8 +14,7 @@
   text-align: center;
 }
 
-/* The DS Card wraps children in its own padded div; the layout applies there. */
-.login-page .login-card > div:last-child {
+.login-stack {
   display: flex;
   flex-direction: column;
   gap: var(--pipo-space-medium);
@@ -52,15 +51,6 @@
   gap: var(--pipo-space-xxsmall);
   padding-top: var(--pipo-space-medium);
   border-top: var(--pipo-border-width-small) solid var(--pipo-border);
-}
-
-/* The DS Text sets text-align: left itself; the card's centering does not inherit. */
-.login-page .login-identity p,
-.login-page .login-identity span,
-.login-page .login-footer p,
-.login-page .login-footer span {
-  color: var(--pipo-text-secondary);
-  text-align: center;
 }
 
 .login-page .login-dev-error {
