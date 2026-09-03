@@ -1,4 +1,4 @@
-import { sql, type Expression, type ExpressionBuilder, type SqlBool } from 'kysely'
+import { sql, type Expression, type ExpressionBuilder, type RawBuilder, type SqlBool } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import { UnprocessableEntityError } from '../../shared/errors.js'
 import type { TicketFilter } from './filter-schema.js'
@@ -27,6 +27,15 @@ export class UnsupportedFilterField extends UnprocessableEntityError {
 export const SLEEP_DAYS = 2
 
 type Eb = ExpressionBuilder<Database, 'tickets'>
+
+/** Midnight UTC of a calendar day, as an instant. The web reads the day off
+ *  the ISO string, so the cut must not depend on the session TimeZone; and a
+ *  bare column beside a constant is what lets the date indexes be used. */
+const utcMidnight = (isoDate: string): RawBuilder<unknown> =>
+  sql`${`${isoDate}T00:00:00Z`}::timestamptz`
+
+const plusDays = (isoDate: string, days: number): string =>
+  new Date(Date.parse(`${isoDate}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10)
 
 /** `@me` is resolved here, never stored: the token means "the caller", so a
  *  shared queue shows each viewer their own tickets. */
@@ -75,17 +84,15 @@ export function ticketFilterConditions(
     conditions.push(inOrNull(eb, 'priority', filter.priorities))
   }
 
-  // Both sides truncated: the column is timestamptz and the cut is date-only,
-  // so without `::date` the time of day moves the boundary.
   if (filter.actionDateBefore !== undefined) {
-    conditions.push(sql<SqlBool>`action_date::date < ${filter.actionDateBefore}::date`)
+    conditions.push(sql<SqlBool>`action_date < ${utcMidnight(filter.actionDateBefore)}`)
   }
   if (filter.createdSince !== undefined) {
-    conditions.push(sql<SqlBool>`created_at::date >= ${filter.createdSince}::date`)
+    conditions.push(sql<SqlBool>`created_at >= ${utcMidnight(filter.createdSince)}`)
   }
   if (filter.urgentBy !== undefined) {
     conditions.push(
-      sql<SqlBool>`(priority = 'urgent' OR action_date::date < ${filter.urgentBy}::date)`,
+      sql<SqlBool>`(priority = 'urgent' OR action_date < ${utcMidnight(filter.urgentBy)})`,
     )
   }
 
@@ -103,10 +110,12 @@ export function actionDateWindowCondition(
   today: string,
 ): Expression<SqlBool> | null {
   if (window === 'all') return null
-  const cut = sql`${today}::date + ${SLEEP_DAYS}::int`
+  // Sleeping starts the day after the last awake one, so the cut is that
+  // day's midnight: `>=` sleeps, `<` is awake.
+  const cut = utcMidnight(plusDays(today, SLEEP_DAYS + 1))
   // A closed ticket is in neither window, as in windowOf on the web — `all` is
   // the only mode that crosses to it.
   return window === 'sleeping'
-    ? sql<SqlBool>`closed_at IS NULL AND action_date IS NOT NULL AND action_date::date > ${cut}`
-    : sql<SqlBool>`closed_at IS NULL AND (action_date IS NULL OR action_date::date <= ${cut})`
+    ? sql<SqlBool>`closed_at IS NULL AND action_date >= ${cut}`
+    : sql<SqlBool>`closed_at IS NULL AND (action_date IS NULL OR action_date < ${cut})`
 }

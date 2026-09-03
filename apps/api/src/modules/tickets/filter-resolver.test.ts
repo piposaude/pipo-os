@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { FastifyInstance } from 'fastify'
+import { sql } from 'kysely'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
 import type { TicketFilter } from './filter-schema.js'
@@ -204,6 +205,24 @@ describe('ticketFilterConditions — the saved filter, resolved in SQL', () => {
         'no-limite',
         'sem-data',
       ])
+    })
+
+    /** The web reads the day off the ISO string, in UTC. A cut that trusted
+     *  the session TimeZone would put 01:30Z on the previous day in São Paulo. */
+    it('cuts the day in UTC whatever the session time zone is', async () => {
+      await seed([{ id: 'vira-o-dia', actionDate: '2026-09-05T01:30:00.000Z' }])
+
+      const titles = await app.db.transaction().execute(async (trx) => {
+        await sql`SET LOCAL TIME ZONE 'America/Sao_Paulo'`.execute(trx)
+        const found = await trx
+          .selectFrom('tickets')
+          .select('title')
+          .where(actionDateWindowCondition('sleeping', TODAY)!)
+          .execute()
+        return found.map((row) => row.title)
+      })
+
+      expect(titles).toEqual(['vira-o-dia'])
     })
   })
 

@@ -1,5 +1,5 @@
 {
-  "readme": "Shared corpus proving the product invariant of PD-043: a saved TicketFilter selects the same set in apps/web (matchesFilter, in memory) and in apps/api (ticketFilterConditions, in SQL). Both suites read this file and assert the same expected ids, so a divergence fails a test instead of surfacing as a node that announces one number and lists another. Only fields the resolver already handles appear here; the five snapshot-derived ones are refused server-side and cannot be compared yet. A case may also carry a window (awake | sleeping | all), applied with today: the two tickets due on 09-02 and 09-03 sit on either side of the SLEEP_DAYS cut, so a side that moves the constant alone fails here.",
+  "readme": "Shared corpus proving the product invariant of PD-043: a saved TicketFilter selects the same set in apps/web (matchesFilter, in memory) and in apps/api (ticketFilterConditions, in SQL). Both suites read this file and assert the same expected ids, so a divergence fails a test instead of surfacing as a node that announces one number and lists another. Only fields the resolver already handles appear here; the five snapshot-derived ones are refused server-side and cannot be compared yet. A case may also carry a window (awake | sleeping | all), applied with today: the two tickets due on 09-02 and 09-03 sit on either side of the SLEEP_DAYS cut, so a side that moves the constant alone fails here. A day is a UTC calendar day, read off the ISO string: the ticket due at 01:30Z on 09-03 already sleeps.",
   "viewerId": "ana@pipo.health",
   "today": "2026-08-31",
   "companyA": "00000000-0000-4000-8000-0000000000a1",
@@ -103,6 +103,20 @@
       "actionDate": "2026-09-03T10:00:00.000Z",
       "createdAt": "2026-08-15T09:00:00.000Z",
       "closedAt": null
+    },
+    {
+      "id": "vira-o-dia-em-utc",
+      "status": "carrier-processing",
+      "companyId": "00000000-0000-4000-8000-0000000000b2",
+      "enrollmentType": "exclusion",
+      "sourceSystem": "web",
+      "groupId": null,
+      "assigneeId": "carla@pipo.health",
+      "priority": "medium",
+      "tags": [],
+      "actionDate": "2026-09-03T01:30:00.000Z",
+      "createdAt": "2026-08-15T09:00:00.000Z",
+      "closedAt": null
     }
   ],
   "cases": [
@@ -116,7 +130,8 @@
         "do-bruno",
         "dorme-um-dia-alem",
         "fechado",
-        "livre-urgente"
+        "livre-urgente",
+        "vira-o-dia-em-utc"
       ]
     },
     {
@@ -196,7 +211,8 @@
         "da-ana-sem-prioridade",
         "do-bruno",
         "dorme-um-dia-alem",
-        "livre-urgente"
+        "livre-urgente",
+        "vira-o-dia-em-utc"
       ]
     },
     {
@@ -223,7 +239,7 @@
       "name": "sleeping keeps the open ones due after SLEEP_DAYS",
       "filter": {},
       "window": "sleeping",
-      "expected": ["da-ana-sem-prioridade", "dorme-um-dia-alem"]
+      "expected": ["da-ana-sem-prioridade", "dorme-um-dia-alem", "vira-o-dia-em-utc"]
     },
     {
       "name": "all crosses the window, closed ones included",
@@ -236,7 +252,8 @@
         "do-bruno",
         "dorme-um-dia-alem",
         "fechado",
-        "livre-urgente"
+        "livre-urgente",
+        "vira-o-dia-em-utc"
       ]
     }
   ]
