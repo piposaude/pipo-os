@@ -884,6 +884,30 @@ describe('tickets routes', () => {
       expect(response.json().relationship).toBe('family-group')
     })
 
+    it('devolve null em vez de quebrar quando a coluna tem valor fora do enum', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+      await app.db
+        .updateTable('tickets')
+        .set({ relationship: 'agregado' })
+        .where('id', '=', id)
+        .execute()
+
+      const read = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(read.statusCode).toBe(200)
+      expect(read.json().relationship).toBeNull()
+    })
+
     it('deixa os campos nulos quando o EI não os manda', async () => {
       const response = await app.inject({
         method: 'POST',

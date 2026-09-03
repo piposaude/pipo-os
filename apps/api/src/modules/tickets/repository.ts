@@ -6,6 +6,7 @@ import { relationshipOf } from './relationship.js'
 import { toClient } from './vocabulary.js'
 import {
   CLOSED_STATUSES,
+  relationshipSchema,
   type CreateTicketBody,
   type ListTicketsQuery,
   type Ticket,
@@ -43,7 +44,7 @@ function toTicket(row: Selectable<Tickets>): Ticket {
     product: toClient('product', row.product),
     contractType: toClient('contractType', row.contract_type),
     companySize: toClient('companySize', row.company_size),
-    relationship: row.relationship as Ticket['relationship'],
+    relationship: relationshipSchema.safeParse(row.relationship).data ?? null,
     sourceSystem: row.source_system,
     parentTicketId: row.parent_ticket_id,
     closedAt: row.closed_at ? row.closed_at.toISOString() : null,

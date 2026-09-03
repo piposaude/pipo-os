@@ -1,6 +1,7 @@
 import { sql, type Kysely } from 'kysely'
 
 export async function up(db: Kysely<unknown>): Promise<void> {
+  // No enum, no CHECK: a new carrier must not need a migration in production.
   await sql`
     ALTER TABLE tickets
       ADD COLUMN carrier_id text,
