@@ -1,0 +1,23 @@
+.toggle {
+  display: inline-flex;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--pipo-radius-small);
+  background: transparent;
+  color: var(--pipo-text-secondary);
+  cursor: pointer;
+}
+
+.toggle:hover {
+  background: var(--pipo-neutral-lightest);
+  color: var(--pipo-text-primary);
+}
+
+.toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--pipo-shadow-focus-primary);
+}

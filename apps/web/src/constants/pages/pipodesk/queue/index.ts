@@ -1,6 +1,4 @@
 export default {
-  collapseSidebar: 'Minimizar menu',
-  expandSidebar: 'Mostrar menu',
   pills: 'Recortes e views deste nível',
   saveView: 'Salvar esta fila como view',
   saveViewPending: 'Salvar view chega com o PD-104.',

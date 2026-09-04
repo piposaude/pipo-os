@@ -87,6 +87,22 @@ describe('detalhe do chamado', () => {
     expect(banner).not.toHaveTextContent('dias.')
   })
 
+  /** The same header button as the queue: inside the sidebar it would vanish
+   *  on collapse, leaving only the invisible shortcut to bring the menu back. */
+  it('should collapse the sidebar from the detail header, and bring it back', async () => {
+    await renderAt('/tickets/705639')
+    const user = userEvent.setup()
+
+    const toggle = screen.getByRole('button', { name: 'Minimizar menu' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+
+    await user.click(toggle)
+
+    expect(screen.queryByRole('navigation', { name: /pipodesk/i })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Mostrar menu' }))
+    expect(screen.getByRole('navigation', { name: /pipodesk/i })).toBeInTheDocument()
+  })
+
   it('should keep the queue path in the breadcrumb, and going back lands on the same node', async () => {
     const router = await renderAt('/')
     const user = userEvent.setup()

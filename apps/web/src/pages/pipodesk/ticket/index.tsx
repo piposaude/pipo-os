@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Banner, Breadcrumb, BreadcrumbItem, Button, Heading, Tabs } from '@piposaude/design-system'
 import { Link, useParams } from '@tanstack/react-router'
 import { useDesk } from '@/components/pipodesk/shell/desk-context'
+import { SidebarToggle } from '@/components/pipodesk/shell/SidebarToggle'
 import { Popover } from '@/components/pipodesk/primitives'
 import { DISPLAY_STATUS_COPY, PENDING_REASON_COPY } from '@/constants/pipodesk/status'
 import {
@@ -360,6 +361,7 @@ export default function TicketPage() {
   return (
     <div className={styles.screen}>
       <header className={styles.topbar}>
+        <SidebarToggle />
         {/* The queue path this ticket was opened from, person as the current item.
                      Going back reopens the same node — QueueView lives in the shell. */}
         <Breadcrumb separator="›">

@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react'
 import { Breadcrumb, BreadcrumbItem } from '@piposaude/design-system'
-import { IS_MAC } from '@/lib/pipodesk/platform'
 import { hasCustomColumns } from '@/lib/pipodesk/columns'
 import { FILTER_FIELD_COPY, type FilterChip, type LabelContext } from '@/lib/pipodesk/filter-copy'
 import type { FilterField, TicketFilter } from '@/lib/pipodesk/filter'
@@ -9,6 +8,7 @@ import type { TicketSort } from '@/lib/pipodesk/sort'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 import type { TreeNode } from '@/lib/pipodesk/tree'
 import constants from '@/constants/pages/pipodesk/queue'
+import { SidebarToggle } from '@/components/pipodesk/shell/SidebarToggle'
 import { DisplayPopover } from './DisplayPopover'
 import { FilterPopover } from './FilterPopover'
 import styles from './Queue.module.css'
@@ -21,8 +21,6 @@ import styles from './Queue.module.css'
  */
 export interface QueueHeaderProps {
   labelPath: string[]
-  sidebarCollapsed: boolean
-  onToggleSidebar: () => void
   pills: TreeNode[]
   activeNodeId: string
   onSelectPill: (node: TreeNode) => void
@@ -53,8 +51,6 @@ export interface QueueHeaderProps {
 
 export function QueueHeader({
   labelPath,
-  sidebarCollapsed,
-  onToggleSidebar,
   pills,
   activeNodeId,
   onSelectPill,
@@ -78,7 +74,6 @@ export function QueueHeader({
   visibleColumnKeys,
   onMoveColumn,
 }: QueueHeaderProps) {
-  const toggleLabel = sidebarCollapsed ? constants.expandSidebar : constants.collapseSidebar
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [displayOpen, setDisplayOpen] = useState(false)
   const filtersTrigger = useRef<HTMLButtonElement>(null)
@@ -87,32 +82,7 @@ export function QueueHeader({
   return (
     <div className={styles.pagehead}>
       <div className={styles.crumbRow}>
-        {/* Lives in the header, not the sidebar: there it would vanish on collapse,
-                     leaving only the invisible shortcut to bring the menu back. */}
-        <button
-          type="button"
-          className={styles.sidebarToggle}
-          onClick={onToggleSidebar}
-          aria-label={toggleLabel}
-          aria-expanded={!sidebarCollapsed}
-          title={`${toggleLabel} (${IS_MAC ? '⌘B' : 'Ctrl+B'})`}
-        >
-          {/* Panel-with-left-column glyph, drawn inline: the DS has no sidebar icon
-                         and the Pipo "new" glyph (same drawing) is 90px away in the tree
-                         (PD-311). */}
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <rect
-              x="3"
-              y="3"
-              width="18"
-              height="18"
-              rx="2"
-              stroke="currentColor"
-              strokeWidth="1.6"
-            />
-            <path d="M9 3v18" stroke="currentColor" strokeWidth="1.6" />
-          </svg>
-        </button>
+        <SidebarToggle />
         {/* Heading for the screen; the breadcrumb below carries it visually. */}
         <h1 className={styles.pageTitle}>{labelPath[labelPath.length - 1]}</h1>
         <Breadcrumb separator="›">
