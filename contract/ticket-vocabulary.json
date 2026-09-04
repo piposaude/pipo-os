@@ -1,0 +1,7 @@
+{
+  "readme": "The client words apps/api/src/modules/tickets/vocabulary.ts can put on a row, for the fields whose de-para is a table. Both suites read this file: the API asserts its vocabulary produces exactly these words, and apps/web asserts each one has pt-BR copy of its own — the same guarantee the two had in a single test back when the maps lived in the web. `product` is out on purpose: its de-para is a rule, not a table, so the set is open and no list can close it, and an unnamed benefit shows raw by design.",
+  "clientWords": {
+    "companySize": ["pme", "pme-plus", "enterprise"],
+    "contractType": ["clt", "pj"]
+  }
+}

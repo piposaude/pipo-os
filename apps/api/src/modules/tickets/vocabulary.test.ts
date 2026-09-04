@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { toClient, toStored } from './vocabulary.js'
+import { toClient, toStored, VOCABULARIES } from './vocabulary.js'
 
 describe('toClient', () => {
   it('translates each stored value the EI can send', () => {
@@ -65,5 +67,33 @@ describe('toStored', () => {
         expect(toStored(name, toClient(name, value)!)).toContain(value)
       }
     }
+  })
+})
+
+/** Twin of vocabulary-contract.test.ts in apps/web: change one, change both.
+ *  The maps used to live in the web, where a single test proved every word they
+ *  produced had copy of its own; they crossed to this side, so the declaration
+ *  crosses through contract/ and each side is held to its half. */
+const WORDS_PATH = fileURLToPath(
+  new URL('../../../../../contract/ticket-vocabulary.json', import.meta.url),
+)
+
+describe('the client words declared in the contract', () => {
+  const { clientWords } = JSON.parse(readFileSync(WORDS_PATH, 'utf-8')) as {
+    clientWords: Record<string, string[]>
+  }
+
+  it('names every vocabulary with a closed set of words, and no other', () => {
+    const closed = Object.entries(VOCABULARIES)
+      .filter(([, vocabulary]) => vocabulary.clientWords !== null)
+      .map(([name]) => name)
+
+    expect(Object.keys(clientWords).sort()).toEqual(closed.sort())
+  })
+
+  it.each(Object.keys(clientWords))('lists exactly what %s can put on a row', (name) => {
+    const vocabulary = VOCABULARIES[name as keyof typeof VOCABULARIES]
+
+    expect([...(vocabulary.clientWords ?? [])].sort()).toEqual([...clientWords[name]].sort())
   })
 })

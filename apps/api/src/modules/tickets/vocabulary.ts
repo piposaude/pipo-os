@@ -8,9 +8,14 @@ interface Vocabulary {
   /** A list and not one value: a client word may have more than one stored
    *  form, and matching only one of them would drop rows. */
   toStored: (clientValue: string) => string[]
+  /** Every word this vocabulary can put on a row, or `null` when the de-para is
+   *  a rule and the set is open. Declared in contract/ticket-vocabulary.json so
+   *  the web can be held to having copy for each one. */
+  clientWords: string[] | null
 }
 
 const fromTable = (table: Record<string, string>): Vocabulary => ({
+  clientWords: [...new Set(Object.values(table))],
   toClient: (stored) => (own(table, stored) ? table[stored] : stored),
   toStored: (clientValue) => {
     const keys = Object.keys(table).filter((key) => table[key] === clientValue)
@@ -25,6 +30,7 @@ const fromTable = (table: Record<string, string>): Vocabulary => ({
  *  (`health`) and the canonical Clojure one (`health-insurance`), and either
  *  may be stored. */
 const insuranceSuffix: Vocabulary = {
+  clientWords: null,
   toClient: (stored) => stored.replace(/-insurance$/, ''),
   // The client never sees the suffix, so a value carrying it is not a client word.
   toStored: (clientValue) =>
