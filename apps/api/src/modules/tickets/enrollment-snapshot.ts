@@ -50,14 +50,25 @@ export type Relationship = z.infer<typeof relationshipSchema>
 export function relationshipOf(snapshot: unknown): Relationship | null {
   if (!isRecord(snapshot)) return null
 
-  // The EI compares its own member_type with EqualFold, so case is not stable.
   const memberType = readString(snapshot, ['member-type'], ['primary', 'member-type'])
-  if (memberType === null) return null
-  if (memberType.toLowerCase() === 'dependent') return 'dependent'
 
-  // `omitempty` on the Go slice: a primary with none arrives without the key.
-  const dependents = readPath(snapshot, ['dependents'])
-  return Array.isArray(dependents) && dependents.length > 0 ? 'family-group' : 'holder'
+  // The EI compares its own member_type with EqualFold, so case is not stable.
+  switch (memberType?.toLowerCase()) {
+    case 'dependent':
+      return 'dependent'
+    // Third value of the EI's vocabulary (`memberTypePhrase` in format.go):
+    // the group moves, with no primary singled out.
+    case 'family':
+      return 'family-group'
+    case 'primary': {
+      // `omitempty` on the Go slice: a primary with none arrives without the key.
+      const dependents = readPath(snapshot, ['dependents'])
+      return Array.isArray(dependents) && dependents.length > 0 ? 'family-group' : 'holder'
+    }
+    // A word we do not know is not a holder: the guess freezes in the column.
+    default:
+      return null
+  }
 }
 
 export interface MovementFields {

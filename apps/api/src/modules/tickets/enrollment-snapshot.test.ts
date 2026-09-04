@@ -34,6 +34,17 @@ describe('relationshipOf', () => {
     )
   })
 
+  /** The EI's `memberTypePhrase` names three values, and `family` is the one
+   *  that arrives without a primary of its own. */
+  it('is family-group for the EI family, with no dependents list', () => {
+    expect(relationshipOf({ member_type: 'family' })).toBe('family-group')
+  })
+
+  /** Reading every non-dependent as a holder invented an answer and froze it. */
+  it('is null for a member_type outside the three the EI names', () => {
+    expect(relationshipOf({ member_type: 'agregado', dependents: [{ id: 'd1' }] })).toBeNull()
+  })
+
   it('is null when there is nothing to derive from', () => {
     expect(relationshipOf({})).toBeNull()
     expect(relationshipOf({ member_type: '' })).toBeNull()
