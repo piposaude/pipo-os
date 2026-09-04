@@ -131,7 +131,9 @@
   transform: scale(1);
 }
 
-/* The balloon above the button; empty (and invisible) until copied. */
+/* The balloon above the button. Hidden by opacity, never by `display`: the
+   live region has to stay in the accessibility tree at rest, or the screen
+   reader treats `Copiado` as a region that just appeared and says nothing. */
 .copiedTip {
   position: absolute;
   bottom: calc(100% + var(--pipo-space-xxsmall));
@@ -144,16 +146,22 @@
   line-height: var(--pipo-lh-default);
   white-space: nowrap;
   pointer-events: none;
-  transform: translateX(-50%);
+  opacity: 0;
+  transform: translate(-50%, 4px);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
 }
 
-.copiedTip:empty {
-  display: none;
+.copy[data-copied='true'] .copiedTip {
+  opacity: 1;
+  transform: translate(-50%, 0);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .copy,
-  .copyGlyph {
+  .copyGlyph,
+  .copiedTip {
     transition: none;
   }
 }
