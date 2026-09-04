@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify'
+import { sql } from 'kysely'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
@@ -193,6 +194,15 @@ describe('GET /api/tickets/:id/timeline', () => {
       })
       .execute()
 
+  /* `created_at` at microsecond precision, which `new Date()` cannot express.
+     Postgres `now()` gives every real row microseconds, so this — not the
+     round `.000Z` above — is the shape production data actually has. */
+  const seedCommentAtMicro = (body: string, createdAt: string) =>
+    sql`insert into ticket_comments
+          (ticket_id, kind, channel, visibility, event_type, author_id, body, created_at)
+        values (${ticketId}::uuid, 'manual', 'internal', 'public', null,
+                ${DEV_LOGIN_USER_ID}, ${body}, ${createdAt}::timestamptz)`.execute(app.db)
+
   describe('cursor pagination', () => {
     it('caps the page at limit and hands back a cursor', async () => {
       await seedComment('um', '2026-09-01T10:00:00.000Z')
@@ -257,6 +267,28 @@ describe('GET /api/tickets/:id/timeline', () => {
       ).json()
 
       expect(second.data.map((i: { body: string }) => i.body)).toEqual(['três'])
+    })
+
+    /* The cursor carries `created_at` at full Postgres precision. Built from
+       the driver's `Date` it would lose the microseconds, land before the row
+       it was meant to skip, and hand back the same page forever — a client
+       walking the chronology would never reach the second item. */
+    it('advances past a row whose created_at carries microseconds', async () => {
+      await seedCommentAtMicro('um', '2026-09-01T10:00:00.000456Z')
+      await seedCommentAtMicro('dois', '2026-09-01T11:00:00.000789Z')
+      await seedCommentAtMicro('três', '2026-09-01T12:00:00.000321Z')
+
+      const seen: string[] = []
+      let cursor: string | null = null
+      for (let page = 0; page < 10; page++) {
+        const query: string = cursor ? `?limit=1&cursor=${encodeURIComponent(cursor)}` : '?limit=1'
+        const body = (await getTimeline(query)).json()
+        seen.push(...body.data.map((i: { body: string }) => i.body))
+        cursor = body.nextCursor ?? null
+        if (!cursor) break
+      }
+
+      expect(seen).toEqual(['um', 'dois', 'três'])
     })
 
     it('rejects a malformed cursor with 400', async () => {

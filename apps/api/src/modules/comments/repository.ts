@@ -29,6 +29,8 @@ interface TimelineRow {
   ticket_id: string
   author_id: string | null
   created_at: Date
+  /** `created_at` at full Postgres precision — see `findTimeline`. */
+  cursor_at: string
   kind: string | null
   channel: string | null
   visibility: string | null
@@ -138,7 +140,13 @@ export class CommentsRepository implements CommentsRepositoryPort {
      to the microsecond, and without it their order flips between calls —
      which would also make the keyset below skip or repeat an item.
      `limit + 1` is fetched so the caller can tell a full last page from a
-     page that has a successor, without a second round trip. */
+     page that has a successor, without a second round trip.
+
+     The cursor half of `created_at` comes from `to_char`, not from the `Date`
+     the driver builds: `timestamptz` keeps microseconds and a JS `Date` only
+     holds milliseconds, so a cursor built from `toISOString()` always lands
+     BEFORE the row it was meant to skip — and `now()` gives every real row
+     microseconds. The page would then repeat its own last row forever. */
   async findTimeline(
     ticketId: string,
     after: TimelineKey | null,
@@ -175,7 +183,9 @@ export class CommentsRepository implements CommentsRepositoryPort {
          where ticket_id = ${ticketId} ${publicComments}
         ${historyBranch}
       )
-      select * from t
+      select t.*,
+             to_char(t.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_at
+        from t
        where true ${keyset}
        order by t.created_at asc, t.id asc
        limit ${limit + 1}
@@ -186,7 +196,7 @@ export class CommentsRepository implements CommentsRepositoryPort {
 
     return {
       items: page.map(toTimelineItem),
-      nextKey: last ? { createdAt: last.created_at.toISOString(), id: last.id } : undefined,
+      nextKey: last ? { createdAt: last.cursor_at, id: last.id } : undefined,
     }
   }
 }
