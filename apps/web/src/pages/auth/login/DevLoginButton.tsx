@@ -29,7 +29,7 @@ export function DevLoginButton({ redirect }: DevLoginButtonProps) {
 
   return (
     <>
-      <Button variant="text" loading={pending} onClick={handleClick}>
+      <Button variant="secondary" loading={pending} onClick={handleClick}>
         {constants.button}
       </Button>
       {failed && (

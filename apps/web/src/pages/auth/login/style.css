@@ -1,22 +1,59 @@
 .login-page {
-  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 100vh;
   padding: var(--pipo-space-large);
-}
-
-.login-page .login-dev-error {
-  color: var(--pipo-danger-dark);
-  font-size: var(--pipo-font-size-small);
+  background: var(--pipo-brand-primary-lightest);
+  color-scheme: light;
 }
 
 .login-page .login-card {
   width: 100%;
-  max-width: 360px;
+  max-width: 344px;
+  text-align: center;
+}
+
+.login-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pipo-space-medium);
+}
+
+.login-identity {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--pipo-space-medium);
-  text-align: center;
+  gap: var(--pipo-space-xsmall);
+}
+
+/* Label, not headline: the DS h1 is 48px serif and would fight the wordmark. */
+.login-page .login-title {
+  font-family: var(--pipo-font-body);
+  font-size: var(--pipo-fs-h3);
+  font-weight: var(--pipo-fw-bold);
+  line-height: 1.2;
+}
+
+.login-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pipo-space-xsmall);
+}
+
+.login-actions > * {
+  width: 100%;
+}
+
+.login-footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pipo-space-xxsmall);
+  padding-top: var(--pipo-space-medium);
+  border-top: var(--pipo-border-width-small) solid var(--pipo-border);
+}
+
+.login-page .login-dev-error {
+  color: var(--pipo-danger-dark);
+  font-size: var(--pipo-fs-small);
 }
