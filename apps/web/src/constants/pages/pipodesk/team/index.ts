@@ -29,11 +29,6 @@ export default {
   editableBy: (group: string) => `Só a coordenação de ${group} edita carteira e membros.`,
   /** Editing (add person, move company, rename, delete) is the rest of PD-105. */
   readOnly: 'Editar carteira e membros chega com o PD-105.',
-  tabs: {
-    home: 'Home',
-    carteiras: 'Carteiras',
-    views: 'Views',
-  },
   carteiras: {
     search: 'Buscar empresa…',
     /** Echoes the term back: an empty table with only headers reads as a
