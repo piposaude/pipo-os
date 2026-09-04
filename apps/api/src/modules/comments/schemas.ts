@@ -102,6 +102,10 @@ export const timelineQuerySchema = z.object({
   /* Opaque on purpose: base64 of "<created_at>|<id>". Keeping clients from
      reading it is what lets the keyset change without breaking them. */
   cursor: z.string().min(1).optional(),
+  /* Only `public` narrows; absent means the analyst view, which sees all.
+     A status change carries no visibility of its own and stays out of the
+     public cut — see the note on the query in the repository. */
+  visibility: z.enum(['public']).optional(),
 })
 
 export type TimelineItem = z.infer<typeof timelineItemSchema>

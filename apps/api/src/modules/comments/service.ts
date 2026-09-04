@@ -54,6 +54,7 @@ export class CommentsService {
       ticketId,
       query.cursor ? decodeCursor(query.cursor) : null,
       query.limit,
+      query.visibility === 'public',
     )
 
     return { data: items, ...(nextKey ? { nextCursor: encodeCursor(nextKey) } : {}) }

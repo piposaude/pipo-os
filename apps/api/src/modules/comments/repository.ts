@@ -93,7 +93,12 @@ export interface TimelinePage {
 export interface CommentsRepositoryPort {
   create(ticketId: string, data: CreateCommentBody, authorId: string): Promise<Comment>
   findMany(ticketId: string): Promise<Comment[]>
-  findTimeline(ticketId: string, after: TimelineKey | null, limit: number): Promise<TimelinePage>
+  findTimeline(
+    ticketId: string,
+    after: TimelineKey | null,
+    limit: number,
+    publicOnly?: boolean,
+  ): Promise<TimelinePage>
 }
 
 export class CommentsRepository implements CommentsRepositoryPort {
@@ -134,10 +139,31 @@ export class CommentsRepository implements CommentsRepositoryPort {
      which would also make the keyset below skip or repeat an item.
      `limit + 1` is fetched so the caller can tell a full last page from a
      page that has a successor, without a second round trip. */
-  async findTimeline(ticketId: string, after: TimelineKey | null, limit: number) {
+  async findTimeline(
+    ticketId: string,
+    after: TimelineKey | null,
+    limit: number,
+    publicOnly = false,
+  ) {
     const keyset = after
       ? sql`and (t.created_at, t.id) > (${after.createdAt}::timestamptz, ${after.id}::uuid)`
       : sql``
+
+    /* A status change has no visibility column, and its `reason` is free text
+       an analyst wrote for the team — so the public cut drops that branch
+       whole instead of assuming it is safe to show. Opting it back in is a
+       decision for whoever builds the HR-facing view. */
+    const publicComments = publicOnly ? sql`and visibility = 'public'` : sql``
+    const historyBranch = publicOnly
+      ? sql``
+      : sql`
+        union all
+        select 'status' as source, id, ticket_id, author_id, created_at,
+               null as kind, null as channel, null as visibility,
+               null as event_type, null as body, null as metadata,
+               from_status, to_status, reason, author_type
+          from ticket_status_history
+         where ticket_id = ${ticketId}`
 
     const { rows } = await sql<TimelineRow>`
       with t as (
@@ -146,14 +172,8 @@ export class CommentsRepository implements CommentsRepositoryPort {
                null as from_status, null as to_status, null as reason,
                null as author_type
           from ticket_comments
-         where ticket_id = ${ticketId}
-        union all
-        select 'status' as source, id, ticket_id, author_id, created_at,
-               null as kind, null as channel, null as visibility,
-               null as event_type, null as body, null as metadata,
-               from_status, to_status, reason, author_type
-          from ticket_status_history
-         where ticket_id = ${ticketId}
+         where ticket_id = ${ticketId} ${publicComments}
+        ${historyBranch}
       )
       select * from t
        where true ${keyset}

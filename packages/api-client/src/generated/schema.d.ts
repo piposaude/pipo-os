@@ -263,6 +263,7 @@ export interface paths {
                 query?: {
                     limit?: number;
                     cursor?: string;
+                    visibility?: "public";
                 };
                 header?: never;
                 path: {

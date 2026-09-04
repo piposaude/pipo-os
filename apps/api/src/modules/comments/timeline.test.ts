@@ -266,6 +266,59 @@ describe('GET /api/tickets/:id/timeline', () => {
     })
   })
 
+  describe('visibility filter', () => {
+    it('returns every item when the filter is absent', async () => {
+      await addComment('para o RH', 'public')
+      await addComment('nota interna', 'private')
+      await changeStatus('carrier-processing')
+
+      const { data } = (await getTimeline()).json()
+
+      expect(data).toHaveLength(3)
+    })
+
+    it('drops the private comment when asked for public only', async () => {
+      await addComment('para o RH', 'public')
+      await addComment('nota interna', 'private')
+
+      const { data } = (await getTimeline('?visibility=public')).json()
+
+      expect(data.map((i: { body: string }) => i.body)).toEqual(['para o RH'])
+    })
+
+    /* A status change has no visibility column, and its `reason` is free text
+       an analyst wrote for the team. Under a public cut it is left out rather
+       than assumed safe — the RH-facing view can opt it in once it exists. */
+    it('leaves status changes out of the public cut', async () => {
+      await changeStatus('carrier-processing', 'operadora demorou, cobrar segunda')
+
+      const { data } = (await getTimeline('?visibility=public')).json()
+
+      expect(data).toEqual([])
+    })
+
+    it('keeps a public automated event in the public cut', async () => {
+      await app.db
+        .insertInto('ticket_comments')
+        .values({
+          ticket_id: ticketId,
+          kind: 'automated_event',
+          channel: 'internal',
+          visibility: 'public',
+          event_type: 'action_date_changed',
+          author_id: DEV_LOGIN_USER_ID,
+          body: 'Agendado para 13 de Julho',
+          metadata: {},
+        })
+        .execute()
+
+      const { data } = (await getTimeline('?visibility=public')).json()
+
+      expect(data).toHaveLength(1)
+      expect(data[0].type).toBe('event')
+    })
+  })
+
   it('returns 401 without session cookie', async () => {
     const response = await app.inject({
       method: 'GET',
