@@ -89,6 +89,15 @@ describe('GET /api/tickets/:id/timeline', () => {
       cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
     })
 
+  /* `created_at` at microsecond precision, which `new Date()` cannot express.
+     Postgres `now()` gives every real row microseconds, so this — not the
+     round `.000Z` above — is the shape production data actually has. */
+  const seedCommentAtMicro = (body: string, createdAt: string) =>
+    sql`insert into ticket_comments
+          (ticket_id, kind, channel, visibility, event_type, author_id, body, created_at)
+        values (${ticketId}::uuid, 'manual', 'internal', 'public', null,
+                ${DEV_LOGIN_USER_ID}, ${body}, ${createdAt}::timestamptz)`.execute(app.db)
+
   it('merges comments and status changes into one chronology', async () => {
     await addComment('primeiro')
     await changeStatus('carrier-processing', 'enviado para a operadora')
@@ -167,6 +176,35 @@ describe('GET /api/tickets/:id/timeline', () => {
       authorId: DEV_LOGIN_USER_ID,
       metadata: { priority: 'urgent', previous: null },
     })
+    expect(item.id).toEqual(expect.any(String))
+    expect(item.createdAt).toEqual(expect.any(String))
+  })
+
+  /* The first acceptance criterion of the ticket, and the only reason the
+     ORDER BY carries `id`: two rows CAN share `created_at` — the two tables
+     are written by different transactions — and without the tiebreak Postgres
+     is free to hand them back in either order, differently each call. That
+     also breaks the keyset, which assumes the pair is a total order. Drop
+     `, t.id` from the query and this test fails; every other one still passes. */
+  it('keeps the same order across two calls when items share a created_at', async () => {
+    const shared = '2026-09-01T10:00:00.000000Z'
+    await seedCommentAtMicro('um', shared)
+    await seedCommentAtMicro('dois', shared)
+    await sql`insert into ticket_status_history
+          (ticket_id, from_status, to_status, reason, author_type, author_id, created_at)
+        values (${ticketId}::uuid, 'broker-processing', 'carrier-processing', null,
+                'user', ${DEV_LOGIN_USER_ID}, ${shared}::timestamptz)`.execute(app.db)
+
+    const first = (await getTimeline()).json().data
+    const second = (await getTimeline()).json().data
+
+    const ids = (items: Array<{ id: string }>) => items.map((item) => item.id)
+
+    expect(ids(first)).toHaveLength(3)
+    expect(ids(second)).toEqual(ids(first))
+    /* Canonical lowercase UUIDs sort the same as text and as bytes — the
+       hyphens sit at fixed positions, so they never decide a comparison. */
+    expect(ids(first)).toEqual([...ids(first)].sort())
   })
 
   it('returns an empty list for a ticket with no activity', async () => {
@@ -193,15 +231,6 @@ describe('GET /api/tickets/:id/timeline', () => {
         created_at: new Date(createdAt),
       })
       .execute()
-
-  /* `created_at` at microsecond precision, which `new Date()` cannot express.
-     Postgres `now()` gives every real row microseconds, so this — not the
-     round `.000Z` above — is the shape production data actually has. */
-  const seedCommentAtMicro = (body: string, createdAt: string) =>
-    sql`insert into ticket_comments
-          (ticket_id, kind, channel, visibility, event_type, author_id, body, created_at)
-        values (${ticketId}::uuid, 'manual', 'internal', 'public', null,
-                ${DEV_LOGIN_USER_ID}, ${body}, ${createdAt}::timestamptz)`.execute(app.db)
 
   describe('cursor pagination', () => {
     it('caps the page at limit and hands back a cursor', async () => {
