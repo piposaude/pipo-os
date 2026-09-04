@@ -113,6 +113,17 @@ describe('buildTree — contagens', () => {
     expect(nodeById(sections, 'node-urgentes')?.count).toBe(3)
   })
 
+  /** The day is São Paulo's: 01:00Z on the 30th is still the 29th there, so
+   *  the count agrees with what the `createdSince` chip of the node lists. */
+  it('should count "Novos" on the São Paulo day the ticket was created', () => {
+    const sections = build([
+      row({ id: '1', assigneeId: VIEWER, createdAt: '2026-08-30T01:00:00.000Z' }),
+      row({ id: '2', assigneeId: VIEWER, createdAt: '2026-08-30T03:00:00.000Z' }),
+    ])
+
+    expect(nodeById(sections, 'node-novos')?.count).toBe(1)
+  })
+
   it('should treat "Em espera" as waiting on the carrier or on the client', () => {
     const sections = build([
       row({ id: '1', assigneeId: VIEWER, status: 'carrier-processing' }),

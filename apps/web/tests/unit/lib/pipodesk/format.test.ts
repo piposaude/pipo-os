@@ -50,6 +50,12 @@ describe('formatDayMonth', () => {
     expect(formatDayMonth('2025-12-03T10:00:00.000Z', TODAY)).toBe('03/12/25')
   })
 
+  /** The day shown is São Paulo's: 01:00Z on the 11th is still the 10th there. */
+  it('should read the São Paulo day of an instant, not the UTC one', () => {
+    expect(formatDayMonth('2026-08-11T01:00:00.000Z', TODAY)).toBe('10/08')
+    expect(daysBetween('2026-08-30T01:00:00.000Z', TODAY)).toBe(2)
+  })
+
   it('should return a dash for an unusable value', () => {
     expect(formatDayMonth(null, TODAY)).toBe('—')
     expect(formatDayMonth('not-a-date', TODAY)).toBe('—')
@@ -108,9 +114,11 @@ describe('daysBetween and daysOpenOf', () => {
   })
 })
 
+/** Fixtures at noon UTC, 09:00 in São Paulo: midnight UTC would still be the
+ *  day before there and shift every count by one. */
 describe('slaOf', () => {
   it('should have no state when the company has no contractual SLA', () => {
-    const reading = slaOf({ createdAt: '2026-08-01T00:00:00.000Z' }, null, TODAY)
+    const reading = slaOf({ createdAt: '2026-08-01T12:00:00.000Z' }, null, TODAY)
 
     expect(reading.state).toBeNull()
     expect(reading.daysOpen).toBe(30)
@@ -118,7 +126,7 @@ describe('slaOf', () => {
 
   it('should breach when the ticket is open for longer than the limit', () => {
     const reading = slaOf(
-      { createdAt: '2026-08-25T00:00:00.000Z' },
+      { createdAt: '2026-08-25T12:00:00.000Z' },
       { hours: 72, hasPenalty: true },
       TODAY,
     )
@@ -129,7 +137,7 @@ describe('slaOf', () => {
 
   it('should warn on the last day, because the data has no hour precision', () => {
     const reading = slaOf(
-      { createdAt: '2026-08-28T00:00:00.000Z' },
+      { createdAt: '2026-08-28T12:00:00.000Z' },
       { hours: 72, hasPenalty: false },
       TODAY,
     )
@@ -139,7 +147,7 @@ describe('slaOf', () => {
 
   it('should still warn on the last whole day when the limit is not a multiple of 24h', () => {
     const reading = slaOf(
-      { createdAt: '2026-08-30T00:00:00.000Z' },
+      { createdAt: '2026-08-30T12:00:00.000Z' },
       { hours: 36, hasPenalty: false },
       TODAY,
     )
@@ -149,7 +157,7 @@ describe('slaOf', () => {
 
   it('should be ok with room to spare', () => {
     const reading = slaOf(
-      { createdAt: '2026-08-30T00:00:00.000Z' },
+      { createdAt: '2026-08-30T12:00:00.000Z' },
       { hours: 72, hasPenalty: false },
       TODAY,
     )

@@ -10,6 +10,7 @@
  * base is how the illegitimate subtraction is born.
  */
 
+import { businessDay } from '@/lib/date'
 import { API_STATUSES, type ApiStatus } from './status'
 import { applyFilter, sinceOf, windowOf, type TicketFilter, type WindowMode } from './filter'
 import { DEFAULT_SORT, type TicketSort } from './sort'
@@ -189,7 +190,7 @@ export function buildTree(tickets: TicketRow[], options: BuildTreeOptions): Tree
     mine({
       id: 'node-novos',
       label: 'Novos',
-      count: meusEmAberto.filter((ticket) => ticket.createdAt.slice(0, 10) >= novosSince).length,
+      count: meusEmAberto.filter((ticket) => businessDay(ticket.createdAt) >= novosSince).length,
       filter: { assigneeIds: ['@me'], statuses: OPEN_STATUSES, createdSince: novosSince },
     }),
     mine({
