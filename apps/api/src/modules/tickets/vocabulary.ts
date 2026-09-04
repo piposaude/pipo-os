@@ -8,9 +8,8 @@ interface Vocabulary {
   /** A list and not one value: a client word may have more than one stored
    *  form, and matching only one of them would drop rows. */
   toStored: (clientValue: string) => string[]
-  /** Every word this vocabulary can put on a row, or `null` when the de-para is
-   *  a rule and the set is open. Declared in contract/ticket-vocabulary.json so
-   *  the web can be held to having copy for each one. */
+  /** `null` when the de-para is a rule and the set is open. Declared in
+   *  contract/ticket-vocabulary.json so the web is held to having copy. */
   clientWords: string[] | null
 }
 

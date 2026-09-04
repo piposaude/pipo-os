@@ -934,7 +934,7 @@ describe('tickets routes', () => {
         companySize: 'enterprise',
       })
 
-      // Derived or sent, the column holds the EI's word — the de-para stays reversible.
+      // Derived or sent, the column holds the EI's word.
       const stored = await app.db
         .selectFrom('tickets')
         .select(['product', 'contract_type', 'company_size'])
@@ -948,8 +948,8 @@ describe('tickets routes', () => {
       })
     })
 
-    /** Uma coluna com string vazia é pior que nula: a tela mostraria um valor
-     *  que não existe, e o filtro teria uma opção que ninguém escolhe. */
+    /** A blank column is worse than a null one: the screen would show a value
+     *  that does not exist, and the filter an option nobody picks. */
     it.each(['carrierId', 'carrierName', 'product', 'contractType', 'companySize'])(
       'recusa %s em branco em vez de gravar coluna vazia',
       async (field) => {
@@ -979,8 +979,8 @@ describe('tickets routes', () => {
       expect(response.json().carrierId).toBe('carrier-do-corpo')
     })
 
-    /** Contrapartida do `.min(1)` na resposta: `''` só entra por SQL na mão, e
-     *  quando entra a leitura falha alto em vez de virar célula vazia. */
+    /** The other side of `.min(1)` on the response: `''` only gets in by hand,
+     *  and when it does the read fails loudly instead of rendering empty. */
     it('falha a leitura quando a coluna tem string vazia', async () => {
       const created = await app.inject({
         method: 'POST',

@@ -1,11 +1,7 @@
 /**
- * The only module on this side that knows the enrollment_snapshot shape.
- *
- * From PD-207 on the EI sends the movement fields in the POST body; until then
- * they are read from the snapshot, which already carries them, so the column is
- * born filled instead of waiting. Read raw, in the EI's own word: the column
- * stores what the EI said and the translation happens at the edge
- * (`vocabulary.ts`).
+ * The only module on this side that knows the enrollment_snapshot shape. Reads
+ * raw: the column stores the EI's own word and `vocabulary.ts` translates at
+ * the edge. A bridge until the EI sends the fields in the body (PD-207).
  */
 
 import type { z } from 'zod'
@@ -21,9 +17,8 @@ const snakeOf = (key: string): string => key.replace(/-/g, '_')
 
 const kebabOf = (key: string): string => key.replace(/_/g, '-')
 
-/** Reads a path accepting kebab, snake or camelCase per segment. The snapshot
- *  contract is not frozen (PD-001), so a separator must not decide whether a
- *  column is filled. Twin of `readPath` in web/src/lib/pipodesk/ticket-row.ts. */
+/** The snapshot contract is not frozen (PD-001), so a separator must not
+ *  decide whether a column is filled. Twin of `readPath` in web's ticket-row. */
 function readPath(snapshot: Record<string, unknown>, path: string[]): unknown {
   let current: unknown = snapshot
   for (const segment of path) {
@@ -38,7 +33,6 @@ function readPath(snapshot: Record<string, unknown>, path: string[]): unknown {
   return current
 }
 
-/** The first path holding a non-empty string. */
 function readString(snapshot: Record<string, unknown>, ...paths: string[][]): string | null {
   for (const path of paths) {
     const value = readPath(snapshot, path)
@@ -47,7 +41,6 @@ function readString(snapshot: Record<string, unknown>, ...paths: string[][]): st
   return null
 }
 
-/** One source for the enum: the same schema that validates the column on read. */
 export type Relationship = z.infer<typeof relationshipSchema>
 
 /**
@@ -67,7 +60,6 @@ export function relationshipOf(snapshot: unknown): Relationship | null {
   return Array.isArray(dependents) && dependents.length > 0 ? 'family-group' : 'holder'
 }
 
-/** The five fields the EI does have, each on the paths it uses today. */
 export interface MovementFields {
   carrierId: string | null
   carrierName: string | null

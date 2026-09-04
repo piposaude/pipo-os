@@ -5,9 +5,8 @@ import { describe, expect, it } from 'vitest'
 import { optionLabel, type LabelContext } from '@/lib/pipodesk/filter-copy'
 import type { FilterField } from '@/lib/pipodesk/filter'
 
-/** Twin of the contract block in apps/api/src/modules/tickets/vocabulary.test.ts:
- *  change one, change both. The API declares the words it can put on a row; a
- *  word without copy of its own reaches the analyst raw. */
+/** Twin of the contract block in apps/api's vocabulary.test.ts: change one,
+ *  change both. A word without copy of its own reaches the analyst raw. */
 const WORDS_PATH = fileURLToPath(
   new URL('../../../../../../contract/ticket-vocabulary.json', import.meta.url),
 )
@@ -16,7 +15,6 @@ const { clientWords } = JSON.parse(readFileSync(WORDS_PATH, 'utf-8')) as {
   clientWords: Record<string, string[]>
 }
 
-/** Which filter field reads each vocabulary. */
 const FIELD_OF: Record<string, FilterField> = {
   companySize: 'companySizes',
   contractType: 'contractTypes',

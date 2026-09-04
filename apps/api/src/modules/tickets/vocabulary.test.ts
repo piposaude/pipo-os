@@ -71,9 +71,8 @@ describe('toStored', () => {
 })
 
 /** Twin of vocabulary-contract.test.ts in apps/web: change one, change both.
- *  The maps used to live in the web, where a single test proved every word they
- *  produced had copy of its own; they crossed to this side, so the declaration
- *  crosses through contract/ and each side is held to its half. */
+ *  The maps crossed over from there, so the declaration crosses through
+ *  contract/ and each side is held to its half. */
 const WORDS_PATH = fileURLToPath(
   new URL('../../../../../contract/ticket-vocabulary.json', import.meta.url),
 )

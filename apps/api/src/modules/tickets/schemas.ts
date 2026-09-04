@@ -46,9 +46,8 @@ export const ticketSchema = z
     collaborators: z.array(z.record(z.string(), z.unknown())),
     forceCompletion: z.boolean(),
     enrollmentSnapshot: z.record(z.string(), z.unknown()),
-    /** `.min(1)` as in `assigneeId`: a word or null, and `''` is neither.
-     *  Both write paths already refuse it — the body by the same `.min(1)`,
-     *  the snapshot by ignoring blanks. */
+    /** `.min(1)` as in `assigneeId`: a word or null, and `''` is neither —
+     *  both write paths already refuse it. */
     carrierId: z.string().min(1).nullable(),
     carrierName: z.string().min(1).nullable(),
     product: z.string().min(1).nullable(),

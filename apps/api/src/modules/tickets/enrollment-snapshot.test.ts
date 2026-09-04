@@ -26,8 +26,7 @@ describe('relationshipOf', () => {
     expect(relationshipOf({ 'member-type': 'dependent' })).toBe('dependent')
   })
 
-  /** The web read this second path before the derivation moved here, and the
-   *  value is frozen at creation — losing it has no later correction. */
+  /** The web read this path too, and the value is frozen at creation. */
   it('falls back to the member_type nested under primary', () => {
     expect(relationshipOf({ primary: { 'member-type': 'dependent' } })).toBe('dependent')
     expect(relationshipOf({ primary: { memberType: 'primary' }, dependents: [{ id: 'd1' }] })).toBe(
@@ -83,8 +82,6 @@ describe('movementFieldsOf', () => {
     })
   })
 
-  /** The column holds the EI's word; translating on the way in would lose the
-   *  original, which is what keeps the de-para reversible. */
   it('keeps the EI word instead of translating it', () => {
     expect(movementFieldsOf({ company: { 'company-size': 'smb' } }).companySize).toBe('smb')
   })
