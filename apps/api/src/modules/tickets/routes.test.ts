@@ -979,9 +979,10 @@ describe('tickets routes', () => {
       expect(response.json().carrierId).toBe('carrier-do-corpo')
     })
 
-    /** The other side of `.min(1)` on the response: `''` only gets in by hand,
-     *  and when it does the read fails loudly instead of rendering empty. */
-    it('falha a leitura quando a coluna tem string vazia', async () => {
+    /** `''` only gets into the column by hand. When it does, one row must not
+     *  take the whole page down with it — the response says word or null, so a
+     *  blank reads as null. */
+    it('lê coluna em branco como nula, no detalhe e na listagem', async () => {
       const created = await app.inject({
         method: 'POST',
         url: '/api/tickets',
@@ -989,7 +990,11 @@ describe('tickets routes', () => {
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
       const { id } = created.json()
-      await app.db.updateTable('tickets').set({ carrier_name: '' }).where('id', '=', id).execute()
+      await app.db
+        .updateTable('tickets')
+        .set({ carrier_name: '', product: '', company_size: '   ' })
+        .where('id', '=', id)
+        .execute()
 
       const read = await app.inject({
         method: 'GET',
@@ -997,7 +1002,17 @@ describe('tickets routes', () => {
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
 
-      expect(read.statusCode).toBe(500)
+      expect(read.statusCode).toBe(200)
+      expect(read.json()).toMatchObject({ carrierName: null, product: null, companySize: null })
+
+      const list = await app.inject({
+        method: 'GET',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(list.statusCode).toBe(200)
+      expect(list.json().data).toHaveLength(1)
     })
 
     it('deixa os campos nulos quando nem o corpo nem o snapshot os trazem', async () => {

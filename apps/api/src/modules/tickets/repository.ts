@@ -19,6 +19,11 @@ export type ChangeStatusResult =
 
 const OPEN_ENROLLMENT_CONSTRAINT = 'uq_tickets_open_enrollment'
 
+/** `.min(1)` on the response would turn one hand-edited row into a 500 for the
+ *  whole page, so a blank column reads as the null it means. */
+const blankAsNull = (value: string | null): string | null =>
+  value === null || value.trim() === '' ? null : value
+
 function toTicket(row: Selectable<Tickets>): Ticket {
   return {
     id: row.id,
@@ -39,11 +44,11 @@ function toTicket(row: Selectable<Tickets>): Ticket {
     collaborators: row.collaborators as Array<Record<string, unknown>>,
     forceCompletion: row.force_completion,
     enrollmentSnapshot: row.enrollment_snapshot as Record<string, unknown>,
-    carrierId: row.carrier_id,
-    carrierName: row.carrier_name,
-    product: toClient('product', row.product),
-    contractType: toClient('contractType', row.contract_type),
-    companySize: toClient('companySize', row.company_size),
+    carrierId: blankAsNull(row.carrier_id),
+    carrierName: blankAsNull(row.carrier_name),
+    product: blankAsNull(toClient('product', row.product)),
+    contractType: blankAsNull(toClient('contractType', row.contract_type)),
+    companySize: blankAsNull(toClient('companySize', row.company_size)),
     relationship: relationshipSchema.safeParse(row.relationship).data ?? null,
     sourceSystem: row.source_system,
     parentTicketId: row.parent_ticket_id,
