@@ -163,6 +163,27 @@ describe('GET /api/tickets/rows', () => {
     expect(row.taxId).toBeNull()
   })
 
+  /* `#>>` stringifies whatever it finds, so a number would arrive as "12345"
+     while the web's `readString` — which demands a string — reads it as
+     nothing and tries the next spelling. Same reading on both sides or the
+     count stops matching the list. */
+  it('ignores a value that is not a string, as the row does', async () => {
+    await seed([
+      {
+        title: 'a',
+        snapshot: {
+          company: { 'company-name': 12345, name: 'Acme Saúde' },
+          primary: { profile: { 'preferred-name': null, name: 'Maria Souza' } },
+        },
+      },
+    ])
+
+    const [row] = (await get()).body.data
+
+    expect(row.companyName).toBe('Acme Saúde')
+    expect(row.beneficiaryName).toBe('Maria Souza')
+  })
+
   it('takes a repeated parameter as one filter with several values', async () => {
     await seed([
       { title: 'faltando', status: 'missing-documents' },

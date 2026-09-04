@@ -1,4 +1,4 @@
-import { sql, type Kysely, type Selectable } from 'kysely'
+import { sql, type Kysely, type RawBuilder, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
 import { ConflictError } from '../../shared/errors.js'
@@ -78,6 +78,27 @@ export interface TicketsRepositoryPort {
     viewerId: string,
     today: string,
   ): Promise<{ data: TicketRowPayload[]; total: number }>
+}
+
+/**
+ * The first spelling under `parent` that holds a real word, mirroring the
+ * web's `readString` in `ticket-row.ts` — the queue has to read the snapshot
+ * the same way on both sides or the number a node announces stops matching
+ * the list the screen draws.
+ *
+ * Two rules that `coalesce` alone would miss, and each one is a divergence
+ * the web does not have:
+ *   - a blank counts as absent, so `company-name: ''` falls through to `name`;
+ *   - only a JSON string counts, so a number does not become `"42"` here
+ *     while the web reads it as nothing.
+ */
+function snapshotString(parent: string, keys: string[]): RawBuilder<string | null> {
+  const candidates = keys.map((key) => {
+    const path = sql.lit(`{${parent},${key}}`)
+    return sql`nullif(btrim(case when jsonb_typeof(enrollment_snapshot #> ${path}::text[]) = 'string'
+                                 then enrollment_snapshot #>> ${path}::text[] end), '')`
+  })
+  return sql<string | null>`coalesce(${sql.join(candidates, sql`, `)})`
 }
 
 export class TicketsRepository implements TicketsRepositoryPort {
@@ -189,30 +210,17 @@ export class TicketsRepository implements TicketsRepositoryPort {
         'created_at',
         'updated_at',
       ])
-      /* `nullif(btrim(...))` on every candidate, not just `coalesce`: the web's
-         `readString` treats a blank as absent and falls through to the next
-         path, and `coalesce` alone only falls through on NULL. Without it a
-         snapshot carrying `company-name: ''` beside `name: 'Acme'` blanks the
-         column here while the web shows Acme — the same blank-is-not-a-word
-         rule the five movement columns already follow. */
       .select([
-        sql<string | null>`coalesce(
-          nullif(btrim(enrollment_snapshot #>> '{company,company_name}'), ''),
-          nullif(btrim(enrollment_snapshot #>> '{company,company-name}'), ''),
-          nullif(btrim(enrollment_snapshot #>> '{company,companyName}'), ''),
-          nullif(btrim(enrollment_snapshot #>> '{company,name}'), '')
-        )`.as('company_name'),
-        sql<string | null>`coalesce(
-          nullif(btrim(enrollment_snapshot #>> '{primary,profile,preferred_name}'), ''),
-          nullif(btrim(enrollment_snapshot #>> '{primary,profile,preferred-name}'), ''),
-          nullif(btrim(enrollment_snapshot #>> '{primary,profile,preferredName}'), ''),
-          nullif(btrim(enrollment_snapshot #>> '{primary,profile,name}'), '')
-        )`.as('beneficiary_name'),
-        sql<string | null>`coalesce(
-          nullif(btrim(enrollment_snapshot #>> '{primary,profile,tax_id}'), ''),
-          nullif(btrim(enrollment_snapshot #>> '{primary,profile,tax-id}'), ''),
-          nullif(btrim(enrollment_snapshot #>> '{primary,profile,taxId}'), '')
-        )`.as('tax_id'),
+        snapshotString('company', ['company_name', 'company-name', 'companyName', 'name']).as(
+          'company_name',
+        ),
+        snapshotString('primary,profile', [
+          'preferred_name',
+          'preferred-name',
+          'preferredName',
+          'name',
+        ]).as('beneficiary_name'),
+        snapshotString('primary,profile', ['tax_id', 'tax-id', 'taxId']).as('tax_id'),
       ])
       .select(sql<string>`count(*) over ()`.as('total_count'))
       .orderBy('created_at', 'desc')
