@@ -37,6 +37,15 @@ describe('toStored', () => {
     expect(toStored('contractType', 'intern')).toEqual(['intern'])
   })
 
+  /** A row never reaches the client carrying a stored word that has a
+   *  translation — it sees `pme`, never `smb` — so a filter written in that
+   *  word matches nothing on the web and must match nothing here either. */
+  it('matches nothing for a stored word that has a translation', () => {
+    expect(toStored('companySize', 'smb')).toEqual([])
+    expect(toStored('contractType', 'services-contract')).toEqual([])
+    expect(toStored('product', 'health-insurance')).toEqual([])
+  })
+
   /** The point of the rule: a benefit the EI adds tomorrow needs no entry here
    *  to be found by either of its names. */
   it('finds both names of a benefit nobody registered', () => {

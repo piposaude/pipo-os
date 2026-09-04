@@ -14,7 +14,10 @@ const fromTable = (table: Record<string, string>): Vocabulary => ({
   toClient: (stored) => (own(table, stored) ? table[stored] : stored),
   toStored: (clientValue) => {
     const keys = Object.keys(table).filter((key) => table[key] === clientValue)
-    return keys.includes(clientValue) ? keys : [...keys, clientValue]
+    // A stored word that has a translation never reaches the client as itself,
+    // so it is not a client word: matching it here would find rows the web
+    // cannot. An unmapped value passes through, as in toClient.
+    return own(table, clientValue) ? keys : [...keys, clientValue]
   },
 })
 
@@ -23,8 +26,9 @@ const fromTable = (table: Record<string, string>): Vocabulary => ({
  *  may be stored. */
 const insuranceSuffix: Vocabulary = {
   toClient: (stored) => stored.replace(/-insurance$/, ''),
+  // The client never sees the suffix, so a value carrying it is not a client word.
   toStored: (clientValue) =>
-    clientValue.endsWith('-insurance') ? [clientValue] : [clientValue, `${clientValue}-insurance`],
+    clientValue.endsWith('-insurance') ? [] : [clientValue, `${clientValue}-insurance`],
 }
 
 export const VOCABULARIES = {

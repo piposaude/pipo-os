@@ -284,6 +284,19 @@ describe('ticketFilterConditions — the saved filter, resolved in SQL', () => {
 
     expect(await matching({ contractTypes: [null] })).toEqual(['sem-contrato'])
   })
+
+  it('matches nothing for a filter written in the word the column stores', async () => {
+    await seed([
+      { id: 'smb', companySize: 'smb' },
+      { id: 'canonica', product: 'health-insurance' },
+    ])
+
+    // The web never sees `smb` or `health-insurance` on a row, so it cannot
+    // match them; the server must agree, or a node announces one number and
+    // lists another.
+    expect(await matching({ companySizes: ['smb'] })).toEqual([])
+    expect(await matching({ products: ['health-insurance'] })).toEqual([])
+  })
 })
 
 /** The type catches a missing field; this catches a surplus one. */

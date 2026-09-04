@@ -444,6 +444,20 @@
         "archived": false
       },
       "expected": ["livre-urgente"]
+    },
+    {
+      "name": "a filter in the word the column stores matches nothing on either side",
+      "filter": {
+        "companySizes": ["smb"]
+      },
+      "expected": []
+    },
+    {
+      "name": "the EI's canonical product name is not a client word either",
+      "filter": {
+        "products": ["health-insurance"]
+      },
+      "expected": []
     }
   ]
 }
