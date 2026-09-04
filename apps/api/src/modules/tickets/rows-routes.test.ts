@@ -141,6 +141,28 @@ describe('GET /api/tickets/rows', () => {
     expect((await get()).body.data[0].companyName).toBe('Caiçara')
   })
 
+  /* The web's `readString` skips a blank and tries the next spelling, so the
+     server has to do the same or the queue shows an empty cell where the web
+     shows a name. `coalesce` alone would not: it only falls through on NULL. */
+  it('skips a blank spelling and reads the next one, as the row does', async () => {
+    await seed([
+      {
+        title: 'a',
+        snapshot: {
+          company: { 'company-name': '', name: 'Acme Saúde' },
+          primary: { profile: { 'preferred-name': '   ', name: 'Maria Souza', 'tax-id': '' } },
+        },
+      },
+    ])
+
+    const [row] = (await get()).body.data
+
+    expect(row.companyName).toBe('Acme Saúde')
+    expect(row.beneficiaryName).toBe('Maria Souza')
+    /* Nothing left to fall through to: blank becomes null, never `''`. */
+    expect(row.taxId).toBeNull()
+  })
+
   it('takes a repeated parameter as one filter with several values', async () => {
     await seed([
       { title: 'faltando', status: 'missing-documents' },

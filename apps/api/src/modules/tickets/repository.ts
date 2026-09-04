@@ -189,23 +189,29 @@ export class TicketsRepository implements TicketsRepositoryPort {
         'created_at',
         'updated_at',
       ])
+      /* `nullif(btrim(...))` on every candidate, not just `coalesce`: the web's
+         `readString` treats a blank as absent and falls through to the next
+         path, and `coalesce` alone only falls through on NULL. Without it a
+         snapshot carrying `company-name: ''` beside `name: 'Acme'` blanks the
+         column here while the web shows Acme — the same blank-is-not-a-word
+         rule the five movement columns already follow. */
       .select([
         sql<string | null>`coalesce(
-          enrollment_snapshot #>> '{company,company_name}',
-          enrollment_snapshot #>> '{company,company-name}',
-          enrollment_snapshot #>> '{company,companyName}',
-          enrollment_snapshot #>> '{company,name}'
+          nullif(btrim(enrollment_snapshot #>> '{company,company_name}'), ''),
+          nullif(btrim(enrollment_snapshot #>> '{company,company-name}'), ''),
+          nullif(btrim(enrollment_snapshot #>> '{company,companyName}'), ''),
+          nullif(btrim(enrollment_snapshot #>> '{company,name}'), '')
         )`.as('company_name'),
         sql<string | null>`coalesce(
-          enrollment_snapshot #>> '{primary,profile,preferred_name}',
-          enrollment_snapshot #>> '{primary,profile,preferred-name}',
-          enrollment_snapshot #>> '{primary,profile,preferredName}',
-          enrollment_snapshot #>> '{primary,profile,name}'
+          nullif(btrim(enrollment_snapshot #>> '{primary,profile,preferred_name}'), ''),
+          nullif(btrim(enrollment_snapshot #>> '{primary,profile,preferred-name}'), ''),
+          nullif(btrim(enrollment_snapshot #>> '{primary,profile,preferredName}'), ''),
+          nullif(btrim(enrollment_snapshot #>> '{primary,profile,name}'), '')
         )`.as('beneficiary_name'),
         sql<string | null>`coalesce(
-          enrollment_snapshot #>> '{primary,profile,tax_id}',
-          enrollment_snapshot #>> '{primary,profile,tax-id}',
-          enrollment_snapshot #>> '{primary,profile,taxId}'
+          nullif(btrim(enrollment_snapshot #>> '{primary,profile,tax_id}'), ''),
+          nullif(btrim(enrollment_snapshot #>> '{primary,profile,tax-id}'), ''),
+          nullif(btrim(enrollment_snapshot #>> '{primary,profile,taxId}'), '')
         )`.as('tax_id'),
       ])
       .select(sql<string>`count(*) over ()`.as('total_count'))

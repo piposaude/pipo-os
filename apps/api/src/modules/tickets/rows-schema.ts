@@ -39,7 +39,9 @@ export const ticketRowsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(5000).default(5000),
 })
 
-/** No `enrollment_snapshot` — leaving it out is the point of the endpoint. */
+/** No `enrollment_snapshot` — leaving it out is the point of the endpoint.
+ *  The three fields dug out of it say word or null, never `''`, like the five
+ *  movement columns: a blank is not a name. */
 export const ticketRowSchema = z
   .object({
     id: z.uuid(),
@@ -53,9 +55,9 @@ export const ticketRowSchema = z
     groupId: z.uuid().nullable(),
     assigneeId: z.string().min(1).nullable(),
     companyId: z.uuid(),
-    companyName: z.string().nullable(),
-    beneficiaryName: z.string().nullable(),
-    taxId: z.string().nullable(),
+    companyName: z.string().min(1).nullable(),
+    beneficiaryName: z.string().min(1).nullable(),
+    taxId: z.string().min(1).nullable(),
     carrierId: z.string().nullable(),
     carrierName: z.string().nullable(),
     product: z.string().nullable(),
