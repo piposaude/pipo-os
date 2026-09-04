@@ -2,7 +2,7 @@ import { sql, type Kysely, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
 import { ConflictError } from '../../shared/errors.js'
-import { relationshipOf } from './relationship.js'
+import { movementFieldsOf, relationshipOf } from './enrollment-snapshot.js'
 import { toClient } from './vocabulary.js'
 import {
   CLOSED_STATUSES,
@@ -139,6 +139,9 @@ export class TicketsRepository implements TicketsRepositoryPort {
   }
 
   async create(data: CreateTicketBody): Promise<Ticket> {
+    // The body wins; the snapshot fills what the EI does not send yet (PD-207).
+    const derived = movementFieldsOf(data.enrollmentSnapshot)
+
     try {
       const row = await this.db
         .insertInto('tickets')
@@ -148,11 +151,11 @@ export class TicketsRepository implements TicketsRepositoryPort {
           company_id: data.companyId,
           source_system: data.sourceSystem,
           enrollment_snapshot: JSON.stringify(data.enrollmentSnapshot),
-          carrier_id: data.carrierId,
-          carrier_name: data.carrierName,
-          product: data.product,
-          contract_type: data.contractType,
-          company_size: data.companySize,
+          carrier_id: data.carrierId ?? derived.carrierId,
+          carrier_name: data.carrierName ?? derived.carrierName,
+          product: data.product ?? derived.product,
+          contract_type: data.contractType ?? derived.contractType,
+          company_size: data.companySize ?? derived.companySize,
           relationship: relationshipOf(data.enrollmentSnapshot),
           status: data.status ?? 'broker-processing',
           queue_id: data.queueId,

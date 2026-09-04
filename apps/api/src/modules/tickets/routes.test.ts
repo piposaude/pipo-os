@@ -908,7 +908,62 @@ describe('tickets routes', () => {
       expect(read.json().relationship).toBeNull()
     })
 
-    it('deixa os campos nulos quando o EI não os manda', async () => {
+    it('tira os campos do snapshot enquanto o EI não os manda no corpo', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: {
+          ...validTicketBody,
+          enrollmentSnapshot: {
+            'carrier-id': 'carrier-unimed',
+            'carrier-name': 'Unimed Mineira',
+            contract: { 'product-type': 'health-insurance' },
+            primary: { employment: { 'contract-type': 'services-contract' } },
+            company: { 'company-size': 'corporate' },
+          },
+        },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const ticket = created.json()
+
+      expect(ticket).toMatchObject({
+        carrierId: 'carrier-unimed',
+        carrierName: 'Unimed Mineira',
+        product: 'health',
+        contractType: 'pj',
+        companySize: 'enterprise',
+      })
+
+      // Derived or sent, the column holds the EI's word — the de-para stays reversible.
+      const stored = await app.db
+        .selectFrom('tickets')
+        .select(['product', 'contract_type', 'company_size'])
+        .where('id', '=', ticket.id)
+        .executeTakeFirstOrThrow()
+
+      expect(stored).toEqual({
+        product: 'health-insurance',
+        contract_type: 'services-contract',
+        company_size: 'corporate',
+      })
+    })
+
+    it('prefere o corpo ao snapshot quando os dois trazem o campo', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: {
+          ...validTicketBody,
+          carrierId: 'carrier-do-corpo',
+          enrollmentSnapshot: { 'carrier-id': 'carrier-do-snapshot' },
+        },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.json().carrierId).toBe('carrier-do-corpo')
+    })
+
+    it('deixa os campos nulos quando nem o corpo nem o snapshot os trazem', async () => {
       const response = await app.inject({
         method: 'POST',
         url: '/api/tickets',
