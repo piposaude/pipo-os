@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import type { FastifyInstance } from 'fastify'
 import { afterEach, afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
+import { businessToday } from '../../shared/business-date.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
 
 const COMPANY = '00000000-0000-4000-8000-0000000000d1'
@@ -25,9 +26,9 @@ describe('GET /api/tickets/rows', () => {
   let cookie: string
   /** Asked, not assumed: the dev login mints its own address. */
   let viewer: string
-  const today = new Date().toISOString().slice(0, 10)
-  const inDays = (days: number) =>
-    new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10)
+  /** Instants at noon in São Paulo, `days` from the operation's today. */
+  const inDays = (days: number): string =>
+    new Date(Date.parse(`${businessToday()}T15:00:00.000Z`) + days * 86_400_000).toISOString()
 
   beforeAll(async () => {
     process.env.DEV_LOGIN_ENABLED = 'true'
@@ -195,7 +196,7 @@ describe('GET /api/tickets/rows', () => {
   it('opens on the awake window, hiding what is due further out', async () => {
     await seed([
       { title: 'sem-data', actionDate: null },
-      { title: 'hoje', actionDate: today },
+      { title: 'hoje', actionDate: inDays(0) },
       { title: 'futura', actionDate: inDays(10) },
     ])
 

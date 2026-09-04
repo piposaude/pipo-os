@@ -75,6 +75,13 @@ describe('toTicketRow — campos do próprio ticket', () => {
     expect(row.actionDate).toBe('2026-09-05')
   })
 
+  /** The day is São Paulo's, not UTC's: 01:30Z is still 22:30 of the day before. */
+  it('should read the action date as a São Paulo day, not a UTC one', () => {
+    const row = toTicketRow(apiTicket({ actionDate: '2026-09-05T01:30:00.000Z' }))
+
+    expect(row.actionDate).toBe('2026-09-04')
+  })
+
   it('should carry the operational number the api generates', () => {
     expect(toTicketRow(apiTicket({ displayNumber: 'M000123' })).displayNumber).toBe('M000123')
   })

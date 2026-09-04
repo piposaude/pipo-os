@@ -1,5 +1,6 @@
 import { sql, type Expression, type ExpressionBuilder, type RawBuilder, type SqlBool } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
+import { startOfBusinessDay } from '../../shared/business-date.js'
 import type { TicketFilter } from './filter-schema.js'
 import { toStored, type VocabularyName } from './vocabulary.js'
 
@@ -9,11 +10,11 @@ export const SLEEP_DAYS = 2
 
 type Eb = ExpressionBuilder<Database, 'tickets'>
 
-/** Midnight UTC of a calendar day, as an instant. The web reads the day off
- *  the ISO string, so the cut must not depend on the session TimeZone; and a
- *  bare column beside a constant is what lets the date indexes be used. */
-const utcMidnight = (isoDate: string): RawBuilder<unknown> =>
-  sql`${`${isoDate}T00:00:00Z`}::timestamptz`
+/** Midnight of a São Paulo calendar day, as an instant. The day is the
+ *  operation's, as the web reads it, whatever the session TimeZone; and a bare
+ *  column beside a constant is what lets the date indexes be used. */
+const businessMidnight = (isoDate: string): RawBuilder<unknown> =>
+  sql`${startOfBusinessDay(isoDate)}::timestamptz`
 
 const plusDays = (isoDate: string, days: number): string =>
   new Date(Date.parse(`${isoDate}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10)
@@ -94,13 +95,15 @@ export const FIELD_RESOLVERS: Record<keyof TicketFilter, Resolver> = {
   actionDateBefore: (_eb, { actionDateBefore }) =>
     actionDateBefore === undefined
       ? null
-      : sql<SqlBool>`action_date < ${utcMidnight(actionDateBefore)}`,
+      : sql<SqlBool>`action_date < ${businessMidnight(actionDateBefore)}`,
   urgentBy: (_eb, { urgentBy }) =>
     urgentBy === undefined
       ? null
-      : sql<SqlBool>`(priority = 'urgent' OR action_date < ${utcMidnight(urgentBy)})`,
+      : sql<SqlBool>`(priority = 'urgent' OR action_date < ${businessMidnight(urgentBy)})`,
   createdSince: (_eb, { createdSince }) =>
-    createdSince === undefined ? null : sql<SqlBool>`created_at >= ${utcMidnight(createdSince)}`,
+    createdSince === undefined
+      ? null
+      : sql<SqlBool>`created_at >= ${businessMidnight(createdSince)}`,
   archived: (eb, { archived }) =>
     archived === undefined ? null : eb('closed_at', archived ? 'is not' : 'is', null),
 }
@@ -125,7 +128,7 @@ export function actionDateWindowCondition(
   if (window === 'all') return null
   // Sleeping starts the day after the last awake one, so the cut is that
   // day's midnight: `>=` sleeps, `<` is awake.
-  const cut = utcMidnight(plusDays(today, SLEEP_DAYS + 1))
+  const cut = businessMidnight(plusDays(today, SLEEP_DAYS + 1))
   // A closed ticket is in neither window, as in windowOf on the web — `all` is
   // the only mode that crosses to it.
   return window === 'sleeping'

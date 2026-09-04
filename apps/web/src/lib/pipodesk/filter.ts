@@ -1,4 +1,5 @@
 import type { TicketFilter as ApiTicketFilter } from '@pipo-os/api-client'
+import { businessDay } from '@/lib/date'
 import type { TicketRow } from './ticket-row'
 
 /**
@@ -113,8 +114,9 @@ export function matchesFilter(ticket: TicketRow, filter: TicketFilter, viewerId:
   if (filter.archived === false && ticket.closedAt !== null) return false
   if (filter.archived === true && ticket.closedAt === null) return false
 
-  // String comparison is enough: both ends are ISO, which sorts chronologically.
-  if (filter.createdSince && ticket.createdAt < filter.createdSince) return false
+  // Both ends are YYYY-MM-DD once createdAt is read as a São Paulo day, so the
+  // string comparison sorts chronologically.
+  if (filter.createdSince && businessDay(ticket.createdAt) < filter.createdSince) return false
 
   if (missesList(filter.statuses, ticket.status)) return false
   if (missesList(filter.companyIds, ticket.companyId)) return false

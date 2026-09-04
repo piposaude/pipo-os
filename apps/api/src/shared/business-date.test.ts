@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { businessToday } from './business-date.js'
+import { businessToday, startOfBusinessDay } from './business-date.js'
 
 describe('businessToday', () => {
   /** The hours that made this function necessary: in UTC it is already the next
@@ -18,5 +18,18 @@ describe('businessToday', () => {
 
   it('agrees with UTC in the middle of the working day', () => {
     expect(businessToday(new Date('2026-09-03T15:00:00.000Z'))).toBe('2026-09-03')
+  })
+})
+
+describe('startOfBusinessDay', () => {
+  it('is the instant midnight strikes in São Paulo, three hours after UTC', () => {
+    expect(startOfBusinessDay('2026-09-03')).toBe('2026-09-03T03:00:00.000Z')
+  })
+
+  it('puts 01:30Z on the day before, and 03:00Z on the day itself', () => {
+    const cut = Date.parse(startOfBusinessDay('2026-09-03'))
+
+    expect(Date.parse('2026-09-03T01:30:00.000Z') < cut).toBe(true)
+    expect(Date.parse('2026-09-03T03:00:00.000Z') < cut).toBe(false)
   })
 })
