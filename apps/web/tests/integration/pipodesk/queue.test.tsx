@@ -141,8 +141,6 @@ describe('fila operacional', () => {
       'Views',
       'Chamados',
       'Livres',
-      'Por status',
-      'Por cliente',
       'MOV CLT',
       'MOV PJ',
       'MOV MB',

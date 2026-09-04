@@ -48,6 +48,6 @@ export function sidebarIconKindFor(node: TreeNode): SidebarIconKind | null {
   // `Livres` is a pod-level row like the MOVs, so it takes the cube;
   // `Chamados` does not — plain text in the design.
   if (/^node-pod-.+-livres$/.test(id)) return 'group'
-  if (/^queue-pod-.+-(clt|pj|mb|por-status|por-cliente)$/.test(id)) return 'group'
+  if (/^queue-pod-.+-(clt|pj|mb)$/.test(id)) return 'group'
   return null
 }
