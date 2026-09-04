@@ -24,7 +24,9 @@ const table = () => screen.getByRole('table')
 
 describe('fila operacional', () => {
   /** DSP-115 (01/09): the Inbox lost its red badge and white card in the
-   *  prototype; its count reads like every other leaf's. */
+   *  prototype; its count reads like every other leaf's. The DS `Badge`
+   *  exposes no role or data attribute, so "no badge" has one observable
+   *  signal: the Inbox count carries exactly the class its sibling leaf does. */
   it('should draw the Inbox count like any other leaf, with no badge', async () => {
     await renderQueue()
     const sidebar = screen.getByRole('navigation', { name: /pipodesk/i })
