@@ -87,6 +87,22 @@ describe('detalhe do chamado', () => {
     expect(banner).not.toHaveTextContent('dias.')
   })
 
+  /** 705639 is 25 days late, so it only ever exercises the plural. `701689`
+   *  is filed for the day before the dataset's today — the one fixture that
+   *  proves the singular reaches the screen, not just the copy function. */
+  it('should say `1 dia` when the movement is a single day overdue', async () => {
+    await renderAt('/tickets/701689')
+    const ticket = byId('701689')
+
+    const banner = await screen.findByRole('alert')
+
+    expect(daysOverdue(ticket.actionDate!, DATASET_TODAY)).toBe(1)
+    expect(within(banner).getByText(constants.overdueLead(1))).toBeInTheDocument()
+    expect(banner).toHaveTextContent(
+      `${constants.overdueLead(1)} ${constants.overdueDate(formatLongDate(ticket.actionDate))}`,
+    )
+  })
+
   /** The same header button as the queue: inside the sidebar it would vanish
    *  on collapse, leaving only the invisible shortcut to bring the menu back. */
   it('should collapse the sidebar from the detail header, and bring it back', async () => {
@@ -291,7 +307,11 @@ describe('detalhe do chamado', () => {
 
     const button = await screen.findByRole('button', { name: constants.copyId('700003') })
     const status = within(button).getByRole('status')
-    expect(button.querySelector('svg')).toBeInTheDocument()
+    /* Both glyphs stay mounted and `data-copied` picks which one shows — the
+       swap is a CSS crossfade, and jsdom computes no stylesheet. So the
+       assertion is: the pair is there, and the flag flips. */
+    expect(button.querySelector('[data-glyph="copy"]')).toBeInTheDocument()
+    expect(button.querySelector('[data-glyph="check"]')).toBeInTheDocument()
     expect(status).toBeEmptyDOMElement()
     expect(button).not.toHaveAttribute('data-copied')
 

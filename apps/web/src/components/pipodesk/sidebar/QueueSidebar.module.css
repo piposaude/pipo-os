@@ -137,11 +137,14 @@
 }
 
 .row:has(> .branch[aria-current='true']),
-.row:has(> .branch[aria-current='true']):hover {
+.row:has(> .branch[aria-current='page']),
+.row:has(> .branch[aria-current='true']):hover,
+.row:has(> .branch[aria-current='page']):hover {
   background: var(--desk-nav-selected);
 }
 
-.row:has(> .branch[aria-current='true']) > .count {
+.row:has(> .branch[aria-current='true']) > .count,
+.row:has(> .branch[aria-current='page']) > .count {
   font-weight: var(--pipo-fw-semibold);
 }
 

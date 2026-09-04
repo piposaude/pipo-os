@@ -28,6 +28,9 @@ export function DeskIcon({ name, title, size = 16, ...rest }: DeskIconProps) {
       // Use the glyph's own box: the set mixes 16 and 24 units, and a 16-unit
       // stroke in a 24 box shrinks to two thirds, pinned to the top-left.
       viewBox={glyph.viewBox}
+      // Names the glyph in the DOM: which of two stacked glyphs is showing is a
+      // CSS decision, and a test has no other way to tell them apart.
+      data-glyph={name}
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       {...(title ? { role: 'img', 'aria-label': title } : { 'aria-hidden': true })}
