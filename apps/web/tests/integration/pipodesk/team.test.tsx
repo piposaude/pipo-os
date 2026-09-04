@@ -29,6 +29,17 @@ describe('home do pod', () => {
     expect(screen.getByText(/\d+ chamados? abertos?/)).toBeInTheDocument()
   })
 
+  it('should collapse the sidebar from the team header, like the other screens', async () => {
+    await renderAt('/teams/pod-1')
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: 'Minimizar menu' }))
+
+    expect(screen.queryByRole('navigation', { name: /pipodesk/i })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Mostrar menu' }))
+    expect(screen.getByRole('navigation', { name: /pipodesk/i })).toBeInTheDocument()
+  })
+
   /** The warning speaks of an unowned COMPANY, not orphan tickets: their
    *  tickets have owners, by rotation. */
   it('should warn about the companies of the pod that nobody carries', async () => {

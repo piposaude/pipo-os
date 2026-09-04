@@ -7,6 +7,7 @@ import {
   formatCount,
   formatDate,
   formatDayMonth,
+  formatLongDate,
   formatPrazo,
   prazoVariant,
   shortSidebarLabel,
@@ -52,6 +53,19 @@ describe('formatDayMonth', () => {
   it('should return a dash for an unusable value', () => {
     expect(formatDayMonth(null, TODAY)).toBe('—')
     expect(formatDayMonth('not-a-date', TODAY)).toBe('—')
+  })
+})
+
+describe('formatLongDate', () => {
+  it('should spell the month in pt-BR without the year, keeping the two-digit day', () => {
+    expect(formatLongDate('2026-07-13')).toBe('13 de Julho')
+    expect(formatLongDate('2025-12-03T10:00:00.000Z')).toBe('03 de Dezembro')
+  })
+
+  it('should fall back to the dash for a missing or unreadable date', () => {
+    expect(formatLongDate(null)).toBe('—')
+    expect(formatLongDate('not-a-date')).toBe('—')
+    expect(formatLongDate('2026-13-01')).toBe('—')
   })
 })
 

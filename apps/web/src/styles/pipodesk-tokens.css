@@ -26,6 +26,17 @@
   --desk-hover: #f4f4f5;
   --desk-selected: #eef2ff;
 
+  /* Navigation scale measured from Linear's sidebar (DSP-115, 01/09): label at
+     rest, hover plate, pressed and selected plate, and the dark text of hover
+     and selected. Pressed lands on the selected value on purpose (a preview
+     of the destination), and selected is darker than hover so a neighbour
+     never shouts louder than the current page. No Pipo token sits between
+     these grays — the registered hex exception until the DS absorbs them. */
+  --desk-nav-text: #59595b;
+  --desk-nav-text-strong: #1a1a1a;
+  --desk-nav-hover: #e7e7e8;
+  --desk-nav-selected: #e1e1e2;
+
   /* Logical 1px, 0.5px on high-dpi — a dense table grid gets too heavy otherwise. */
   --desk-hairline: 1px;
 

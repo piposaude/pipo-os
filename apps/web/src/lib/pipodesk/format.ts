@@ -78,8 +78,32 @@ export function formatDayMonth(iso: string | null, today: string): string {
   return year === today.slice(0, 4) ? `${day}/${month}` : `${day}/${month}/${year.slice(2)}`
 }
 
-/** `11/08/2026` — the full date, for when the year carries meaning (a filed
- *  action date, an overdue banner). */
+/* Capitalised, as the prototype spells them in the overdue banner. */
+const MONTHS = [
+  'Janeiro',
+  'Fevereiro',
+  'Março',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro',
+]
+
+/** `13 de Julho` — day and month spelled out, no year: the overdue banner
+ *  speaks of a date that is by definition recent. */
+export function formatLongDate(iso: string | null): string {
+  const parts = partsOf(iso)
+  if (parts === null) return '—'
+  return `${parts.day} de ${MONTHS[Number(parts.month) - 1]}`
+}
+
+/** `11/08/2026` — the full date, for when the year carries meaning (the
+ *  filed action date in the context column). */
 export function formatDate(iso: string | null): string {
   const parts = partsOf(iso)
   if (parts === null) return '—'

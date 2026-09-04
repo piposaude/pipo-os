@@ -49,18 +49,7 @@ function findNode(sections: TreeSection[], id: string): TreeNode | null {
  */
 export default function QueuePage() {
   const navigate = useNavigate()
-  const {
-    sections,
-    view,
-    dispatch,
-    rows,
-    today,
-    viewerId,
-    resolveName,
-    sidebarCollapsed,
-    toggleSidebar,
-    applyPatch,
-  } = useDesk()
+  const { sections, view, dispatch, rows, today, viewerId, resolveName, applyPatch } = useDesk()
 
   /* Node base: scope + window, before the filter — what the panel counts
        per option against. */
@@ -169,8 +158,6 @@ export default function QueuePage() {
     <div className={styles.screen}>
       <QueueHeader
         labelPath={view.labelPath}
-        sidebarCollapsed={sidebarCollapsed}
-        onToggleSidebar={toggleSidebar}
         pills={pills}
         activeNodeId={view.nodeId}
         onSelectPill={select}

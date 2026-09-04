@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Banner, Breadcrumb, BreadcrumbItem, Button, Heading, Tabs } from '@piposaude/design-system'
 import { Link, useParams } from '@tanstack/react-router'
 import { useDesk } from '@/components/pipodesk/shell/desk-context'
+import { SidebarToggle } from '@/components/pipodesk/shell/SidebarToggle'
+import { DeskIcon } from '@/components/pipodesk/icons'
 import { Popover } from '@/components/pipodesk/primitives'
 import { DISPLAY_STATUS_COPY, PENDING_REASON_COPY } from '@/constants/pipodesk/status'
 import {
@@ -14,7 +16,7 @@ import {
 import { ORIGIN_COPY } from '@/lib/pipodesk/filter-copy'
 import { analystsOf } from '@/lib/pipodesk/permissions'
 import { structureFixture } from '@/fixtures/pipodesk/dataset'
-import { daysOverdue, formatDate, formatDayMonth } from '@/lib/pipodesk/format'
+import { daysOverdue, formatDate, formatDayMonth, formatLongDate } from '@/lib/pipodesk/format'
 import {
   CHANNELS,
   CHANNEL_LABEL,
@@ -360,6 +362,7 @@ export default function TicketPage() {
   return (
     <div className={styles.screen}>
       <header className={styles.topbar}>
+        <SidebarToggle />
         {/* The queue path this ticket was opened from, person as the current item.
                      Going back reopens the same node — QueueView lives in the shell. */}
         <Breadcrumb separator="›">
@@ -380,7 +383,8 @@ export default function TicketPage() {
       {overdue !== null && overdue > 0 && ticket.actionDate !== null && (
         <div className={styles.banners}>
           <Banner variant="alert">
-            {constants.overdue(overdue, formatDate(ticket.actionDate))}
+            <strong>{constants.overdueLead(overdue)}</strong>{' '}
+            {constants.overdueDate(formatLongDate(ticket.actionDate))}
           </Banner>
         </div>
       )}
@@ -389,13 +393,33 @@ export default function TicketPage() {
         <Heading level="h1">{personName}</Heading>
         <p className={styles.subtitle}>
           <span className={styles.ticketId}>{ticket.id}</span>
+          {/* Hidden at rest, shown on hover of the header, on focus and while
+              copied — as in the prototype. The glyph morphs to a check and a
+              balloon says "Copiado"; the live region is always mounted so the
+              announcement is not lost when the text appears. */}
           <button
             type="button"
             className={styles.copy}
             aria-label={constants.copyId(ticket.id)}
+            title={copied ? constants.copied : constants.copyId(ticket.id)}
+            data-copied={copied ? 'true' : undefined}
             onClick={copyId}
           >
-            {copied ? constants.copied : constants.copyGlyph}
+            <span className={styles.copyGlyphs}>
+              <DeskIcon
+                name="copy"
+                size={14}
+                className={`${styles.copyGlyph} ${styles.copyIcon}`}
+              />
+              <DeskIcon
+                name="check"
+                size={14}
+                className={`${styles.copyGlyph} ${styles.checkIcon}`}
+              />
+            </span>
+            <span className={styles.copiedTip} role="status" aria-live="polite">
+              {copied ? constants.copied : ''}
+            </span>
           </button>
         </p>
       </div>

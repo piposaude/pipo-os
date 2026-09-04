@@ -39,30 +39,6 @@
   gap: var(--pipo-space-xsmall);
 }
 
-.sidebarToggle {
-  display: inline-flex;
-  flex: none;
-  width: 24px;
-  height: 24px;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  border-radius: var(--pipo-radius-small);
-  background: transparent;
-  color: var(--pipo-text-secondary);
-  cursor: pointer;
-}
-
-.sidebarToggle:hover {
-  background: var(--pipo-neutral-lightest);
-  color: var(--pipo-text-primary);
-}
-
-.sidebarToggle:focus-visible {
-  outline: none;
-  box-shadow: var(--pipo-shadow-focus-primary);
-}
-
 /* The DS Breadcrumb is 14px regular — trail size. Here it IS the screen
    title: 16px, semibold current item, like the prototype. */
 .exitSearch {

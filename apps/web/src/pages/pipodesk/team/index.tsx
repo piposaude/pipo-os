@@ -15,6 +15,7 @@ import {
 } from '@piposaude/design-system'
 import { Link, useParams, useSearch } from '@tanstack/react-router'
 import { useDesk } from '@/components/pipodesk/shell/desk-context'
+import { SidebarToggle } from '@/components/pipodesk/shell/SidebarToggle'
 import { ancestorsOf } from '@/lib/pipodesk/permissions'
 import { membersWithLoad, unownedCompaniesOf } from '@/lib/pipodesk/team'
 import type { LabelContext } from '@/lib/pipodesk/filter-copy'
@@ -129,6 +130,7 @@ export default function TeamPage() {
   return (
     <div className={styles.screen}>
       <div className={styles.topbar}>
+        <SidebarToggle />
         <Breadcrumb separator="›">{crumbs}</Breadcrumb>
       </div>
 

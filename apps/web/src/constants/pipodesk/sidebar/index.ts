@@ -1,5 +1,7 @@
 export default {
   nav: 'Navegação do Pipodesk',
+  collapseSidebar: 'Minimizar menu',
+  expandSidebar: 'Mostrar menu',
   search: 'Buscar...',
   searchKeys: ['⌘', 'K'],
   emptyFavorites: 'Sem favoritos',

@@ -4,9 +4,11 @@ export default {
   notFound: (id: string) => `Não existe chamado com o id ${id}.`,
   copyId: (id: string) => `Copiar o ID ${id}`,
   copied: 'Copiado',
-  copyGlyph: '⧉',
-  overdue: (days: number, date: string) =>
-    `Movimentação está atrasada em ${days} ${days === 1 ? 'dia' : 'dias'}. Registrada para ${date}.`,
+  /** Two parts, as in the prototype: the fact carries the weight, the filed
+   *  date follows in plain text — no period between them. */
+  overdueLead: (days: number) =>
+    `Movimentação está atrasada em ${days} ${days === 1 ? 'dia' : 'dias'}`,
+  overdueDate: (date: string) => `Registrada para ${date}.`,
   tabs: {
     movimentacao: 'Movimentação',
     pessoa: 'Dados pessoais',

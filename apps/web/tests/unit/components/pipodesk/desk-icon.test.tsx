@@ -7,6 +7,8 @@ describe('DeskIcon', () => {
     expect(DESK_ICON_NAMES).toContain('ticket')
     expect(DESK_ICON_NAMES).toContain('bolt')
     expect(DESK_ICON_NAMES).toContain('agent')
+    expect(DESK_ICON_NAMES).toContain('copy')
+    expect(DESK_ICON_NAMES).toContain('check')
   })
 
   it('should be decorative by default, so a labelled control is not read twice', () => {
