@@ -1,6 +1,6 @@
 import { useState, type CSSProperties, useRef } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Badge, Button, Text } from '@piposaude/design-system'
+import { Button, Text } from '@piposaude/design-system'
 import { PipoOsWordmark } from '@/components/pipodesk/shell/PipoOsWordmark'
 import { Popover } from '@/components/pipodesk/primitives'
 import constants from '@/constants/pipodesk/sidebar'
@@ -163,25 +163,16 @@ function Node({
   )
 
   if (node.children.length === 0) {
-    const isInbox = node.id === 'node-inbox'
     return (
       <button
         type="button"
-        className={isInbox ? `${styles.item} ${styles.surface}` : styles.item}
+        className={styles.item}
         style={style}
         aria-current={isActive ? 'page' : undefined}
         onClick={activate}
       >
         {iconAndLabel}
-        {isInbox ? (
-          node.count > 0 ? (
-            <Badge variant="danger" size="small" className={styles.badge}>
-              {node.count}
-            </Badge>
-          ) : null
-        ) : (
-          <span className={styles.count}>{formatCount(node.count)}</span>
-        )}
+        <span className={styles.count}>{formatCount(node.count)}</span>
       </button>
     )
   }

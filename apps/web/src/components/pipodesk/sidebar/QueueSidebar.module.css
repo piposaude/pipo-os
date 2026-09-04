@@ -115,25 +115,6 @@ a.item[aria-current='page'] {
   font-weight: var(--pipo-fw-semibold);
 }
 
-/* The Inbox card — the only row with its own surface. Quiet at rest;
-   `outline` (not border) so the edge never shifts layout. The #efefef matches
-   no DS border token — registered gap (PD-312). */
-.surface:hover,
-.surface:focus-visible {
-  background: var(--pipo-surface);
-}
-
-.surface:hover {
-  outline: var(--pipo-border-width-small) solid #efefef;
-  outline-offset: -1px;
-}
-
-/* Keyboard focus cannot be the card edge: #efefef on white is 1.15:1. */
-.surface:focus-visible {
-  outline: none;
-  box-shadow: var(--pipo-shadow-focus-primary);
-}
-
 .row {
   position: relative;
   display: flex;
@@ -186,15 +167,6 @@ a.item[aria-current='page'] {
   font-variant-numeric: tabular-nums;
   text-align: right;
   cursor: pointer;
-}
-
-/* Zero draws no badge: a red 0 spends the "answer now" color on nothing. */
-.badge.badge {
-  margin-left: auto;
-  padding: 1px var(--pipo-space-xxsmall);
-  border-radius: var(--pipo-radius-pill);
-  background: var(--pipo-danger-dark);
-  color: var(--pipo-text-on-primary);
 }
 
 .toggle {

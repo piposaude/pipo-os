@@ -23,6 +23,21 @@ async function renderQueue() {
 const table = () => screen.getByRole('table')
 
 describe('fila operacional', () => {
+  /** DSP-115 (01/09): the Inbox lost its red badge and white card in the
+   *  prototype; its count reads like every other leaf's. */
+  it('should draw the Inbox count like any other leaf, with no badge', async () => {
+    await renderQueue()
+    const sidebar = screen.getByRole('navigation', { name: /pipodesk/i })
+    const countOf = (name: RegExp) =>
+      within(sidebar).getByRole('button', { name }).querySelector('span:last-of-type')
+
+    const inbox = countOf(/^Inbox/)
+    const sibling = countOf(/^Urgentes/)
+
+    expect(inbox).toHaveTextContent(/^[\d.]+$/)
+    expect(inbox).toHaveClass(sibling!.className, { exact: true })
+  })
+
   /** A stored preference in the wrong shape used to throw on every render, and
    *  the only way out ("reload") read the same storage again. */
   it('should ignore a column preference stored in the wrong shape', async () => {
