@@ -979,6 +979,27 @@ describe('tickets routes', () => {
       expect(response.json().carrierId).toBe('carrier-do-corpo')
     })
 
+    /** Contrapartida do `.min(1)` na resposta: `''` só entra por SQL na mão, e
+     *  quando entra a leitura falha alto em vez de virar célula vazia. */
+    it('falha a leitura quando a coluna tem string vazia', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+      await app.db.updateTable('tickets').set({ carrier_name: '' }).where('id', '=', id).execute()
+
+      const read = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(read.statusCode).toBe(500)
+    })
+
     it('deixa os campos nulos quando nem o corpo nem o snapshot os trazem', async () => {
       const response = await app.inject({
         method: 'POST',
@@ -989,7 +1010,9 @@ describe('tickets routes', () => {
 
       expect(response.json()).toMatchObject({
         carrierId: null,
+        carrierName: null,
         product: null,
+        contractType: null,
         companySize: null,
         relationship: null,
       })
