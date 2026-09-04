@@ -46,6 +46,9 @@ export function registerCommentRoutes(app: FastifyInstance, service: CommentsSer
     },
     async (request) => {
       getSession(request)
+      // TODO: enforce tenant scope from session claims before this endpoint goes to production
+      // Any authenticated user can currently read the chronology of any company's ticket,
+      // including internal comments — the same gap as GET /api/tickets (ACE-147)
       return service.timeline(request.params.id, request.query)
     },
   )
