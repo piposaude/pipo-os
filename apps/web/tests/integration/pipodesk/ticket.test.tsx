@@ -2,7 +2,13 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from '@/routeTree.gen'
-import { queueSeed, structureFixture, FIXTURE_USER_NAMES } from '@/fixtures/pipodesk/dataset'
+import {
+  DATASET_TODAY,
+  FIXTURE_USER_NAMES,
+  queueSeed,
+  structureFixture,
+} from '@/fixtures/pipodesk/dataset'
+import { daysOverdue, formatLongDate } from '@/lib/pipodesk/format'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 import { analystsOf } from '@/lib/pipodesk/permissions'
 import constants from '@/constants/pages/pipodesk/ticket'
@@ -60,6 +66,25 @@ describe('detalhe do chamado', () => {
       }),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: `Copiar o ID ${id}` })).toBeInTheDocument()
+  })
+
+  /** The prototype's banner is two parts: the fact in bold, the filed date
+   *  after it in plain weight and spelled out (`13 de Julho`) — one sentence,
+   *  no period between them. */
+  it('should announce the overdue action date in two parts, the fact in bold and the date spelled out', async () => {
+    await renderAt('/tickets/705639')
+    const ticket = byId('705639')
+    const days = daysOverdue(ticket.actionDate!, DATASET_TODAY)!
+
+    const banner = await screen.findByRole('alert')
+    const lead = within(banner).getByText(constants.overdueLead(days))
+
+    expect(lead.tagName).toBe('STRONG')
+    expect(banner).toHaveTextContent(
+      `${constants.overdueLead(days)} ${constants.overdueDate(formatLongDate(ticket.actionDate))}`,
+    )
+    expect(banner).toHaveTextContent('Registrada para 13 de Julho.')
+    expect(banner).not.toHaveTextContent('dias.')
   })
 
   it('should keep the queue path in the breadcrumb, and going back lands on the same node', async () => {

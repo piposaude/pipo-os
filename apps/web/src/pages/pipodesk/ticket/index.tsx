@@ -14,7 +14,7 @@ import {
 import { ORIGIN_COPY } from '@/lib/pipodesk/filter-copy'
 import { analystsOf } from '@/lib/pipodesk/permissions'
 import { structureFixture } from '@/fixtures/pipodesk/dataset'
-import { daysOverdue, formatDate, formatDayMonth } from '@/lib/pipodesk/format'
+import { daysOverdue, formatDate, formatDayMonth, formatLongDate } from '@/lib/pipodesk/format'
 import {
   CHANNELS,
   CHANNEL_LABEL,
@@ -380,7 +380,8 @@ export default function TicketPage() {
       {overdue !== null && overdue > 0 && ticket.actionDate !== null && (
         <div className={styles.banners}>
           <Banner variant="alert">
-            {constants.overdue(overdue, formatDate(ticket.actionDate))}
+            <strong>{constants.overdueLead(overdue)}</strong>{' '}
+            {constants.overdueDate(formatLongDate(ticket.actionDate))}
           </Banner>
         </div>
       )}
