@@ -1,13 +1,6 @@
 // @vitest-environment node
 import type { Ticket } from '@pipo-os/api-client'
-import { optionLabel, type LabelContext } from '@/lib/pipodesk/filter-copy'
-import type { FilterField } from '@/lib/pipodesk/filter'
-import {
-  COMPANY_SIZE_FROM_EI,
-  CONTRACT_TYPE_FROM_EI,
-  PRODUCT_FROM_EI,
-  toTicketRow,
-} from '@/lib/pipodesk/ticket-row'
+import { toTicketRow } from '@/lib/pipodesk/ticket-row'
 
 function apiTicket(overrides: Partial<Ticket> = {}): Ticket {
   return {
@@ -16,6 +9,12 @@ function apiTicket(overrides: Partial<Ticket> = {}): Ticket {
     title: null,
     enrollmentId: 'enrollment-1',
     enrollmentType: 'inclusion',
+    carrierId: null,
+    carrierName: null,
+    product: null,
+    contractType: null,
+    companySize: null,
+    relationship: null,
     status: 'broker-processing',
     priority: null,
     actionDate: null,
@@ -93,29 +92,40 @@ describe('toTicketRow — campos do próprio ticket', () => {
 
 describe('toTicketRow — derivação do enrollmentSnapshot', () => {
   const snapshot = {
-    'member-type': 'primary',
     primary: {
       profile: { name: 'Renata Henriques Junqueira', 'tax-id': '266.348.750-73' },
-      employment: { 'contract-type': 'brazil-labor-law' },
     },
-    dependents: [],
-    company: { 'company-name': 'Caiçara Metalurgia', 'company-size': 'corporate' },
-    'carrier-id': 'carrier-unimed',
-    'carrier-name': 'Unimed Mineira',
-    contract: { 'product-type': 'life' },
+    company: { 'company-name': 'Caiçara Metalurgia' },
   }
 
-  it('should read beneficiary, company, carrier and product from the snapshot', () => {
+  it('should read the person and the company, which have no column', () => {
     const row = toTicketRow(apiTicket({ enrollmentSnapshot: snapshot }))
 
     expect(row.beneficiaryName).toBe('Renata Henriques Junqueira')
     expect(row.taxId).toBe('266.348.750-73')
     expect(row.companyName).toBe('Caiçara Metalurgia')
-    expect(row.companySize).toBe('enterprise')
+  })
+
+  /** These five stopped being derived here: the API resolves them on the way in
+   *  and answers in the client's vocabulary. */
+  it('should take the movement fields from the ticket, not the snapshot', () => {
+    const row = toTicketRow(
+      apiTicket({
+        enrollmentSnapshot: { company: { 'company-size': 'corporate' } },
+        carrierId: 'carrier-unimed',
+        carrierName: 'Unimed Mineira',
+        product: 'health',
+        contractType: 'clt',
+        companySize: 'enterprise',
+        relationship: 'family-group',
+      }),
+    )
+
     expect(row.carrierId).toBe('carrier-unimed')
-    expect(row.carrierName).toBe('Unimed Mineira')
-    expect(row.product).toBe('life')
+    expect(row.product).toBe('health')
     expect(row.contractType).toBe('clt')
+    expect(row.relationship).toBe('family-group')
+    expect(row.companySize).toBe('enterprise')
   })
 
   it('should prefer the social name over the registered name', () => {
@@ -130,56 +140,12 @@ describe('toTicketRow — derivação do enrollmentSnapshot', () => {
     expect(row.beneficiaryName).toBe('Nome Social')
   })
 
-  it('should translate the EI vocabulary into the one the app speaks', () => {
-    const row = toTicketRow(
-      apiTicket({
-        enrollmentSnapshot: {
-          company: { 'company-size': 'smb-plus' },
-          contract: { 'product-type': 'pet-insurance' },
-          primary: { employment: { 'contract-type': 'services-contract' } },
-        },
-      }),
-    )
-
-    expect(row.companySize).toBe('pme-plus')
-    expect(row.product).toBe('pet')
-    expect(row.contractType).toBe('pj')
-  })
-
-  it('should not read a value off Object.prototype when the map has no entry', () => {
-    const row = toTicketRow(
-      apiTicket({ enrollmentSnapshot: { contract: { 'product-type': 'constructor' } } }),
-    )
-
-    expect(row.product).toBe('constructor')
-  })
-
-  it('should read member-type without depending on case, as the EI does not fix it', () => {
-    const row = toTicketRow(
-      apiTicket({ enrollmentSnapshot: { 'member-type': 'Dependent', dependents: [] } }),
-    )
-
-    expect(row.relationship).toBe('dependent')
-  })
-
-  it('should pass an unmapped value through instead of dropping it', () => {
-    const row = toTicketRow(
-      apiTicket({
-        enrollmentSnapshot: { primary: { employment: { 'contract-type': 'intern' } } },
-      }),
-    )
-
-    expect(row.contractType).toBe('intern')
-  })
-
   it('should accept camelCase keys as well, since the snapshot contract is not frozen yet', () => {
     const row = toTicketRow(
       apiTicket({
         enrollmentSnapshot: {
-          memberType: 'primary',
           primary: { profile: { name: 'Ana', taxId: '111' } },
-          company: { companyName: 'Empresa X', companySize: 'smb' },
-          carrierName: 'SulAmérica',
+          company: { companyName: 'Empresa X' },
         },
       }),
     )
@@ -187,8 +153,6 @@ describe('toTicketRow — derivação do enrollmentSnapshot', () => {
     expect(row.beneficiaryName).toBe('Ana')
     expect(row.taxId).toBe('111')
     expect(row.companyName).toBe('Empresa X')
-    expect(row.companySize).toBe('pme')
-    expect(row.carrierName).toBe('SulAmérica')
   })
 
   it('should return nulls for an empty snapshot instead of throwing', () => {
@@ -204,42 +168,6 @@ describe('toTicketRow — derivação do enrollmentSnapshot', () => {
   })
 })
 
-describe('toTicketRow — derived relationship', () => {
-  it('should be holder for a primary member without dependents', () => {
-    const row = toTicketRow(
-      apiTicket({ enrollmentSnapshot: { 'member-type': 'primary', dependents: [] } }),
-    )
-
-    expect(row.relationship).toBe('holder')
-  })
-
-  /** The EI serializes Dependents with `omitempty`, so a primary with none
-   *  arrives without the key at all — never as an empty array. */
-  it('should be holder when the dependents key is absent, not just empty', () => {
-    const row = toTicketRow(apiTicket({ enrollmentSnapshot: { 'member-type': 'primary' } }))
-
-    expect(row.relationship).toBe('holder')
-  })
-
-  it('should be family-group for a primary member that brings dependents along', () => {
-    const row = toTicketRow(
-      apiTicket({
-        enrollmentSnapshot: { 'member-type': 'primary', dependents: [{ 'member-id': 'd1' }] },
-      }),
-    )
-
-    expect(row.relationship).toBe('family-group')
-  })
-
-  it('should be dependent when the moved member is the dependent', () => {
-    const row = toTicketRow(
-      apiTicket({ enrollmentSnapshot: { 'member-type': 'dependent', dependents: [] } }),
-    )
-
-    expect(row.relationship).toBe('dependent')
-  })
-})
-
 describe('toTicketRow — assunto da linha', () => {
   it('should use the ticket title when the api provides one', () => {
     const row = toTicketRow(apiTicket({ title: 'Assunto vindo do EI' }))
@@ -247,14 +175,12 @@ describe('toTicketRow — assunto da linha', () => {
     expect(row.subject).toBe('Assunto vindo do EI')
   })
 
-  it('should build a readable subject from the snapshot when there is no title', () => {
+  it('should build a readable subject when there is no title', () => {
     const row = toTicketRow(
       apiTicket({
-        enrollmentSnapshot: {
-          'carrier-name': 'Unimed Mineira',
-          contract: { 'product-type': 'life' },
-          primary: { profile: { name: 'Renata Henriques Junqueira' } },
-        },
+        carrierName: 'Unimed Mineira',
+        product: 'life',
+        enrollmentSnapshot: { primary: { profile: { name: 'Renata Henriques Junqueira' } } },
       }),
     )
 
@@ -263,23 +189,5 @@ describe('toTicketRow — assunto da linha', () => {
 
   it('should fall back to the ticket id when there is nothing to build a subject from', () => {
     expect(toTicketRow(apiTicket()).subject).toBe('ticket-1')
-  })
-})
-
-describe('the EI maps translate into values the app can label', () => {
-  const ctx: LabelContext = {
-    companyName: (id) => id,
-    carrierName: (id) => id,
-    userName: (id) => id,
-  }
-
-  it.each([
-    ['companySizes' as FilterField, COMPANY_SIZE_FROM_EI],
-    ['contractTypes' as FilterField, CONTRACT_TYPE_FROM_EI],
-    ['products' as FilterField, PRODUCT_FROM_EI],
-  ])('should give every %s target a label of its own', (field, map) => {
-    for (const target of Object.values(map)) {
-      expect(optionLabel(field, target, ctx)).not.toBe(target)
-    }
   })
 })

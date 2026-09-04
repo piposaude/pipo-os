@@ -2,8 +2,11 @@ import { sql, type Kysely, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
 import { ConflictError } from '../../shared/errors.js'
+import { movementFieldsOf, relationshipOf } from './enrollment-snapshot.js'
+import { toClient } from './vocabulary.js'
 import {
   CLOSED_STATUSES,
+  relationshipSchema,
   type CreateTicketBody,
   type ListTicketsQuery,
   type Ticket,
@@ -15,6 +18,11 @@ export type ChangeStatusResult =
   { kind: 'not-found' } | { kind: 'already-closed' } | { kind: 'ok'; ticket: Ticket }
 
 const OPEN_ENROLLMENT_CONSTRAINT = 'uq_tickets_open_enrollment'
+
+/** `.min(1)` on the response would turn one hand-edited row into a 500 for the
+ *  whole page, so a blank column reads as the null it means. */
+const blankAsNull = (value: string | null): string | null =>
+  value === null || value.trim() === '' ? null : value
 
 function toTicket(row: Selectable<Tickets>): Ticket {
   return {
@@ -36,6 +44,12 @@ function toTicket(row: Selectable<Tickets>): Ticket {
     collaborators: row.collaborators as Array<Record<string, unknown>>,
     forceCompletion: row.force_completion,
     enrollmentSnapshot: row.enrollment_snapshot as Record<string, unknown>,
+    carrierId: blankAsNull(row.carrier_id),
+    carrierName: blankAsNull(row.carrier_name),
+    product: blankAsNull(toClient('product', row.product)),
+    contractType: blankAsNull(toClient('contractType', row.contract_type)),
+    companySize: blankAsNull(toClient('companySize', row.company_size)),
+    relationship: relationshipSchema.safeParse(row.relationship).data ?? null,
     sourceSystem: row.source_system,
     parentTicketId: row.parent_ticket_id,
     closedAt: row.closed_at ? row.closed_at.toISOString() : null,
@@ -130,6 +144,9 @@ export class TicketsRepository implements TicketsRepositoryPort {
   }
 
   async create(data: CreateTicketBody): Promise<Ticket> {
+    // The body wins; the snapshot fills what the EI does not send yet (PD-207).
+    const derived = movementFieldsOf(data.enrollmentSnapshot)
+
     try {
       const row = await this.db
         .insertInto('tickets')
@@ -139,6 +156,12 @@ export class TicketsRepository implements TicketsRepositoryPort {
           company_id: data.companyId,
           source_system: data.sourceSystem,
           enrollment_snapshot: JSON.stringify(data.enrollmentSnapshot),
+          carrier_id: data.carrierId ?? derived.carrierId,
+          carrier_name: data.carrierName ?? derived.carrierName,
+          product: data.product ?? derived.product,
+          contract_type: data.contractType ?? derived.contractType,
+          company_size: data.companySize ?? derived.companySize,
+          relationship: relationshipOf(data.enrollmentSnapshot),
           status: data.status ?? 'broker-processing',
           queue_id: data.queueId,
           assignee_id: data.assigneeId,

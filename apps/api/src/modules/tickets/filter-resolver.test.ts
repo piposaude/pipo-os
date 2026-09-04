@@ -1,13 +1,14 @@
 import { randomUUID } from 'node:crypto'
 import type { FastifyInstance } from 'fastify'
-import { sql } from 'kysely'
+import { expressionBuilder, sql } from 'kysely'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
-import type { TicketFilter } from './filter-schema.js'
+import type { Database } from '../../infrastructure/db.js'
+import { ticketFilterSchema, type TicketFilter } from './filter-schema.js'
 import {
   actionDateWindowCondition,
+  FIELD_RESOLVERS,
   ticketFilterConditions,
-  UnsupportedFilterField,
   type ActionDateWindow,
 } from './filter-resolver.js'
 
@@ -29,6 +30,11 @@ type Seed = {
   actionDate?: string | null
   createdAt?: string
   closedAt?: string | null
+  carrierId?: string | null
+  product?: string | null
+  contractType?: string | null
+  companySize?: string | null
+  relationship?: string | null
 }
 
 describe('ticketFilterConditions — the saved filter, resolved in SQL', () => {
@@ -62,6 +68,11 @@ describe('ticketFilterConditions — the saved filter, resolved in SQL', () => {
           tags: row.tags ?? [],
           action_date: row.actionDate ?? null,
           closed_at: row.closedAt ?? null,
+          carrier_id: row.carrierId ?? null,
+          product: row.product ?? null,
+          contract_type: row.contractType ?? null,
+          company_size: row.companySize ?? null,
+          relationship: row.relationship ?? null,
           ...(row.createdAt !== undefined && { created_at: row.createdAt }),
           title: row.id,
         })),
@@ -226,15 +237,108 @@ describe('ticketFilterConditions — the saved filter, resolved in SQL', () => {
     })
   })
 
-  it('refuses a snapshot-derived field instead of ignoring it', async () => {
-    await seed([{ id: 'a' }])
+  it('filters by carrier and relationship, which need no translation', async () => {
+    await seed([
+      { id: 'unimed-titular', carrierId: 'carrier-unimed', relationship: 'holder' },
+      { id: 'amil-dependente', carrierId: 'carrier-amil', relationship: 'dependent' },
+    ])
 
-    await expect(matching({ carrierIds: ['unimed'] })).rejects.toThrow(UnsupportedFilterField)
-    await expect(matching({ relationships: ['holder'] })).rejects.toThrow(UnsupportedFilterField)
-
-    // 422 and not 500: an unresolvable saved filter is the client's data.
-    await expect(matching({ carrierIds: ['unimed'] })).rejects.toMatchObject({
-      statusCode: 422,
-    })
+    expect(await matching({ carrierIds: ['carrier-unimed'] })).toEqual(['unimed-titular'])
+    expect(await matching({ relationships: ['dependent'] })).toEqual(['amil-dependente'])
   })
+
+  it('translates the client word back to what the column stores', async () => {
+    await seed([
+      { id: 'corporate-pj', companySize: 'corporate', contractType: 'services-contract' },
+      { id: 'smb-clt', companySize: 'smb', contractType: 'brazil-labor-law' },
+    ])
+
+    expect(await matching({ companySizes: ['enterprise'] })).toEqual(['corporate-pj'])
+    expect(await matching({ contractTypes: ['clt'] })).toEqual(['smb-clt'])
+  })
+
+  it('matches both forms of a product under one client word', async () => {
+    await seed([
+      { id: 'forma-curta', product: 'health' },
+      { id: 'forma-canonica', product: 'health-insurance' },
+      { id: 'outro', product: 'dental' },
+    ])
+
+    expect(await matching({ products: ['health'] })).toEqual(['forma-canonica', 'forma-curta'])
+  })
+
+  it('keeps a value it cannot translate instead of dropping the row', async () => {
+    await seed([
+      { id: 'estagiario', contractType: 'intern' },
+      { id: 'mental', product: 'mental-health' },
+    ])
+
+    expect(await matching({ contractTypes: ['intern'] })).toEqual(['estagiario'])
+    expect(await matching({ products: ['mental-health'] })).toEqual(['mental'])
+  })
+
+  it('treats a null contract type as a value of its own', async () => {
+    await seed([
+      { id: 'sem-contrato', contractType: null },
+      { id: 'com-contrato', contractType: 'services-contract' },
+    ])
+
+    expect(await matching({ contractTypes: [null] })).toEqual(['sem-contrato'])
+  })
+
+  it('matches nothing for a filter written in the word the column stores', async () => {
+    await seed([
+      { id: 'smb', companySize: 'smb' },
+      { id: 'canonica', product: 'health-insurance' },
+    ])
+
+    // The web never sees `smb` or `health-insurance` on a row, so it cannot
+    // match them; the server must agree, or a node announces one number and
+    // lists another.
+    expect(await matching({ companySizes: ['smb'] })).toEqual([])
+    expect(await matching({ products: ['health-insurance'] })).toEqual([])
+  })
+})
+
+/** The type catches a missing field; this catches a surplus one. */
+describe('FIELD_RESOLVERS', () => {
+  it('names exactly the fields the contract declares', () => {
+    const declared = Object.keys(ticketFilterSchema.shape).sort()
+
+    expect(Object.keys(FIELD_RESOLVERS).sort()).toEqual(declared)
+  })
+
+  /** One set value per field. The mapped type makes a field added to the
+   *  schema demand a sample here, and an entry that resolves to nothing fails
+   *  this test instead of dropping the criterion from the query in silence. */
+  const SAMPLE: { [K in keyof TicketFilter]-?: NonNullable<TicketFilter[K]> } = {
+    statuses: ['completed'],
+    companyIds: [COMPANY_A],
+    carrierIds: ['carrier-amil'],
+    products: ['health'],
+    types: ['inclusion'],
+    companySizes: ['pme'],
+    contractTypes: ['pj'],
+    relationships: ['holder'],
+    origins: ['web'],
+    groupIds: [COMPANY_A],
+    tags: ['vip'],
+    assigneeIds: ['@me'],
+    priorities: ['high'],
+    actionDateBefore: TODAY,
+    urgentBy: TODAY,
+    createdSince: TODAY,
+    archived: false,
+  }
+
+  it.each(Object.keys(SAMPLE) as (keyof TicketFilter)[])(
+    'turns %s into a condition instead of dropping it',
+    (field) => {
+      const eb = expressionBuilder<Database, 'tickets'>()
+      // A computed key widens to an index signature; the cast narrows it back.
+      const filter = { [field]: SAMPLE[field] } as TicketFilter
+
+      expect(ticketFilterConditions(eb, filter, VIEWER)).toHaveLength(1)
+    },
+  )
 })

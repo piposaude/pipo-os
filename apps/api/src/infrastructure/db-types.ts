@@ -139,9 +139,13 @@ export interface TicketQueuesXGroup {
 export interface Tickets {
   action_date: Timestamp | null;
   assignee_id: string | null;
+  carrier_id: string | null;
+  carrier_name: string | null;
   closed_at: Timestamp | null;
   collaborators: Generated<Json>;
   company_id: string;
+  company_size: string | null;
+  contract_type: string | null;
   created_at: Generated<Timestamp>;
   display_number: Generated<string>;
   enrollment_id: string;
@@ -153,7 +157,9 @@ export interface Tickets {
   parent_ticket_id: string | null;
   pending_documentation: Generated<string[]>;
   priority: string | null;
+  product: string | null;
   queue_id: string | null;
+  relationship: string | null;
   requester: Json | null;
   source_system: string;
   status: string;

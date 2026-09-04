@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { ticketPrioritySchema, ticketStatusSchema } from './schemas.js'
+import { relationshipSchema, ticketPrioritySchema, ticketStatusSchema } from './schemas.js'
 
 /** Rejects `''` — an option nobody can select. */
 const nonEmptyText = z.string().min(1)
@@ -7,10 +7,6 @@ const nonEmptyText = z.string().min(1)
 /** `null` is the unassigned ticket. `@me` is a plain string the web client
  *  resolves to the viewer; the server-side resolver is PD-043. */
 export const assigneeFilterValueSchema = nonEmptyText.nullable()
-
-export const relationshipSchema = z
-  .enum(['holder', 'dependent', 'family-group'])
-  .meta({ id: 'Relationship' })
 
 /** Date-only (`YYYY-MM-DD`): compared as strings against day-truncated dates. */
 const dateCut = z.iso.date()

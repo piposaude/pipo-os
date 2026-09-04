@@ -830,4 +830,207 @@ describe('tickets routes', () => {
       expect(response.json().error).toBe('UnprocessableEntityError')
     })
   })
+
+  describe('os campos da movimentação', () => {
+    it('guarda o que o EI manda e traduz só na resposta', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: {
+          ...validTicketBody,
+          carrierId: 'carrier-unimed',
+          carrierName: 'Unimed Mineira',
+          product: 'health-insurance',
+          contractType: 'services-contract',
+          companySize: 'corporate',
+        },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const ticket = created.json()
+
+      expect(created.statusCode).toBe(201)
+      expect(ticket).toMatchObject({
+        carrierId: 'carrier-unimed',
+        carrierName: 'Unimed Mineira',
+        product: 'health',
+        contractType: 'pj',
+        companySize: 'enterprise',
+      })
+
+      const stored = await app.db
+        .selectFrom('tickets')
+        .select(['product', 'contract_type', 'company_size'])
+        .where('id', '=', ticket.id)
+        .executeTakeFirstOrThrow()
+
+      expect(stored).toEqual({
+        product: 'health-insurance',
+        contract_type: 'services-contract',
+        company_size: 'corporate',
+      })
+    })
+
+    it('deriva o vínculo do snapshot em vez de recebê-lo', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: {
+          ...validTicketBody,
+          enrollmentSnapshot: { member_type: 'primary', dependents: [{ id: 'd1' }] },
+        },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.json().relationship).toBe('family-group')
+    })
+
+    it('devolve null em vez de quebrar quando a coluna tem valor fora do enum', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+      await app.db
+        .updateTable('tickets')
+        .set({ relationship: 'agregado' })
+        .where('id', '=', id)
+        .execute()
+
+      const read = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(read.statusCode).toBe(200)
+      expect(read.json().relationship).toBeNull()
+    })
+
+    it('tira os campos do snapshot enquanto o EI não os manda no corpo', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: {
+          ...validTicketBody,
+          enrollmentSnapshot: {
+            'carrier-id': 'carrier-unimed',
+            'carrier-name': 'Unimed Mineira',
+            contract: { 'product-type': 'health-insurance' },
+            primary: { employment: { 'contract-type': 'services-contract' } },
+            company: { 'company-size': 'corporate' },
+          },
+        },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const ticket = created.json()
+
+      expect(ticket).toMatchObject({
+        carrierId: 'carrier-unimed',
+        carrierName: 'Unimed Mineira',
+        product: 'health',
+        contractType: 'pj',
+        companySize: 'enterprise',
+      })
+
+      // Derived or sent, the column holds the EI's word.
+      const stored = await app.db
+        .selectFrom('tickets')
+        .select(['product', 'contract_type', 'company_size'])
+        .where('id', '=', ticket.id)
+        .executeTakeFirstOrThrow()
+
+      expect(stored).toEqual({
+        product: 'health-insurance',
+        contract_type: 'services-contract',
+        company_size: 'corporate',
+      })
+    })
+
+    /** A blank column is worse than a null one: the screen would show a value
+     *  that does not exist, and the filter an option nobody picks. */
+    it.each(['carrierId', 'carrierName', 'product', 'contractType', 'companySize'])(
+      'recusa %s em branco em vez de gravar coluna vazia',
+      async (field) => {
+        const response = await app.inject({
+          method: 'POST',
+          url: '/api/tickets',
+          payload: { ...validTicketBody, [field]: '' },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+
+        expect(response.statusCode).toBe(400)
+      },
+    )
+
+    it('prefere o corpo ao snapshot quando os dois trazem o campo', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: {
+          ...validTicketBody,
+          carrierId: 'carrier-do-corpo',
+          enrollmentSnapshot: { 'carrier-id': 'carrier-do-snapshot' },
+        },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.json().carrierId).toBe('carrier-do-corpo')
+    })
+
+    /** `''` only gets into the column by hand. When it does, one row must not
+     *  take the whole page down with it — the response says word or null, so a
+     *  blank reads as null. */
+    it('lê coluna em branco como nula, no detalhe e na listagem', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+      await app.db
+        .updateTable('tickets')
+        .set({ carrier_name: '', product: '', company_size: '   ' })
+        .where('id', '=', id)
+        .execute()
+
+      const read = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(read.statusCode).toBe(200)
+      expect(read.json()).toMatchObject({ carrierName: null, product: null, companySize: null })
+
+      const list = await app.inject({
+        method: 'GET',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(list.statusCode).toBe(200)
+      expect(list.json().data).toHaveLength(1)
+    })
+
+    it('deixa os campos nulos quando nem o corpo nem o snapshot os trazem', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.json()).toMatchObject({
+        carrierId: null,
+        carrierName: null,
+        product: null,
+        contractType: null,
+        companySize: null,
+        relationship: null,
+      })
+    })
+  })
 })

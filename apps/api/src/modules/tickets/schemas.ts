@@ -18,6 +18,10 @@ export const CLOSED_STATUSES = new Set<z.infer<typeof ticketStatusSchema>>([
   'cancelled',
 ])
 
+export const relationshipSchema = z
+  .enum(['holder', 'dependent', 'family-group'])
+  .meta({ id: 'Relationship' })
+
 export const ticketPrioritySchema = z
   .enum(['urgent', 'high', 'medium', 'low'])
   .meta({ id: 'TicketPriority' })
@@ -42,6 +46,14 @@ export const ticketSchema = z
     collaborators: z.array(z.record(z.string(), z.unknown())),
     forceCompletion: z.boolean(),
     enrollmentSnapshot: z.record(z.string(), z.unknown()),
+    /** `.min(1)` as in `assigneeId`: a word or null, and `''` is neither —
+     *  both write paths already refuse it. */
+    carrierId: z.string().min(1).nullable(),
+    carrierName: z.string().min(1).nullable(),
+    product: z.string().min(1).nullable(),
+    contractType: z.string().min(1).nullable(),
+    companySize: z.string().min(1).nullable(),
+    relationship: relationshipSchema.nullable(),
     sourceSystem: z.string(),
     parentTicketId: z.uuid().nullable(),
     closedAt: z.iso.datetime({ offset: true }).nullable(),
@@ -65,6 +77,11 @@ export const createTicketBodySchema = z
     companyId: z.uuid(),
     sourceSystem: z.string(),
     enrollmentSnapshot: z.record(z.string(), z.unknown()),
+    carrierId: z.string().min(1).optional(),
+    carrierName: z.string().min(1).optional(),
+    product: z.string().min(1).optional(),
+    contractType: z.string().min(1).optional(),
+    companySize: z.string().min(1).optional(),
     status: ticketStatusSchema.optional(),
     queueId: z.uuid().optional(),
     assigneeId: z.string().min(1).optional(),

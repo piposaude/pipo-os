@@ -29,6 +29,10 @@ type FixtureTicket = {
   actionDate: string | null
   createdAt: string
   closedAt: string | null
+  carrierId: string
+  relationship: string
+  stored: { product: string; contractType: string | null; companySize: string }
+  client: { product: string; contractType: string | null; companySize: string }
 }
 
 type CaseFile = {
@@ -70,6 +74,11 @@ describe('the shared filter corpus, resolved in SQL', () => {
           action_date: seed.actionDate,
           created_at: seed.createdAt,
           closed_at: seed.closedAt,
+          carrier_id: seed.carrierId,
+          relationship: seed.relationship,
+          product: seed.stored.product,
+          contract_type: seed.stored.contractType,
+          company_size: seed.stored.companySize,
           title: seed.id,
         })),
       )

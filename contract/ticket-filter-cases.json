@@ -1,5 +1,5 @@
 {
-  "readme": "Shared corpus proving the product invariant of PD-043: a saved TicketFilter selects the same set in apps/web (matchesFilter, in memory) and in apps/api (ticketFilterConditions, in SQL). Both suites read this file and assert the same expected ids, so a divergence fails a test instead of surfacing as a node that announces one number and lists another. Only fields the resolver already handles appear here; the five snapshot-derived ones are refused server-side and cannot be compared yet. A case may also carry a window (awake | sleeping | all), applied with today: the two tickets due on 09-02 and 09-03 sit on either side of the SLEEP_DAYS cut, so a side that moves the constant alone fails here. A day is a UTC calendar day, read off the ISO string: the ticket due at 01:30Z on 09-03 already sleeps.",
+  "readme": "Shared corpus proving the product invariant of PD-043: a saved TicketFilter selects the same set in apps/web (matchesFilter, over rows the API already translated) and in apps/api (ticketFilterConditions, over columns holding the EI's own words). Both suites read this file and assert the same expected ids, so a divergence fails a test instead of surfacing as a node that announces one number and lists another. `stored` is what the column holds, `client` is what the row carries after the API translates; a case's filter is always written in the client's words, which is what a saved view contains. A case may also carry a window (awake | sleeping | all), applied with today: the two tickets due on 09-02 and 09-03 sit on either side of the SLEEP_DAYS cut, so a side that moves the constant alone fails here. A day is a UTC calendar day, read off the ISO string: the ticket due at 01:30Z on 09-03 already sleeps.",
   "viewerId": "ana@pipo.health",
   "today": "2026-08-31",
   "companyA": "00000000-0000-4000-8000-0000000000a1",
@@ -18,7 +18,19 @@
       "tags": ["vip"],
       "actionDate": null,
       "createdAt": "2026-08-30T09:00:00.000Z",
-      "closedAt": null
+      "closedAt": null,
+      "carrierId": "carrier-unimed",
+      "relationship": "holder",
+      "stored": {
+        "product": "health-insurance",
+        "contractType": "services-contract",
+        "companySize": "corporate"
+      },
+      "client": {
+        "product": "health",
+        "contractType": "pj",
+        "companySize": "enterprise"
+      }
     },
     {
       "id": "da-ana-atrasado",
@@ -32,7 +44,19 @@
       "tags": ["vip", "retorno"],
       "actionDate": "2026-08-20T10:00:00.000Z",
       "createdAt": "2026-08-01T09:00:00.000Z",
-      "closedAt": null
+      "closedAt": null,
+      "carrierId": "carrier-amil",
+      "relationship": "family-group",
+      "stored": {
+        "product": "health",
+        "contractType": "brazil-labor-law",
+        "companySize": "smb"
+      },
+      "client": {
+        "product": "health",
+        "contractType": "clt",
+        "companySize": "pme"
+      }
     },
     {
       "id": "da-ana-sem-prioridade",
@@ -46,7 +70,19 @@
       "tags": [],
       "actionDate": "2026-09-20T10:00:00.000Z",
       "createdAt": "2026-08-31T09:00:00.000Z",
-      "closedAt": null
+      "closedAt": null,
+      "carrierId": "carrier-petlove",
+      "relationship": "dependent",
+      "stored": {
+        "product": "pet-insurance",
+        "contractType": null,
+        "companySize": "smb-plus"
+      },
+      "client": {
+        "product": "pet",
+        "contractType": null,
+        "companySize": "pme-plus"
+      }
     },
     {
       "id": "do-bruno",
@@ -60,7 +96,19 @@
       "tags": ["retorno"],
       "actionDate": "2026-08-31T10:00:00.000Z",
       "createdAt": "2026-08-29T09:00:00.000Z",
-      "closedAt": null
+      "closedAt": null,
+      "carrierId": "carrier-amil",
+      "relationship": "holder",
+      "stored": {
+        "product": "mental-health",
+        "contractType": "intern",
+        "companySize": "corporate"
+      },
+      "client": {
+        "product": "mental-health",
+        "contractType": "intern",
+        "companySize": "enterprise"
+      }
     },
     {
       "id": "fechado",
@@ -74,7 +122,19 @@
       "tags": ["vip"],
       "actionDate": null,
       "createdAt": "2026-08-10T09:00:00.000Z",
-      "closedAt": "2026-08-15T09:00:00.000Z"
+      "closedAt": "2026-08-15T09:00:00.000Z",
+      "carrierId": "carrier-wellhub",
+      "relationship": "holder",
+      "stored": {
+        "product": "gym",
+        "contractType": "services-contract",
+        "companySize": "smb"
+      },
+      "client": {
+        "product": "gym",
+        "contractType": "pj",
+        "companySize": "pme"
+      }
     },
     {
       "id": "acorda-no-limite",
@@ -88,7 +148,19 @@
       "tags": [],
       "actionDate": "2026-09-02T10:00:00.000Z",
       "createdAt": "2026-08-15T09:00:00.000Z",
-      "closedAt": null
+      "closedAt": null,
+      "carrierId": "carrier-sulamerica",
+      "relationship": "holder",
+      "stored": {
+        "product": "dental-insurance",
+        "contractType": "brazil-labor-law",
+        "companySize": "smb"
+      },
+      "client": {
+        "product": "dental",
+        "contractType": "clt",
+        "companySize": "pme"
+      }
     },
     {
       "id": "dorme-um-dia-alem",
@@ -102,7 +174,19 @@
       "tags": [],
       "actionDate": "2026-09-03T10:00:00.000Z",
       "createdAt": "2026-08-15T09:00:00.000Z",
-      "closedAt": null
+      "closedAt": null,
+      "carrierId": "carrier-sulamerica",
+      "relationship": "holder",
+      "stored": {
+        "product": "dental-insurance",
+        "contractType": "brazil-labor-law",
+        "companySize": "smb"
+      },
+      "client": {
+        "product": "dental",
+        "contractType": "clt",
+        "companySize": "pme"
+      }
     },
     {
       "id": "vira-o-dia-em-utc",
@@ -116,7 +200,19 @@
       "tags": [],
       "actionDate": "2026-09-03T01:30:00.000Z",
       "createdAt": "2026-08-15T09:00:00.000Z",
-      "closedAt": null
+      "closedAt": null,
+      "carrierId": "carrier-sulamerica",
+      "relationship": "holder",
+      "stored": {
+        "product": "dental-insurance",
+        "contractType": "brazil-labor-law",
+        "companySize": "smb"
+      },
+      "client": {
+        "product": "dental",
+        "contractType": "clt",
+        "companySize": "pme"
+      }
     }
   ],
   "cases": [
@@ -136,7 +232,9 @@
     },
     {
       "name": "a list is an OR",
-      "filter": { "statuses": ["missing-documents", "incorrect-data"] },
+      "filter": {
+        "statuses": ["missing-documents", "incorrect-data"]
+      },
       "expected": ["da-ana-atrasado", "do-bruno"]
     },
     {
@@ -149,62 +247,87 @@
     },
     {
       "name": "tags asks for all of them, not any",
-      "filter": { "tags": ["vip", "retorno"] },
+      "filter": {
+        "tags": ["vip", "retorno"]
+      },
       "expected": ["da-ana-atrasado"]
     },
     {
       "name": "a single tag still matches every ticket carrying it",
-      "filter": { "tags": ["vip"] },
+      "filter": {
+        "tags": ["vip"]
+      },
       "expected": ["da-ana-atrasado", "fechado", "livre-urgente"]
     },
     {
       "name": "null is a value in assigneeIds",
-      "filter": { "assigneeIds": [null] },
+      "filter": {
+        "assigneeIds": [null]
+      },
       "expected": ["livre-urgente"]
     },
     {
       "name": "null rides along with a real assignee",
-      "filter": { "assigneeIds": ["bruno@pipo.health", null] },
+      "filter": {
+        "assigneeIds": ["bruno@pipo.health", null]
+      },
       "expected": ["do-bruno", "livre-urgente"]
     },
     {
       "name": "@me resolves to the viewer",
-      "filter": { "assigneeIds": ["@me"] },
+      "filter": {
+        "assigneeIds": ["@me"]
+      },
       "expected": ["da-ana-atrasado", "da-ana-sem-prioridade", "fechado"]
     },
     {
       "name": "null is a value in priorities",
-      "filter": { "priorities": [null, "high"] },
+      "filter": {
+        "priorities": [null, "high"]
+      },
       "expected": ["da-ana-sem-prioridade", "do-bruno", "fechado"]
     },
     {
       "name": "groupIds narrows to the pod",
-      "filter": { "groupIds": ["00000000-0000-4000-8000-0000000000c3"] },
+      "filter": {
+        "groupIds": ["00000000-0000-4000-8000-0000000000c3"]
+      },
       "expected": ["da-ana-atrasado", "do-bruno", "fechado", "livre-urgente"]
     },
     {
       "name": "types and origins",
-      "filter": { "types": ["inclusion"], "origins": ["enrollment-integrations"] },
+      "filter": {
+        "types": ["inclusion"],
+        "origins": ["enrollment-integrations"]
+      },
       "expected": ["fechado", "livre-urgente"]
     },
     {
       "name": "actionDateBefore cuts by day and drops the ones with no date",
-      "filter": { "actionDateBefore": "2026-08-31" },
+      "filter": {
+        "actionDateBefore": "2026-08-31"
+      },
       "expected": ["da-ana-atrasado"]
     },
     {
       "name": "urgentBy is urgent OR overdue, the filter's only cross-field OR",
-      "filter": { "urgentBy": "2026-08-31" },
+      "filter": {
+        "urgentBy": "2026-08-31"
+      },
       "expected": ["da-ana-atrasado", "livre-urgente"]
     },
     {
       "name": "createdSince cuts by creation day",
-      "filter": { "createdSince": "2026-08-29" },
+      "filter": {
+        "createdSince": "2026-08-29"
+      },
       "expected": ["da-ana-sem-prioridade", "do-bruno", "livre-urgente"]
     },
     {
       "name": "archived false keeps the open ones",
-      "filter": { "archived": false },
+      "filter": {
+        "archived": false
+      },
       "expected": [
         "acorda-no-limite",
         "da-ana-atrasado",
@@ -217,7 +340,9 @@
     },
     {
       "name": "archived true keeps the closed ones",
-      "filter": { "archived": true },
+      "filter": {
+        "archived": true
+      },
       "expected": ["fechado"]
     },
     {
@@ -255,6 +380,84 @@
         "livre-urgente",
         "vira-o-dia-em-utc"
       ]
+    },
+    {
+      "name": "carrier needs no translation",
+      "filter": {
+        "carrierIds": ["carrier-amil"]
+      },
+      "expected": ["da-ana-atrasado", "do-bruno"]
+    },
+    {
+      "name": "relationship is our own word on both sides",
+      "filter": {
+        "relationships": ["family-group", "dependent"]
+      },
+      "expected": ["da-ana-atrasado", "da-ana-sem-prioridade"]
+    },
+    {
+      "name": "a client word finds the EI word the column holds",
+      "filter": {
+        "companySizes": ["enterprise"]
+      },
+      "expected": ["do-bruno", "livre-urgente"]
+    },
+    {
+      "name": "contract type, translated on the way in",
+      "filter": {
+        "contractTypes": ["pj"]
+      },
+      "expected": ["fechado", "livre-urgente"]
+    },
+    {
+      "name": "one client word matches both stored forms of a product",
+      "filter": {
+        "products": ["health"]
+      },
+      "expected": ["da-ana-atrasado", "livre-urgente"]
+    },
+    {
+      "name": "a product with no translation still matches",
+      "filter": {
+        "products": ["mental-health"]
+      },
+      "expected": ["do-bruno"]
+    },
+    {
+      "name": "a contract type outside clt and pj still matches",
+      "filter": {
+        "contractTypes": ["intern"]
+      },
+      "expected": ["do-bruno"]
+    },
+    {
+      "name": "null contract type is a value of its own",
+      "filter": {
+        "contractTypes": [null]
+      },
+      "expected": ["da-ana-sem-prioridade"]
+    },
+    {
+      "name": "the MOV PJ cut: services-contract only, open",
+      "filter": {
+        "contractTypes": ["pj"],
+        "archived": false
+      },
+      "expected": ["livre-urgente"]
+    },
+    {
+      "name": "a filter in the word the column stores matches nothing on either side",
+      "filter": {
+        "companySizes": ["smb"]
+      },
+      "expected": []
+    },
+    {
+      "name": "the EI's canonical product name is not a client word either",
+      "filter": {
+        "products": ["health-insurance"]
+      },
+      "expected": []
     }
   ]
 }

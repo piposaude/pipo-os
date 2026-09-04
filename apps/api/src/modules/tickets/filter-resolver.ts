@@ -1,26 +1,7 @@
 import { sql, type Expression, type ExpressionBuilder, type RawBuilder, type SqlBool } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
-import { UnprocessableEntityError } from '../../shared/errors.js'
 import type { TicketFilter } from './filter-schema.js'
-
-/** Values the EI sends but that have no column yet — they still live inside
- *  enrollment_snapshot. ACE-181 gives each one a column and empties this list.
- *  Refused instead of ignored meanwhile: a dropped criterion widens the queue
- *  in silence, and the count would stop matching the list. */
-export const FIELDS_AWAITING_COLUMN = [
-  'carrierIds',
-  'products',
-  'companySizes',
-  'contractTypes',
-  'relationships',
-] as const
-
-export class UnsupportedFilterField extends UnprocessableEntityError {
-  constructor(readonly field: string) {
-    super(`Filter field "${field}" is not resolvable server-side yet`)
-    this.name = 'UnsupportedFilterField'
-  }
-}
+import { toStored, type VocabularyName } from './vocabulary.js'
 
 /** Twin of SLEEP_DAYS in web/src/lib/pipodesk/filter.ts. The two boundary
  *  tickets in contract/ticket-filter-cases.json fail whichever side moves alone. */
@@ -52,55 +33,87 @@ function inOrNull(eb: Eb, column: 'assignee_id' | 'priority', values: (string | 
   return eb.or(parts)
 }
 
-/** Fields are an AND, values inside a list are an OR. Two exceptions: `tags`
- *  asks for all of them, and `urgentBy` is itself an OR. */
+/** The columns that hold the EI's word, each with the vocabulary that reads it. */
+const VOCABULARY_OF = {
+  product: 'product',
+  company_size: 'companySize',
+  contract_type: 'contractType',
+} as const satisfies Record<string, VocabularyName>
+
+/** Column holds the EI's word, filter arrives in the client's. A value with no
+ *  stored form leaves `or([])`, which is `1 = 0`: it matches nothing, as on
+ *  the web. */
+function translatedIn(
+  eb: Eb,
+  column: keyof typeof VOCABULARY_OF,
+  values: (string | null)[],
+): Expression<SqlBool> {
+  const present = values.filter((value): value is string => value !== null)
+  const stored = present.flatMap((value) => toStored(VOCABULARY_OF[column], value))
+  const parts: Expression<SqlBool>[] = []
+  if (stored.length > 0) parts.push(eb(column, 'in', stored))
+  if (values.length !== present.length) parts.push(eb(column, 'is', null))
+  return eb.or(parts)
+}
+
+type Resolver = (eb: Eb, filter: TicketFilter, viewerId: string) => Expression<SqlBool> | null
+
+/**
+ * One resolver per field of the contract. The type makes a field added to the
+ * schema and forgotten here a build error; and unlike a flag, an entry is the
+ * condition itself, so a field cannot be marked handled without being resolved.
+ *
+ * Fields are an AND, values inside a list are an OR. Two exceptions: `tags`
+ * asks for all of them, and `urgentBy` is itself an OR.
+ */
+export const FIELD_RESOLVERS: Record<keyof TicketFilter, Resolver> = {
+  statuses: (eb, { statuses }) => (statuses?.length ? eb('status', 'in', statuses) : null),
+  companyIds: (eb, { companyIds }) =>
+    companyIds?.length ? eb('company_id', 'in', companyIds) : null,
+  carrierIds: (eb, { carrierIds }) =>
+    carrierIds?.length ? eb('carrier_id', 'in', carrierIds) : null,
+  products: (eb, { products }) => (products?.length ? translatedIn(eb, 'product', products) : null),
+  types: (eb, { types }) => (types?.length ? eb('enrollment_type', 'in', types) : null),
+  companySizes: (eb, { companySizes }) =>
+    companySizes?.length ? translatedIn(eb, 'company_size', companySizes) : null,
+  contractTypes: (eb, { contractTypes }) =>
+    contractTypes?.length ? translatedIn(eb, 'contract_type', contractTypes) : null,
+  relationships: (eb, { relationships }) =>
+    relationships?.length ? eb('relationship', 'in', relationships) : null,
+  origins: (eb, { origins }) => (origins?.length ? eb('source_system', 'in', origins) : null),
+  groupIds: (eb, { groupIds }) => (groupIds?.length ? eb('group_id', 'in', groupIds) : null),
+  // `@>` is contains, not `&&`: the contract asks for every tag listed, while
+  // the older listTicketsQuery.tags is an overlap and stays an OR.
+  tags: (_eb, { tags }) => (tags?.length ? sql<SqlBool>`tags @> ${tags}::text[]` : null),
+  assigneeIds: (eb, { assigneeIds }, viewerId) =>
+    assigneeIds?.length
+      ? inOrNull(eb, 'assignee_id', resolveAssignees(assigneeIds, viewerId))
+      : null,
+  priorities: (eb, { priorities }) =>
+    priorities?.length ? inOrNull(eb, 'priority', priorities) : null,
+  actionDateBefore: (_eb, { actionDateBefore }) =>
+    actionDateBefore === undefined
+      ? null
+      : sql<SqlBool>`action_date < ${utcMidnight(actionDateBefore)}`,
+  urgentBy: (_eb, { urgentBy }) =>
+    urgentBy === undefined
+      ? null
+      : sql<SqlBool>`(priority = 'urgent' OR action_date < ${utcMidnight(urgentBy)})`,
+  createdSince: (_eb, { createdSince }) =>
+    createdSince === undefined ? null : sql<SqlBool>`created_at >= ${utcMidnight(createdSince)}`,
+  archived: (eb, { archived }) =>
+    archived === undefined ? null : eb('closed_at', archived ? 'is not' : 'is', null),
+}
+
+/** The saved filter as a list of conditions, one per field that is set. */
 export function ticketFilterConditions(
   eb: Eb,
   filter: TicketFilter,
   viewerId: string,
 ): Expression<SqlBool>[] {
-  for (const field of FIELDS_AWAITING_COLUMN) {
-    if (filter[field] !== undefined) throw new UnsupportedFilterField(field)
-  }
-
-  const conditions: Expression<SqlBool>[] = []
-
-  if (filter.statuses?.length) conditions.push(eb('status', 'in', filter.statuses))
-  if (filter.companyIds?.length) conditions.push(eb('company_id', 'in', filter.companyIds))
-  if (filter.types?.length) conditions.push(eb('enrollment_type', 'in', filter.types))
-  if (filter.origins?.length) conditions.push(eb('source_system', 'in', filter.origins))
-  if (filter.groupIds?.length) conditions.push(eb('group_id', 'in', filter.groupIds))
-
-  // `@>` is contains, not `&&`: the contract asks for every tag listed, while
-  // the older listTicketsQuery.tags is an overlap and stays an OR.
-  if (filter.tags?.length) {
-    conditions.push(sql<SqlBool>`tags @> ${filter.tags}::text[]`)
-  }
-
-  if (filter.assigneeIds?.length) {
-    conditions.push(inOrNull(eb, 'assignee_id', resolveAssignees(filter.assigneeIds, viewerId)))
-  }
-  if (filter.priorities?.length) {
-    conditions.push(inOrNull(eb, 'priority', filter.priorities))
-  }
-
-  if (filter.actionDateBefore !== undefined) {
-    conditions.push(sql<SqlBool>`action_date < ${utcMidnight(filter.actionDateBefore)}`)
-  }
-  if (filter.createdSince !== undefined) {
-    conditions.push(sql<SqlBool>`created_at >= ${utcMidnight(filter.createdSince)}`)
-  }
-  if (filter.urgentBy !== undefined) {
-    conditions.push(
-      sql<SqlBool>`(priority = 'urgent' OR action_date < ${utcMidnight(filter.urgentBy)})`,
-    )
-  }
-
-  if (filter.archived !== undefined) {
-    conditions.push(eb('closed_at', filter.archived ? 'is not' : 'is', null))
-  }
-
-  return conditions
+  return Object.values(FIELD_RESOLVERS)
+    .map((resolve) => resolve(eb, filter, viewerId))
+    .filter((condition): condition is Expression<SqlBool> => condition !== null)
 }
 
 export type ActionDateWindow = 'awake' | 'sleeping' | 'all'
