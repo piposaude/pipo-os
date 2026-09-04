@@ -66,11 +66,11 @@
   padding: var(--pipo-space-xxsmall) var(--pipo-space-xsmall);
   padding-left: calc(var(--pipo-space-xsmall) + var(--depth, 0) * 16px);
   border: none;
-  /* 4px from the sketch, not the DS small radius (8px). */
-  border-radius: var(--pipo-radius-xsmall);
+  /* 8px, like every other hover surface of the screen (prototype, 01/09). */
+  border-radius: var(--pipo-radius-small);
   background: transparent;
-  /* Neutral/Darkest (#3C404A) — text-primary is a different gray than the sketch. */
-  color: var(--pipo-neutral-darkest);
+  /* A tone lighter than the dark text, so "you are here" reads without bold. */
+  color: var(--desk-nav-text);
   font-family: var(--pipo-font-ui);
   font-size: var(--pipo-fs-xsmall);
   font-weight: var(--pipo-fw-medium);
@@ -80,39 +80,51 @@
   cursor: pointer;
 }
 
-/* The team-page links read as navigation, not queue rows: secondary text,
-   no count. */
-a.item {
-  color: var(--pipo-text-secondary);
-}
-
-a.item:hover,
-a.item[aria-current='page'] {
-  color: var(--pipo-text-primary);
-}
-
 /* Without its own width the flex-basis becomes the content and the chevron
    hugs the text instead of floating at the box edge. */
 .branch {
   width: auto;
 }
 
+/* The four states, measured from Linear (DSP-115): rest transparent, hover
+   and pressed as two steps of gray, selected on the pressed value. */
 .item:hover,
 .row:hover {
-  background: var(--pipo-neutral-lightest);
+  background: var(--desk-nav-hover);
+  color: var(--desk-nav-text-strong);
 }
 
-/* The hover plate used to switch instantly while the icon slid in 220ms.
-   `background-color`, not the shorthand. */
+.item:active {
+  background: var(--desk-nav-selected);
+}
+
+/* Asymmetric on purpose: the plate snaps, only the text eases — instantly in,
+   150ms out. */
 .item,
 .row {
-  transition: background-color 120ms ease-out;
+  transition: color 150ms ease;
 }
 
+.item:hover,
+.row:hover {
+  transition-duration: 0s;
+}
+
+/* Selected does not react to hover: the "you are here" marker never wavers.
+   Text and glyph weigh more (600 and a 1.5 stroke — the prototype's call of
+   03/09). */
 .item[aria-current='true'],
-.item[aria-current='page'] {
-  background: var(--pipo-brand-primary-lightest);
+.item[aria-current='page'],
+.item[aria-current='true']:hover,
+.item[aria-current='page']:hover {
+  background: var(--desk-nav-selected);
+  color: var(--desk-nav-text-strong);
   font-weight: var(--pipo-fw-semibold);
+}
+
+.item[aria-current='true'] .icon svg *,
+.item[aria-current='page'] .icon svg * {
+  stroke-width: 1.5;
 }
 
 .row {
@@ -120,12 +132,13 @@ a.item[aria-current='page'] {
   display: flex;
   align-items: center;
   padding-right: var(--pipo-space-xsmall);
-  border-radius: var(--pipo-radius-xsmall);
+  border-radius: var(--pipo-radius-small);
   cursor: pointer;
 }
 
-.row:has(> .branch[aria-current='true']) {
-  background: var(--pipo-brand-primary-lightest);
+.row:has(> .branch[aria-current='true']),
+.row:has(> .branch[aria-current='true']):hover {
+  background: var(--desk-nav-selected);
 }
 
 .row:has(> .branch[aria-current='true']) > .count {
@@ -161,7 +174,9 @@ a.item[aria-current='page'] {
   padding: 0;
   border: none;
   background: none;
-  color: var(--pipo-neutral-darkest);
+  /* Same tone as the label at rest: a darker count would read as inverted
+     emphasis. */
+  color: var(--desk-nav-text);
   font-family: inherit;
   font-size: var(--pipo-fs-xsmall);
   font-variant-numeric: tabular-nums;
