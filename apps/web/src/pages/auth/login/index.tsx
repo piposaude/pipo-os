@@ -1,4 +1,4 @@
-import { Banner, Button, Card, Logo } from '@piposaude/design-system'
+import { Banner, Button, Card, Heading, Logo, Text } from '@piposaude/design-system'
 import constants from '@/constants/pages/auth/login'
 import { DevLoginButton } from './DevLoginButton'
 import { GoogleIcon } from './GoogleIcon'
@@ -24,23 +24,46 @@ export default function LoginPage({ redirect, error }: LoginPageProps) {
 
   return (
     <main className="login-page">
-      <Card className="login-card">
-        {/* The Logo carries aria-label="Pipo Saúde", so the page keeps an
-            accessible name even without a visible heading. */}
-        <Logo variant="color" size="lg" />
-        {message && <Banner variant="alert">{message}</Banner>}
-        <Button
-          variant="secondary"
-          leftIcon={<GoogleIcon />}
-          onClick={() => {
-            window.location.assign(googleHref)
-          }}
-        >
-          {constants.googleButton}
-        </Button>
-        {/* Statically replaced by Vite: the dev button and everything it
-            imports are eliminated from the production bundle. */}
-        {import.meta.env.DEV && <DevLoginButton redirect={redirect} />}
+      <Card
+        className="login-card"
+        paddingVertical="var(--pipo-space-large)"
+        paddingHorizontal="var(--pipo-space-large)"
+      >
+        <div className="login-stack">
+          <header className="login-identity">
+            <Logo variant="color" size="sm" />
+            <Heading level="h1" textAlign="center" className="login-title">
+              {constants.title}
+            </Heading>
+            <Text variant="bodySmall" textAlign="center" color="var(--pipo-text-secondary)">
+              {constants.subtitle}
+            </Text>
+          </header>
+
+          {message && <Banner variant="alert">{message}</Banner>}
+
+          <div className="login-actions">
+            <Button
+              variant="primary"
+              leftIcon={<GoogleIcon />}
+              onClick={() => {
+                window.location.assign(googleHref)
+              }}
+            >
+              {constants.googleButton}
+            </Button>
+            {import.meta.env.DEV && <DevLoginButton redirect={redirect} />}
+          </div>
+
+          <footer className="login-footer">
+            <Text variant="bodySmall" textAlign="center" color="var(--pipo-text-secondary)">
+              {constants.footer.domains}
+            </Text>
+            <Text variant="bodySmall" textAlign="center" color="var(--pipo-text-secondary)">
+              {constants.footer.partners}
+            </Text>
+          </footer>
+        </div>
       </Card>
     </main>
   )

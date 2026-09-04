@@ -1,5 +1,11 @@
 export default {
-  googleButton: 'Entrar com o Google',
+  title: 'Pipodesk',
+  subtitle: 'Atendimento interno · acesso restrito',
+  googleButton: 'Entrar com Google',
+  footer: {
+    domains: 'Entre com @piposaude.com.br ou @pipo.ai.',
+    partners: 'Sem acesso? Fale com o time de Tecnologia.',
+  },
   errors: {
     access_denied: 'Login cancelado. Tente novamente.',
     invalid_state: 'Sua sessão de login expirou. Tente novamente.',

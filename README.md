@@ -5,8 +5,9 @@ Serviço fullstack para gerenciamento de tickets internos.
 ## Stack
 
 - **`apps/api`** — Node.js + Fastify + TypeScript, monólito modular (porta 3001)
-- **`apps/web`** — Vite + React + TypeScript (porta 5173)
+- **`apps/web`** — Vite + React + TypeScript (porta 5173); detalhes em [`apps/web/README.md`](apps/web/README.md)
 - **`packages/api-client`** — client TypeScript gerado a partir do contrato OpenAPI, consumido pelo `apps/web`
+- **`packages/observability`** — logger, métricas e Sentry compartilhados por api e web; os dois importam o `dist/`, então o pacote precisa de `build` antes do primeiro `pnpm dev` (ver [Rodar](#rodar))
 - **Banco de dados** — PostgreSQL 17
 
 Monorepo gerenciado com **pnpm workspaces**.
@@ -64,6 +65,7 @@ Rode sempre que uma migration mudar o schema.
 ### Rodar
 
 ```bash
+pnpm --filter @pipo-os/observability build   # api e web importam o dist/; refaça quando o pacote mudar
 pnpm dev
 ```
 
@@ -101,12 +103,24 @@ Isso sobe `apps/api` e `apps/web` simultaneamente via `pnpm -r --parallel dev`.
 
 ## API
 
-| Método  | Rota               | Descrição                              |
-| ------- | ------------------ | -------------------------------------- |
-| `GET`   | `/api/tickets`     | Lista tickets com filtros e paginação  |
-| `GET`   | `/api/tickets/:id` | Retorna um ticket pelo ID              |
-| `POST`  | `/api/tickets`     | Cria um novo ticket                    |
-| `PATCH` | `/api/tickets/:id` | Atualiza campos do ticket parcialmente |
+| Método                 | Rota                                | Descrição                                                            |
+| ---------------------- | ----------------------------------- | -------------------------------------------------------------------- |
+| `GET`                  | `/api/tickets`                      | Lista tickets com filtros e paginação                                |
+| `GET`                  | `/api/tickets/:id`                  | Retorna um ticket pelo ID                                            |
+| `POST`                 | `/api/tickets`                      | Cria um ticket a partir de uma movimentação                          |
+| `PATCH`                | `/api/tickets/:id`                  | Atualiza campos do ticket parcialmente                               |
+| `PATCH`                | `/api/tickets/:id/status`           | Muda o status; um status de fechamento preenche `closedAt`           |
+| `POST`                 | `/api/tickets/:id/claim`            | Atribui o ticket ao usuário da sessão; 422 se ele já estiver fechado |
+| `GET` `POST`           | `/api/tickets/:id/comments`         | Lista e cria comentários do ticket                                   |
+| `GET` `POST`           | `/api/groups`                       | Lista e cria grupos                                                  |
+| `GET` `PATCH` `DELETE` | `/api/groups/:id`                   | Lê, atualiza e remove um grupo                                       |
+| `POST`                 | `/api/groups/:id/members`           | Adiciona um membro ao grupo                                          |
+| `PATCH` `DELETE`       | `/api/groups/:id/members/:memberId` | Atualiza e remove um membro do grupo                                 |
+| `GET` `POST`           | `/api/queues`                       | Lista e cria filas                                                   |
+| `GET` `PATCH` `DELETE` | `/api/queues/:id`                   | Lê, atualiza e remove uma fila                                       |
+| `POST`                 | `/api/queues/:id/groups`            | Vincula um grupo à fila                                              |
+| `DELETE`               | `/api/queues/:id/groups/:groupId`   | Desvincula um grupo da fila                                          |
+| `GET`                  | `/api/queues/:id/tickets`           | Lista os tickets de uma fila                                         |
 
 ### Autenticação
 
@@ -158,15 +172,9 @@ Essas garantias são cobertas por testes em `apps/api/src/modules/auth/dev-login
 
 ### Payload de criação
 
-```json
-{
-  "title": "Título do ticket",
-  "description": "Descrição detalhada",
-  "status": "open"
-}
-```
+`POST /api/tickets` recebe a movimentação que origina o ticket. Obrigatórios: `enrollmentId`, `enrollmentType`, `companyId`, `sourceSystem` e `enrollmentSnapshot` (o retrato da movimentação, guardado como jsonb). Opcionais: `status`, `queueId`, `assigneeId`, `tags`, `forceCompletion` e `parentTicketId`.
 
-Status possíveis: `open`, `in_progress`, `closed`.
+Status possíveis: `broker-processing`, `carrier-processing`, `broker-open-issue`, `missing-documents`, `incorrect-data`, `submitted-cancellation`, `completed` e `cancelled`. O contrato completo é o `openapi.json` (ver abaixo).
 
 ### Contrato OpenAPI
 
@@ -219,4 +227,4 @@ O deploy (`.github/workflows/deploy.yml`) builda e publica as imagens de `apps/a
 
 Autenticação no EKS via OIDC (`aws-actions/configure-aws-credentials`). As mudanças em `.tf/` (IAM roles, EKS access entries) são aplicadas manualmente via `terraform apply` — não há pipeline de Terraform neste repositório.
 
-O registry `@piposaude` (GitHub Packages) exige autenticação mesmo para leitura; `pnpm install` no CI usa o secret `NODE_AUTH_TOKEN` (PAT com escopo `read:packages`) para isso. Localmente, configure o mesmo token em `~/.npmrc`. Hoje nenhuma dependência do escopo `@piposaude` é instalada (isso chega com o design system em `apps/web`), mas o plumbing já está em vigor.
+O registry `@piposaude` (GitHub Packages) exige autenticação mesmo para leitura; `pnpm install` no CI usa o secret `NODE_AUTH_TOKEN` (PAT com escopo `read:packages`) para isso. Localmente, configure o mesmo token em `~/.npmrc`. O `apps/web` depende de `@piposaude/design-system` desse registry, então sem o token o `pnpm install` falha também localmente.
