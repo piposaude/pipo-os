@@ -41,7 +41,7 @@ export interface QueueSidebarProps {
 const ADMIN_LINKS = [
   {
     key: 'home',
-    label: 'Home',
+    label: constants.adminLinks.home,
     glyph: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <path
@@ -56,7 +56,7 @@ const ADMIN_LINKS = [
   },
   {
     key: 'portfolios',
-    label: 'Carteiras',
+    label: constants.adminLinks.portfolios,
     glyph: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <rect
@@ -79,7 +79,7 @@ const ADMIN_LINKS = [
   },
   {
     key: 'views',
-    label: 'Views',
+    label: constants.adminLinks.views,
     glyph: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <path

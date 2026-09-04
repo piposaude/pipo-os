@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from '@/routeTree.gen'
 import constants from '@/constants/pages/pipodesk/team'
+import sidebarConstants from '@/constants/pipodesk/sidebar'
 
 vi.mock('@/lib/auth', () => ({
   ensureSession: vi.fn().mockResolvedValue(undefined),
@@ -174,6 +175,25 @@ describe('abas do pod', () => {
     expect(within(table).getByText('MOV CLT')).toBeInTheDocument()
     expect(within(table).getByText('Contrato: CLT')).toBeInTheDocument()
   })
+
+  /** DSP-93: there is no tab bar, so the breadcrumb is what says which section
+   *  you are on — it ends in the section, and the group becomes the way back. */
+  it.each(['portfolios', 'views'] as const)(
+    'should end the breadcrumb in the %s section and make the group a link',
+    async (tab) => {
+      const router = await renderAt(`/teams/pod-1?tab=${tab}`)
+      const user = userEvent.setup()
+
+      const breadcrumb = await screen.findByRole('navigation', { name: /breadcrumb/i })
+      const items = within(breadcrumb).getAllByRole('listitem')
+      expect(items.at(-1)).toHaveTextContent(sidebarConstants.adminLinks[tab])
+      expect(items.at(-1)).not.toHaveTextContent('POD 1')
+
+      await user.click(within(breadcrumb).getByRole('link', { name: 'POD 1' }))
+      expect(router.state.location.pathname).toBe('/teams/pod-1')
+      expect(router.state.location.search).toEqual({})
+    },
+  )
 
   it('should keep the Home count when arriving with no tab param', async () => {
     await renderAt('/teams/pod-1')

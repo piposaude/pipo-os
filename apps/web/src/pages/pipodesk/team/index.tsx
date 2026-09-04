@@ -23,6 +23,7 @@ import { ViewsTab } from './ViewsTab'
 import { windowOf } from '@/lib/pipodesk/filter'
 import { COMPANY_NAMES, structureFixture } from '@/fixtures/pipodesk/dataset'
 import constants from '@/constants/pages/pipodesk/team'
+import sidebarConstants from '@/constants/pipodesk/sidebar'
 import styles from './style.module.css'
 
 /** Up to two initials for the avatar, from the first two words of the name. */
@@ -94,22 +95,41 @@ export default function TeamPage() {
   }
 
   const trail = [...ancestorsOf(structureFixture, groupId)].reverse()
+  /* The breadcrumb, not a tab bar, says which section you are on (DSP-93):
+     outside Home it ends in the section and the group becomes the way back. */
+  const section = tab === 'home' ? null : sidebarConstants.adminLinks[tab]
+  const crumbs = [
+    ...trail.map((ancestor) => (
+      <BreadcrumbItem key={ancestor.id}>
+        <Link to="/teams/$groupId" params={{ groupId: ancestor.id }}>
+          {ancestor.name}
+        </Link>
+      </BreadcrumbItem>
+    )),
+    section === null ? (
+      <BreadcrumbItem key={group.id} current>
+        {group.name}
+      </BreadcrumbItem>
+    ) : (
+      <BreadcrumbItem key={group.id}>
+        <Link to="/teams/$groupId" params={{ groupId: group.id }} search={{}}>
+          {group.name}
+        </Link>
+      </BreadcrumbItem>
+    ),
+    ...(section === null
+      ? []
+      : [
+          <BreadcrumbItem key="section" current>
+            {section}
+          </BreadcrumbItem>,
+        ]),
+  ]
 
   return (
     <div className={styles.screen}>
       <div className={styles.topbar}>
-        <Breadcrumb separator="›">
-          {/* Every ancestor is a group with its own page now, so the trail
-                         navigates instead of just describing. */}
-          {trail.map((ancestor) => (
-            <BreadcrumbItem key={ancestor.id}>
-              <Link to="/teams/$groupId" params={{ groupId: ancestor.id }}>
-                {ancestor.name}
-              </Link>
-            </BreadcrumbItem>
-          ))}
-          <BreadcrumbItem current>{group.name}</BreadcrumbItem>
-        </Breadcrumb>
+        <Breadcrumb separator="›">{crumbs}</Breadcrumb>
       </div>
 
       <header className={styles.pagehead}>
