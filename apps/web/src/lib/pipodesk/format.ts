@@ -102,8 +102,8 @@ export function formatLongDate(iso: string | null): string {
   return `${parts.day} de ${MONTHS[Number(parts.month) - 1]}`
 }
 
-/** `11/08/2026` — the full date, for when the year carries meaning (a filed
- *  action date, an overdue banner). */
+/** `11/08/2026` — the full date, for when the year carries meaning (the
+ *  filed action date in the context column). */
 export function formatDate(iso: string | null): string {
   const parts = partsOf(iso)
   if (parts === null) return '—'
