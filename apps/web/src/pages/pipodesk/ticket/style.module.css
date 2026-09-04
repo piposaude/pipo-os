@@ -62,21 +62,100 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* The copy control exists for the id to leave the screen, so it sits beside
+   the id and only shows when the header is hovered, focused, or just copied. */
 .copy {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  padding: 1px var(--pipo-space-xxsmall);
+  padding: var(--pipo-space-xxsmall);
   border: none;
   border-radius: var(--pipo-radius-xsmall);
   background: transparent;
   color: var(--pipo-text-secondary);
-  font-size: var(--pipo-fs-xsmall);
   cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.pagehead:hover .copy,
+.copy:focus-visible,
+.copy[data-copied='true'] {
+  opacity: 1;
 }
 
 .copy:hover {
   background: var(--pipo-neutral-lightest);
   color: var(--pipo-text-primary);
+}
+
+.copy:focus-visible {
+  outline: none;
+  box-shadow: var(--pipo-shadow-focus-primary);
+}
+
+/* Both glyphs share one 14px box; opacity and scale do the swap, so the
+   button never changes size mid-transition. */
+.copyGlyphs {
+  position: relative;
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.copyGlyph {
+  position: absolute;
+  inset: 0;
+  transition:
+    opacity 160ms ease,
+    transform 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.copyIcon {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.checkIcon {
+  opacity: 0;
+  transform: scale(0.25);
+}
+
+.copy[data-copied='true'] .copyIcon {
+  opacity: 0;
+  transform: scale(0.25);
+}
+
+.copy[data-copied='true'] .checkIcon {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* The balloon above the button; empty (and invisible) until copied. */
+.copiedTip {
+  position: absolute;
+  bottom: calc(100% + var(--pipo-space-xxsmall));
+  left: 50%;
+  padding: 2px var(--pipo-space-xsmall);
+  border-radius: var(--pipo-radius-xsmall);
+  background: var(--pipo-neutral-darkest);
+  color: var(--pipo-text-on-primary);
+  font-size: var(--pipo-fs-xsmall);
+  line-height: var(--pipo-lh-default);
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.copiedTip:empty {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .copy,
+  .copyGlyph {
+    transition: none;
+  }
 }
 
 /* The two columns of each tab. The tab bar spans full width; the context

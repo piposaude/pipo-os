@@ -3,6 +3,7 @@ import { Banner, Breadcrumb, BreadcrumbItem, Button, Heading, Tabs } from '@pipo
 import { Link, useParams } from '@tanstack/react-router'
 import { useDesk } from '@/components/pipodesk/shell/desk-context'
 import { SidebarToggle } from '@/components/pipodesk/shell/SidebarToggle'
+import { DeskIcon } from '@/components/pipodesk/icons'
 import { Popover } from '@/components/pipodesk/primitives'
 import { DISPLAY_STATUS_COPY, PENDING_REASON_COPY } from '@/constants/pipodesk/status'
 import {
@@ -392,13 +393,33 @@ export default function TicketPage() {
         <Heading level="h1">{personName}</Heading>
         <p className={styles.subtitle}>
           <span className={styles.ticketId}>{ticket.id}</span>
+          {/* Hidden at rest, shown on hover of the header, on focus and while
+              copied — as in the prototype. The glyph morphs to a check and a
+              balloon says "Copiado"; the live region is always mounted so the
+              announcement is not lost when the text appears. */}
           <button
             type="button"
             className={styles.copy}
             aria-label={constants.copyId(ticket.id)}
+            title={copied ? constants.copied : constants.copyId(ticket.id)}
+            data-copied={copied ? 'true' : undefined}
             onClick={copyId}
           >
-            {copied ? constants.copied : constants.copyGlyph}
+            <span className={styles.copyGlyphs}>
+              <DeskIcon
+                name="copy"
+                size={14}
+                className={`${styles.copyGlyph} ${styles.copyIcon}`}
+              />
+              <DeskIcon
+                name="check"
+                size={14}
+                className={`${styles.copyGlyph} ${styles.checkIcon}`}
+              />
+            </span>
+            <span className={styles.copiedTip} role="status" aria-live="polite">
+              {copied ? constants.copied : ''}
+            </span>
           </button>
         </p>
       </div>

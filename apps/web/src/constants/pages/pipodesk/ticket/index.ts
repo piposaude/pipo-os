@@ -4,7 +4,6 @@ export default {
   notFound: (id: string) => `Não existe chamado com o id ${id}.`,
   copyId: (id: string) => `Copiar o ID ${id}`,
   copied: 'Copiado',
-  copyGlyph: '⧉',
   /** Two parts, as in the prototype: the fact carries the weight, the filed
    *  date follows in plain text — no period between them. */
   overdueLead: (days: number) =>

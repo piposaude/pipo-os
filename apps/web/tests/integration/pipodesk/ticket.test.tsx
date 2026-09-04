@@ -283,6 +283,24 @@ describe('detalhe do chamado', () => {
     expect(screen.getByText(constants.copied)).toBeInTheDocument()
   })
 
+  /** As in the prototype: the control is an icon that swaps to a check, and
+   *  `Copiado` is announced by a live region instead of replacing the glyph. */
+  it('should swap the copy glyph for a check and announce Copiado in a live region', async () => {
+    await renderAt('/tickets/700003')
+    const user = userEvent.setup()
+
+    const button = await screen.findByRole('button', { name: constants.copyId('700003') })
+    const status = within(button).getByRole('status')
+    expect(button.querySelector('svg')).toBeInTheDocument()
+    expect(status).toBeEmptyDOMElement()
+    expect(button).not.toHaveAttribute('data-copied')
+
+    await user.click(button)
+
+    expect(status).toHaveTextContent(constants.copied)
+    expect(button).toHaveAttribute('data-copied', 'true')
+  })
+
   it('should say plainly when the id does not exist', async () => {
     await renderAt('/tickets/000000')
 
