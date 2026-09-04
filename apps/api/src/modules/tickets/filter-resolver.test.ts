@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto'
 import type { FastifyInstance } from 'fastify'
-import { sql } from 'kysely'
+import { expressionBuilder, sql } from 'kysely'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
+import type { Database } from '../../infrastructure/db.js'
 import { ticketFilterSchema, type TicketFilter } from './filter-schema.js'
 import {
   actionDateWindowCondition,
-  HANDLED_FIELDS,
+  FIELD_RESOLVERS,
   ticketFilterConditions,
   type ActionDateWindow,
 } from './filter-resolver.js'
@@ -300,10 +301,44 @@ describe('ticketFilterConditions — the saved filter, resolved in SQL', () => {
 })
 
 /** The type catches a missing field; this catches a surplus one. */
-describe('HANDLED_FIELDS', () => {
+describe('FIELD_RESOLVERS', () => {
   it('names exactly the fields the contract declares', () => {
     const declared = Object.keys(ticketFilterSchema.shape).sort()
 
-    expect(Object.keys(HANDLED_FIELDS).sort()).toEqual(declared)
+    expect(Object.keys(FIELD_RESOLVERS).sort()).toEqual(declared)
   })
+
+  /** One set value per field. The mapped type makes a field added to the
+   *  schema demand a sample here, and an entry that resolves to nothing fails
+   *  this test instead of dropping the criterion from the query in silence. */
+  const SAMPLE: { [K in keyof TicketFilter]-?: NonNullable<TicketFilter[K]> } = {
+    statuses: ['completed'],
+    companyIds: [COMPANY_A],
+    carrierIds: ['carrier-amil'],
+    products: ['health'],
+    types: ['inclusion'],
+    companySizes: ['pme'],
+    contractTypes: ['pj'],
+    relationships: ['holder'],
+    origins: ['web'],
+    groupIds: [COMPANY_A],
+    tags: ['vip'],
+    assigneeIds: ['@me'],
+    priorities: ['high'],
+    actionDateBefore: TODAY,
+    urgentBy: TODAY,
+    createdSince: TODAY,
+    archived: false,
+  }
+
+  it.each(Object.keys(SAMPLE) as (keyof TicketFilter)[])(
+    'turns %s into a condition instead of dropping it',
+    (field) => {
+      const eb = expressionBuilder<Database, 'tickets'>()
+      // A computed key widens to an index signature; the cast narrows it back.
+      const filter = { [field]: SAMPLE[field] } as TicketFilter
+
+      expect(ticketFilterConditions(eb, filter, VIEWER)).toHaveLength(1)
+    },
+  )
 })
