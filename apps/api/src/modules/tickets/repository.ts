@@ -92,11 +92,14 @@ export interface TicketsRepositoryPort {
  *   - only a JSON string counts, so a number does not become `"42"` here
  *     while the web reads it as nothing.
  */
-function snapshotString(parent: string, keys: string[]): RawBuilder<string | null> {
+function snapshotString(parent: string[], keys: string[]): RawBuilder<string | null> {
   const candidates = keys.map((key) => {
-    const path = sql.lit(`{${parent},${key}}`)
-    return sql`nullif(btrim(case when jsonb_typeof(enrollment_snapshot #> ${path}::text[]) = 'string'
-                                 then enrollment_snapshot #>> ${path}::text[] end), '')`
+    /* `array[...]` of literals, not a `'{a,b}'` string built by concatenation:
+       the segments are constants today, and this keeps a future caller from
+       turning a key with a comma or a brace into a different path. */
+    const path = sql`array[${sql.join([...parent, key].map(sql.lit), sql`, `)}]`
+    return sql`nullif(btrim(case when jsonb_typeof(enrollment_snapshot #> ${path}) = 'string'
+                                 then enrollment_snapshot #>> ${path} end), '')`
   })
   return sql<string | null>`coalesce(${sql.join(candidates, sql`, `)})`
 }
@@ -211,16 +214,14 @@ export class TicketsRepository implements TicketsRepositoryPort {
         'updated_at',
       ])
       .select([
-        snapshotString('company', ['company_name', 'company-name', 'companyName', 'name']).as(
+        snapshotString(['company'], ['company_name', 'company-name', 'companyName', 'name']).as(
           'company_name',
         ),
-        snapshotString('primary,profile', [
-          'preferred_name',
-          'preferred-name',
-          'preferredName',
-          'name',
-        ]).as('beneficiary_name'),
-        snapshotString('primary,profile', ['tax_id', 'tax-id', 'taxId']).as('tax_id'),
+        snapshotString(
+          ['primary', 'profile'],
+          ['preferred_name', 'preferred-name', 'preferredName', 'name'],
+        ).as('beneficiary_name'),
+        snapshotString(['primary', 'profile'], ['tax_id', 'tax-id', 'taxId']).as('tax_id'),
       ])
       .select(sql<string>`count(*) over ()`.as('total_count'))
       .orderBy('created_at', 'desc')
