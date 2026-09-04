@@ -8,6 +8,7 @@ import {
   commentSchema,
   createCommentBodySchema,
   errorResponseSchema,
+  timelineQuerySchema,
   timelineSchema,
 } from './schemas.js'
 import type { CommentsService } from './service.js'
@@ -34,12 +35,18 @@ export function registerCommentRoutes(app: FastifyInstance, service: CommentsSer
     {
       schema: {
         params: ticketParamsSchema,
-        response: { 200: timelineSchema, 401: errorResponseSchema, 404: errorResponseSchema },
+        querystring: timelineQuerySchema,
+        response: {
+          200: timelineSchema,
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+          404: errorResponseSchema,
+        },
       },
     },
     async (request) => {
       getSession(request)
-      return service.timeline(request.params.id)
+      return service.timeline(request.params.id, request.query)
     },
   )
 

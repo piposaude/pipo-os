@@ -79,10 +79,21 @@ function toTimelineItem(row: TimelineRow): TimelineItem {
   }
 }
 
+/** Where a page stopped: the ordering key of its last row. */
+export interface TimelineKey {
+  createdAt: string
+  id: string
+}
+
+export interface TimelinePage {
+  items: TimelineItem[]
+  nextKey?: TimelineKey
+}
+
 export interface CommentsRepositoryPort {
   create(ticketId: string, data: CreateCommentBody, authorId: string): Promise<Comment>
   findMany(ticketId: string): Promise<Comment[]>
-  findTimeline(ticketId: string): Promise<TimelineItem[]>
+  findTimeline(ticketId: string, after: TimelineKey | null, limit: number): Promise<TimelinePage>
 }
 
 export class CommentsRepository implements CommentsRepositoryPort {
@@ -119,25 +130,43 @@ export class CommentsRepository implements CommentsRepositoryPort {
   }
 
   /* `id` is the tiebreak, not decoration: two rows can share `created_at`
-     to the microsecond, and without it their order flips between calls. */
-  async findTimeline(ticketId: string): Promise<TimelineItem[]> {
+     to the microsecond, and without it their order flips between calls —
+     which would also make the keyset below skip or repeat an item.
+     `limit + 1` is fetched so the caller can tell a full last page from a
+     page that has a successor, without a second round trip. */
+  async findTimeline(ticketId: string, after: TimelineKey | null, limit: number) {
+    const keyset = after
+      ? sql`and (t.created_at, t.id) > (${after.createdAt}::timestamptz, ${after.id}::uuid)`
+      : sql``
+
     const { rows } = await sql<TimelineRow>`
-      select 'comment' as source, id, ticket_id, author_id, created_at,
-             kind, channel, visibility, event_type, body, metadata,
-             null as from_status, null as to_status, null as reason,
-             null as author_type
-        from ticket_comments
-       where ticket_id = ${ticketId}
-      union all
-      select 'status' as source, id, ticket_id, author_id, created_at,
-             null as kind, null as channel, null as visibility,
-             null as event_type, null as body, null as metadata,
-             from_status, to_status, reason, author_type
-        from ticket_status_history
-       where ticket_id = ${ticketId}
-       order by created_at asc, id asc
+      with t as (
+        select 'comment' as source, id, ticket_id, author_id, created_at,
+               kind, channel, visibility, event_type, body, metadata,
+               null as from_status, null as to_status, null as reason,
+               null as author_type
+          from ticket_comments
+         where ticket_id = ${ticketId}
+        union all
+        select 'status' as source, id, ticket_id, author_id, created_at,
+               null as kind, null as channel, null as visibility,
+               null as event_type, null as body, null as metadata,
+               from_status, to_status, reason, author_type
+          from ticket_status_history
+         where ticket_id = ${ticketId}
+      )
+      select * from t
+       where true ${keyset}
+       order by t.created_at asc, t.id asc
+       limit ${limit + 1}
     `.execute(this.db)
 
-    return rows.map(toTimelineItem)
+    const page = rows.slice(0, limit)
+    const last = rows.length > limit ? page[page.length - 1] : undefined
+
+    return {
+      items: page.map(toTimelineItem),
+      nextKey: last ? { createdAt: last.created_at.toISOString(), id: last.id } : undefined,
+    }
   }
 }

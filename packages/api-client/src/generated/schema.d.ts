@@ -260,7 +260,10 @@ export interface paths {
         };
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    limit?: number;
+                    cursor?: string;
+                };
                 header?: never;
                 path: {
                     id: string;
@@ -276,6 +279,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["Timeline"];
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description Default Response */
@@ -1743,6 +1755,7 @@ export interface components {
         TimelineItem: components["schemas"]["TimelineComment"] | components["schemas"]["TimelineEvent"] | components["schemas"]["TimelineStatusChange"];
         Timeline: {
             data: components["schemas"]["TimelineItem"][];
+            nextCursor?: string;
         };
         Group: {
             /** Format: uuid */

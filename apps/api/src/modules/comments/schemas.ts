@@ -88,11 +88,25 @@ export const timelineItemSchema = z
   .meta({ id: 'TimelineItem' })
 
 export const timelineSchema = z
-  .object({ data: z.array(timelineItemSchema) })
+  .object({
+    data: z.array(timelineItemSchema),
+    /* Absent means the chronology ended — not "start over". */
+    nextCursor: z.string().optional(),
+  })
   .meta({ id: 'Timeline' })
+
+export const TIMELINE_PAGE_SIZE = 50
+
+export const timelineQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(200).default(TIMELINE_PAGE_SIZE),
+  /* Opaque on purpose: base64 of "<created_at>|<id>". Keeping clients from
+     reading it is what lets the keyset change without breaking them. */
+  cursor: z.string().min(1).optional(),
+})
 
 export type TimelineItem = z.infer<typeof timelineItemSchema>
 export type Timeline = z.infer<typeof timelineSchema>
+export type TimelineQuery = z.infer<typeof timelineQuerySchema>
 
 export type Comment = z.infer<typeof commentSchema>
 export type CreateCommentBody = z.infer<typeof createCommentBodySchema>
