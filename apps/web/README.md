@@ -107,7 +107,8 @@ frontend ainda não está ligado a ela: faltam a projeção leve da fila
 (PD-102). Até lá, a fila, o time e o detalhe leem
 `src/fixtures/pipodesk/dataset.json`: **o dataset gerado pelo protótipo
 `pipodesk`, exportado de lá** com o vocabulário já traduzido (6 status + motivo
-→ os 8 da API). Mesmas contagens (GEBEN 6.749, Meus tickets 662, Inbox 31),
+→ os 8 da API) e as 26 views que a árvore do protótipo tem hoje. Mesmas
+contagens (GEBEN 6.749, Meus tickets 662, Inbox 31),
 mesmas pessoas, mesmas empresas — de propósito, para comparar as duas
 aplicações lado a lado.
 
@@ -127,6 +128,13 @@ O comportamento-alvo é o protótipo `pipodesk`, no repositório `prototipos` ao
 lado deste (`pnpm dev` lá sobe na 5173, a mesma porta do web — quem roda os
 dois vê um deles na 5174). Divergência visual ou de regra entre os dois é bug
 aqui, salvo decisão registrada no plano.
+
+**Base do protótipo: `44f1185` (3 set 2026).** É o commit de que a fixture e
+as telas foram sincronizadas pela última vez; a regra acima só é verificável
+contra ele. Re-sincronizar a cada DSP fechada que mude contrato ou estrutura,
+ou ao menos uma vez por semana: `git log 44f1185..origin/main -- pipodesk/src`
+no repositório do protótipo lista o que mudou; depois, regerar o dataset e
+atualizar este commit.
 
 O backlog vive em dois lugares que se referenciam. O plano do Pipodesk
 ([backlog no Notion](https://app.notion.com/p/3cd4744bd8038168bb39d69ed7252d4d))
