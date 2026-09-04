@@ -8,6 +8,8 @@ import {
   commentSchema,
   createCommentBodySchema,
   errorResponseSchema,
+  timelineQuerySchema,
+  timelineSchema,
 } from './schemas.js'
 import type { CommentsService } from './service.js'
 
@@ -25,6 +27,29 @@ export function registerCommentRoutes(app: FastifyInstance, service: CommentsSer
     async (request) => {
       getSession(request)
       return service.list(request.params.id)
+    },
+  )
+
+  server.get(
+    '/api/tickets/:id/timeline',
+    {
+      schema: {
+        params: ticketParamsSchema,
+        querystring: timelineQuerySchema,
+        response: {
+          200: timelineSchema,
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+          404: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      getSession(request)
+      // TODO: enforce tenant scope from session claims before this endpoint goes to production
+      // Any authenticated user can currently read the chronology of any company's ticket,
+      // including internal comments — the same gap as GET /api/tickets (ACE-147)
+      return service.timeline(request.params.id, request.query)
     },
   )
 

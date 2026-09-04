@@ -11,6 +11,17 @@ export class NotFoundError extends DomainError {
   }
 }
 
+/** A parameter the schema cannot check on its own — an opaque cursor, say.
+ *  Same status the Zod validation layer already returns for a bad query. */
+export class BadRequestError extends DomainError {
+  readonly statusCode = 400
+
+  constructor(message: string) {
+    super(message)
+    this.name = 'BadRequestError'
+  }
+}
+
 export class UnauthorizedError extends DomainError {
   readonly statusCode = 401
 

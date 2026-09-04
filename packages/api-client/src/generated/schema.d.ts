@@ -251,6 +251,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tickets/{id}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    limit?: number;
+                    cursor?: string;
+                    visibility?: "public";
+                };
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Timeline"];
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/groups": {
         parameters: {
             query?: never;
@@ -1640,6 +1708,55 @@ export interface components {
         };
         CommentList: {
             data: components["schemas"]["TicketComment"][];
+        };
+        TimelineComment: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            ticketId: string;
+            authorId: string | null;
+            createdAt: string;
+            /** @constant */
+            type: "comment";
+            /** @enum {string} */
+            channel: "internal" | "email";
+            /** @enum {string} */
+            visibility: "public" | "private";
+            body: string;
+        };
+        TimelineEvent: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            ticketId: string;
+            authorId: string | null;
+            createdAt: string;
+            /** @constant */
+            type: "event";
+            eventType: string | null;
+            body: string;
+            metadata: {
+                [key: string]: unknown;
+            };
+        };
+        TimelineStatusChange: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            ticketId: string;
+            authorId: string | null;
+            createdAt: string;
+            /** @constant */
+            type: "status-changed";
+            fromStatus: string;
+            toStatus: string;
+            reason: string | null;
+            authorType: string;
+        };
+        TimelineItem: components["schemas"]["TimelineComment"] | components["schemas"]["TimelineEvent"] | components["schemas"]["TimelineStatusChange"];
+        Timeline: {
+            data: components["schemas"]["TimelineItem"][];
+            nextCursor?: string;
         };
         Group: {
             /** Format: uuid */
