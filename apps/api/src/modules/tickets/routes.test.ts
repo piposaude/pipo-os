@@ -948,6 +948,22 @@ describe('tickets routes', () => {
       })
     })
 
+    /** Uma coluna com string vazia é pior que nula: a tela mostraria um valor
+     *  que não existe, e o filtro teria uma opção que ninguém escolhe. */
+    it.each(['carrierId', 'carrierName', 'product', 'contractType', 'companySize'])(
+      'recusa %s em branco em vez de gravar coluna vazia',
+      async (field) => {
+        const response = await app.inject({
+          method: 'POST',
+          url: '/api/tickets',
+          payload: { ...validTicketBody, [field]: '' },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+
+        expect(response.statusCode).toBe(400)
+      },
+    )
+
     it('prefere o corpo ao snapshot quando os dois trazem o campo', async () => {
       const response = await app.inject({
         method: 'POST',
