@@ -40,7 +40,13 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
     {
       schema: {
         querystring: ticketRowsQuerySchema,
-        response: { 200: ticketRowsSchema, 401: errorResponseSchema },
+        response: {
+          200: ticketRowsSchema,
+          // The querystring is a contract of its own — an unknown status or a
+          // limit out of range is a 400 the caller has to be able to read.
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+        },
       },
     },
     async (request) => {

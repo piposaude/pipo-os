@@ -33,3 +33,15 @@ describe('startOfBusinessDay', () => {
     expect(Date.parse('2026-09-03T03:00:00.000Z') < cut).toBe(false)
   })
 })
+
+/* The shape does not come from the locale: which order and which separators
+   `format()` yields is CLDR data the runtime ships, and `en-CA` has flipped
+   between YYYY-MM-DD and M/D/YYYY across ICU versions. Every date cut in the
+   filter compares this value as a string, so the shape is assembled from the
+   parts and pinned here. */
+describe('businessToday shape', () => {
+  it('always yields YYYY-MM-DD, whatever the runtime locale data says', () => {
+    expect(businessToday(new Date('2026-08-07T12:00:00Z'))).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(businessToday(new Date('2026-01-05T12:00:00Z'))).toBe('2026-01-05')
+  })
+})

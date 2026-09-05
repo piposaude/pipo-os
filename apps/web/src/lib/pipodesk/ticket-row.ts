@@ -63,7 +63,8 @@ export interface TicketRow {
   groupId: string | null
   priority: Priority | null
   /** Date-only (`YYYY-MM-DD`). Every consumer compares strings against
-   *  date-only cuts; `toTicketRow` truncates whatever the API sends. */
+   *  date-only cuts; `toTicketRow` reads whatever instant the API sends as its
+   *  São Paulo day, so a deadline at 01:30Z belongs to the day before. */
   actionDate: string | null
   tags: string[]
   sourceSystem: string

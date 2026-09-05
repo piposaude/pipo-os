@@ -3,8 +3,11 @@
  *  instant the column holds. Storage and transport stay UTC. */
 export const BUSINESS_TIME_ZONE = 'America/Sao_Paulo'
 
-/** `en-CA` because it formats as YYYY-MM-DD, the shape every date cut in the
- *  filter compares against. */
+/* The formatter only carries the timezone; the shape is assembled from the
+   parts. Which order and which separators a locale yields is CLDR data the
+   runtime ships, not something the spec pins — `en-CA` has flipped between
+   YYYY-MM-DD and M/D/YYYY across ICU versions, and every date cut in the
+   filter compares this value as a string. */
 const dayFormatter = new Intl.DateTimeFormat('en-CA', {
   timeZone: BUSINESS_TIME_ZONE,
   year: 'numeric',
@@ -14,7 +17,8 @@ const dayFormatter = new Intl.DateTimeFormat('en-CA', {
 
 /** The operation's day, not the server's. */
 export function businessToday(now: Date = new Date()): string {
-  return dayFormatter.format(now)
+  const parts = new Map(dayFormatter.formatToParts(now).map((p) => [p.type, p.value]))
+  return `${parts.get('year')}-${parts.get('month')}-${parts.get('day')}`
 }
 
 const wallClock = new Intl.DateTimeFormat('en-US', {
