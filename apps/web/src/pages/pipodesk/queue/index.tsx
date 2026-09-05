@@ -61,9 +61,10 @@ export default function QueuePage() {
     // not a chip. The panel counts follow; the sidebar's do not, a registered
     // divergence: the node counts the set, the window cuts what is viewed now.
     if (view.dateWindowDays === null) return awake
+    // The same cut as a `createdSince` chip, so the day is read the same way.
     const since = sinceOf(view.dateWindowDays, today)
-    return awake.filter((ticket) => ticket.createdAt >= since)
-  }, [rows, view.groupId, view.windowMode, view.dateWindowDays, today])
+    return applyFilter(awake, { createdSince: since }, viewerId)
+  }, [rows, view.groupId, view.windowMode, view.dateWindowDays, today, viewerId])
 
   const listed = useMemo(
     () => applyFilter(base, view.filter, viewerId),

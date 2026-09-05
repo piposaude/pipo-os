@@ -3,13 +3,16 @@
  * parameter instead of reading the clock, so queues are reproducible in tests.
  */
 
+import { businessDay } from '@/lib/date'
+
 const MS_PER_DAY = 86_400_000
 
 /** `null` when the string is not a readable date. Every day count below is
  *  `number | null` because of it: NaN compares false against everything, so a
- *  guess would silently pick the safe side. */
+ *  guess would silently pick the safe side. An instant is read as its São
+ *  Paulo day first; a day passes through. */
 const atMidnight = (isoDate: string): number | null => {
-  const at = Date.parse(`${isoDate.slice(0, 10)}T00:00:00Z`)
+  const at = Date.parse(`${businessDay(isoDate)}T00:00:00Z`)
   return Number.isNaN(at) ? null : at
 }
 
@@ -64,7 +67,7 @@ export function prazoVariant(actionDate: string | null, today: string): PrazoVar
  */
 const partsOf = (iso: string | null): { year: string; month: string; day: string } | null => {
   if (!iso) return null
-  const date = iso.slice(0, 10)
+  const date = businessDay(iso)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) return null
   const [year, month, day] = date.split('-')
   return { year, month, day }

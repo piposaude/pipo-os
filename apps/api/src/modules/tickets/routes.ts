@@ -2,6 +2,8 @@ import type { ZodTypeProvider } from '@fastify/type-provider-zod'
 import type { FastifyInstance } from 'fastify'
 import { UnauthorizedError } from '../../shared/errors.js'
 import { getSession } from '../auth/session.js'
+import { businessToday } from '../../shared/business-date.js'
+import { ticketRowsQuerySchema, ticketRowsSchema } from './rows-schema.js'
 import {
   createTicketBodySchema,
   errorResponseSchema,
@@ -30,6 +32,29 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
       // TODO: enforce tenant scope from session claims before this endpoint goes to production
       // Any authenticated user can currently list tickets from any company by omitting companyId
       return service.list(request.query)
+    },
+  )
+
+  server.get(
+    '/api/tickets/rows',
+    {
+      schema: {
+        querystring: ticketRowsQuerySchema,
+        response: {
+          200: ticketRowsSchema,
+          // The querystring is a contract of its own — an unknown status or a
+          // limit out of range is a 400 the caller has to be able to read.
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      const { email } = getSession(request)
+      // TODO: enforce tenant scope from session claims before this endpoint goes to production
+      // Any authenticated user can currently read rows from any company, and this one
+      // answers up to 5000 of them at once, with beneficiary name and tax id
+      return service.rows(request.query, email, businessToday())
     },
   )
 

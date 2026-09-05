@@ -3,6 +3,7 @@ import type {
   Relationship as ApiRelationship,
   TicketPriority as ApiPriority,
 } from '@pipo-os/api-client'
+import { businessDay } from '@/lib/date'
 import type { ApiStatus, DisplayStatus, PendingReason } from './status'
 import { toDisplayStatus } from './status'
 
@@ -62,7 +63,8 @@ export interface TicketRow {
   groupId: string | null
   priority: Priority | null
   /** Date-only (`YYYY-MM-DD`). Every consumer compares strings against
-   *  date-only cuts; `toTicketRow` truncates whatever the API sends. */
+   *  date-only cuts; `toTicketRow` reads whatever instant the API sends as its
+   *  São Paulo day, so a deadline at 01:30Z belongs to the day before. */
   actionDate: string | null
   tags: string[]
   sourceSystem: string
@@ -151,8 +153,8 @@ export function toTicketRow(ticket: Ticket): TicketRow {
     assigneeId: ticket.assigneeId,
     groupId: ticket.groupId,
     priority: ticket.priority,
-    // The API sends a timestamp; every cut here compares date-only.
-    actionDate: ticket.actionDate?.slice(0, 10) ?? null,
+    // The API sends an instant; every cut here compares São Paulo days.
+    actionDate: ticket.actionDate === null ? null : businessDay(ticket.actionDate),
     tags: ticket.tags,
     sourceSystem: ticket.sourceSystem,
     createdAt: ticket.createdAt,

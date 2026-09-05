@@ -1,4 +1,5 @@
 import { NotFoundError, UnprocessableEntityError } from '../../shared/errors.js'
+import type { TicketRowsQuery } from './rows-schema.js'
 import type { TicketsRepositoryPort } from './repository.js'
 import {
   CLOSED_STATUSES,
@@ -55,6 +56,11 @@ export class TicketsService {
   async list(query: ListTicketsQuery): Promise<TicketList> {
     const { data, total } = await this.repository.findMany(query)
     return { data, total, page: query.page, pageSize: query.pageSize }
+  }
+
+  /** `today` comes from the caller so a test can pin the awake window. */
+  async rows(query: TicketRowsQuery, viewerId: string, today: string) {
+    return this.repository.findRows(query, viewerId, today)
   }
 
   async changeStatus(id: string, data: UpdateTicketStatusBody, authorId: string): Promise<Ticket> {

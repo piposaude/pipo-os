@@ -149,10 +149,11 @@ describe('ticketFilterConditions — the saved filter, resolved in SQL', () => {
     expect(await matching({ assigneeIds: ['@me'] })).toEqual(['da-ana'])
   })
 
-  it('cuts dates by day, ignoring the time the column carries', async () => {
+  /** A day is São Paulo's: 02:59Z is still 23:59 of the day before there. */
+  it('cuts dates by the São Paulo day, ignoring the time the column carries', async () => {
     await seed([
-      { id: 'antes', actionDate: '2026-09-01T23:00:00.000Z' },
-      { id: 'no-dia', actionDate: '2026-09-02T01:00:00.000Z' },
+      { id: 'antes', actionDate: '2026-09-02T02:59:00.000Z' },
+      { id: 'no-dia', actionDate: '2026-09-02T03:00:00.000Z' },
       { id: 'sem-data', actionDate: null },
     ])
 
@@ -218,22 +219,29 @@ describe('ticketFilterConditions — the saved filter, resolved in SQL', () => {
       ])
     })
 
-    /** The web reads the day off the ISO string, in UTC. A cut that trusted
-     *  the session TimeZone would put 01:30Z on the previous day in São Paulo. */
-    it('cuts the day in UTC whatever the session time zone is', async () => {
-      await seed([{ id: 'vira-o-dia', actionDate: '2026-09-05T01:30:00.000Z' }])
+    /** The day is São Paulo's, whatever the session TimeZone: 01:30Z on the
+     *  5th is still the 4th there, two days out, so it is awake. A cut that
+     *  trusted the session would put it on the 5th under UTC and let it sleep. */
+    it('cuts the day in São Paulo whatever the session time zone is', async () => {
+      await seed([
+        { id: 'ainda-dia-4', actionDate: '2026-09-05T01:30:00.000Z' },
+        { id: 'ja-dia-5', actionDate: '2026-09-05T03:00:00.000Z' },
+      ])
 
-      const titles = await app.db.transaction().execute(async (trx) => {
-        await sql`SET LOCAL TIME ZONE 'America/Sao_Paulo'`.execute(trx)
-        const found = await trx
-          .selectFrom('tickets')
-          .select('title')
-          .where(actionDateWindowCondition('sleeping', TODAY)!)
-          .execute()
-        return found.map((row) => row.title)
-      })
+      const inWindow = (window: ActionDateWindow) =>
+        app.db.transaction().execute(async (trx) => {
+          await sql`SET LOCAL TIME ZONE 'UTC'`.execute(trx)
+          const found = await trx
+            .selectFrom('tickets')
+            .select('title')
+            .where(actionDateWindowCondition(window, TODAY)!)
+            .orderBy('title')
+            .execute()
+          return found.map((row) => row.title)
+        })
 
-      expect(titles).toEqual(['vira-o-dia'])
+      expect(await inWindow('awake')).toEqual(['ainda-dia-4'])
+      expect(await inWindow('sleeping')).toEqual(['ja-dia-5'])
     })
   })
 

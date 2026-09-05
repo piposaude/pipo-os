@@ -1,8 +1,10 @@
-import { sql, type Kysely, type Selectable } from 'kysely'
+import { sql, type Kysely, type RawBuilder, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
 import { ConflictError } from '../../shared/errors.js'
 import { movementFieldsOf, relationshipOf } from './enrollment-snapshot.js'
+import { actionDateWindowCondition, ticketFilterConditions } from './filter-resolver.js'
+import type { TicketRowPayload, TicketRowsQuery } from './rows-schema.js'
 import { toClient } from './vocabulary.js'
 import {
   CLOSED_STATUSES,
@@ -71,6 +73,35 @@ export interface TicketsRepositoryPort {
     reason?: string,
   ): Promise<ChangeStatusResult>
   findMany(query: ListTicketsQuery): Promise<{ data: Ticket[]; total: number }>
+  findRows(
+    query: TicketRowsQuery,
+    viewerId: string,
+    today: string,
+  ): Promise<{ data: TicketRowPayload[]; total: number }>
+}
+
+/**
+ * The first spelling under `parent` that holds a real word, mirroring the
+ * web's `readString` in `ticket-row.ts` — the queue has to read the snapshot
+ * the same way on both sides or the number a node announces stops matching
+ * the list the screen draws.
+ *
+ * Two rules that `coalesce` alone would miss, and each one is a divergence
+ * the web does not have:
+ *   - a blank counts as absent, so `company-name: ''` falls through to `name`;
+ *   - only a JSON string counts, so a number does not become `"42"` here
+ *     while the web reads it as nothing.
+ */
+function snapshotString(parent: string[], keys: string[]): RawBuilder<string | null> {
+  const candidates = keys.map((key) => {
+    /* `array[...]` of literals, not a `'{a,b}'` string built by concatenation:
+       the segments are constants today, and this keeps a future caller from
+       turning a key with a comma or a brace into a different path. */
+    const path = sql`array[${sql.join([...parent, key].map(sql.lit), sql`, `)}]`
+    return sql`nullif(btrim(case when jsonb_typeof(enrollment_snapshot #> ${path}) = 'string'
+                                 then enrollment_snapshot #>> ${path} end), '')`
+  })
+  return sql<string | null>`coalesce(${sql.join(candidates, sql`, `)})`
 }
 
 export class TicketsRepository implements TicketsRepositoryPort {
@@ -141,6 +172,94 @@ export class TicketsRepository implements TicketsRepositoryPort {
       .executeTakeFirstOrThrow()
 
     return { data: [], total: Number(count) }
+  }
+
+  /** Three values have no column yet, so they are dug out of the jsonb here. */
+  async findRows(
+    query: TicketRowsQuery,
+    viewerId: string,
+    today: string,
+  ): Promise<{ data: TicketRowPayload[]; total: number }> {
+    const { window, limit, ...filter } = query
+
+    const rows = await this.db
+      .selectFrom('tickets')
+      .where((eb) => {
+        const parts = ticketFilterConditions(eb, filter, viewerId)
+        const slice = actionDateWindowCondition(window, today)
+        return eb.and(slice ? [...parts, slice] : parts)
+      })
+      .select([
+        'id',
+        'display_number',
+        'title',
+        'enrollment_id',
+        'enrollment_type',
+        'status',
+        'priority',
+        'action_date',
+        'group_id',
+        'assignee_id',
+        'company_id',
+        'carrier_id',
+        'carrier_name',
+        'product',
+        'contract_type',
+        'company_size',
+        'relationship',
+        'tags',
+        'source_system',
+        'closed_at',
+        'created_at',
+        'updated_at',
+      ])
+      .select([
+        snapshotString(['company'], ['company_name', 'company-name', 'companyName', 'name']).as(
+          'company_name',
+        ),
+        snapshotString(
+          ['primary', 'profile'],
+          ['preferred_name', 'preferred-name', 'preferredName', 'name'],
+        ).as('beneficiary_name'),
+        snapshotString(['primary', 'profile'], ['tax_id', 'tax-id', 'taxId']).as('tax_id'),
+      ])
+      .select(sql<string>`count(*) over ()`.as('total_count'))
+      .orderBy('created_at', 'desc')
+      .orderBy('id', 'desc')
+      .limit(limit)
+      .execute()
+
+    const data = rows.map((row) => ({
+      id: row.id,
+      displayNumber: row.display_number,
+      title: row.title,
+      enrollmentId: row.enrollment_id,
+      enrollmentType: row.enrollment_type,
+      status: row.status as TicketStatus,
+      priority: row.priority as TicketRowPayload['priority'],
+      actionDate: row.action_date ? row.action_date.toISOString() : null,
+      groupId: row.group_id,
+      assigneeId: row.assignee_id,
+      companyId: row.company_id,
+      companyName: row.company_name,
+      beneficiaryName: row.beneficiary_name,
+      taxId: row.tax_id,
+      carrierId: row.carrier_id,
+      carrierName: row.carrier_name,
+      product: toClient('product', row.product),
+      contractType: toClient('contractType', row.contract_type),
+      companySize: toClient('companySize', row.company_size),
+      relationship: relationshipSchema.safeParse(row.relationship).data ?? null,
+      tags: row.tags as string[],
+      sourceSystem: row.source_system,
+      closedAt: row.closed_at ? row.closed_at.toISOString() : null,
+      createdAt: row.created_at.toISOString(),
+      updatedAt: row.updated_at.toISOString(),
+    }))
+
+    // The window function counts what matched, not what fit: with more rows than
+    // the limit, data.length < total is how the caller learns it was cut.
+    return { data, total: rows.length > 0 ? Number(rows[0].total_count) : 0 }
   }
 
   async create(data: CreateTicketBody): Promise<Ticket> {

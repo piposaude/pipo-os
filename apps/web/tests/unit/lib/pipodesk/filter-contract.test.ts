@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { businessDay } from '@/lib/date'
 import { applyFilter, windowOf, type TicketFilter, type WindowMode } from '@/lib/pipodesk/filter'
 import type { Priority, TicketRow } from '@/lib/pipodesk/ticket-row'
 
@@ -60,8 +61,8 @@ const toRow = (seed: FixtureTicket): TicketRow => ({
   assigneeId: seed.assigneeId,
   groupId: seed.groupId,
   priority: seed.priority as Priority | null,
-  // The row carries date-only, as `toTicketRow` truncates whatever the API sends.
-  actionDate: seed.actionDate === null ? null : seed.actionDate.slice(0, 10),
+  // The row carries the São Paulo day, as `toTicketRow` derives it from the instant.
+  actionDate: seed.actionDate === null ? null : businessDay(seed.actionDate),
   tags: seed.tags,
   sourceSystem: seed.sourceSystem,
   createdAt: seed.createdAt,

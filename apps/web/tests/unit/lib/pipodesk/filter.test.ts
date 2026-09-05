@@ -194,6 +194,15 @@ describe('matchesFilter — dates', () => {
     expect(matchesFilter(ticket, { createdSince: '2026-08-20' }, VIEWER)).toBe(false)
   })
 
+  it('should cut createdSince on the São Paulo day of createdAt', () => {
+    // 01:00Z on the 20th is still 22:00 on the 19th in São Paulo.
+    const lateNight = row({ id: 'a', createdAt: '2026-08-20T01:00:00.000Z' })
+    const smallHours = row({ id: 'b', createdAt: '2026-08-20T03:00:00.000Z' })
+
+    expect(matchesFilter(lateNight, { createdSince: '2026-08-20' }, VIEWER)).toBe(false)
+    expect(matchesFilter(smallHours, { createdSince: '2026-08-20' }, VIEWER)).toBe(true)
+  })
+
   it('should filter by actionDateBefore, excluding tickets without an action date', () => {
     expect(
       matchesFilter(

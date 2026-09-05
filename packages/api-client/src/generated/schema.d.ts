@@ -1275,6 +1275,79 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tickets/rows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    statuses?: components["schemas"]["TicketStatusInput"][];
+                    companyIds?: string[];
+                    carrierIds?: string[];
+                    products?: string[];
+                    types?: string[];
+                    companySizes?: string[];
+                    contractTypes?: (string | null)[];
+                    relationships?: components["schemas"]["RelationshipInput"][];
+                    origins?: string[];
+                    groupIds?: string[];
+                    tags?: string[];
+                    assigneeIds?: (string | null)[];
+                    priorities?: (components["schemas"]["TicketPriorityInput"] | null)[];
+                    actionDateBefore?: string;
+                    urgentBy?: string;
+                    createdSince?: string;
+                    archived?: string;
+                    window?: "awake" | "sleeping" | "all";
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TicketRows"];
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tickets/{id}": {
         parameters: {
             query?: never;
@@ -1830,6 +1903,42 @@ export interface components {
             groupId: string;
             /** Format: date-time */
             createdAt: string;
+        };
+        TicketRow: {
+            /** Format: uuid */
+            id: string;
+            displayNumber: string;
+            title: string | null;
+            /** Format: uuid */
+            enrollmentId: string;
+            enrollmentType: string;
+            status: components["schemas"]["TicketStatus"];
+            priority: components["schemas"]["TicketPriority"] | null;
+            actionDate: string | null;
+            groupId: string | null;
+            assigneeId: string | null;
+            /** Format: uuid */
+            companyId: string;
+            companyName: string | null;
+            beneficiaryName: string | null;
+            taxId: string | null;
+            carrierId: string | null;
+            carrierName: string | null;
+            product: string | null;
+            contractType: string | null;
+            companySize: string | null;
+            relationship: components["schemas"]["Relationship"] | null;
+            tags: string[];
+            sourceSystem: string;
+            closedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        TicketRows: {
+            data: components["schemas"]["TicketRow"][];
+            total: number;
         };
     };
     responses: never;
