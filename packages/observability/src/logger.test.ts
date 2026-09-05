@@ -132,4 +132,34 @@ describe('createLoggerOptions', () => {
     expect(entry.status).toBe('open')
     expect(entry.msg).toBe('ticket created')
   })
+
+  // The list was written in kebab-case while the API serializes in camelCase,
+  // so `tax-id` never covered the `taxId` the contract actually returns.
+  it.each(['tax-id', 'taxId', 'tax_id', 'beneficiaryName', 'birthDate'])(
+    'redacts %s, whichever spelling the writer used',
+    (field) => {
+      const { stream, lines } = captureLogs()
+      const logger = pino(createLoggerOptions({ nodeEnv: 'test' }), stream)
+
+      logger.info({ row: { [field]: 'sentinel-value' } }, 'ticket row')
+
+      expect(lastEntry(lines).row[field]).toBe('[REDACTED]')
+    },
+  )
+
+  // The snapshot shape is not a closed contract, so redacting the object whole
+  // is the only rule that does not age with the EI payload.
+  it('redacts the enrollment snapshot as a whole, not field by field', () => {
+    const { stream, lines } = captureLogs()
+    const logger = pino(createLoggerOptions({ nodeEnv: 'test' }), stream)
+
+    logger.info(
+      { ticket: { enrollmentSnapshot: { primary: { profile: { name: 'Fulana' } } } } },
+      'ticket created',
+    )
+
+    const line = lines.at(-1) ?? ''
+    expect(lastEntry(lines).ticket.enrollmentSnapshot).toBe('[REDACTED]')
+    expect(line).not.toContain('Fulana')
+  })
 })
