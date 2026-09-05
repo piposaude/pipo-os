@@ -113,8 +113,10 @@ export class QueuesRepository implements QueuesRepositoryPort {
 
       return (result?.numDeletedRows ?? 0n) > 0n
     } catch (err) {
+      // Two constraints reach here — the link table and tickets.queue_id — and
+      // the caller has to know which one to clear.
       if (err instanceof Error && 'code' in err && err.code === PG_FK_VIOLATION) {
-        throw new ConflictError(`Queue ${id} still has groups`)
+        throw new ConflictError(`Queue ${id} still has groups or tickets`)
       }
       throw err
     }

@@ -441,6 +441,38 @@ describe('queues routes', () => {
       })
       expect(response.statusCode).toBe(409)
       expect(response.json().error).toBe('ConflictError')
+      expect(response.json().message).toMatch(/group/i)
+    })
+
+    // The queue has no groups, so the FK that already guarded this route does
+    // not fire. Without one on tickets.queue_id the delete succeeds and leaves
+    // the tickets pointing at a row that is gone — the same column that
+    // GET /api/queues/:id/tickets reads.
+    it('returns 409 when queue has no groups but still has tickets', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { name: 'Fila A' },
+      })
+      const { id: queueId } = created.json()
+
+      await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { ...validTicketBody, status: 'broker-processing', queueId },
+      })
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/queues/${queueId}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(409)
+      expect(response.json().error).toBe('ConflictError')
+      expect(response.json().message).toMatch(/ticket/i)
     })
   })
 
