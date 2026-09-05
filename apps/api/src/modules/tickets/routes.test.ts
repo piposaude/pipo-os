@@ -13,6 +13,10 @@ function cookieValue(
 const DEV_LOGIN_USER_ID = 'dev@piposaude.com.br'
 const NONEXISTENT_ID = '00000000-0000-4000-8000-000000000099'
 
+// A real row since tickets.queue_id became a foreign key: the cases below use
+// it to prove that the column is read back, not that any uuid is accepted.
+const QUEUE_ID = '00000000-0000-4000-8000-000000000010'
+
 const validTicketBody = {
   enrollmentId: '00000000-0000-4000-8000-000000000001',
   enrollmentType: 'inclusion',
@@ -36,9 +40,15 @@ describe('tickets routes', () => {
       payload: { policies: ['admin/allow/administrate/ticket/*'] },
     })
     sessionCookie = cookieValue(loginResponse, SESSION_COOKIE_NAME)!
+
+    await app.db
+      .insertInto('ticket_queues')
+      .values({ id: QUEUE_ID, name: 'Fila de teste', created_by: DEV_LOGIN_USER_ID })
+      .execute()
   })
 
   afterAll(async () => {
+    await app.db.deleteFrom('ticket_queues').where('id', '=', QUEUE_ID).execute()
     await app.close()
     delete process.env.DEV_LOGIN_ENABLED
   })
@@ -97,6 +107,21 @@ describe('tickets routes', () => {
 
       expect(response.statusCode).toBe(409)
       expect(response.json().error).toBe('ConflictError')
+    })
+
+    // tickets.queue_id is a foreign key since the 0027: a uuid that matches no
+    // queue is a body the schema cannot reject on its own, not a server fault.
+    it('returns 422 for a queueId that matches no queue', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, queueId: NONEXISTENT_ID },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(422)
+      expect(response.json().error).toBe('UnprocessableEntityError')
+      expect(response.json().message).toMatch(/queue/i)
     })
 
     it('returns 400 for missing required fields', async () => {
@@ -250,7 +275,7 @@ describe('tickets routes', () => {
     })
 
     it('filters by queueId', async () => {
-      const queueId = '00000000-0000-4000-8000-000000000010'
+      const queueId = QUEUE_ID
       await app.inject({
         method: 'POST',
         url: '/api/tickets',
@@ -575,7 +600,7 @@ describe('tickets routes', () => {
       const created = await app.inject({
         method: 'POST',
         url: '/api/tickets',
-        payload: { ...validTicketBody, queueId: '00000000-0000-4000-8000-000000000010' },
+        payload: { ...validTicketBody, queueId: QUEUE_ID },
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
       const { id } = created.json()
@@ -589,6 +614,26 @@ describe('tickets routes', () => {
 
       expect(response.statusCode).toBe(200)
       expect(response.json().queueId).toBeNull()
+    })
+
+    it('returns 422 when clearing to a queueId that matches no queue', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${id}`,
+        payload: { queueId: NONEXISTENT_ID },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(422)
+      expect(response.json().error).toBe('UnprocessableEntityError')
     })
 
     it('returns 400 for an empty body', async () => {

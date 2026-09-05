@@ -77,7 +77,14 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
     {
       schema: {
         body: createTicketBodySchema,
-        response: { 201: ticketSchema, 401: errorResponseSchema, 409: errorResponseSchema },
+        response: {
+          201: ticketSchema,
+          401: errorResponseSchema,
+          409: errorResponseSchema,
+          // A queueId that matches no queue: a uuid the body schema accepts and
+          // the foreign key refuses.
+          422: errorResponseSchema,
+        },
       },
     },
     async (request, reply) => {
@@ -99,6 +106,7 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
           400: errorResponseSchema,
           401: errorResponseSchema,
           404: errorResponseSchema,
+          422: errorResponseSchema,
         },
       },
     },

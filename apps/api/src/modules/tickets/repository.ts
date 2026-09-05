@@ -1,7 +1,7 @@
 import { sql, type Kysely, type RawBuilder, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
-import { ConflictError } from '../../shared/errors.js'
+import { ConflictError, UnprocessableEntityError } from '../../shared/errors.js'
 import { movementFieldsOf, relationshipOf } from './enrollment-snapshot.js'
 import { actionDateWindowCondition, ticketFilterConditions } from './filter-resolver.js'
 import type { TicketRowPayload, TicketRowsQuery } from './rows-schema.js'
@@ -20,6 +20,22 @@ export type ChangeStatusResult =
   { kind: 'not-found' } | { kind: 'already-closed' } | { kind: 'ok'; ticket: Ticket }
 
 const OPEN_ENROLLMENT_CONSTRAINT = 'uq_tickets_open_enrollment'
+const QUEUE_FK_CONSTRAINT = 'tickets_queue_id_fkey'
+
+/** A queueId is a well-formed uuid the schema cannot check against the table,
+ *  so a miss is an unprocessable body — not a server fault. */
+function rethrowUnknownQueue(err: unknown): never {
+  if (
+    err instanceof Error &&
+    'code' in err &&
+    err.code === '23503' &&
+    'constraint' in err &&
+    err.constraint === QUEUE_FK_CONSTRAINT
+  ) {
+    throw new UnprocessableEntityError('Queue does not exist')
+  }
+  throw err
+}
 
 /** `.min(1)` on the response would turn one hand-edited row into a 500 for the
  *  whole page, so a blank column reads as the null it means. */
@@ -302,7 +318,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
       ) {
         throw new ConflictError(`Enrollment ${data.enrollmentId} already has an open ticket`)
       }
-      throw err
+      rethrowUnknownQueue(err)
     }
   }
 
@@ -362,7 +378,13 @@ export class TicketsRepository implements TicketsRepositoryPort {
   }
 
   async update(id: string, data: UpdateTicketBody): Promise<Ticket | undefined> {
-    const row = await this.db
+    const row = await this.updateRow(id, data).catch(rethrowUnknownQueue)
+
+    return row ? toTicket(row) : undefined
+  }
+
+  private updateRow(id: string, data: UpdateTicketBody): Promise<Selectable<Tickets> | undefined> {
+    return this.db
       .updateTable('tickets')
       .set({
         ...(data.status !== undefined && { status: data.status }),
@@ -376,7 +398,5 @@ export class TicketsRepository implements TicketsRepositoryPort {
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirst()
-
-    return row ? toTicket(row) : undefined
   }
 }
