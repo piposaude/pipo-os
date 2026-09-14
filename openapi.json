@@ -107,6 +107,7 @@
             "additionalProperties": false
           },
           "collaborators": {
+            "maxItems": 50,
             "type": "array",
             "items": {
               "type": "object",

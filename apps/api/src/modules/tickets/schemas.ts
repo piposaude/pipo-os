@@ -98,7 +98,7 @@ export const createTicketBodySchema = z
     // Strict on the way in and not on the way out: a caller typo must fail
     // loudly, a hand-edited row must not 500 the whole read.
     requester: ticketPersonSchema.strict().optional(),
-    collaborators: z.array(ticketPersonSchema.strict()).optional(),
+    collaborators: z.array(ticketPersonSchema.strict()).max(50).optional(),
     carrierId: z.string().min(1).optional(),
     carrierName: z.string().min(1).optional(),
     product: z.string().min(1).optional(),

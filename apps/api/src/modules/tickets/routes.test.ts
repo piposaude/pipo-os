@@ -154,6 +154,19 @@ describe('tickets routes', () => {
       expect(response.json().collaborators).toEqual([])
     })
 
+    it('refuses a copy list longer than the cap', async () => {
+      const collaborators = Array.from({ length: 51 }, (_, i) => ({ email: `dp${i}@acme.com.br` }))
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, collaborators },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+
     it.each([
       ['no e-mail', { name: 'Sergio Gouveia' }],
       ['an e-mail that is not one', { email: 'sergio' }],
