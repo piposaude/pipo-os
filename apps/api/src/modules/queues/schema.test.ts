@@ -116,7 +116,10 @@ describe('queues schema — saved view constraints', () => {
       `.execute(app.db)
       const def = row.rows[0]?.def
       if (!def) throw new Error(`no constraint named ${constraint} on ticket_queues`)
-      return [...def.matchAll(/'([^']+)'::text/g)].map((match) => match[1]).sort()
+
+      const values = [...def.matchAll(/'([^']+)'::text/g)].map((match) => match[1]).sort()
+      if (values.length === 0) throw new Error(`no values read out of ${constraint}: ${def}`)
+      return values
     }
 
     it.each<[string, string[]]>([
