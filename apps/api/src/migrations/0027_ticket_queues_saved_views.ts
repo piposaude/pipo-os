@@ -6,7 +6,9 @@ export async function up(db: Kysely<unknown>): Promise<void> {
   await sql`
     ALTER TABLE ticket_queues
       ADD COLUMN owner_id text,
-      ADD COLUMN group_id uuid REFERENCES ticket_groups(id) ON DELETE RESTRICT,
+      ADD COLUMN group_id uuid,
+      ADD CONSTRAINT ticket_queues_group_id_fkey
+        FOREIGN KEY (group_id) REFERENCES ticket_groups(id) ON DELETE RESTRICT,
       ADD COLUMN sort_by text NOT NULL DEFAULT 'actionDate'
         CONSTRAINT ticket_queues_sort_by_check
         CHECK (sort_by IN ('actionDate', 'createdAt', 'updatedAt', 'company', 'status')),

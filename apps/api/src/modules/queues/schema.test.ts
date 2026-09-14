@@ -1,9 +1,17 @@
+import type { Insertable } from 'kysely'
 import type { FastifyInstance } from 'fastify'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
+import type { TicketQueues } from '../../infrastructure/db-types.js'
 
 const ANA = 'ana@pipo.health'
 const BRUNO = 'bruno@pipo.health'
+
+/** Twins of `SortField` and `GroupBy` in web/src/lib/pipodesk/{sort,group}.ts.
+ *  A value added there and not here is refused at write time, as 23514. */
+const SORT_FIELDS = ['actionDate', 'createdAt', 'updatedAt', 'company', 'status']
+const SORT_DIRECTIONS = ['asc', 'desc']
+const GROUPINGS = ['status', 'company', 'product', 'assignee', 'none']
 
 const UNIQUE_VIOLATION = '23505'
 const FK_VIOLATION = '23503'
@@ -33,7 +41,6 @@ describe('queues schema — saved view constraints', () => {
   })
 
   afterEach(async () => {
-    await app.db.deleteFrom('ticket_queue_favorites').execute()
     await app.db.deleteFrom('ticket_queues').execute()
     await app.db.deleteFrom('ticket_groups').execute()
   })
@@ -47,7 +54,10 @@ describe('queues schema — saved view constraints', () => {
     return row.id
   }
 
-  const queue = async (name: string, extra: Record<string, unknown> = {}): Promise<string> => {
+  const queue = async (
+    name: string,
+    extra: Partial<Insertable<TicketQueues>> = {},
+  ): Promise<string> => {
     const row = await app.db
       .insertInto('ticket_queues')
       .values({ name, created_by: 'test', ...extra })
@@ -72,6 +82,18 @@ describe('queues schema — saved view constraints', () => {
         .executeTakeFirstOrThrow()
 
       expect(row).toEqual({ sort_by: 'actionDate', sort_direction: 'asc' })
+    })
+
+    it.each(SORT_FIELDS)('accepts %s as a sort field', async (sortBy) => {
+      await expect(queue('Exclusões vencidas', { sort_by: sortBy })).resolves.toBeTruthy()
+    })
+
+    it.each(SORT_DIRECTIONS)('accepts %s as a sort direction', async (direction) => {
+      await expect(queue('Exclusões vencidas', { sort_direction: direction })).resolves.toBeTruthy()
+    })
+
+    it.each(GROUPINGS)('accepts %s as a grouping', async (groupBy) => {
+      await expect(queue('Exclusões vencidas', { group_by: groupBy })).resolves.toBeTruthy()
     })
 
     it('refuses a sort field the queue screen cannot sort by', async () => {
