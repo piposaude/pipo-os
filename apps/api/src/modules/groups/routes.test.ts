@@ -288,8 +288,22 @@ describe('groups routes', () => {
        without a word. */
     it('cuts the tree at the page boundary', async () => {
       const geben = await createGroup('Gestão de Benefícios')
-      await createGroup('POD 3', geben)
-      await createGroup('POD 5', geben)
+      const pod3 = await createGroup('POD 3', geben)
+      const pod5 = await createGroup('POD 5', geben)
+
+      /* The creation order is what this test reads, and `now()` resolves to the
+         microsecond with a random uuid as the tiebreaker. The fixture states
+         the order instead of racing for it. */
+      const createdOn = (id: string, day: number) =>
+        app.db
+          .updateTable('ticket_groups')
+          .set({ created_at: new Date(Date.UTC(2026, 8, day)) })
+          .where('id', '=', id)
+          .execute()
+
+      await createdOn(geben, 1)
+      await createdOn(pod3, 2)
+      await createdOn(pod5, 3)
 
       const response = await app.inject({
         method: 'GET',
