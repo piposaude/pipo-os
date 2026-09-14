@@ -2429,6 +2429,7 @@ export interface components {
             data: components["schemas"]["TimelineItem"][];
             nextCursor?: string;
         };
+        /** @description The group by itself: POST and PATCH answer with this shape. Only GroupDetail, from the two read routes, carries companyIds and members. */
         Group: {
             /** Format: uuid */
             id: string;

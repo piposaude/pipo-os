@@ -15,7 +15,11 @@ export const groupSchema = z
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
   })
-  .meta({ id: 'Group' })
+  .meta({
+    id: 'Group',
+    description:
+      'The group by itself: POST and PATCH answer with this shape. Only GroupDetail, from the two read routes, carries companyIds and members.',
+  })
 
 /** Must stay the pair the CHECK of migration 0024 admits. */
 export const memberRoleSchema = z.enum(['admin', 'member']).meta({ id: 'GroupMemberRole' })

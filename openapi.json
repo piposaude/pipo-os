@@ -1268,7 +1268,8 @@
           "createdAt",
           "updatedAt"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "The group by itself: POST and PATCH answer with this shape. Only GroupDetail, from the two read routes, carries companyIds and members."
       },
       "GroupMemberRole": {
         "type": "string",
