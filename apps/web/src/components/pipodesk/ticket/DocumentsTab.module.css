@@ -35,10 +35,6 @@
   align-items: center;
 }
 
-.name {
-  font-weight: var(--pipo-fw-medium);
-}
-
 /* 24px is the smallest target that meets WCAG 2.5.8; the glyph stays 14px. */
 .download {
   display: inline-flex;
@@ -54,12 +50,93 @@
   cursor: pointer;
 }
 
-.download:hover:not(:disabled) {
+.download:hover:not([aria-disabled='true']) {
   background: var(--pipo-surface-subtle);
   color: var(--pipo-text-primary);
 }
 
-.download:disabled {
+.download:focus-visible {
+  outline: none;
+  box-shadow: var(--pipo-shadow-focus-primary);
+}
+
+.download[aria-disabled='true'] {
   cursor: default;
   opacity: 0.5;
+}
+
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pipo-space-large);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.groupTitle {
+  margin: 0 0 var(--pipo-space-xxsmall);
+  font-size: var(--pipo-fs-small);
+  font-weight: var(--pipo-fw-medium);
+}
+
+.name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pipo-space-small);
+}
+
+.version {
+  color: var(--pipo-text-secondary);
+  font-size: 12px;
+  font-weight: var(--pipo-fw-regular);
+}
+
+/* Spans the row under its version: it is about the file above, not a column. */
+.note,
+.noteEmpty {
+  grid-column: 1 / -1;
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  color: var(--pipo-text-primary);
+  cursor: pointer;
+}
+
+.noteEmpty {
+  color: var(--pipo-text-secondary);
+  opacity: 0;
+}
+
+.documents li:hover .noteEmpty,
+.noteEmpty:focus-visible {
+  opacity: 1;
+}
+
+.noteInput {
+  grid-column: 1 / -1;
+  width: 100%;
+  padding: 2px 0;
+  border: 0;
+  border-bottom: 1px solid var(--pipo-border);
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.noteInput:focus-visible {
+  border-bottom-color: var(--pipo-text-primary);
+  box-shadow: var(--pipo-shadow-focus-primary);
+}
+
+/* No hover to reveal it: on touch there would be no way to add a note. */
+@media (hover: none) {
+  .noteEmpty {
+    opacity: 1;
+  }
 }

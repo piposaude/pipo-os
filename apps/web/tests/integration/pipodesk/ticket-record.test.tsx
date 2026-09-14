@@ -285,17 +285,104 @@ describe('aba Documentos', () => {
       .closest('section')!
     expect(within(received).getByText('RG.jpg')).toBeInTheDocument()
     expect(within(received).getByText('1590 KB')).toBeInTheDocument()
-    // No file behind the fixture: the control shows where the action lives, off,
-    // and the reason is on screen — a disabled button takes no focus.
     expect(
-      within(received).getByRole('button', { name: documentsCopy.download('RG.jpg') }),
-    ).toBeDisabled()
+      within(received).getByRole('button', {
+        name: documentsCopy.download('RG.jpg', null, '700002-camila-machado-dantas-rg.jpg'),
+      }),
+    ).toHaveAttribute('aria-disabled', 'true')
     expect(within(panel).getByText(documentsCopy.downloadUnavailable)).toBeInTheDocument()
 
     const generated = within(panel)
       .getByRole('heading', { level: 2, name: documentsCopy.fromPipo.title })
       .closest('section')!
     expect(within(generated).getByText('Ficha de adesão.pdf')).toBeInTheDocument()
+  })
+
+  /** 700026 has two RGs: the one from 22 May stands, the one from 14 May was
+   *  replaced and carries the reason. */
+  it('should title the group with the file identity and mark which version stands', async () => {
+    const { panel } = await openTab('/tickets/700026', 'Documentos')
+
+    const received = within(panel)
+      .getByRole('heading', { level: 2, name: documentsCopy.fromClient.title })
+      .closest('section')!
+    expect(within(received).getByText('RG · Carlos Rezende Zanetti · 700026')).toBeInTheDocument()
+
+    const versions = within(
+      within(received).getByText('RG · Carlos Rezende Zanetti · 700026').closest('li')!,
+    ).getAllByRole('listitem')
+    expect(versions[0]?.textContent).toContain(documentsCopy.version.current)
+    expect(versions[1]?.textContent).toContain(documentsCopy.version.superseded)
+    expect(within(received).getByText('Desatualizado — vencido')).toBeInTheDocument()
+  })
+
+  it('should offer the name the file would be born with, since a later rename breaks validation', async () => {
+    const { panel } = await openTab('/tickets/700026', 'Documentos')
+
+    // Off, but focusable and announced: with `disabled` the name would reach
+    // the mouse and nobody else.
+    const current = within(panel).getByRole('button', {
+      name: documentsCopy.download(
+        'RG.pdf',
+        documentsCopy.version.current,
+        '700026-carlos-rezende-zanetti-rg.pdf',
+      ),
+    })
+    expect(current).toHaveAttribute('aria-disabled', 'true')
+    expect(current).not.toBeDisabled()
+
+    // Two versions of one file no longer share a control name.
+    expect(
+      within(panel).getByRole('button', {
+        name: documentsCopy.download(
+          'RG.pdf',
+          documentsCopy.version.superseded,
+          '700026-carlos-rezende-zanetti-rg.pdf',
+        ),
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('should keep an observation written on a version', async () => {
+    const { panel } = await openTab('/tickets/700026', 'Documentos')
+    const user = userEvent.setup()
+
+    await user.click(within(panel).getAllByRole('button', { name: documentsCopy.note.empty })[0]!)
+    await user.type(within(panel).getAllByRole('textbox')[0]!, 'reenviado pelo RH{Enter}')
+
+    expect(within(panel).getByText('reenviado pelo RH')).toBeInTheDocument()
+  })
+
+  it('should clear a seeded observation when it is emptied', async () => {
+    const { panel } = await openTab('/tickets/700026', 'Documentos')
+    const user = userEvent.setup()
+
+    await user.click(within(panel).getByRole('button', { name: 'Desatualizado — vencido' }))
+    await user.clear(within(panel).getAllByRole('textbox')[0]!)
+    await user.keyboard('{Enter}')
+
+    expect(within(panel).queryByText('Desatualizado — vencido')).not.toBeInTheDocument()
+  })
+
+  it('should drop an edit abandoned with Escape, not save it on the way out', async () => {
+    const { panel } = await openTab('/tickets/700026', 'Documentos')
+    const user = userEvent.setup()
+
+    await user.click(within(panel).getAllByRole('button', { name: documentsCopy.note.empty })[0]!)
+    const field = within(panel).getAllByRole('textbox')[0]!
+    await user.type(field, 'rascunho')
+    await user.keyboard('{Escape}')
+
+    expect(within(panel).queryByText('rascunho')).not.toBeInTheDocument()
+  })
+
+  it('should declare that what this company requires is not mapped anywhere', async () => {
+    const { panel } = await openTab('/tickets/700026', 'Documentos')
+
+    const block = within(panel)
+      .getByRole('heading', { level: 2, name: documentsCopy.mandatory.title })
+      .closest('section')!
+    expect(within(block).getByText(/não está em sistema nenhum/)).toBeInTheDocument()
   })
 
   /** The two-word key with an accent: matched on the normalised key, so a

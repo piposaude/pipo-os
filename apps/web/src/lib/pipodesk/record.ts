@@ -121,6 +121,9 @@ export interface RecordDocument {
   kind: string
   at: string
   sizeKb: number
+  /** The note is the file's, not the ticket's: the same document comes back in
+   *  several versions, and the reason for a resend belongs to one of them. */
+  note: string | null
 }
 
 /** What a ticket moves: whom, with which dependents, on which policy. */

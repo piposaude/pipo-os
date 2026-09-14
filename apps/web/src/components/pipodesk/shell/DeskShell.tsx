@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
 import { Outlet, useNavigate } from '@tanstack/react-router'
 import { SidebarMainLayout } from '@piposaude/design-system'
 import { QueueSidebar } from '@/components/pipodesk/sidebar/QueueSidebar'
-import { buildTree, type TreeNode, type TreeSection } from '@/lib/pipodesk/tree'
+import { HOME_NODE_ID, buildTree, type TreeNode, type TreeSection } from '@/lib/pipodesk/tree'
 import { INITIAL_VIEW, queueViewReducer } from '@/lib/pipodesk/queue-view'
 import { applyPatches, type TicketPatch } from '@/lib/pipodesk/patches'
 import { SearchPalette } from '@/components/pipodesk/queue/SearchPalette'
@@ -120,7 +120,7 @@ export function DeskShell() {
        and sort come from it — rewriting them here would be a second source of
        truth. */
   const [view, dispatch] = useReducer(queueViewReducer, sections, (built: TreeSection[]) => {
-    const start = findNode(built, 'node-meus-tickets')
+    const start = findNode(built, HOME_NODE_ID)
     return start === null
       ? INITIAL_VIEW
       : queueViewReducer(INITIAL_VIEW, { type: 'select-node', node: toQueueNode(start) })

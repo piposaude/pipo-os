@@ -1,9 +1,16 @@
+import { useState } from 'react'
 import { DeskIcon } from '@/components/pipodesk/icons'
 import { ENROLLMENT_TYPE_COPY } from '@/constants/pipodesk/domain'
-import { documentKey, documentLabel } from '@/lib/pipodesk/document'
+import {
+  documentKey,
+  documentLabel,
+  documentTitle,
+  downloadName,
+  versionsByKind,
+} from '@/lib/pipodesk/document'
 import copy from '@/constants/pages/pipodesk/ticket/documents'
 import { formatLongDate } from '@/lib/pipodesk/format'
-import type { RecordDocument, TicketRecords } from '@/lib/pipodesk/record'
+import { displayNameOf, type RecordDocument, type TicketRecords } from '@/lib/pipodesk/record'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 import { OutageNotice } from './OutageNotice'
 import { RecordEmpty, RecordNote, RecordSection } from './RecordSection'
@@ -15,35 +22,101 @@ export interface DocumentsTabProps {
   records: TicketRecords
 }
 
+/** The note written here is session state, keyed by document id: it dies on
+ *  reload like every other action on the fixture. */
 function DocumentGroup({
   title,
   empty,
   documents,
+  ticketId,
+  person,
 }: {
   title: string
   empty: string
   documents: RecordDocument[]
+  ticketId: string
+  person: string | null
 }) {
+  const [notes, setNotes] = useState<Record<string, string>>({})
+  const [editing, setEditing] = useState<string | null>(null)
+  const groups = versionsByKind(documents)
+
   return (
     <RecordSection level="h2" title={title}>
-      {documents.length === 0 ? (
+      {groups.length === 0 ? (
         <RecordEmpty>{empty}</RecordEmpty>
       ) : (
-        <ul className={styles.documents}>
-          {documents.map((doc) => (
-            <li key={doc.id}>
-              <span className={styles.name}>{doc.name}</span>
-              <span>{formatLongDate(doc.at)}</span>
-              <span>{copy.size(doc.sizeKb)}</span>
-              {/* No file behind the fixture: the control marks where the action lives, off. */}
-              <button
-                type="button"
-                className={styles.download}
-                aria-label={copy.download(doc.name)}
-                disabled
-              >
-                <DeskIcon name="download" size={14} />
-              </button>
+        <ul className={styles.groups}>
+          {groups.map(({ kind, versions }) => (
+            <li key={kind}>
+              <p className={styles.groupTitle}>{documentTitle({ kind }, ticketId, person)}</p>
+              <ul className={styles.documents}>
+                {versions.map((doc, index) => {
+                  const note = notes[doc.id] ?? doc.note ?? ''
+                  const as = downloadName(doc, ticketId, person)
+                  // Two versions of one file share name and identity, so the
+                  // version is what tells their controls apart.
+                  const which =
+                    versions.length > 1
+                      ? index === 0
+                        ? copy.version.current
+                        : copy.version.superseded
+                      : null
+                  return (
+                    <li key={doc.id}>
+                      <span className={styles.name}>
+                        {doc.name}
+                        {which !== null && <span className={styles.version}>{which}</span>}
+                      </span>
+                      <span>{formatLongDate(doc.at)}</span>
+                      <span>{copy.size(doc.sizeKb)}</span>
+                      {/* `aria-disabled`, not `disabled`: the name the file
+                          would be born with only reaches a focusable control. */}
+                      <button
+                        type="button"
+                        className={styles.download}
+                        aria-label={copy.download(doc.name, which, as)}
+                        title={copy.download(doc.name, which, as)}
+                        aria-disabled="true"
+                        onClick={(event) => event.preventDefault()}
+                      >
+                        <DeskIcon name="download" size={14} />
+                      </button>
+                      {editing === doc.id ? (
+                        <input
+                          className={styles.noteInput}
+                          type="text"
+                          defaultValue={note}
+                          placeholder={copy.note.placeholder}
+                          aria-label={copy.note.label(doc.name)}
+                          autoFocus
+                          onBlur={(event) => {
+                            setNotes((current) => ({ ...current, [doc.id]: event.target.value }))
+                            setEditing(null)
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') event.currentTarget.blur()
+                            if (event.key === 'Escape') {
+                              // Put the original back first: whether removing a
+                              // focused node fires blur varies by browser.
+                              event.currentTarget.value = note
+                              setEditing(null)
+                            }
+                          }}
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          className={note ? styles.note : styles.noteEmpty}
+                          onClick={() => setEditing(doc.id)}
+                        >
+                          {note || copy.note.empty}
+                        </button>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
             </li>
           ))}
         </ul>
@@ -54,6 +127,9 @@ function DocumentGroup({
 
 export function DocumentsTab({ ticket, pendingDocumentation, records }: DocumentsTabProps) {
   const documents = records.documentsOf('ticket', ticket.id)
+  const movement = records.movementOf(ticket.id)
+  const moved = movement && records.personById.get(movement.beneficiaryId)
+  const person = moved ? displayNameOf(moved) : null
   const fromPipo = documents.filter((doc) => doc.origin === 'pipo')
   const fromClient = documents.filter((doc) => doc.origin === 'client')
 
@@ -99,13 +175,26 @@ export function DocumentsTab({ ticket, pendingDocumentation, records }: Document
         </RecordSection>
       )}
 
+      <RecordSection level="h2" title={copy.mandatory.title}>
+        <RecordNote>
+          {copy.mandatory.unmapped(records.companyById.get(ticket.companyId)?.tradeName ?? null)}
+        </RecordNote>
+      </RecordSection>
+
       <DocumentGroup
         title={copy.fromClient.title}
         empty={copy.fromClient.empty}
         documents={fromClient}
+        ticketId={ticket.id}
+        person={person}
       />
-      <DocumentGroup title={copy.fromPipo.title} empty={pipoEmpty} documents={fromPipo} />
-      {/* On screen, not in a title: a disabled button takes no focus. */}
+      <DocumentGroup
+        title={copy.fromPipo.title}
+        empty={pipoEmpty}
+        documents={fromPipo}
+        ticketId={ticket.id}
+        person={person}
+      />
       {documents.length > 0 && <RecordNote>{copy.downloadUnavailable}</RecordNote>}
     </div>
   )

@@ -144,6 +144,83 @@ describe('queueViewReducer — select-node', () => {
   })
 })
 
+describe('queueViewReducer — a volta da busca', () => {
+  const search = node({ id: 'search-700123', label: 'Busca: 700123', labelPath: ['Busca: 700123'] })
+  const pod = node({ id: 'pod-geben', label: 'GEBEN', labelPath: ['GEBEN'] })
+
+  it('should remember the queue the search took the viewer from', () => {
+    const fromPod = queueViewReducer(INITIAL_VIEW, { type: 'select-node', node: pod })
+
+    const next = queueViewReducer(fromPod, { type: 'select-node', node: search })
+
+    expect(next.returnTo?.nodeId).toBe('pod-geben')
+    expect(next.returnTo?.labelPath).toEqual(['GEBEN'])
+  })
+
+  it('should keep pointing at the queue when one search follows another', () => {
+    const fromPod = queueViewReducer(INITIAL_VIEW, { type: 'select-node', node: pod })
+    const first = queueViewReducer(fromPod, { type: 'select-node', node: search })
+
+    const second = queueViewReducer(first, {
+      type: 'select-node',
+      node: node({ id: 'search-outro', label: 'Busca: outro' }),
+    })
+
+    expect(second.returnTo?.nodeId).toBe('pod-geben')
+  })
+
+  it('should forget the queue once a real node is selected', () => {
+    const fromPod = queueViewReducer(INITIAL_VIEW, { type: 'select-node', node: pod })
+    const searching = queueViewReducer(fromPod, { type: 'select-node', node: search })
+
+    const next = queueViewReducer(searching, { type: 'select-node', node: pod })
+
+    expect(next.returnTo).toBeNull()
+  })
+
+  it('should open a search over the whole period, so a ticket outside the window still shows', () => {
+    const fromPod = queueViewReducer(INITIAL_VIEW, { type: 'select-node', node: pod })
+    expect(fromPod.dateWindowDays).toBe(30)
+
+    const next = queueViewReducer(fromPod, { type: 'select-node', node: search })
+
+    expect(next.dateWindowDays).toBeNull()
+  })
+
+  it('should give the window back when a real node is selected after a search', () => {
+    const fromPod = queueViewReducer(INITIAL_VIEW, { type: 'select-node', node: pod })
+    const searching = queueViewReducer(fromPod, { type: 'select-node', node: search })
+
+    const next = queueViewReducer(searching, { type: 'select-node', node: pod })
+
+    expect(next.dateWindowDays).toBe(30)
+  })
+
+  it('should restore the queue the search started from, selection dropped', () => {
+    const fromPod = queueViewReducer(INITIAL_VIEW, { type: 'select-node', node: pod })
+    const withChip = queueViewReducer(fromPod, {
+      type: 'add-filter',
+      field: 'priorities',
+      values: ['urgent'],
+    })
+    const searching = queueViewReducer(withChip, { type: 'select-node', node: search })
+
+    const next = queueViewReducer(searching, { type: 'exit-search' })
+
+    expect(next.nodeId).toBe('pod-geben')
+    expect(next.filter).toEqual({ priorities: ['urgent'] })
+    expect(next.dateWindowDays).toBe(30)
+    expect(next.returnTo).toBeNull()
+    expect(next.selectedIds).toEqual([])
+  })
+
+  it('should stand still when there is no search to leave', () => {
+    const next = queueViewReducer(INITIAL_VIEW, { type: 'exit-search' })
+
+    expect(next).toBe(INITIAL_VIEW)
+  })
+})
+
 describe('queueViewReducer — filtros', () => {
   it('should add a field on top of the node filter without touching it', () => {
     const next = queueViewReducer(INITIAL_VIEW, {
