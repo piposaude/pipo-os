@@ -56,7 +56,9 @@ function DocumentGroup({
                   const as = downloadName(doc, ticketId, person)
                   return (
                     <li key={doc.id}>
-                      <span className={styles.name}>
+                      {/* The tooltip hangs on the name, not on the button: a
+                          disabled button shows none and takes no focus. */}
+                      <span className={styles.name} title={copy.downloadAs(as)}>
                         {doc.name}
                         {versions.length > 1 && (
                           <span className={styles.version}>
@@ -72,7 +74,6 @@ function DocumentGroup({
                         type="button"
                         className={styles.download}
                         aria-label={copy.download(doc.name, as)}
-                        title={copy.download(doc.name, as)}
                         disabled
                       >
                         <DeskIcon name="download" size={14} />

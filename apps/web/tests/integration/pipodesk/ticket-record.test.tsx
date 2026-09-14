@@ -327,6 +327,24 @@ describe('aba Documentos', () => {
       name: documentsCopy.download('RG.pdf', '700026-carlos-rezende-zanetti-rg.pdf'),
     })
     expect(current).toBeDisabled()
+
+    // The name has to be reachable with the button off: a disabled button
+    // shows no tooltip and takes no focus, so it hangs on the file name.
+    expect(
+      within(panel).getAllByTitle(/700026-carlos-rezende-zanetti-rg\.pdf/)[0],
+    ).toBeInTheDocument()
+  })
+
+  it('should drop an edit abandoned with Escape, not save it on the way out', async () => {
+    const { panel } = await openTab('/tickets/700026', 'Documentos')
+    const user = userEvent.setup()
+
+    await user.click(within(panel).getAllByRole('button', { name: documentsCopy.note.empty })[0]!)
+    const field = within(panel).getAllByRole('textbox')[0]!
+    await user.type(field, 'rascunho')
+    await user.keyboard('{Escape}')
+
+    expect(within(panel).queryByText('rascunho')).not.toBeInTheDocument()
   })
 
   /** The rule lives in each analyst's spreadsheet, not in any system: the block

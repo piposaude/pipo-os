@@ -34,6 +34,7 @@ export default {
     label: (name: string) => `Observação sobre ${name}`,
   },
   download: (name: string, as: string) => `Baixar ${name} como ${as}`,
+  downloadAs: (as: string) => `Baixaria como ${as}`,
   downloadUnavailable: 'Ainda não há arquivo para baixar.',
   size: (kb: number) => `${kb} KB`,
 }
