@@ -163,9 +163,9 @@ export class GroupsRepository implements GroupsRepositoryPort {
       )
       .select(['m.group_id', 'm.user_id', 'm.role', 'm.active', 'mc.company_id'])
       .where('m.group_id', 'in', groupIds)
-      // user_id is what keeps a member's rows contiguous, and the loop below
-      // leans on it: it appends to the last member instead of looking it up.
       .orderBy('m.group_id')
+      // The loop below appends to the last member of the list instead of
+      // looking it up, so a member's rows have to arrive contiguous.
       .orderBy('m.user_id')
       .orderBy('mc.company_id')
       .execute()
