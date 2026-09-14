@@ -1,0 +1,187 @@
+import type { FastifyInstance } from 'fastify'
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { buildApp } from '../../app.js'
+
+const ANA = 'ana@pipo.health'
+const BRUNO = 'bruno@pipo.health'
+
+const UNIQUE_VIOLATION = '23505'
+const FK_VIOLATION = '23503'
+const CHECK_VIOLATION = '23514'
+
+async function codeOf(write: Promise<unknown>): Promise<string | undefined> {
+  try {
+    await write
+    return undefined
+  } catch (err) {
+    if (err instanceof Error && 'code' in err) return err.code as string
+    // No Postgres code means the test itself is broken, not a constraint firing.
+    throw err
+  }
+}
+
+describe('queues schema — saved view constraints', () => {
+  let app: FastifyInstance
+
+  beforeAll(async () => {
+    app = buildApp()
+    await app.ready()
+  })
+
+  afterAll(async () => {
+    await app.close()
+  })
+
+  afterEach(async () => {
+    await app.db.deleteFrom('ticket_queue_favorites').execute()
+    await app.db.deleteFrom('ticket_queues').execute()
+    await app.db.deleteFrom('ticket_groups').execute()
+  })
+
+  const group = async (name: string): Promise<string> => {
+    const row = await app.db
+      .insertInto('ticket_groups')
+      .values({ name, created_by: 'test' })
+      .returning('id')
+      .executeTakeFirstOrThrow()
+    return row.id
+  }
+
+  const queue = async (name: string, extra: Record<string, unknown> = {}): Promise<string> => {
+    const row = await app.db
+      .insertInto('ticket_queues')
+      .values({ name, created_by: 'test', ...extra })
+      .returning('id')
+      .executeTakeFirstOrThrow()
+    return row.id
+  }
+
+  const favorite = (queueId: string, userId: string): Promise<unknown> =>
+    app.db
+      .insertInto('ticket_queue_favorites')
+      .values({ queue_id: queueId, user_id: userId })
+      .execute()
+
+  describe('how the view opens', () => {
+    it('opens a new view by action date, ascending', async () => {
+      await queue('Exclusões vencidas')
+
+      const row = await app.db
+        .selectFrom('ticket_queues')
+        .select(['sort_by', 'sort_direction'])
+        .executeTakeFirstOrThrow()
+
+      expect(row).toEqual({ sort_by: 'actionDate', sort_direction: 'asc' })
+    })
+
+    it('refuses a sort field the queue screen cannot sort by', async () => {
+      const code = await codeOf(queue('Exclusões vencidas', { sort_by: 'prazo' }))
+
+      expect(code).toBe(CHECK_VIOLATION)
+    })
+
+    it('refuses a sort direction outside asc and desc', async () => {
+      const code = await codeOf(queue('Exclusões vencidas', { sort_direction: 'up' }))
+
+      expect(code).toBe(CHECK_VIOLATION)
+    })
+
+    it('refuses a grouping the queue screen does not offer', async () => {
+      const code = await codeOf(queue('Exclusões vencidas', { group_by: 'cliente' }))
+
+      expect(code).toBe(CHECK_VIOLATION)
+    })
+
+    it('tells a view that imposes no grouping from one that imposes a flat list', async () => {
+      await queue('Herda o agrupamento da pessoa')
+      await queue('Lista plana', { group_by: 'none' })
+
+      const rows = await app.db
+        .selectFrom('ticket_queues')
+        .select(['name', 'group_by'])
+        .orderBy('name')
+        .execute()
+
+      expect(rows).toEqual([
+        { name: 'Herda o agrupamento da pessoa', group_by: null },
+        { name: 'Lista plana', group_by: 'none' },
+      ])
+    })
+  })
+
+  describe('who the view belongs to', () => {
+    it('leaves a new view without an owner, which is the team view', async () => {
+      await queue('MOV CLT')
+
+      const row = await app.db
+        .selectFrom('ticket_queues')
+        .select(['owner_id', 'group_id'])
+        .executeTakeFirstOrThrow()
+
+      expect(row).toEqual({ owner_id: null, group_id: null })
+    })
+
+    it('keeps the owner of a personal view', async () => {
+      await queue('Minhas exclusões', { owner_id: ANA })
+
+      const row = await app.db
+        .selectFrom('ticket_queues')
+        .select('owner_id')
+        .executeTakeFirstOrThrow()
+
+      expect(row.owner_id).toBe(ANA)
+    })
+
+    it('refuses a view pointing at a group that does not exist', async () => {
+      const code = await codeOf(
+        queue('MOV CLT', { group_id: '00000000-0000-4000-8000-000000000099' }),
+      )
+
+      expect(code).toBe(FK_VIOLATION)
+    })
+
+    it('refuses to delete a group that still owns a saved view', async () => {
+      const pod = await group('POD 5')
+      await queue('MOV CLT', { group_id: pod })
+
+      const code = await codeOf(app.db.deleteFrom('ticket_groups').where('id', '=', pod).execute())
+
+      expect(code).toBe(FK_VIOLATION)
+    })
+  })
+
+  describe('favorites', () => {
+    it('lets two people favorite the same view', async () => {
+      const id = await queue('MOV CLT')
+      await favorite(id, ANA)
+      await favorite(id, BRUNO)
+
+      const rows = await app.db
+        .selectFrom('ticket_queue_favorites')
+        .select('user_id')
+        .orderBy('user_id')
+        .execute()
+
+      expect(rows).toEqual([{ user_id: ANA }, { user_id: BRUNO }])
+    })
+
+    it('refuses the same person favoriting the same view twice', async () => {
+      const id = await queue('MOV CLT')
+      await favorite(id, ANA)
+
+      const code = await codeOf(favorite(id, ANA))
+
+      expect(code).toBe(UNIQUE_VIOLATION)
+    })
+
+    it('drops the favorites of a view that is deleted', async () => {
+      const id = await queue('MOV CLT')
+      await favorite(id, ANA)
+
+      await app.db.deleteFrom('ticket_queues').where('id', '=', id).execute()
+
+      const rows = await app.db.selectFrom('ticket_queue_favorites').selectAll().execute()
+      expect(rows).toEqual([])
+    })
+  })
+})

@@ -120,12 +120,23 @@ export interface TicketGroups {
   updated_by: string | null;
 }
 
+export interface TicketQueueFavorites {
+  created_at: Generated<Timestamp>;
+  queue_id: string;
+  user_id: string;
+}
+
 export interface TicketQueues {
   created_at: Generated<Timestamp>;
   created_by: string;
   filters: Generated<Json>;
+  group_by: string | null;
+  group_id: string | null;
   id: Generated<string>;
   name: string;
+  owner_id: string | null;
+  sort_by: Generated<string>;
+  sort_direction: Generated<string>;
   updated_at: Generated<Timestamp>;
   updated_by: string | null;
 }
@@ -201,6 +212,7 @@ export interface DB {
   ticket_group_member_companies: TicketGroupMemberCompanies;
   ticket_group_members: TicketGroupMembers;
   ticket_groups: TicketGroups;
+  ticket_queue_favorites: TicketQueueFavorites;
   ticket_queues: TicketQueues;
   ticket_queues_x_group: TicketQueuesXGroup;
   ticket_status_history: TicketStatusHistory;
