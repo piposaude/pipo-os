@@ -285,8 +285,6 @@ describe('aba Documentos', () => {
       .closest('section')!
     expect(within(received).getByText('RG.jpg')).toBeInTheDocument()
     expect(within(received).getByText('1590 KB')).toBeInTheDocument()
-    // No file behind the fixture: the control shows where the action lives, off,
-    // and the reason is on screen — a disabled button takes no focus.
     expect(
       within(received).getByRole('button', {
         name: documentsCopy.download('RG.jpg', null, '700002-camila-machado-dantas-rg.jpg'),
@@ -355,8 +353,6 @@ describe('aba Documentos', () => {
     expect(within(panel).getByText('reenviado pelo RH')).toBeInTheDocument()
   })
 
-  /** `??` and not `||` in the note fallback: emptying a seeded note has to clear
-   *  it, not fall back to the fixture value it just replaced. */
   it('should clear a seeded observation when it is emptied', async () => {
     const { panel } = await openTab('/tickets/700026', 'Documentos')
     const user = userEvent.setup()

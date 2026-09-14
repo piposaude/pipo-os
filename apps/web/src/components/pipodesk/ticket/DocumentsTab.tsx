@@ -195,7 +195,6 @@ export function DocumentsTab({ ticket, pendingDocumentation, records }: Document
         ticketId={ticket.id}
         person={person}
       />
-      {/* On screen, not in a title: a disabled button takes no focus. */}
       {documents.length > 0 && <RecordNote>{copy.downloadUnavailable}</RecordNote>}
     </div>
   )

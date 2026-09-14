@@ -93,6 +93,25 @@ describe('versionsByKind', () => {
     expect(groups[0]?.versions).toHaveLength(2)
   })
 
+  it('should read two EI spellings of one document as versions of it, not as two documents', () => {
+    const groups = versionsByKind([
+      doc('d-1', 'comprovante-residencia', '2026-01-10'),
+      doc('d-2', 'Comprovante de residência', '2026-03-02'),
+    ])
+
+    expect(groups).toHaveLength(1)
+    expect(groups[0]?.versions.map((version) => version.id)).toEqual(['d-2', 'd-1'])
+  })
+
+  it('should title the group with the spelling of the version that stands', () => {
+    const groups = versionsByKind([
+      doc('d-1', 'comprovante-residencia', '2026-01-10'),
+      doc('d-2', 'Comprovante de residência', '2026-03-02'),
+    ])
+
+    expect(groups[0]?.kind).toBe('Comprovante de residência')
+  })
+
   it('should break a same-day tie by id, so the order never flickers', () => {
     const groups = versionsByKind([doc('d-1', 'RG', '2026-01-10'), doc('d-2', 'RG', '2026-01-10')])
 
