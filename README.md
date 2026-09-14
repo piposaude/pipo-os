@@ -120,8 +120,6 @@ Isso sobe `apps/api` e `apps/web` simultaneamente via `pnpm -r --parallel dev`.
 | `PATCH` `DELETE`       | `/api/groups/:id/members/:memberId` | Atualiza e remove um membro do grupo                                 |
 | `GET` `POST`           | `/api/queues`                       | Lista e cria filas                                                   |
 | `GET` `PATCH` `DELETE` | `/api/queues/:id`                   | Lê, atualiza e remove uma fila                                       |
-| `POST`                 | `/api/queues/:id/groups`            | Vincula um grupo à fila                                              |
-| `DELETE`               | `/api/queues/:id/groups/:groupId`   | Desvincula um grupo da fila                                          |
 | `GET`                  | `/api/queues/:id/tickets`           | Lista os tickets de uma fila                                         |
 
 #### Grupos: a hierarquia e quem está nela
@@ -134,7 +132,7 @@ O membro tem papel: `admin` é a coordenação do pod, `member` é a analista. `
 
 A listagem continua paginada (`pageSize` padrão 20, máximo 100) e ordenada da mais nova para a mais antiga — que é a ordem em que a raiz sai por último. Quem monta a árvore precisa do conjunto inteiro: um `pageSize` que cubra `total`, ou paginar até fechá-lo. Uma página sozinha traz filhos cujo `parentId` ficou de fora, e uma montagem que confia numa página só os descarta calada. `POST` e `PATCH` devolvem o grupo sem `companyIds` e sem `members`, porque nenhum dos dois mexe nessas relações — o cliente atualiza o nó que já tem em mãos, sem refazer o `GET`.
 
-O `DELETE` devolve `409` e diz **qual** vínculo barrou: membro, grupo filho, empresa na carteira, fila vinculada ou chamado. As cinco chaves estrangeiras devolvem o mesmo código do Postgres, então o que as distingue é o nome da constraint.
+O `DELETE` devolve `409` e diz **qual** vínculo barrou: membro, grupo filho, empresa na carteira, visão salva ou chamado. As cinco chaves estrangeiras devolvem o mesmo código do Postgres, então o que as distingue é o nome da constraint.
 
 ### Autenticação
 

@@ -141,12 +141,6 @@ export interface TicketQueues {
   updated_by: string | null;
 }
 
-export interface TicketQueuesXGroup {
-  created_at: Generated<Timestamp>;
-  group_id: string;
-  queue_id: string;
-}
-
 export interface Tickets {
   action_date: Timestamp | null;
   assignee_id: string | null;
@@ -214,7 +208,6 @@ export interface DB {
   ticket_groups: TicketGroups;
   ticket_queue_favorites: TicketQueueFavorites;
   ticket_queues: TicketQueues;
-  ticket_queues_x_group: TicketQueuesXGroup;
   ticket_status_history: TicketStatusHistory;
   tickets: Tickets;
   webhook_configs: WebhookConfigs;

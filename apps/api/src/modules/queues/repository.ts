@@ -1,17 +1,8 @@
 import { sql, type Kysely, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
-import type { TicketQueues, TicketQueuesXGroup } from '../../infrastructure/db-types.js'
-import { ConflictError, NotFoundError } from '../../shared/errors.js'
+import type { TicketQueues } from '../../infrastructure/db-types.js'
 import { ticketFilterSchema } from '../tickets/filter-schema.js'
-import type {
-  CreateQueueBody,
-  Queue,
-  QueueGroup,
-  ListQueuesQuery,
-  UpdateQueueBody,
-} from './schemas.js'
-
-const PG_FK_VIOLATION = '23503'
+import type { CreateQueueBody, Queue, ListQueuesQuery, UpdateQueueBody } from './schemas.js'
 
 function toQueue(row: Selectable<TicketQueues>): Queue {
   const filters = ticketFilterSchema.safeParse(row.filters)
@@ -108,68 +99,7 @@ export class QueuesRepository implements QueuesRepositoryPort {
   }
 
   async delete(id: string): Promise<boolean> {
-    try {
-      const [result] = await this.db.deleteFrom('ticket_queues').where('id', '=', id).execute()
-
-      return (result?.numDeletedRows ?? 0n) > 0n
-    } catch (err) {
-      if (err instanceof Error && 'code' in err && err.code === PG_FK_VIOLATION) {
-        throw new ConflictError(`Queue ${id} still has groups`)
-      }
-      throw err
-    }
-  }
-}
-
-function toQueueGroup(row: Selectable<TicketQueuesXGroup>): QueueGroup {
-  return {
-    queueId: row.queue_id,
-    groupId: row.group_id,
-    createdAt: row.created_at.toISOString(),
-  }
-}
-
-export interface QueueGroupsRepositoryPort {
-  add(queueId: string, groupId: string): Promise<QueueGroup>
-  remove(queueId: string, groupId: string): Promise<boolean>
-}
-
-export class QueueGroupsRepository implements QueueGroupsRepositoryPort {
-  constructor(private readonly db: Kysely<Database>) {}
-
-  async add(queueId: string, groupId: string): Promise<QueueGroup> {
-    let row: Selectable<TicketQueuesXGroup> | undefined
-
-    try {
-      row = await this.db
-        .insertInto('ticket_queues_x_group')
-        .values({ queue_id: queueId, group_id: groupId })
-        .onConflict((oc) => oc.columns(['queue_id', 'group_id']).doNothing())
-        .returningAll()
-        .executeTakeFirst()
-    } catch (err) {
-      if (err instanceof Error && 'code' in err && err.code === PG_FK_VIOLATION) {
-        if ('constraint' in err && err.constraint === 'ticket_queues_x_group_group_id_fkey') {
-          throw new NotFoundError(`Group ${groupId} not found`)
-        }
-        throw new NotFoundError(`Queue ${queueId} not found`)
-      }
-      throw err
-    }
-
-    if (!row) {
-      throw new ConflictError(`Group ${groupId} is already linked to queue ${queueId}`)
-    }
-
-    return toQueueGroup(row)
-  }
-
-  async remove(queueId: string, groupId: string): Promise<boolean> {
-    const [result] = await this.db
-      .deleteFrom('ticket_queues_x_group')
-      .where('queue_id', '=', queueId)
-      .where('group_id', '=', groupId)
-      .execute()
+    const [result] = await this.db.deleteFrom('ticket_queues').where('id', '=', id).execute()
 
     return (result?.numDeletedRows ?? 0n) > 0n
   }
