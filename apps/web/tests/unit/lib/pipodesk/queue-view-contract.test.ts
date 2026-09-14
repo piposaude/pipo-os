@@ -2,8 +2,8 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { GROUP_BY_COPY } from '@/lib/pipodesk/filter-copy'
-import { DEFAULT_SORT, type SortField, type TicketSort } from '@/lib/pipodesk/sort'
+import { DIRECTION_COPY, GROUP_BY_COPY, SORT_COPY } from '@/lib/pipodesk/filter-copy'
+import { DEFAULT_SORT, type TicketSort } from '@/lib/pipodesk/sort'
 
 /** Twin of the contract block in apps/api's queues/schema.test.ts: change one,
  *  change both. A value this side gains alone is a 23514 at write time. */
@@ -20,28 +20,15 @@ const { sortFields, sortDirections, groupBy, defaultSort } = JSON.parse(
   defaultSort: TicketSort
 }
 
-/** Declared here and not in src because nothing on the screen needs it: what
- *  it buys is the compiler asking for a line when the union grows. */
-const EVERY_SORT_FIELD: Record<SortField, true> = {
-  actionDate: true,
-  createdAt: true,
-  updatedAt: true,
-  company: true,
-  status: true,
-}
-
-const EVERY_DIRECTION: Record<TicketSort['direction'], true> = {
-  asc: true,
-  desc: true,
-}
-
+/* The three maps below are what the display popover renders, so asserting on
+   them — and not on the unions — is what ties the menu to the database. */
 describe('the saved view contract', () => {
   it('should sort by the fields the database accepts, and no others', () => {
-    expect(Object.keys(EVERY_SORT_FIELD).sort()).toEqual([...sortFields].sort())
+    expect(Object.keys(SORT_COPY).sort()).toEqual([...sortFields].sort())
   })
 
   it('should offer the directions the database accepts, and no others', () => {
-    expect(Object.keys(EVERY_DIRECTION).sort()).toEqual([...sortDirections].sort())
+    expect(Object.keys(DIRECTION_COPY).sort()).toEqual([...sortDirections].sort())
   })
 
   it('should group by the values the database accepts, and no others', () => {

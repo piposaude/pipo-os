@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import type { Insertable } from 'kysely'
+import { sql, type Insertable } from 'kysely'
 import type { FastifyInstance } from 'fastify'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
@@ -105,6 +105,23 @@ describe('queues schema — saved view constraints', () => {
 
     it.each(groupBy)('accepts %s as a grouping', async (grouping) => {
       await expect(queue('Exclusões vencidas', { group_by: grouping })).resolves.toBeTruthy()
+    })
+
+    /** Read back from the constraint, so a CHECK widened past the contract is
+     *  caught here instead of as an option nobody can render. */
+    const valuesOfCheck = async (constraint: string): Promise<string[]> => {
+      const row = await sql<{ def: string }>`
+        SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conname = ${constraint}
+      `.execute(app.db)
+      return [...row.rows[0].def.matchAll(/'([^']+)'::text/g)].map((match) => match[1]).sort()
+    }
+
+    it.each([
+      ['ticket_queues_sort_by_check', sortFields],
+      ['ticket_queues_sort_direction_check', sortDirections],
+      ['ticket_queues_group_by_check', groupBy],
+    ])('accepts in %s exactly what the contract lists', async (constraint, expected) => {
+      expect(await valuesOfCheck(constraint as string)).toEqual([...(expected as string[])].sort())
     })
 
     it('refuses a sort field the queue screen cannot sort by', async () => {
