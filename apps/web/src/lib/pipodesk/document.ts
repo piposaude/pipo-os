@@ -43,14 +43,14 @@ const slug = (value: string): string =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '')
 
-/** `RG · Ana Souza · 700123`. A ticket that moves nobody falls back to kind and
+/** `RG · Ana Souza · 700123`. A ticket that moves nobody falls back to label and
  *  ticket: the identity it has, never a blank where the person would be. */
 export function documentTitle(
   doc: { kind: string },
   ticketId: string,
   person: string | null,
 ): string {
-  return [doc.kind, person, ticketId].filter((part) => part !== null).join(' · ')
+  return [documentLabel(doc.kind), person, ticketId].filter((part) => part !== null).join(' · ')
 }
 
 /** The name the file would be born with: a carrier loses the signature

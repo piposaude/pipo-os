@@ -49,6 +49,15 @@ describe('documentTitle', () => {
   it('should fall back to kind and ticket when the ticket moves nobody', () => {
     expect(documentTitle({ kind: 'RG' }, '700123', null)).toBe('RG · 700123')
   })
+
+  it('should carry the label, not the spelling the file arrived with', () => {
+    expect(documentTitle({ kind: 'comprovante-residencia' }, '700123', 'Ana Souza')).toBe(
+      'Comprovante de residência · Ana Souza · 700123',
+    )
+    expect(documentTitle({ kind: 'contrato' }, '700123', 'Ana Souza')).toBe(
+      'Contrato · Ana Souza · 700123',
+    )
+  })
 })
 
 describe('downloadName', () => {
