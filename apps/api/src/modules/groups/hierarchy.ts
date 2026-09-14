@@ -26,7 +26,7 @@ function depthOf(byId: Map<string, GroupNode>, id: string): number {
 function heightOf(nodes: readonly GroupNode[], id: string): number {
   let height = 1
   let level = new Set([id])
-  while (level.size > 0 && height <= MAX_DEPTH) {
+  while (height <= MAX_DEPTH) {
     const children = nodes.filter((node) => node.parentId !== null && level.has(node.parentId))
     if (children.length === 0) break
     level = new Set(children.map((child) => child.id))
