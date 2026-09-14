@@ -930,6 +930,23 @@ describe('groups routes', () => {
       expect(response.json().message).toContain('queues')
     })
 
+    it('says it is the saved view that blocks the delete', async () => {
+      const pod = await createGroup('POD 3')
+      await app.db
+        .insertInto('ticket_queues')
+        .values({ name: 'MOV CLT', created_by: 'test', group_id: pod })
+        .execute()
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/groups/${pod}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(409)
+      expect(response.json().message).toContain('saved views')
+    })
+
     it('says it is the ticket that blocks the delete', async () => {
       const pod = await createGroup('POD 3')
       await app.db

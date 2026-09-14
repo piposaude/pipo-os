@@ -24,13 +24,14 @@ export interface GroupRelations {
 
 const PG_FK_VIOLATION = '23503'
 
-/** Five tables point at ticket_groups and all of them block the delete, so the
+/** Six tables point at ticket_groups and all of them block the delete, so the
  *  constraint name is the only thing that says which link refused. */
 const BLOCKING_LINKS: Record<string, string> = {
   ticket_group_members_group_id_fkey: 'still has members',
   ticket_groups_parent_id_fkey: 'still has child groups',
   ticket_group_companies_group_id_fkey: 'still carries companies',
   ticket_queues_x_group_group_id_fkey: 'is still attached to queues',
+  ticket_queues_group_id_fkey: 'still owns saved views',
   tickets_group_id_fkey: 'still has tickets',
 }
 
