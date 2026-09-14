@@ -22,29 +22,12 @@ import { groupTickets } from '@/lib/pipodesk/group'
 import { sortTickets } from '@/lib/pipodesk/sort'
 import { transitionsFrom } from '@/lib/pipodesk/status'
 import type { ApiStatus } from '@/lib/pipodesk/status'
-import { isSearchNode, pillsOf, type TreeNode, type TreeSection } from '@/lib/pipodesk/tree'
+import { isSearchNode, pillsOf, type TreeNode } from '@/lib/pipodesk/tree'
 import { toQueueNode } from '@/lib/pipodesk/queue-node'
 import { ANALYSTS_BY_POD, structureFixture, VIEWER_GROUP_ID } from '@/fixtures/pipodesk/dataset'
 import constants from '@/constants/pages/pipodesk/queue'
 
 const COLUMN_PREFS_KEY = 'pipodesk:columns'
-
-/** Node by id, at any depth. */
-function findNode(sections: TreeSection[], id: string): TreeNode | null {
-  const walk = (nodes: TreeNode[]): TreeNode | null => {
-    for (const node of nodes) {
-      if (node.id === id) return node
-      const found = walk(node.children)
-      if (found) return found
-    }
-    return null
-  }
-  for (const section of sections) {
-    const found = walk(section.nodes)
-    if (found) return found
-  }
-  return null
-}
 
 /**
  * The operational queue. The order of operations IS the sidebar contract:
@@ -182,12 +165,7 @@ export default function QueuePage() {
         activeNodeId={view.nodeId}
         onSelectPill={select}
         onExitSearch={
-          isSearchNode(view.nodeId)
-            ? () => {
-                const home = findNode(sections, 'node-meus-tickets')
-                if (home) select(home)
-              }
-            : undefined
+          isSearchNode(view.nodeId) ? () => dispatch({ type: 'exit-search' }) : undefined
         }
         base={base}
         filter={view.filter}

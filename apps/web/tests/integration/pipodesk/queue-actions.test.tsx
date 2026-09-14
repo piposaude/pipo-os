@@ -353,6 +353,28 @@ describe('busca global', () => {
     )
   })
 
+  it('should give back the queue the search started from, not the viewer home', async () => {
+    await renderQueue()
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: /^Triagem/ }))
+    expect(screen.getByRole('navigation', { name: /breadcrumb/i })).toHaveTextContent('Triagem')
+
+    await user.keyboard('{Meta>}k{/Meta}')
+    const palette = await screen.findByRole('dialog', { name: /busca/i })
+    await user.click(within(palette).getByRole('combobox'))
+    await user.paste('guaporé agropecuária')
+    await user.click(
+      await within(palette).findByRole('option', {
+        name: /^Guaporé Agropecuária LTDA Matriz · \d/,
+      }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Sair da busca' }))
+
+    expect(screen.getByRole('navigation', { name: /breadcrumb/i })).toHaveTextContent('Triagem')
+  })
+
   /** Outside `.desk-root`: inside it, the shell's own `> div` rule beat the
    *  overlay's padding and the palette stuck to the top of the screen. */
   it('should render outside the shell, so the shell layout cannot reach it', async () => {

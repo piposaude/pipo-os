@@ -8,6 +8,7 @@ import {
 import type { GroupBy } from './group'
 import { DEFAULT_SORT, type SortField, type TicketSort } from './sort'
 import type { Priority } from './ticket-row'
+import { isSearchNode } from './tree'
 
 /**
  * Queue view state and its URL round trip. It lives in the URL so back works
@@ -49,7 +50,26 @@ export interface QueueView {
   /** "Opened in" window in days; `null` = whole period. The screen applies it
    *  on the base, before the filter. */
   dateWindowDays: number | null
+  /** Where the search took the viewer from. A search queue is the only one
+   *  with no lit node in the tree, so the way back has to be kept. */
+  returnTo: QueueReturn | null
 }
+
+/** Enough to rebuild the previous queue. Selection and collapsed groups stay
+ *  out: leaving a search resumes the queue, it does not restore a moment. */
+export type QueueReturn = Pick<
+  QueueView,
+  | 'nodeId'
+  | 'label'
+  | 'groupId'
+  | 'windowMode'
+  | 'filter'
+  | 'nodeFilter'
+  | 'sort'
+  | 'groupBy'
+  | 'labelPath'
+  | 'dateWindowDays'
+>
 
 export const INITIAL_VIEW: QueueView = {
   nodeId: 'meus-tickets',
@@ -67,6 +87,7 @@ export const INITIAL_VIEW: QueueView = {
   /** 30-day window on by default, like the prototype — a measured cost
    *  (7,600 → 2,598 open), not an accident. */
   dateWindowDays: 30,
+  returnTo: null,
 }
 
 export type QueueAction =
@@ -74,6 +95,7 @@ export type QueueAction =
   | { type: 'add-filter'; field: FilterField; values: string[] }
   | { type: 'remove-filter'; field: FilterField }
   | { type: 'clear-filters' }
+  | { type: 'exit-search' }
   | { type: 'set-date-window'; days: number | null; today: string }
   | { type: 'set-sort'; sort: TicketSort }
   | { type: 'set-group-by'; groupBy: GroupBy }
@@ -127,10 +149,40 @@ export function queueViewReducer(view: QueueView, action: QueueAction): QueueVie
         labelPath: node.labelPath,
         collapsedGroups: [],
         selectedIds: [],
-        // The window survives: it is the viewer's preference and crosses queues.
-        dateWindowDays: view.dateWindowDays,
+        // `view.returnTo ??` keeps a second search pointing at the queue, not
+        // at the first search — otherwise leaving one search lands on another.
+        returnTo: isSearchNode(node.id)
+          ? (view.returnTo ?? {
+              nodeId: view.nodeId,
+              label: view.label,
+              groupId: view.groupId,
+              windowMode: view.windowMode,
+              filter: view.filter,
+              nodeFilter: view.nodeFilter,
+              sort: view.sort,
+              groupBy: view.groupBy,
+              labelPath: view.labelPath,
+              dateWindowDays: view.dateWindowDays,
+            })
+          : null,
+        // The window is the viewer's preference and crosses queues, but a
+        // search is not a queue: a number typed in it must find its ticket.
+        dateWindowDays: isSearchNode(node.id)
+          ? null
+          : (view.returnTo?.dateWindowDays ?? view.dateWindowDays),
       }
     }
+    // Repeated clicks can arrive after the queue already left the search;
+    // returning the same object keeps that from rendering again.
+    case 'exit-search':
+      if (view.returnTo === null) return view
+      return {
+        ...view,
+        ...view.returnTo,
+        returnTo: null,
+        collapsedGroups: [],
+        selectedIds: [],
+      }
     case 'add-filter':
       return {
         ...view,
@@ -291,6 +343,8 @@ export function fromSearch(search: QueueSearch, context: RestoreContext): QueueV
     collapsedGroups: [],
     selectedIds: [],
     dateWindowDays,
+    // The way back is not in the URL: a pasted search link has no queue behind it.
+    returnTo: null,
   }
 }
 
