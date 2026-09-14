@@ -9,12 +9,20 @@ export const groupSchema = z
   .object({
     id: z.uuid(),
     name: z.string(),
+    parentId: z.uuid().nullable(),
     createdBy: z.string(),
     updatedBy: z.string().min(1).nullable(),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
   })
-  .meta({ id: 'Group' })
+  .meta({
+    id: 'Group',
+    description:
+      'The group by itself: POST and PATCH answer with this shape. Only GroupDetail, from the two read routes, carries companyIds and members.',
+  })
+
+/** Must stay the pair the CHECK of migration 0024 admits. */
+export const memberRoleSchema = z.enum(['admin', 'member']).meta({ id: 'GroupMemberRole' })
 
 /** Response only, so no `trimmedInput()` here: trimming on the way out would
  *  hide a bad row instead of rejecting it on the way in. */
@@ -22,10 +30,27 @@ export const groupMemberSchema = z
   .object({
     groupId: z.uuid(),
     userId: z.string().min(1),
+    role: memberRoleSchema,
     active: z.boolean(),
     createdAt: z.iso.datetime(),
   })
   .meta({ id: 'GroupMember' })
+
+export const groupDetailMemberSchema = z
+  .object({
+    userId: z.string().min(1),
+    role: memberRoleSchema,
+    active: z.boolean(),
+    companyIds: z.array(z.uuid()),
+  })
+  .meta({ id: 'GroupDetailMember' })
+
+export const groupDetailSchema = groupSchema
+  .extend({
+    companyIds: z.array(z.uuid()),
+    members: z.array(groupDetailMemberSchema),
+  })
+  .meta({ id: 'GroupDetail' })
 
 export const groupParamsSchema = z.object({
   id: z.uuid(),
@@ -42,29 +67,39 @@ export const memberParamsSchema = z.object({
 export const createGroupBodySchema = z
   .object({
     name: trimmedInput().max(255),
+    parentId: z.uuid().nullable().optional(),
   })
   .strict()
   .meta({ id: 'CreateGroupBody' })
 
 export const updateGroupBodySchema = z
   .object({
-    name: trimmedInput().max(255),
+    name: trimmedInput().max(255).optional(),
+    parentId: z.uuid().nullable().optional(),
   })
   .strict()
+  .refine((d) => d.name !== undefined || d.parentId !== undefined, {
+    message: 'At least one field is required',
+  })
   .meta({ id: 'UpdateGroupBody' })
 
 export const addMemberBodySchema = z
   .object({
     userId: trimmedInput().max(255),
+    role: memberRoleSchema.optional(),
   })
   .strict()
   .meta({ id: 'AddGroupMemberBody' })
 
 export const updateMemberBodySchema = z
   .object({
-    active: z.boolean(),
+    active: z.boolean().optional(),
+    role: memberRoleSchema.optional(),
   })
   .strict()
+  .refine((d) => d.active !== undefined || d.role !== undefined, {
+    message: 'At least one field is required',
+  })
   .meta({ id: 'UpdateGroupMemberBody' })
 
 export const listGroupsQuerySchema = z.object({
@@ -75,7 +110,7 @@ export const listGroupsQuerySchema = z.object({
 
 export const groupListSchema = z
   .object({
-    data: z.array(groupSchema),
+    data: z.array(groupDetailSchema),
     total: z.number().int(),
     page: z.number().int(),
     pageSize: z.number().int(),
@@ -83,6 +118,9 @@ export const groupListSchema = z
   .meta({ id: 'GroupList' })
 
 export type Group = z.infer<typeof groupSchema>
+export type GroupDetail = z.infer<typeof groupDetailSchema>
+export type GroupDetailMember = z.infer<typeof groupDetailMemberSchema>
+export type MemberRole = z.infer<typeof memberRoleSchema>
 export type GroupMember = z.infer<typeof groupMemberSchema>
 export type GroupParams = z.infer<typeof groupParamsSchema>
 export type MemberParams = z.infer<typeof memberParamsSchema>

@@ -114,15 +114,27 @@ Isso sobe `apps/api` e `apps/web` simultaneamente via `pnpm -r --parallel dev`.
 | `PATCH`                | `/api/tickets/:id/status`           | Muda o status; um status de fechamento preenche `closedAt`           |
 | `POST`                 | `/api/tickets/:id/claim`            | Atribui o ticket ao usuário da sessão; 422 se ele já estiver fechado |
 | `GET` `POST`           | `/api/tickets/:id/comments`         | Lista e cria comentários do ticket                                   |
-| `GET` `POST`           | `/api/groups`                       | Lista e cria grupos                                                  |
+| `GET` `POST`           | `/api/groups`                       | Lista e cria grupos; a leitura traz `parentId`, carteira e membros   |
 | `GET` `PATCH` `DELETE` | `/api/groups/:id`                   | Lê, atualiza e remove um grupo                                       |
-| `POST`                 | `/api/groups/:id/members`           | Adiciona um membro ao grupo                                          |
+| `POST`                 | `/api/groups/:id/members`           | Adiciona um membro ao grupo, com papel `admin` ou `member`           |
 | `PATCH` `DELETE`       | `/api/groups/:id/members/:memberId` | Atualiza e remove um membro do grupo                                 |
 | `GET` `POST`           | `/api/queues`                       | Lista e cria filas                                                   |
 | `GET` `PATCH` `DELETE` | `/api/queues/:id`                   | Lê, atualiza e remove uma fila                                       |
 | `POST`                 | `/api/queues/:id/groups`            | Vincula um grupo à fila                                              |
 | `DELETE`               | `/api/queues/:id/groups/:groupId`   | Desvincula um grupo da fila                                          |
 | `GET`                  | `/api/queues/:id/tickets`           | Lista os tickets de uma fila                                         |
+
+#### Grupos: a hierarquia e quem está nela
+
+O grupo é o pod, e os pods formam uma árvore de no máximo **três níveis** — GEBEN → pod → subtime. `parentId` diz onde cada um está; a raiz é o único grupo sem pai. A API recusa com `422`, e `details` apontando `parentId`, quatro coisas que o banco não consegue barrar sozinho: uma segunda raiz, um pai que não existe, um pai que é o próprio grupo ou um descendente dele (o ciclo), e um quarto nível — inclusive quando ele apareceria por mover um grupo que já tem filhos.
+
+Um índice único parcial sobre `parent_id IS NULL` não coexiste com uma tabela que começa vazia, e o `CHECK` da migration `0024` só alcança `parent_id <> id`, não o ciclo `A→B→A`. Por isso a regra vive no service (`modules/groups/hierarchy.ts`), que resolve pai e filho em memória sobre a lista plana: com três níveis e dezenas de linhas, uma consulta recursiva seria a primeira do repositório sem nada que a pague.
+
+O membro tem papel: `admin` é a coordenação do pod, `member` é a analista. `GET /api/groups` e `GET /api/groups/:id` devolvem, por grupo, `parentId`, a carteira de empresas (`companyIds`) e `members[]` com papel, ativo e a fatia da carteira que segue cada pessoa. Membro inativo continua na lista, sinalizado. A **escrita** da carteira ainda não existe (PD-051).
+
+A listagem continua paginada (`pageSize` padrão 20, máximo 100) e ordenada da mais nova para a mais antiga — que é a ordem em que a raiz sai por último. Quem monta a árvore precisa do conjunto inteiro: um `pageSize` que cubra `total`, ou paginar até fechá-lo. Uma página sozinha traz filhos cujo `parentId` ficou de fora, e uma montagem que confia numa página só os descarta calada. `POST` e `PATCH` devolvem o grupo sem `companyIds` e sem `members`, porque nenhum dos dois mexe nessas relações — o cliente atualiza o nó que já tem em mãos, sem refazer o `GET`.
+
+O `DELETE` devolve `409` e diz **qual** vínculo barrou: membro, grupo filho, empresa na carteira, fila vinculada ou chamado. As cinco chaves estrangeiras devolvem o mesmo código do Postgres, então o que as distingue é o nome da constraint.
 
 ### Autenticação
 
@@ -266,7 +278,7 @@ Conceder **não** basta: a pessoa precisa refazer o login no Pipodesk. Diferente
 
 `GET /api/auth/me` devolve as policies da sessão, que é a forma mais rápida de conferir depois do relogin — e, se ele não foi feito, a forma mais rápida de descobrir que a sessão está com a lista antiga.
 
-**Por que uma policy só para grupos e filas.** Pod, membro de pod e fila salva são a mesma superfície de administração — quem redesenha a hierarquia mexe nas duas —, então separar em `group` e `queue` custaria duas concessões por pessoa para distinguir papéis que a V0 não tem. A leitura da estrutura exige a mesma policy da escrita pelo mesmo motivo: a árvore de pods diz quem atende o quê, e isso não é público dentro da Pipo. O filtro por papel de membro (`canEditStructure`, no PD-050) é uma segunda camada, sobre esta. A exceção é `GET /api/queues/:id/tickets`: mora no módulo de filas mas devolve `ticketListSchema`, então continua exigindo a policy de chamado — sem isso, ela seria a porta lateral para a mesma lista.
+**Por que uma policy só para grupos e filas.** Pod, membro de pod e fila salva são a mesma superfície de administração — quem redesenha a hierarquia mexe nas duas —, então separar em `group` e `queue` custaria duas concessões por pessoa para distinguir papéis que a V0 não tem. A leitura da estrutura exige a mesma policy da escrita pelo mesmo motivo: a árvore de pods diz quem atende o quê, e isso não é público dentro da Pipo. O papel do membro (`admin` ou `member`) já viaja no contrato, mas a API não filtra por ele: `canEditStructure` é uma segunda camada, no frontend, sobre esta. A exceção é `GET /api/queues/:id/tickets`: mora no módulo de filas mas devolve `ticketListSchema`, então continua exigindo a policy de chamado — sem isso, ela seria a porta lateral para a mesma lista.
 
 **A policy é fronteira, a carteira é filtro.** Ter a policy de chamado diz que a identidade opera chamados — não _quais_. Restringir por empresa (a carteira do analista) é filtro de dados e ainda não existe: as rotas de listagem carregam o `TODO` correspondente e o trabalho está no ACE-147, que depende do módulo de usuários.
 

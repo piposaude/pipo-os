@@ -1,9 +1,11 @@
 import { NotFoundError } from '../../shared/errors.js'
+import { assertParentIsValid } from './hierarchy.js'
 import type { GroupMembersRepositoryPort, GroupsRepositoryPort } from './repository.js'
 import type {
   AddMemberBody,
   CreateGroupBody,
   Group,
+  GroupDetail,
   GroupList,
   GroupMember,
   ListGroupsQuery,
@@ -18,33 +20,69 @@ export class GroupsService {
   ) {}
 
   create(data: CreateGroupBody, createdBy: string): Promise<Group> {
-    return this.repository.create(data, createdBy)
+    return this.repository.withHierarchyLock(async (repository) => {
+      assertParentIsValid(await repository.findNodes(), data.parentId ?? null)
+      return repository.create(data, createdBy)
+    })
   }
 
-  async get(id: string): Promise<Group> {
+  async get(id: string): Promise<GroupDetail> {
     const group = await this.repository.findById(id)
     if (!group) throw new NotFoundError(`Group ${id} not found`)
-    return group
+    const [detail] = await this.withRelations([group])
+    return detail
   }
 
   async list(query: ListGroupsQuery): Promise<GroupList> {
     const { data, total } = await this.repository.findMany(query)
-    return { data, total, page: query.page, pageSize: query.pageSize }
+    return {
+      data: await this.withRelations(data),
+      total,
+      page: query.page,
+      pageSize: query.pageSize,
+    }
+  }
+
+  private async withRelations(groups: readonly Group[]): Promise<GroupDetail[]> {
+    const { companyIds, members } = await this.repository.findRelations(
+      groups.map((group) => group.id),
+    )
+
+    return groups.map((group) => ({
+      ...group,
+      companyIds: companyIds.get(group.id) ?? [],
+      members: members.get(group.id) ?? [],
+    }))
   }
 
   async update(id: string, data: UpdateGroupBody, updatedBy: string): Promise<Group> {
-    const group = await this.repository.update(id, data, updatedBy)
+    const { parentId } = data
+    if (parentId === undefined)
+      return this.updated(id, () => this.repository.update(id, data, updatedBy))
+
+    return this.repository.withHierarchyLock(async (repository) => {
+      const nodes = await repository.findNodes()
+      if (!nodes.some((node) => node.id === id)) throw new NotFoundError(`Group ${id} not found`)
+      assertParentIsValid(nodes, parentId, id)
+      return this.updated(id, () => repository.update(id, data, updatedBy))
+    })
+  }
+
+  private async updated(id: string, write: () => Promise<Group | undefined>): Promise<Group> {
+    const group = await write()
     if (!group) throw new NotFoundError(`Group ${id} not found`)
     return group
   }
 
-  async delete(id: string): Promise<void> {
-    const deleted = await this.repository.delete(id)
-    if (!deleted) throw new NotFoundError(`Group ${id} not found`)
+  delete(id: string): Promise<void> {
+    return this.repository.withHierarchyLock(async (repository) => {
+      const deleted = await repository.delete(id)
+      if (!deleted) throw new NotFoundError(`Group ${id} not found`)
+    })
   }
 
   addMember(groupId: string, body: AddMemberBody): Promise<GroupMember> {
-    return this.membersRepository.add(groupId, body.userId)
+    return this.membersRepository.add(groupId, body)
   }
 
   async removeMember(groupId: string, userId: string): Promise<void> {

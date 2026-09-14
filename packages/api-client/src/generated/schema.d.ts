@@ -508,6 +508,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Default Response */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -540,7 +549,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Group"];
+                        "application/json": components["schemas"]["GroupDetail"];
                     };
                 };
                 /** @description Default Response */
@@ -721,6 +730,15 @@ export interface paths {
                 };
                 /** @description Default Response */
                 415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2245,20 +2263,26 @@ export interface components {
             visibility: "public" | "private";
             body: string;
         };
+        /** @enum {string} */
+        GroupMemberRoleInput: "admin" | "member";
         CreateGroupBodyInput: {
             /** @description Trimmed before validation: whitespace only is rejected. */
             name: string;
+            parentId?: string | null;
         };
         UpdateGroupBodyInput: {
             /** @description Trimmed before validation: whitespace only is rejected. */
-            name: string;
+            name?: string;
+            parentId?: string | null;
         };
         AddGroupMemberBodyInput: {
             /** @description Trimmed before validation: whitespace only is rejected. */
             userId: string;
+            role?: components["schemas"]["GroupMemberRoleInput"];
         };
         UpdateGroupMemberBodyInput: {
-            active: boolean;
+            active?: boolean;
+            role?: components["schemas"]["GroupMemberRoleInput"];
         };
         TicketFilterInput: {
             statuses?: components["schemas"]["TicketStatusInput"][];
@@ -2447,10 +2471,12 @@ export interface components {
             data: components["schemas"]["TimelineItem"][];
             nextCursor?: string;
         };
+        /** @description The group by itself: POST and PATCH answer with this shape. Only GroupDetail, from the two read routes, carries companyIds and members. */
         Group: {
             /** Format: uuid */
             id: string;
             name: string;
+            parentId: string | null;
             createdBy: string;
             updatedBy: string | null;
             /** Format: date-time */
@@ -2458,16 +2484,39 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        /** @enum {string} */
+        GroupMemberRole: "admin" | "member";
         GroupMember: {
             /** Format: uuid */
             groupId: string;
             userId: string;
+            role: components["schemas"]["GroupMemberRole"];
             active: boolean;
             /** Format: date-time */
             createdAt: string;
         };
+        GroupDetailMember: {
+            userId: string;
+            role: components["schemas"]["GroupMemberRole"];
+            active: boolean;
+            companyIds: string[];
+        };
+        GroupDetail: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            parentId: string | null;
+            createdBy: string;
+            updatedBy: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            companyIds: string[];
+            members: components["schemas"]["GroupDetailMember"][];
+        };
         GroupList: {
-            data: components["schemas"]["Group"][];
+            data: components["schemas"]["GroupDetail"][];
             total: number;
             page: number;
             pageSize: number;

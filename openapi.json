@@ -287,6 +287,13 @@
         ],
         "additionalProperties": false
       },
+      "GroupMemberRoleInput": {
+        "type": "string",
+        "enum": [
+          "admin",
+          "member"
+        ]
+      },
       "CreateGroupBodyInput": {
         "type": "object",
         "properties": {
@@ -295,6 +302,18 @@
             "minLength": 1,
             "maxLength": 255,
             "description": "Trimmed before validation: whitespace only is rejected."
+          },
+          "parentId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -310,11 +329,20 @@
             "minLength": 1,
             "maxLength": 255,
             "description": "Trimmed before validation: whitespace only is rejected."
+          },
+          "parentId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
-        "required": [
-          "name"
-        ],
         "additionalProperties": false
       },
       "AddGroupMemberBodyInput": {
@@ -325,6 +353,9 @@
             "minLength": 1,
             "maxLength": 255,
             "description": "Trimmed before validation: whitespace only is rejected."
+          },
+          "role": {
+            "$ref": "#/components/schemas/GroupMemberRoleInput"
           }
         },
         "required": [
@@ -337,11 +368,11 @@
         "properties": {
           "active": {
             "type": "boolean"
+          },
+          "role": {
+            "$ref": "#/components/schemas/GroupMemberRoleInput"
           }
         },
-        "required": [
-          "active"
-        ],
         "additionalProperties": false
       },
       "TicketFilterInput": {
@@ -1330,6 +1361,18 @@
           "name": {
             "type": "string"
           },
+          "parentId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "createdBy": {
             "type": "string"
           },
@@ -1358,12 +1401,21 @@
         "required": [
           "id",
           "name",
+          "parentId",
           "createdBy",
           "updatedBy",
           "createdAt",
           "updatedAt"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "The group by itself: POST and PATCH answer with this shape. Only GroupDetail, from the two read routes, carries companyIds and members."
+      },
+      "GroupMemberRole": {
+        "type": "string",
+        "enum": [
+          "admin",
+          "member"
+        ]
       },
       "GroupMember": {
         "type": "object",
@@ -1377,6 +1429,9 @@
             "type": "string",
             "minLength": 1
           },
+          "role": {
+            "$ref": "#/components/schemas/GroupMemberRole"
+          },
           "active": {
             "type": "boolean"
           },
@@ -1389,8 +1444,114 @@
         "required": [
           "groupId",
           "userId",
+          "role",
           "active",
           "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "GroupDetailMember": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "role": {
+            "$ref": "#/components/schemas/GroupMemberRole"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "companyIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        },
+        "required": [
+          "userId",
+          "role",
+          "active",
+          "companyIds"
+        ],
+        "additionalProperties": false
+      },
+      "GroupDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "parentId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "updatedBy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+          },
+          "companyIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupDetailMember"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "parentId",
+          "createdBy",
+          "updatedBy",
+          "createdAt",
+          "updatedAt",
+          "companyIds",
+          "members"
         ],
         "additionalProperties": false
       },
@@ -1400,7 +1561,7 @@
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Group"
+              "$ref": "#/components/schemas/GroupDetail"
             }
           },
           "total": {
@@ -2379,6 +2540,16 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -2479,7 +2650,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Group"
+                  "$ref": "#/components/schemas/GroupDetail"
                 }
               }
             }
@@ -2611,6 +2782,16 @@
             }
           },
           "415": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
             "description": "Default Response",
             "content": {
               "application/json": {

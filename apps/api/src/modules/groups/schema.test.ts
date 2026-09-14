@@ -107,14 +107,8 @@ describe('groups schema — hierarchy and portfolio constraints', () => {
       expect(code).toBe(CHECK_VIOLATION)
     })
 
-    /**
-     * NOT enforced, and on purpose: a unique partial index on
-     * `parent_id IS NULL` cannot coexist with the parentless groups
-     * `POST /api/groups` creates today. This test states the gap instead of
-     * leaving it to be discovered — PD-050 decides whether the API refuses a
-     * second root or the schema starts to.
-     */
-    it('accepts a second root today, which the schema does not prevent', async () => {
+    /** The refusal lives in the service: see routes.test.ts. */
+    it('accepts a second root, because the rule that refuses it is in the API', async () => {
       await group('Gestão de Benefícios')
 
       await expect(group('Outra raiz')).resolves.toBeTruthy()
