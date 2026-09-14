@@ -130,7 +130,9 @@ O grupo é o pod, e os pods formam uma árvore de no máximo **três níveis** �
 
 Um índice único parcial sobre `parent_id IS NULL` não coexiste com uma tabela que começa vazia, e o `CHECK` da migration `0024` só alcança `parent_id <> id`, não o ciclo `A→B→A`. Por isso a regra vive no service (`modules/groups/hierarchy.ts`), que resolve pai e filho em memória sobre a lista plana: com três níveis e dezenas de linhas, uma consulta recursiva seria a primeira do repositório sem nada que a pague.
 
-O membro tem papel: `admin` é a coordenação do pod, `member` é a analista. `GET /api/groups` e `GET /api/groups/:id` devolvem, por grupo, `parentId`, a carteira de empresas (`companyIds`) e `members[]` com papel, ativo e a fatia da carteira que segue cada pessoa — uma chamada alimenta a árvore inteira da interface. Membro inativo continua na lista, sinalizado. A **escrita** da carteira ainda não existe (PD-051).
+O membro tem papel: `admin` é a coordenação do pod, `member` é a analista. `GET /api/groups` e `GET /api/groups/:id` devolvem, por grupo, `parentId`, a carteira de empresas (`companyIds`) e `members[]` com papel, ativo e a fatia da carteira que segue cada pessoa. Membro inativo continua na lista, sinalizado. A **escrita** da carteira ainda não existe (PD-051).
+
+A listagem continua paginada (`pageSize` padrão 20, máximo 100) e ordenada da mais nova para a mais antiga — que é a ordem em que a raiz sai por último. Quem monta a árvore precisa do conjunto inteiro: um `pageSize` que cubra `total`, ou paginar até fechá-lo. Uma página sozinha traz filhos cujo `parentId` ficou de fora, e uma montagem que confia numa página só os descarta calada. `POST` e `PATCH` devolvem o grupo sem `companyIds` e sem `members`, porque nenhum dos dois mexe nessas relações — o cliente atualiza o nó que já tem em mãos, sem refazer o `GET`.
 
 O `DELETE` devolve `409` e diz **qual** vínculo barrou: membro, grupo filho, empresa na carteira, fila vinculada ou chamado. As cinco chaves estrangeiras devolvem o mesmo código do Postgres, então o que as distingue é o nome da constraint.
 

@@ -282,6 +282,27 @@ describe('groups routes', () => {
       expect(bodyOut.data).toHaveLength(0)
     })
 
+    /* The tree is the whole listing, not one page. Ordered from the newest, the
+       root is the last row there is — so a page taken alone carries children
+       whose parent stayed behind, and a build that trusts one page drops them
+       without a word. */
+    it('cuts the tree at the page boundary', async () => {
+      const geben = await createGroup('Gestão de Benefícios')
+      await createGroup('POD 3', geben)
+      await createGroup('POD 5', geben)
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/groups?page=1&pageSize=2',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(200)
+      const parents = response.json().data.map((group: { parentId: string }) => group.parentId)
+      expect(response.json().total).toBe(3)
+      expect(parents).toEqual([geben, geben])
+    })
+
     it('returns 400 for invalid pageSize', async () => {
       const response = await app.inject({
         method: 'GET',
