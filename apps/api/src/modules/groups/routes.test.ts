@@ -576,8 +576,12 @@ describe('groups routes', () => {
 
   // ---------------------------------------------------------------------------
   describe('the shape of the hierarchy', () => {
-    const fieldsOf = (response: { json: () => { details?: Array<{ field: string }> } }): string[] =>
-      (response.json().details ?? []).map((detail) => detail.field)
+    /* `code` is what the web switches the pt-BR copy on, so it is asserted
+       here too: a rename that only the message notices is a silent break. */
+    const refusalOf = (response: {
+      json: () => { details?: Array<{ field: string; code: string }> }
+    }): Array<{ field: string; code: string }> =>
+      (response.json().details ?? []).map(({ field, code }) => ({ field, code }))
 
     it('refuses a second root, because the tree has one GEBEN', async () => {
       await createGroup('Gestão de Benefícios')
@@ -590,7 +594,7 @@ describe('groups routes', () => {
       })
 
       expect(response.statusCode).toBe(422)
-      expect(fieldsOf(response)).toEqual(['parentId'])
+      expect(refusalOf(response)).toEqual([{ field: 'parentId', code: 'root_already_exists' }])
     })
 
     it('refuses a parent that does not exist', async () => {
@@ -602,7 +606,7 @@ describe('groups routes', () => {
       })
 
       expect(response.statusCode).toBe(422)
-      expect(fieldsOf(response)).toEqual(['parentId'])
+      expect(refusalOf(response)).toEqual([{ field: 'parentId', code: 'parent_not_found' }])
     })
 
     it('refuses a group that is its own parent', async () => {
@@ -616,7 +620,7 @@ describe('groups routes', () => {
       })
 
       expect(response.statusCode).toBe(422)
-      expect(fieldsOf(response)).toEqual(['parentId'])
+      expect(refusalOf(response)).toEqual([{ field: 'parentId', code: 'parent_is_descendant' }])
     })
 
     it('refuses a parent that is a descendant, which would close a cycle', async () => {
@@ -631,7 +635,7 @@ describe('groups routes', () => {
       })
 
       expect(response.statusCode).toBe(422)
-      expect(fieldsOf(response)).toEqual(['parentId'])
+      expect(refusalOf(response)).toEqual([{ field: 'parentId', code: 'parent_is_descendant' }])
     })
 
     it('accepts a subtime, which is the third and last level', async () => {
@@ -661,7 +665,7 @@ describe('groups routes', () => {
       })
 
       expect(response.statusCode).toBe(422)
-      expect(fieldsOf(response)).toEqual(['parentId'])
+      expect(refusalOf(response)).toEqual([{ field: 'parentId', code: 'max_depth_exceeded' }])
     })
 
     it('refuses a move that pushes the children of the moved group past the limit', async () => {
@@ -678,7 +682,7 @@ describe('groups routes', () => {
       })
 
       expect(response.statusCode).toBe(422)
-      expect(fieldsOf(response)).toEqual(['parentId'])
+      expect(refusalOf(response)).toEqual([{ field: 'parentId', code: 'max_depth_exceeded' }])
     })
 
     it('refuses to detach a pod while the root is another group', async () => {
@@ -693,7 +697,7 @@ describe('groups routes', () => {
       })
 
       expect(response.statusCode).toBe(422)
-      expect(fieldsOf(response)).toEqual(['parentId'])
+      expect(refusalOf(response)).toEqual([{ field: 'parentId', code: 'root_already_exists' }])
     })
 
     it('accepts detaching the group that already is the root', async () => {
