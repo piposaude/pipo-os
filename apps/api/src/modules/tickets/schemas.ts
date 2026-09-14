@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { errorResponseSchema } from '../../shared/schemas.js'
 
 export const ticketStatusSchema = z
   .enum([
@@ -26,6 +27,15 @@ export const ticketPrioritySchema = z
   .enum(['urgent', 'high', 'medium', 'low'])
   .meta({ id: 'TicketPriority' })
 
+export const ticketPersonSchema = z
+  .object({
+    email: z.email(),
+    name: z.string().min(1).optional(),
+    phone: z.string().min(1).optional(),
+    preferredChannel: z.enum(['platform', 'email']).optional(),
+  })
+  .meta({ id: 'TicketPerson' })
+
 export const ticketSchema = z
   .object({
     id: z.uuid(),
@@ -42,8 +52,8 @@ export const ticketSchema = z
     companyId: z.uuid(),
     tags: z.array(z.string()),
     pendingDocumentation: z.array(z.string()),
-    requester: z.record(z.string(), z.unknown()).nullable(),
-    collaborators: z.array(z.record(z.string(), z.unknown())),
+    requester: ticketPersonSchema.nullable(),
+    collaborators: z.array(ticketPersonSchema),
     forceCompletion: z.boolean(),
     enrollmentSnapshot: z.record(z.string(), z.unknown()),
     /** `.min(1)` as in `assigneeId`: a word or null, and `''` is neither —
@@ -55,6 +65,7 @@ export const ticketSchema = z
     companySize: z.string().min(1).nullable(),
     relationship: relationshipSchema.nullable(),
     sourceSystem: z.string(),
+    origin: z.string().min(1).nullable(),
     parentTicketId: z.uuid().nullable(),
     closedAt: z.iso.datetime({ offset: true }).nullable(),
     createdAt: z.iso.datetime({ offset: true }),
@@ -77,12 +88,24 @@ export const createTicketBodySchema = z
     companyId: z.uuid(),
     sourceSystem: z.string(),
     enrollmentSnapshot: z.record(z.string(), z.unknown()),
+    title: z.string().min(1).max(500).optional(),
+    // With an offset, always: a date alone would have to guess a timezone, and
+    // the guess moves the day the queue shows.
+    actionDate: z.iso.datetime({ offset: true }).optional(),
+    // How the ticket came in, not which system created it — that is
+    // sourceSystem. Absent stays null: a default would label a failure normal.
+    origin: z.string().min(1).optional(),
+    // Strict on the way in and not on the way out: a caller typo must fail
+    // loudly, a hand-edited row must not 500 the whole read.
+    requester: ticketPersonSchema.strict().optional(),
+    collaborators: z.array(ticketPersonSchema.strict()).max(50).optional(),
     carrierId: z.string().min(1).optional(),
     carrierName: z.string().min(1).optional(),
     product: z.string().min(1).optional(),
     contractType: z.string().min(1).optional(),
     companySize: z.string().min(1).optional(),
-    status: ticketStatusSchema.optional(),
+    // Accepted, never chosen: routing by portfolio is PD-052.
+    groupId: z.uuid().optional(),
     queueId: z.uuid().optional(),
     assigneeId: z.string().min(1).optional(),
     tags: z.array(tagSchema).optional(),
@@ -148,6 +171,10 @@ export const LIST_QUERY_FIELD_PII = {
   page: 'number',
   pageSize: 'number',
 } satisfies Record<keyof ListTicketsQuery, true | string>
+
+export const openTicketConflictSchema = errorResponseSchema
+  .extend({ ticketId: z.uuid().optional() })
+  .meta({ id: 'OpenTicketConflict' })
 
 export const ticketListSchema = z
   .object({

@@ -81,6 +81,204 @@ describe('tickets routes', () => {
       expect(body.forceCompletion).toBe(false)
     })
 
+    it('stores the subject the caller sends, untouched', async () => {
+      const title = 'Bradesco | ACME LTDA | 🩺 Saúde | Inclusão de titular - MARIA SILVA'
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, title },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(201)
+      expect(response.json().title).toBe(title)
+
+      const read = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${response.json().id}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(read.json().title).toBe(title)
+    })
+
+    it('rejects a blank title', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, title: '' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+
+    it('stores the HR requester and the people in copy', async () => {
+      const requester = {
+        email: 'rh@acme.com.br',
+        name: 'Sergio Gouveia',
+        phone: '11999998888',
+        preferredChannel: 'platform',
+      }
+      const collaborators = [{ email: 'financeiro@acme.com.br' }, { email: 'dp@acme.com.br' }]
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, requester, collaborators },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(201)
+
+      const read = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${response.json().id}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(read.json().requester).toEqual(requester)
+      expect(read.json().collaborators).toEqual(collaborators)
+    })
+
+    it('leaves the requester null and the copy list empty when the caller omits them', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.json().requester).toBeNull()
+      expect(response.json().collaborators).toEqual([])
+    })
+
+    it('refuses a copy list longer than the cap', async () => {
+      const collaborators = Array.from({ length: 51 }, (_, i) => ({ email: `dp${i}@acme.com.br` }))
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, collaborators },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+
+    it.each([
+      ['no e-mail', { name: 'Sergio Gouveia' }],
+      ['an e-mail that is not one', { email: 'sergio' }],
+      ['a field nobody reads', { email: 'rh@acme.com.br', cargo: 'RH' }],
+    ])('refuses a requester with %s', async (_label, requester) => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, requester },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+
+    it('stores the date the movement is scheduled for', async () => {
+      const actionDate = '2026-10-01T03:00:00.000Z'
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, actionDate },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(201)
+      expect(response.json().actionDate).toBe(actionDate)
+    })
+
+    it('refuses a scheduled date without a timezone, which would move the day', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, actionDate: '2026-10-01' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+
+    it('stores how the movement came in', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, origin: 'automation-failure' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(201)
+      expect(response.json().origin).toBe('automation-failure')
+    })
+
+    it('leaves the origin null when the caller does not say how it came in', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.json().origin).toBeNull()
+    })
+
+    it('accepts the pod the caller routed the ticket to', async () => {
+      const group = await app.db
+        .insertInto('ticket_groups')
+        .values({ name: 'POD 3', created_by: DEV_LOGIN_USER_ID })
+        .returning('id')
+        .executeTakeFirstOrThrow()
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, groupId: group.id },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(201)
+      expect(response.json().groupId).toBe(group.id)
+
+      // The ticket first: it points at the group. Both by id, because the
+      // database is shared with whatever else is running.
+      await app.db.deleteFrom('tickets').where('id', '=', response.json().id).execute()
+      await app.db.deleteFrom('ticket_groups').where('id', '=', group.id).execute()
+    })
+
+    it.each(['groupId', 'parentTicketId'])('names %s when it points at nothing', async (field) => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, [field]: NONEXISTENT_ID },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(422)
+      expect(response.json().error).toBe('ValidationFailedError')
+      expect(response.json().details[0].field).toBe(field)
+    })
+
+    it('ignores a status in the body: the ticket is born in the first state', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, status: 'completed' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(201)
+      expect(response.json().status).toBe('broker-processing')
+      expect(response.json().closedAt).toBeNull()
+    })
+
     it('returns 409 when enrollment already has an open ticket', async () => {
       await app.inject({
         method: 'POST',
@@ -98,6 +296,25 @@ describe('tickets routes', () => {
 
       expect(response.statusCode).toBe(409)
       expect(response.json().error).toBe('ConflictError')
+    })
+
+    it('says which ticket is already open, so the caller does not have to ask', async () => {
+      const first = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(409)
+      expect(response.json().ticketId).toBe(first.json().id)
     })
 
     // Cases from the vocabulary; the partial index must list the same statuses.

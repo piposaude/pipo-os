@@ -34,6 +34,7 @@ function apiTicket(overrides: Partial<Ticket> = {}): Ticket {
     forceCompletion: false,
     enrollmentSnapshot: {},
     sourceSystem: 'enrollment-integrations',
+    origin: 'auto-routing',
     parentTicketId: null,
     closedAt: null,
     createdAt: '2026-08-10T14:30:00.000Z',

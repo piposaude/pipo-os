@@ -108,6 +108,8 @@ export const FIELD_RESOLVERS: Record<keyof TicketFilter, Resolver> = {
     contractTypes?.length ? translatedIn(eb, 'contract_type', contractTypes) : null,
   relationships: (eb, { relationships }) =>
     relationships?.length ? eb('relationship', 'in', relationships) : null,
+  // Still `source_system`, not the `origin` column: the queue runs on a fixture
+  // with no origin, so it moves with the screen reading the API (PD-102).
   origins: (eb, { origins }) => (origins?.length ? eb('source_system', 'in', origins) : null),
   groupIds: (eb, { groupIds }) => (groupIds?.length ? eb('group_id', 'in', groupIds) : null),
   // `@>` is contains, not `&&`: the contract asks for every tag listed, while

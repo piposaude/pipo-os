@@ -51,8 +51,8 @@ describe('ticket row logging', () => {
   })
 })
 
-/** `title` is classified as safe because nothing writes it. That is an
- *  invariant of the write schemas, so it is checked here. */
+/** `title` carries the subject the EI sends, which ends in the beneficiary
+ *  name. Creation writes it and no other route does. */
 const validBody = {
   enrollmentId: '00000000-0000-4000-8000-000000000001',
   enrollmentType: 'inclusion',
@@ -62,9 +62,12 @@ const validBody = {
 }
 
 describe('title', () => {
-  it('is not writable, which is why it is not classified as personal data', () => {
-    expect(Object.keys(createTicketBodySchema.shape)).not.toContain('title')
+  it('is personal data, because creation writes it', () => {
+    expect(Object.keys(createTicketBodySchema.shape)).toContain('title')
+    expect(ROW_FIELD_PII.title).toBe(true)
+  })
 
+  it('has no correction path: the update schema still refuses it', () => {
     const rejected = updateTicketBodySchema.safeParse({ title: 'Inclusão - MARIA SILVA' })
 
     expect(rejected.success).toBe(false)

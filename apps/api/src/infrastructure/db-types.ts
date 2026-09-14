@@ -154,6 +154,7 @@ export interface Tickets {
   force_completion: Generated<boolean>;
   group_id: string | null;
   id: Generated<string>;
+  origin: string | null;
   parent_ticket_id: string | null;
   pending_documentation: Generated<string[]>;
   priority: string | null;

@@ -17,6 +17,8 @@ const PII_FIELD_ROOTS = [
   'taxId',
   'address',
   'beneficiaryName',
+  // The ticket subject ends in the beneficiary name (ACE-226).
+  'title',
 ] as const
 
 /** What every redaction writes in place of the value, here so the query string
