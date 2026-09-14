@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import type { Insertable } from 'kysely'
 import type { FastifyInstance } from 'fastify'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
@@ -7,11 +9,20 @@ import type { TicketQueues } from '../../infrastructure/db-types.js'
 const ANA = 'ana@pipo.health'
 const BRUNO = 'bruno@pipo.health'
 
-/** Twins of `SortField` and `GroupBy` in web/src/lib/pipodesk/{sort,group}.ts.
- *  A value added there and not here is refused at write time, as 23514. */
-const SORT_FIELDS = ['actionDate', 'createdAt', 'updatedAt', 'company', 'status']
-const SORT_DIRECTIONS = ['asc', 'desc']
-const GROUPINGS = ['status', 'company', 'product', 'assignee', 'none']
+/** The three closed sets the saved view carries live in contract/ and each
+ *  side is held to its half — the other is queue-view-contract.test.ts. */
+const VIEW_PATH = fileURLToPath(
+  new URL('../../../../../contract/ticket-queue-view.json', import.meta.url),
+)
+
+const { sortFields, sortDirections, groupBy, defaultSort } = JSON.parse(
+  readFileSync(VIEW_PATH, 'utf-8'),
+) as {
+  sortFields: string[]
+  sortDirections: string[]
+  groupBy: string[]
+  defaultSort: { by: string; direction: string }
+}
 
 const UNIQUE_VIOLATION = '23505'
 const FK_VIOLATION = '23503'
@@ -73,7 +84,7 @@ describe('queues schema — saved view constraints', () => {
       .execute()
 
   describe('how the view opens', () => {
-    it('opens a new view by action date, ascending', async () => {
+    it('opens a new view the way the contract says', async () => {
       await queue('Exclusões vencidas')
 
       const row = await app.db
@@ -81,19 +92,19 @@ describe('queues schema — saved view constraints', () => {
         .select(['sort_by', 'sort_direction'])
         .executeTakeFirstOrThrow()
 
-      expect(row).toEqual({ sort_by: 'actionDate', sort_direction: 'asc' })
+      expect(row).toEqual({ sort_by: defaultSort.by, sort_direction: defaultSort.direction })
     })
 
-    it.each(SORT_FIELDS)('accepts %s as a sort field', async (sortBy) => {
+    it.each(sortFields)('accepts %s as a sort field', async (sortBy) => {
       await expect(queue('Exclusões vencidas', { sort_by: sortBy })).resolves.toBeTruthy()
     })
 
-    it.each(SORT_DIRECTIONS)('accepts %s as a sort direction', async (direction) => {
+    it.each(sortDirections)('accepts %s as a sort direction', async (direction) => {
       await expect(queue('Exclusões vencidas', { sort_direction: direction })).resolves.toBeTruthy()
     })
 
-    it.each(GROUPINGS)('accepts %s as a grouping', async (groupBy) => {
-      await expect(queue('Exclusões vencidas', { group_by: groupBy })).resolves.toBeTruthy()
+    it.each(groupBy)('accepts %s as a grouping', async (grouping) => {
+      await expect(queue('Exclusões vencidas', { group_by: grouping })).resolves.toBeTruthy()
     })
 
     it('refuses a sort field the queue screen cannot sort by', async () => {

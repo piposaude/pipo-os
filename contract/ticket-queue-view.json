@@ -1,0 +1,6 @@
+{
+  "sortFields": ["actionDate", "createdAt", "updatedAt", "company", "status"],
+  "sortDirections": ["asc", "desc"],
+  "groupBy": ["status", "company", "product", "assignee", "none"],
+  "defaultSort": { "by": "actionDate", "direction": "asc" }
+}
