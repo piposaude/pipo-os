@@ -1,6 +1,7 @@
 import { sql, type Kysely, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { TicketGroupMembers, TicketGroups } from '../../infrastructure/db-types.js'
+import { ADVISORY_LOCKS } from '../../shared/advisory-locks.js'
 import { ConflictError, NotFoundError } from '../../shared/errors.js'
 import type { GroupNode } from './hierarchy.js'
 import type {
@@ -22,14 +23,6 @@ export interface GroupRelations {
 }
 
 const PG_FK_VIOLATION = '23503'
-
-/** Every writer of the hierarchy takes this same key, or the read that
- *  validates and the write that follows can interleave. That read runs after
- *  the lock and has to see what the previous holder committed, which only
- *  READ COMMITTED gives: a stricter isolation freezes the snapshot at the lock
- *  statement itself, and the validation goes back to reading stale rows while
- *  the lock keeps looking like it works. */
-const HIERARCHY_LOCK_KEY = 8050
 
 /** Five tables point at ticket_groups and all of them block the delete, so the
  *  constraint name is the only thing that says which link refused. */
@@ -129,9 +122,11 @@ export class GroupsRepository implements GroupsRepositoryPort {
     return { data: [], total: Number(count) }
   }
 
+  /** Every writer of the hierarchy takes this key, and the read that validates
+   *  runs inside it — which needs READ COMMITTED to see the last holder's write. */
   withHierarchyLock<T>(fn: (repository: GroupsRepositoryPort) => Promise<T>): Promise<T> {
     return this.db.transaction().execute(async (trx) => {
-      await sql`select pg_advisory_xact_lock(${HIERARCHY_LOCK_KEY})`.execute(trx)
+      await sql`select pg_advisory_xact_lock(${ADVISORY_LOCKS.groupHierarchy})`.execute(trx)
       return fn(new GroupsRepository(trx))
     })
   }
@@ -168,6 +163,9 @@ export class GroupsRepository implements GroupsRepositoryPort {
       )
       .select(['m.group_id', 'm.user_id', 'm.role', 'm.active', 'mc.company_id'])
       .where('m.group_id', 'in', groupIds)
+      // user_id is what keeps a member's rows contiguous, and the loop below
+      // leans on it: it appends to the last member instead of looking it up.
+      .orderBy('m.group_id')
       .orderBy('m.user_id')
       .orderBy('mc.company_id')
       .execute()
