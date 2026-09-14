@@ -234,7 +234,9 @@ describe('tickets routes', () => {
       expect(response.statusCode).toBe(201)
       expect(response.json().groupId).toBe(group.id)
 
-      await app.db.deleteFrom('tickets').execute()
+      // The ticket first: it points at the group. Both by id, because the
+      // database is shared with whatever else is running.
+      await app.db.deleteFrom('tickets').where('id', '=', response.json().id).execute()
       await app.db.deleteFrom('ticket_groups').where('id', '=', group.id).execute()
     })
 
