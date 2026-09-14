@@ -1,5 +1,11 @@
 // @vitest-environment node
-import { documentKey, documentLabel } from '@/lib/pipodesk/document'
+import {
+  documentKey,
+  documentLabel,
+  documentTitle,
+  downloadName,
+  versionsByKind,
+} from '@/lib/pipodesk/document'
 
 describe('documentLabel', () => {
   it('should name the documents the EI asks for, in both spellings of the proof of address', () => {
@@ -32,5 +38,64 @@ describe('documentKey', () => {
 
   it('should give an unknown spelling a key of its own, never a label', () => {
     expect(documentKey('Certidão de nascimento')).toBe('certidaodenascimento')
+  })
+})
+
+describe('documentTitle', () => {
+  it('should name the document by kind, person and ticket', () => {
+    expect(documentTitle({ kind: 'RG' }, '700123', 'Ana Souza')).toBe('RG · Ana Souza · 700123')
+  })
+
+  it('should fall back to kind and ticket when the ticket moves nobody', () => {
+    expect(documentTitle({ kind: 'RG' }, '700123', null)).toBe('RG · 700123')
+  })
+})
+
+describe('downloadName', () => {
+  it('should lead with the ticket, so a downloads folder sorts by case', () => {
+    expect(downloadName({ name: 'RG.pdf', kind: 'RG' }, '700123', 'Ana Souza')).toBe(
+      '700123-ana-souza-rg.pdf',
+    )
+  })
+
+  it('should strip accents and punctuation, which a carrier portal may reject', () => {
+    expect(downloadName({ name: 'ficha.PDF', kind: 'Ficha de adesão' }, '70', 'Íris D`Ávila')).toBe(
+      '70-iris-d-avila-ficha-de-adesao.PDF',
+    )
+  })
+
+  it('should keep the name usable when the original has no extension', () => {
+    expect(downloadName({ name: 'RG', kind: 'RG' }, '700123', null)).toBe('700123-rg')
+  })
+})
+
+describe('versionsByKind', () => {
+  const doc = (id: string, kind: string, at: string) => ({ id, kind, at })
+
+  it('should group by kind, newest version first', () => {
+    const groups = versionsByKind([
+      doc('d-1', 'RG', '2026-01-10'),
+      doc('d-2', 'RG', '2026-03-02'),
+      doc('d-3', 'CPF', '2026-02-01'),
+    ])
+
+    expect(groups.map((group) => group.kind)).toEqual(['RG', 'CPF'])
+    expect(groups[0]?.versions.map((version) => version.id)).toEqual(['d-2', 'd-1'])
+  })
+
+  it('should group by kind and not by file name — a photo and a PDF of one RG are two versions', () => {
+    const groups = versionsByKind([
+      { ...doc('d-1', 'RG', '2026-01-10'), name: 'RG.jpg' },
+      { ...doc('d-2', 'RG', '2026-03-02'), name: 'RG.pdf' },
+    ])
+
+    expect(groups).toHaveLength(1)
+    expect(groups[0]?.versions).toHaveLength(2)
+  })
+
+  it('should break a same-day tie by id, so the order never flickers', () => {
+    const groups = versionsByKind([doc('d-1', 'RG', '2026-01-10'), doc('d-2', 'RG', '2026-01-10')])
+
+    expect(groups[0]?.versions.map((version) => version.id)).toEqual(['d-2', 'd-1'])
   })
 })

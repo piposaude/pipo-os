@@ -288,7 +288,9 @@ describe('aba Documentos', () => {
     // No file behind the fixture: the control shows where the action lives, off,
     // and the reason is on screen — a disabled button takes no focus.
     expect(
-      within(received).getByRole('button', { name: documentsCopy.download('RG.jpg') }),
+      within(received).getByRole('button', {
+        name: documentsCopy.download('RG.jpg', '700002-camila-machado-dantas-rg.jpg'),
+      }),
     ).toBeDisabled()
     expect(within(panel).getByText(documentsCopy.downloadUnavailable)).toBeInTheDocument()
 
@@ -296,6 +298,46 @@ describe('aba Documentos', () => {
       .getByRole('heading', { level: 2, name: documentsCopy.fromPipo.title })
       .closest('section')!
     expect(within(generated).getByText('Ficha de adesão.pdf')).toBeInTheDocument()
+  })
+
+  /** 700026 has two RGs: the one from 22 May stands, the one from 14 May was
+   *  replaced and carries the reason. */
+  it('should title the group with the file identity and mark which version stands', async () => {
+    const { panel } = await openTab('/tickets/700026', 'Documentos')
+
+    const received = within(panel)
+      .getByRole('heading', { level: 2, name: documentsCopy.fromClient.title })
+      .closest('section')!
+    expect(within(received).getByText('RG · Carlos Rezende Zanetti · 700026')).toBeInTheDocument()
+
+    const versions = within(
+      within(received).getByText('RG · Carlos Rezende Zanetti · 700026').closest('li')!,
+    ).getAllByRole('listitem')
+    expect(versions[0]?.textContent).toContain(documentsCopy.version.current)
+    expect(versions[1]?.textContent).toContain(documentsCopy.version.superseded)
+    expect(within(received).getByText('Desatualizado — vencido')).toBeInTheDocument()
+  })
+
+  it('should offer the name the file would be born with, since a later rename breaks validation', async () => {
+    const { panel } = await openTab('/tickets/700026', 'Documentos')
+
+    // Both versions share the name: the file name is the same and the identity
+    // is the document's, so the label cannot tell them apart either.
+    const [current] = within(panel).getAllByRole('button', {
+      name: documentsCopy.download('RG.pdf', '700026-carlos-rezende-zanetti-rg.pdf'),
+    })
+    expect(current).toBeDisabled()
+  })
+
+  /** The rule lives in each analyst's spreadsheet, not in any system: the block
+   *  exists so the absence has a name, and stops being a surprise downstream. */
+  it('should declare that what this company requires is not mapped anywhere', async () => {
+    const { panel } = await openTab('/tickets/700026', 'Documentos')
+
+    const block = within(panel)
+      .getByRole('heading', { level: 2, name: documentsCopy.mandatory.title })
+      .closest('section')!
+    expect(within(block).getByText(/não está em sistema nenhum/)).toBeInTheDocument()
   })
 
   /** The two-word key with an accent: matched on the normalised key, so a
