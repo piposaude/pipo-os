@@ -24,7 +24,11 @@ export interface GroupRelations {
 const PG_FK_VIOLATION = '23503'
 
 /** Every writer of the hierarchy takes this same key, or the read that
- *  validates and the write that follows can interleave. */
+ *  validates and the write that follows can interleave. That read runs after
+ *  the lock and has to see what the previous holder committed, which only
+ *  READ COMMITTED gives: a stricter isolation freezes the snapshot at the lock
+ *  statement itself, and the validation goes back to reading stale rows while
+ *  the lock keeps looking like it works. */
 const HIERARCHY_LOCK_KEY = 8050
 
 /** Five tables point at ticket_groups and all of them block the delete, so the
