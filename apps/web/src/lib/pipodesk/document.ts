@@ -78,11 +78,15 @@ export function versionsByKind<T extends { id: string; kind: string; at: string 
   // Grouped on the canonical key, never the raw spelling: two spellings of one
   // document are versions of it.
   const groups = new Map<string, T[]>()
-  for (const doc of docs)
-    groups.set(documentKey(doc.kind), [...(groups.get(documentKey(doc.kind)) ?? []), doc])
-  return [...groups.values()].map((group) => {
-    const versions = [...group].sort((a, b) => b.at.localeCompare(a.at) || b.id.localeCompare(a.id))
+  for (const doc of docs) {
+    const key = documentKey(doc.kind)
+    const group = groups.get(key)
+    if (group) group.push(doc)
+    else groups.set(key, [doc])
+  }
+  return [...groups.values()].map((versions) => {
+    versions.sort((a, b) => b.at.localeCompare(a.at) || b.id.localeCompare(a.id))
     // The spelling of the version that stands, not of whichever arrived first.
-    return { kind: versions[0]!.kind, versions }
+    return { kind: versions[0].kind, versions }
   })
 }

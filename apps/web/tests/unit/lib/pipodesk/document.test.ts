@@ -104,9 +104,12 @@ describe('versionsByKind', () => {
   })
 
   it('should title the group with the spelling of the version that stands', () => {
+    // The newest is neither the first nor the last of the input, so reading the
+    // wrong one would show.
     const groups = versionsByKind([
       doc('d-1', 'comprovante-residencia', '2026-01-10'),
       doc('d-2', 'Comprovante de residência', '2026-03-02'),
+      doc('d-3', 'comprovante_residencia', '2026-02-01'),
     ])
 
     expect(groups[0]?.kind).toBe('Comprovante de residência')
