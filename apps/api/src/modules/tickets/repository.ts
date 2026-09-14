@@ -287,14 +287,15 @@ export class TicketsRepository implements TicketsRepositoryPort {
         'constraint' in err &&
         err.constraint === OPEN_ENROLLMENT_CONSTRAINT
       ) {
-        // Optional on purpose: the open ticket may have been closed between
-        // the failed INSERT and this read, and a retry would hide that.
+        // Optional on purpose: this read must not turn the 409 into a 500, and
+        // the open ticket may have been closed between the INSERT and it.
         const open = await this.db
           .selectFrom('tickets')
           .select('id')
           .where('enrollment_id', '=', data.enrollmentId)
           .where('status', 'not in', [...CLOSED_STATUSES])
           .executeTakeFirst()
+          .catch(() => undefined)
 
         throw new OpenTicketConflictError(
           `Enrollment ${data.enrollmentId} already has an open ticket`,
