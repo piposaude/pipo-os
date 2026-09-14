@@ -32,6 +32,10 @@ export const FUTURE_NODE_ID = 'node-futuras'
  *  queue knows it is there: the only place "move to portfolio" makes sense. */
 export const TRIAGE_NODE_ID = 'node-triagem'
 
+/** The viewer's own queue — where the tree opens, and the fallback for leaving
+ *  a search that has no queue behind it. */
+export const HOME_NODE_ID = 'node-meus-tickets'
+
 /** Prefix of the synthetic search nodes. Node identity is tree business. */
 export const SEARCH_NODE_PREFIX = 'search-'
 
@@ -231,7 +235,7 @@ export function buildTree(tickets: TicketRow[], options: BuildTreeOptions): Tree
    *  as children. Global scope: the question is "what is with me", wherever. */
   const personal: TreeNode[] = [
     node({
-      id: 'node-meus-tickets',
+      id: HOME_NODE_ID,
       label: 'Meus tickets',
       count: meus.length,
       depth: 0,

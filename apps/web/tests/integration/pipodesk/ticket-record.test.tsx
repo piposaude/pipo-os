@@ -289,9 +289,9 @@ describe('aba Documentos', () => {
     // and the reason is on screen — a disabled button takes no focus.
     expect(
       within(received).getByRole('button', {
-        name: documentsCopy.download('RG.jpg', '700002-camila-machado-dantas-rg.jpg'),
+        name: documentsCopy.download('RG.jpg', null, '700002-camila-machado-dantas-rg.jpg'),
       }),
-    ).toBeDisabled()
+    ).toHaveAttribute('aria-disabled', 'true')
     expect(within(panel).getByText(documentsCopy.downloadUnavailable)).toBeInTheDocument()
 
     const generated = within(panel)
@@ -321,18 +321,51 @@ describe('aba Documentos', () => {
   it('should offer the name the file would be born with, since a later rename breaks validation', async () => {
     const { panel } = await openTab('/tickets/700026', 'Documentos')
 
-    // Both versions share the name: the file name is the same and the identity
-    // is the document's, so the label cannot tell them apart either.
-    const [current] = within(panel).getAllByRole('button', {
-      name: documentsCopy.download('RG.pdf', '700026-carlos-rezende-zanetti-rg.pdf'),
+    // Off, but focusable and announced: with `disabled` the name would reach
+    // the mouse and nobody else.
+    const current = within(panel).getByRole('button', {
+      name: documentsCopy.download(
+        'RG.pdf',
+        documentsCopy.version.current,
+        '700026-carlos-rezende-zanetti-rg.pdf',
+      ),
     })
-    expect(current).toBeDisabled()
+    expect(current).toHaveAttribute('aria-disabled', 'true')
+    expect(current).not.toBeDisabled()
 
-    // The name has to be reachable with the button off: a disabled button
-    // shows no tooltip and takes no focus, so it hangs on the file name.
+    // Two versions of one file no longer share a control name.
     expect(
-      within(panel).getAllByTitle(/700026-carlos-rezende-zanetti-rg\.pdf/)[0],
+      within(panel).getByRole('button', {
+        name: documentsCopy.download(
+          'RG.pdf',
+          documentsCopy.version.superseded,
+          '700026-carlos-rezende-zanetti-rg.pdf',
+        ),
+      }),
     ).toBeInTheDocument()
+  })
+
+  it('should keep an observation written on a version', async () => {
+    const { panel } = await openTab('/tickets/700026', 'Documentos')
+    const user = userEvent.setup()
+
+    await user.click(within(panel).getAllByRole('button', { name: documentsCopy.note.empty })[0]!)
+    await user.type(within(panel).getAllByRole('textbox')[0]!, 'reenviado pelo RH{Enter}')
+
+    expect(within(panel).getByText('reenviado pelo RH')).toBeInTheDocument()
+  })
+
+  /** `??` and not `||` in the note fallback: emptying a seeded note has to clear
+   *  it, not fall back to the fixture value it just replaced. */
+  it('should clear a seeded observation when it is emptied', async () => {
+    const { panel } = await openTab('/tickets/700026', 'Documentos')
+    const user = userEvent.setup()
+
+    await user.click(within(panel).getByRole('button', { name: 'Desatualizado — vencido' }))
+    await user.clear(within(panel).getAllByRole('textbox')[0]!)
+    await user.keyboard('{Enter}')
+
+    expect(within(panel).queryByText('Desatualizado — vencido')).not.toBeInTheDocument()
   })
 
   it('should drop an edit abandoned with Escape, not save it on the way out', async () => {
@@ -347,8 +380,6 @@ describe('aba Documentos', () => {
     expect(within(panel).queryByText('rascunho')).not.toBeInTheDocument()
   })
 
-  /** The rule lives in each analyst's spreadsheet, not in any system: the block
-   *  exists so the absence has a name, and stops being a surprise downstream. */
   it('should declare that what this company requires is not mapped anywhere', async () => {
     const { panel } = await openTab('/tickets/700026', 'Documentos')
 

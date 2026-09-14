@@ -50,12 +50,12 @@
   cursor: pointer;
 }
 
-.download:hover:not(:disabled) {
+.download:hover:not([aria-disabled='true']) {
   background: var(--pipo-surface-subtle);
   color: var(--pipo-text-primary);
 }
 
-.download:disabled {
+.download[aria-disabled='true'] {
   cursor: default;
   opacity: 0.5;
 }
@@ -126,6 +126,7 @@
 
 .noteInput:focus-visible {
   border-bottom-color: var(--pipo-text-primary);
+  box-shadow: var(--pipo-shadow-focus-primary);
 }
 
 /* No hover to reveal it: on touch there would be no way to add a note. */

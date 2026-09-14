@@ -45,7 +45,11 @@ const slug = (value: string): string =>
 
 /** `RG · Ana Souza · 700123`. A ticket that moves nobody falls back to kind and
  *  ticket: the identity it has, never a blank where the person would be. */
-export function documentTitle(doc: { kind: string }, ticketId: string, person: string | null) {
+export function documentTitle(
+  doc: { kind: string },
+  ticketId: string,
+  person: string | null,
+): string {
   return [doc.kind, person, ticketId].filter((part) => part !== null).join(' · ')
 }
 
@@ -71,9 +75,16 @@ export function downloadName(
 export function versionsByKind<T extends { id: string; kind: string; at: string }>(
   docs: T[],
 ): { kind: string; versions: T[] }[] {
-  const groups = new Map<string, T[]>()
-  for (const doc of docs) groups.set(doc.kind, [...(groups.get(doc.kind) ?? []), doc])
-  return [...groups].map(([kind, versions]) => ({
+  // Grouped on the canonical key, never the raw spelling: two spellings of one
+  // document are versions of it, and splitting them is the defect this fixes.
+  const groups = new Map<string, { kind: string; versions: T[] }>()
+  for (const doc of docs) {
+    const key = documentKey(doc.kind)
+    const group = groups.get(key) ?? { kind: doc.kind, versions: [] }
+    group.versions.push(doc)
+    groups.set(key, group)
+  }
+  return [...groups.values()].map(({ kind, versions }) => ({
     kind,
     versions: [...versions].sort((a, b) => b.at.localeCompare(a.at) || b.id.localeCompare(a.id)),
   }))

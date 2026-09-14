@@ -15,8 +15,6 @@ export default {
     notInclusion: (type: string) =>
       `${type} não gera ficha de adesão — só a inclusão passa pelo Adobe Sign.`,
   },
-  /** The rule is not in any system: it lives in each analyst's own spreadsheet,
-   *  which is why a ticket opens incomplete and the document is chased later. */
   mandatory: {
     title: 'Obrigatórios para esta empresa',
     unmapped: (company: string | null) =>
@@ -33,8 +31,8 @@ export default {
     placeholder: 'Observação sobre esta versão',
     label: (name: string) => `Observação sobre ${name}`,
   },
-  download: (name: string, as: string) => `Baixar ${name} como ${as}`,
-  downloadAs: (as: string) => `Baixaria como ${as}`,
+  download: (name: string, which: string | null, as: string) =>
+    `Baixar ${name}${which ? ` (${which})` : ''} como ${as}`,
   downloadUnavailable: 'Ainda não há arquivo para baixar.',
   size: (kb: number) => `${kb} KB`,
 }

@@ -126,8 +126,6 @@ interface Document {
   kind: string
   at: string
   sizeKb: number
-  /** The note belongs to the file, not to the ticket: in a long process the
-   *  same document comes and goes, and a ticket-wide note cannot say which. */
   note: string | null
 }
 

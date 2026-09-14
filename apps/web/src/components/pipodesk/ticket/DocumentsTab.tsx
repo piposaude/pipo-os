@@ -54,27 +54,31 @@ function DocumentGroup({
                 {versions.map((doc, index) => {
                   const note = notes[doc.id] ?? doc.note ?? ''
                   const as = downloadName(doc, ticketId, person)
+                  // Two versions of one file share name and identity, so the
+                  // version is what tells their controls apart.
+                  const which =
+                    versions.length > 1
+                      ? index === 0
+                        ? copy.version.current
+                        : copy.version.superseded
+                      : null
                   return (
                     <li key={doc.id}>
-                      {/* The tooltip hangs on the name, not on the button: a
-                          disabled button shows none and takes no focus. */}
-                      <span className={styles.name} title={copy.downloadAs(as)}>
+                      <span className={styles.name}>
                         {doc.name}
-                        {versions.length > 1 && (
-                          <span className={styles.version}>
-                            {index === 0 ? copy.version.current : copy.version.superseded}
-                          </span>
-                        )}
+                        {which !== null && <span className={styles.version}>{which}</span>}
                       </span>
                       <span>{formatLongDate(doc.at)}</span>
                       <span>{copy.size(doc.sizeKb)}</span>
-                      {/* No file behind the fixture: the control marks where
-                          the action lives, off. */}
+                      {/* `aria-disabled`, not `disabled`: the name the file
+                          would be born with only reaches a focusable control. */}
                       <button
                         type="button"
                         className={styles.download}
-                        aria-label={copy.download(doc.name, as)}
-                        disabled
+                        aria-label={copy.download(doc.name, which, as)}
+                        title={copy.download(doc.name, which, as)}
+                        aria-disabled="true"
+                        onClick={(event) => event.preventDefault()}
                       >
                         <DeskIcon name="download" size={14} />
                       </button>
@@ -92,7 +96,12 @@ function DocumentGroup({
                           }}
                           onKeyDown={(event) => {
                             if (event.key === 'Enter') event.currentTarget.blur()
-                            if (event.key === 'Escape') setEditing(null)
+                            if (event.key === 'Escape') {
+                              // Put the original back first: whether removing a
+                              // focused node fires blur varies by browser.
+                              event.currentTarget.value = note
+                              setEditing(null)
+                            }
                           }}
                         />
                       ) : (
@@ -118,8 +127,9 @@ function DocumentGroup({
 
 export function DocumentsTab({ ticket, pendingDocumentation, records }: DocumentsTabProps) {
   const documents = records.documentsOf('ticket', ticket.id)
-  const movedPerson = records.personById.get(records.movementOf(ticket.id)?.beneficiaryId ?? '')
-  const person = movedPerson ? displayNameOf(movedPerson) : null
+  const movement = records.movementOf(ticket.id)
+  const moved = movement && records.personById.get(movement.beneficiaryId)
+  const person = moved ? displayNameOf(moved) : null
   const fromPipo = documents.filter((doc) => doc.origin === 'pipo')
   const fromClient = documents.filter((doc) => doc.origin === 'client')
 

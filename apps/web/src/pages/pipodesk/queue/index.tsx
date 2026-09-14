@@ -22,7 +22,7 @@ import { groupTickets } from '@/lib/pipodesk/group'
 import { sortTickets } from '@/lib/pipodesk/sort'
 import { transitionsFrom } from '@/lib/pipodesk/status'
 import type { ApiStatus } from '@/lib/pipodesk/status'
-import { isSearchNode, pillsOf, type TreeNode } from '@/lib/pipodesk/tree'
+import { HOME_NODE_ID, isSearchNode, pillsOf, type TreeNode } from '@/lib/pipodesk/tree'
 import { toQueueNode } from '@/lib/pipodesk/queue-node'
 import { ANALYSTS_BY_POD, structureFixture, VIEWER_GROUP_ID } from '@/fixtures/pipodesk/dataset'
 import constants from '@/constants/pages/pipodesk/queue'
@@ -165,7 +165,17 @@ export default function QueuePage() {
         activeNodeId={view.nodeId}
         onSelectPill={select}
         onExitSearch={
-          isSearchNode(view.nodeId) ? () => dispatch({ type: 'exit-search' }) : undefined
+          isSearchNode(view.nodeId)
+            ? () => {
+                // A search reached by a pasted link has no queue behind it, and
+                // `exit-search` would be a no-op under a button that is showing.
+                if (view.returnTo !== null) return dispatch({ type: 'exit-search' })
+                const home = sections
+                  .flatMap((section) => section.nodes)
+                  .find((node) => node.id === HOME_NODE_ID)
+                if (home) select(home)
+              }
+            : undefined
         }
         base={base}
         filter={view.filter}
