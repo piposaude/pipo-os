@@ -354,6 +354,13 @@
   opacity: 1;
 }
 
+/* No hover to reveal it: on touch the checkbox column would be unreachable. */
+@media (hover: none) {
+  .selectCell {
+    opacity: 1;
+  }
+}
+
 .table thead th:first-child {
   padding: 0 0 0 16px;
 }

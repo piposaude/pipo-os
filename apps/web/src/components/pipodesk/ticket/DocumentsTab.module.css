@@ -128,7 +128,8 @@
   border-bottom-color: var(--pipo-text-primary);
 }
 
-@media (prefers-reduced-motion: reduce) {
+/* No hover to reveal it: on touch there would be no way to add a note. */
+@media (hover: none) {
   .noteEmpty {
     opacity: 1;
   }
