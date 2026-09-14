@@ -111,17 +111,18 @@ describe('queues schema — saved view constraints', () => {
      *  caught here instead of as an option nobody can render. */
     const valuesOfCheck = async (constraint: string): Promise<string[]> => {
       const row = await sql<{ def: string }>`
-        SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conname = ${constraint}
+        SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint
+        WHERE conname = ${constraint} AND conrelid = 'ticket_queues'::regclass
       `.execute(app.db)
       return [...row.rows[0].def.matchAll(/'([^']+)'::text/g)].map((match) => match[1]).sort()
     }
 
-    it.each([
+    it.each<[string, string[]]>([
       ['ticket_queues_sort_by_check', sortFields],
       ['ticket_queues_sort_direction_check', sortDirections],
       ['ticket_queues_group_by_check', groupBy],
     ])('accepts in %s exactly what the contract lists', async (constraint, expected) => {
-      expect(await valuesOfCheck(constraint as string)).toEqual([...(expected as string[])].sort())
+      expect(await valuesOfCheck(constraint)).toEqual([...expected].sort())
     })
 
     it('refuses a sort field the queue screen cannot sort by', async () => {

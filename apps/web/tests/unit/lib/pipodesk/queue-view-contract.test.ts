@@ -20,8 +20,6 @@ const { sortFields, sortDirections, groupBy, defaultSort } = JSON.parse(
   defaultSort: TicketSort
 }
 
-/* The three maps below are what the display popover renders, so asserting on
-   them — and not on the unions — is what ties the menu to the database. */
 describe('the saved view contract', () => {
   it('should sort by the fields the database accepts, and no others', () => {
     expect(Object.keys(SORT_COPY).sort()).toEqual([...sortFields].sort())
