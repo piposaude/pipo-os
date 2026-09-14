@@ -120,8 +120,6 @@ Isso sobe `apps/api` e `apps/web` simultaneamente via `pnpm -r --parallel dev`.
 | `PATCH` `DELETE`       | `/api/groups/:id/members/:memberId` | Atualiza e remove um membro do grupo                                 |
 | `GET` `POST`           | `/api/queues`                       | Lista e cria filas                                                   |
 | `GET` `PATCH` `DELETE` | `/api/queues/:id`                   | Lê, atualiza e remove uma fila                                       |
-| `POST`                 | `/api/queues/:id/groups`            | Vincula um grupo à fila                                              |
-| `DELETE`               | `/api/queues/:id/groups/:groupId`   | Desvincula um grupo da fila                                          |
 | `GET`                  | `/api/queues/:id/tickets`           | Lista os tickets de uma fila                                         |
 
 #### Grupos: a hierarquia e quem está nela
@@ -134,7 +132,7 @@ O membro tem papel: `admin` é a coordenação do pod, `member` é a analista. `
 
 A listagem continua paginada (`pageSize` padrão 20, máximo 100) e ordenada da mais nova para a mais antiga — que é a ordem em que a raiz sai por último. Quem monta a árvore precisa do conjunto inteiro: um `pageSize` que cubra `total`, ou paginar até fechá-lo. Uma página sozinha traz filhos cujo `parentId` ficou de fora, e uma montagem que confia numa página só os descarta calada. `POST` e `PATCH` devolvem o grupo sem `companyIds` e sem `members`, porque nenhum dos dois mexe nessas relações — o cliente atualiza o nó que já tem em mãos, sem refazer o `GET`.
 
-O `DELETE` devolve `409` e diz **qual** vínculo barrou: membro, grupo filho, empresa na carteira, fila vinculada ou chamado. As cinco chaves estrangeiras devolvem o mesmo código do Postgres, então o que as distingue é o nome da constraint.
+O `DELETE` devolve `409` e diz **qual** vínculo barrou: membro, grupo filho, empresa na carteira, visão salva ou chamado. As cinco chaves estrangeiras devolvem o mesmo código do Postgres, então o que as distingue é o nome da constraint.
 
 ### Autenticação
 
@@ -294,7 +292,7 @@ Todo erro da API responde com o mesmo corpo, o componente `ErrorResponse` do con
 }
 ```
 
-`error` é o nome da classe de erro (contrato observado pelos testes), `message` é legível em inglês — a copy em pt-BR é do frontend — e `details` só aparece quando a falha é por campo: validação de payload (400) e recusa dos gates de conclusão (422). Um 422 de `UnprocessableEntityError` é violação de máquina de estados (chamado já fechado), e não traz `details`; um de `ValidationFailedError` traz todos os campos que falharam de uma vez, não o primeiro — o contrato existe, mas quem o produz são os gates de conclusão do PD-031, então hoje o único `details` que sai de verdade é o do 400.
+`error` é o nome da classe de erro (contrato observado pelos testes), `message` é legível em inglês — a copy em pt-BR é do frontend — e `details` só aparece quando a falha é por campo: validação de payload (400) e recusa dos gates de conclusão (422). Um 422 de `UnprocessableEntityError` é violação de máquina de estados (chamado já fechado), e não traz `details`; um de `ValidationFailedError` traz todos os campos que falharam de uma vez, não o primeiro. Hoje ele sai em dois casos: o 400 de payload e o 422 de `groupId`, `queueId` ou `parentTicketId` apontando para uma linha que não existe — as três chaves estrangeiras que `POST` e `PATCH /api/tickets/:id` traduzem em erro por campo. Os gates de conclusão do PD-031 usarão o mesmo formato.
 
 Limites de corpo, do mais externo para o mais interno: **1 MB** global (o mesmo corte do nginx-ingress), **256 KB** no `POST /api/tickets/:id/comments` e **50 mil caracteres** no campo `body` do comentário (o teto da rota é cinco vezes isso em bytes de UTF-8 cru, para que um texto de caracteres multibyte chegue à validação do campo em vez de esbarrar no limite de corpo; um cliente que escapa tudo em `\uXXXX` gasta 6 bytes por unidade e pode esbarrar no 413 antes). Passar dos dois primeiros responde `413`; passar do último responde `400` dizendo qual campo estourou.
 

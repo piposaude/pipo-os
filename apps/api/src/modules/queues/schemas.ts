@@ -56,24 +56,6 @@ export const listQueueTicketsQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 })
 
-export const queueGroupParamsSchema = z.object({
-  id: z.uuid(),
-  groupId: z.uuid(),
-})
-
-export const addQueueGroupBodySchema = z
-  .object({ groupId: z.uuid() })
-  .strict()
-  .meta({ id: 'AddQueueGroupBody' })
-
-export const queueGroupSchema = z
-  .object({
-    queueId: z.uuid(),
-    groupId: z.uuid(),
-    createdAt: z.iso.datetime(),
-  })
-  .meta({ id: 'QueueGroup' })
-
 export type Queue = z.infer<typeof queueSchema>
 export type QueueParams = z.infer<typeof queueParamsSchema>
 export type CreateQueueBody = z.infer<typeof createQueueBodySchema>
@@ -81,5 +63,3 @@ export type UpdateQueueBody = z.infer<typeof updateQueueBodySchema>
 export type ListQueuesQuery = z.infer<typeof listQueuesQuerySchema>
 export type QueueList = z.infer<typeof queueListSchema>
 export type ListQueueTicketsQuery = z.infer<typeof listQueueTicketsQuerySchema>
-export type QueueGroup = z.infer<typeof queueGroupSchema>
-export type QueueGroupParams = z.infer<typeof queueGroupParamsSchema>

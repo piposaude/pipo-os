@@ -43,7 +43,6 @@ describe('groups routes', () => {
      reintroduces FK violations that read as unrelated test failures. */
   afterEach(async () => {
     await app.db.deleteFrom('tickets').execute()
-    await app.db.deleteFrom('ticket_queues_x_group').execute()
     await app.db.deleteFrom('ticket_queues').execute()
     await app.db.deleteFrom('ticket_group_member_companies').execute()
     await app.db.deleteFrom('ticket_group_companies').execute()
@@ -908,16 +907,11 @@ describe('groups routes', () => {
       expect(response.json().message).toContain('companies')
     })
 
-    it('says it is the queue that blocks the delete', async () => {
+    it('says it is the saved view that blocks the delete', async () => {
       const pod = await createGroup('POD 3')
-      const queue = await app.db
-        .insertInto('ticket_queues')
-        .values({ name: 'Fila do POD 3', created_by: 'test' })
-        .returning('id')
-        .executeTakeFirstOrThrow()
       await app.db
-        .insertInto('ticket_queues_x_group')
-        .values({ queue_id: queue.id, group_id: pod })
+        .insertInto('ticket_queues')
+        .values({ name: 'MOV CLT', created_by: 'test', group_id: pod })
         .execute()
 
       const response = await app.inject({
@@ -927,7 +921,7 @@ describe('groups routes', () => {
       })
 
       expect(response.statusCode).toBe(409)
-      expect(response.json().message).toContain('queues')
+      expect(response.json().message).toContain('saved views')
     })
 
     it('says it is the ticket that blocks the delete', async () => {

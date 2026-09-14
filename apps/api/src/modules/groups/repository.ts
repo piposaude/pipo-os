@@ -30,7 +30,7 @@ const BLOCKING_LINKS: Record<string, string> = {
   ticket_group_members_group_id_fkey: 'still has members',
   ticket_groups_parent_id_fkey: 'still has child groups',
   ticket_group_companies_group_id_fkey: 'still carries companies',
-  ticket_queues_x_group_group_id_fkey: 'is still attached to queues',
+  ticket_queues_group_id_fkey: 'still owns saved views',
   tickets_group_id_fkey: 'still has tickets',
 }
 

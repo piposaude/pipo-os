@@ -47,7 +47,17 @@ describe('tickets routes', () => {
   afterEach(async () => {
     await app.db.deleteFrom('ticket_status_history').execute()
     await app.db.deleteFrom('tickets').execute()
+    await app.db.deleteFrom('ticket_queues').execute()
   })
+
+  const createQueue = async (name: string): Promise<string> => {
+    const row = await app.db
+      .insertInto('ticket_queues')
+      .values({ name, created_by: 'test' })
+      .returning('id')
+      .executeTakeFirstOrThrow()
+    return row.id
+  }
 
   describe('POST /api/tickets', () => {
     it('returns 401 without session cookie', async () => {
@@ -253,18 +263,21 @@ describe('tickets routes', () => {
       await app.db.deleteFrom('ticket_groups').where('id', '=', group.id).execute()
     })
 
-    it.each(['groupId', 'parentTicketId'])('names %s when it points at nothing', async (field) => {
-      const response = await app.inject({
-        method: 'POST',
-        url: '/api/tickets',
-        payload: { ...validTicketBody, [field]: NONEXISTENT_ID },
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-      })
+    it.each(['groupId', 'parentTicketId', 'queueId'])(
+      'names %s when it points at nothing',
+      async (field) => {
+        const response = await app.inject({
+          method: 'POST',
+          url: '/api/tickets',
+          payload: { ...validTicketBody, [field]: NONEXISTENT_ID },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
 
-      expect(response.statusCode).toBe(422)
-      expect(response.json().error).toBe('ValidationFailedError')
-      expect(response.json().details[0].field).toBe(field)
-    })
+        expect(response.statusCode).toBe(422)
+        expect(response.json().error).toBe('ValidationFailedError')
+        expect(response.json().details[0].field).toBe(field)
+      },
+    )
 
     it('ignores a status in the body: the ticket is born in the first state', async () => {
       const response = await app.inject({
@@ -498,7 +511,7 @@ describe('tickets routes', () => {
     })
 
     it('filters by queueId', async () => {
-      const queueId = '00000000-0000-4000-8000-000000000010'
+      const queueId = await createQueue('Exclusões vencidas')
       await app.inject({
         method: 'POST',
         url: '/api/tickets',
@@ -823,7 +836,7 @@ describe('tickets routes', () => {
       const created = await app.inject({
         method: 'POST',
         url: '/api/tickets',
-        payload: { ...validTicketBody, queueId: '00000000-0000-4000-8000-000000000010' },
+        payload: { ...validTicketBody, queueId: await createQueue('Exclusões vencidas') },
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
       const { id } = created.json()
@@ -832,6 +845,49 @@ describe('tickets routes', () => {
         method: 'PATCH',
         url: `/api/tickets/${id}`,
         payload: { queueId: null },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(200)
+      expect(response.json().queueId).toBeNull()
+    })
+
+    it.each(['queueId', 'parentTicketId'])('names %s when it points at nothing', async (field) => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${created.json().id}`,
+        payload: { [field]: NONEXISTENT_ID },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(422)
+      expect(response.json().error).toBe('ValidationFailedError')
+      expect(response.json().details[0].field).toBe(field)
+    })
+
+    /* The saved view selects tickets, it does not hold them: deleting it lets
+       the ticket go on without a view, instead of blocking the delete. */
+    it('clears the queue of a ticket whose queue is deleted', async () => {
+      const queueId = await createQueue('Exclusões vencidas')
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, queueId },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      await app.db.deleteFrom('ticket_queues').where('id', '=', queueId).execute()
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${created.json().id}`,
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       })
 
