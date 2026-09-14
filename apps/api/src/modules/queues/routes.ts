@@ -6,12 +6,9 @@ import { errorResponseSchema } from '../../shared/schemas.js'
 import { STRUCTURE_POLICY, TICKET_POLICY } from '../auth/policy.js'
 import { ticketListSchema } from '../tickets/schemas.js'
 import {
-  addQueueGroupBodySchema,
   createQueueBodySchema,
   listQueueTicketsQuerySchema,
   listQueuesQuerySchema,
-  queueGroupParamsSchema,
-  queueGroupSchema,
   queueListSchema,
   queueParamsSchema,
   queueSchema,
@@ -121,60 +118,11 @@ export function registerQueueRoutes(app: FastifyInstance, service: QueuesService
           401: errorResponseSchema,
           403: errorResponseSchema,
           404: errorResponseSchema,
-          409: errorResponseSchema,
         },
       },
     },
     async (request, reply) => {
       await service.delete(request.params.id)
-      reply.status(204)
-      return null
-    },
-  )
-
-  server.post(
-    '/api/queues/:id/groups',
-    {
-      config: { policy: STRUCTURE_POLICY },
-      schema: {
-        params: queueParamsSchema,
-        body: addQueueGroupBodySchema,
-        response: {
-          201: queueGroupSchema,
-          400: errorResponseSchema,
-          401: errorResponseSchema,
-          403: errorResponseSchema,
-          404: errorResponseSchema,
-          409: errorResponseSchema,
-          413: errorResponseSchema,
-          415: errorResponseSchema,
-        },
-      },
-    },
-    async (request, reply) => {
-      const group = await service.addGroup(request.params.id, request.body.groupId)
-      reply.status(201)
-      return group
-    },
-  )
-
-  server.delete(
-    '/api/queues/:id/groups/:groupId',
-    {
-      config: { policy: STRUCTURE_POLICY },
-      schema: {
-        params: queueGroupParamsSchema,
-        response: {
-          204: z.null(),
-          400: errorResponseSchema,
-          401: errorResponseSchema,
-          403: errorResponseSchema,
-          404: errorResponseSchema,
-        },
-      },
-    },
-    async (request, reply) => {
-      await service.removeGroup(request.params.id, request.params.groupId)
       reply.status(204)
       return null
     },

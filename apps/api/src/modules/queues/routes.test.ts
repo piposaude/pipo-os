@@ -5,8 +5,6 @@ import { SESSION_COOKIE_NAME } from '../auth/session.js'
 
 const DEV_LOGIN_USER_ID = 'dev@piposaude.com.br'
 const NONEXISTENT_ID = '00000000-0000-4000-8000-000000000099'
-const GROUP_ID = '00000000-0000-4000-8000-000000000001'
-const GROUP_ID_2 = '00000000-0000-4000-8000-000000000002'
 
 const validTicketBody = {
   enrollmentId: '00000000-0000-4000-8000-000000000010',
@@ -57,12 +55,14 @@ describe('queues routes', () => {
     delete process.env.DEV_LOGIN_ENABLED
   })
 
+  /* `ticket_queues` before `ticket_groups`: the saved view holds the group with
+     ON DELETE RESTRICT, so the reverse order fails as an FK violation in the
+     next test, not this one. */
   afterEach(async () => {
-    await app.db.deleteFrom('ticket_queues_x_group').execute()
     await app.db.deleteFrom('ticket_group_members').execute()
     await app.db.deleteFrom('tickets').execute()
-    await app.db.deleteFrom('ticket_groups').execute()
     await app.db.deleteFrom('ticket_queues').execute()
+    await app.db.deleteFrom('ticket_groups').execute()
   })
 
   // ---------------------------------------------------------------------------
@@ -426,34 +426,6 @@ describe('queues routes', () => {
       })
       expect(getResponse.statusCode).toBe(404)
     })
-
-    it('returns 409 when queue still has groups', async () => {
-      const created = await app.inject({
-        method: 'POST',
-        url: '/api/queues',
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload: { name: 'Fila A' },
-      })
-      const { id: queueId } = created.json()
-
-      await app.db
-        .insertInto('ticket_groups')
-        .values({ id: GROUP_ID, name: 'Grupo A', created_by: DEV_LOGIN_USER_ID })
-        .execute()
-
-      await app.db
-        .insertInto('ticket_queues_x_group')
-        .values({ queue_id: queueId, group_id: GROUP_ID })
-        .execute()
-
-      const response = await app.inject({
-        method: 'DELETE',
-        url: `/api/queues/${queueId}`,
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-      })
-      expect(response.statusCode).toBe(409)
-      expect(response.json().error).toBe('ConflictError')
-    })
   })
 
   // ---------------------------------------------------------------------------
@@ -581,216 +553,6 @@ describe('queues routes', () => {
     })
   })
 
-  // ---------------------------------------------------------------------------
-  describe('POST /api/queues/:id/groups', () => {
-    it('returns 401 without session cookie', async () => {
-      const response = await app.inject({
-        method: 'POST',
-        url: `/api/queues/${NONEXISTENT_ID}/groups`,
-        payload: { groupId: GROUP_ID },
-      })
-      expect(response.statusCode).toBe(401)
-    })
-
-    it('returns 404 when queue does not exist', async () => {
-      await app.db
-        .insertInto('ticket_groups')
-        .values({ id: GROUP_ID, name: 'Grupo A', created_by: DEV_LOGIN_USER_ID })
-        .execute()
-
-      const response = await app.inject({
-        method: 'POST',
-        url: `/api/queues/${NONEXISTENT_ID}/groups`,
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload: { groupId: GROUP_ID },
-      })
-      expect(response.statusCode).toBe(404)
-    })
-
-    it('returns 404 when group does not exist', async () => {
-      const created = await app.inject({
-        method: 'POST',
-        url: '/api/queues',
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload: { name: 'Fila A' },
-      })
-      const { id: queueId } = created.json()
-
-      const response = await app.inject({
-        method: 'POST',
-        url: `/api/queues/${queueId}/groups`,
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload: { groupId: NONEXISTENT_ID },
-      })
-      expect(response.statusCode).toBe(404)
-      expect(response.json().message).toContain('Group')
-    })
-
-    it('links group to queue and returns 201', async () => {
-      const created = await app.inject({
-        method: 'POST',
-        url: '/api/queues',
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload: { name: 'Fila A' },
-      })
-      const { id: queueId } = created.json()
-
-      await app.db
-        .insertInto('ticket_groups')
-        .values({ id: GROUP_ID, name: 'Grupo A', created_by: DEV_LOGIN_USER_ID })
-        .execute()
-
-      const response = await app.inject({
-        method: 'POST',
-        url: `/api/queues/${queueId}/groups`,
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload: { groupId: GROUP_ID },
-      })
-      const body = response.json()
-
-      expect(response.statusCode).toBe(201)
-      expect(body.queueId).toBe(queueId)
-      expect(body.groupId).toBe(GROUP_ID)
-      expect(body.createdAt).toBeDefined()
-    })
-
-    it('returns 409 when group is already linked to queue', async () => {
-      const created = await app.inject({
-        method: 'POST',
-        url: '/api/queues',
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload: { name: 'Fila A' },
-      })
-      const { id: queueId } = created.json()
-
-      await app.db
-        .insertInto('ticket_groups')
-        .values({ id: GROUP_ID, name: 'Grupo A', created_by: DEV_LOGIN_USER_ID })
-        .execute()
-
-      await app.inject({
-        method: 'POST',
-        url: `/api/queues/${queueId}/groups`,
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload: { groupId: GROUP_ID },
-      })
-
-      const response = await app.inject({
-        method: 'POST',
-        url: `/api/queues/${queueId}/groups`,
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload: { groupId: GROUP_ID },
-      })
-      expect(response.statusCode).toBe(409)
-      expect(response.json().error).toBe('ConflictError')
-    })
-  })
-
-  // ---------------------------------------------------------------------------
-  describe('DELETE /api/queues/:id/groups/:groupId', () => {
-    it('returns 401 without session cookie', async () => {
-      const response = await app.inject({
-        method: 'DELETE',
-        url: `/api/queues/${NONEXISTENT_ID}/groups/${GROUP_ID}`,
-      })
-      expect(response.statusCode).toBe(401)
-    })
-
-    it('returns 404 when queue does not exist', async () => {
-      const response = await app.inject({
-        method: 'DELETE',
-        url: `/api/queues/${NONEXISTENT_ID}/groups/${GROUP_ID}`,
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-      })
-      expect(response.statusCode).toBe(404)
-    })
-
-    it('returns 404 when link does not exist', async () => {
-      const created = await app.inject({
-        method: 'POST',
-        url: '/api/queues',
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload: { name: 'Fila A' },
-      })
-      const { id: queueId } = created.json()
-
-      const response = await app.inject({
-        method: 'DELETE',
-        url: `/api/queues/${queueId}/groups/${NONEXISTENT_ID}`,
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-      })
-      expect(response.statusCode).toBe(404)
-    })
-
-    it('removes link and returns 204', async () => {
-      const created = await app.inject({
-        method: 'POST',
-        url: '/api/queues',
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload: { name: 'Fila A' },
-      })
-      const { id: queueId } = created.json()
-
-      await app.db
-        .insertInto('ticket_groups')
-        .values({ id: GROUP_ID, name: 'Grupo A', created_by: DEV_LOGIN_USER_ID })
-        .execute()
-
-      await app.inject({
-        method: 'POST',
-        url: `/api/queues/${queueId}/groups`,
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload: { groupId: GROUP_ID },
-      })
-
-      const response = await app.inject({
-        method: 'DELETE',
-        url: `/api/queues/${queueId}/groups/${GROUP_ID}`,
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-      })
-      expect(response.statusCode).toBe(204)
-    })
-
-    it('allows re-linking after removal', async () => {
-      const created = await app.inject({
-        method: 'POST',
-        url: '/api/queues',
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload: { name: 'Fila A' },
-      })
-      const { id: queueId } = created.json()
-
-      await app.db
-        .insertInto('ticket_groups')
-        .values([
-          { id: GROUP_ID, name: 'Grupo A', created_by: DEV_LOGIN_USER_ID },
-          { id: GROUP_ID_2, name: 'Grupo B', created_by: DEV_LOGIN_USER_ID },
-        ])
-        .execute()
-
-      await app.inject({
-        method: 'POST',
-        url: `/api/queues/${queueId}/groups`,
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload: { groupId: GROUP_ID },
-      })
-
-      await app.inject({
-        method: 'DELETE',
-        url: `/api/queues/${queueId}/groups/${GROUP_ID}`,
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-      })
-
-      const relink = await app.inject({
-        method: 'POST',
-        url: `/api/queues/${queueId}/groups`,
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload: { groupId: GROUP_ID },
-      })
-      expect(relink.statusCode).toBe(201)
-    })
-  })
-
   describe('the structure policy', () => {
     let withoutPolicy: string
     let withWholeProduct: string
@@ -817,14 +579,12 @@ describe('queues routes', () => {
       ['GET', '/api/queues/:id'],
       ['PATCH', '/api/queues/:id'],
       ['DELETE', '/api/queues/:id'],
-      ['POST', '/api/queues/:id/groups'],
-      ['DELETE', '/api/queues/:id/groups/:groupId'],
     ]
 
     it.each(routes)('answers 403 on %s %s for a session with no policy', async (method, url) => {
       const response = await app.inject({
         method: method as 'GET',
-        url: url.replace(':id', NONEXISTENT_ID).replace(':groupId', GROUP_ID),
+        url: url.replace(':id', NONEXISTENT_ID),
         cookies: { [SESSION_COOKIE_NAME]: withoutPolicy },
         payload: method === 'GET' || method === 'DELETE' ? undefined : { name: 'Fila' },
       })

@@ -16,6 +16,7 @@ import { isApiStatus, toDisplayStatus } from './status'
 import { assertNever, NULL_TOKEN, valuesOf, type FilterField, type TicketFilter } from './filter'
 import { isPriority } from './ticket-row'
 import type { GroupBy } from './group'
+import type { SortField, TicketSort } from './sort'
 
 /** Resolves ids to names. Each falls back to the id itself — an id on
  *  screen is a defect, a broken row is worse. */
@@ -175,7 +176,7 @@ export const GROUP_BY_COPY: Record<GroupBy, string> = {
 
 /** The sorts `sortTickets` knows, labeled like the column headers —
  *  "Parado", not `updatedAt`. */
-export const SORT_COPY: Record<string, string> = {
+export const SORT_COPY: Record<SortField, string> = {
   actionDate: 'Prazo',
   createdAt: 'Criação',
   updatedAt: 'Parado',
@@ -183,7 +184,7 @@ export const SORT_COPY: Record<string, string> = {
   status: 'Status',
 }
 
-export const DIRECTION_COPY: Record<'asc' | 'desc', string> = {
+export const DIRECTION_COPY: Record<TicketSort['direction'], string> = {
   asc: 'crescente',
   desc: 'decrescente',
 }
