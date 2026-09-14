@@ -25,6 +25,21 @@ const OPEN_ENROLLMENT_CONSTRAINT = 'uq_tickets_open_enrollment'
 const FK_FIELDS: Record<string, string> = {
   tickets_group_id_fkey: 'groupId',
   tickets_parent_ticket_id_fkey: 'parentTicketId',
+  tickets_queue_id_fkey: 'queueId',
+}
+
+/** The write names a row that is not there. Rethrown as a field error so POST
+ *  and PATCH answer 422 pointing at the field, not 500. */
+function rethrowMissingReference(err: unknown): never {
+  if (err instanceof Error && 'code' in err && err.code === '23503' && 'constraint' in err) {
+    const field = FK_FIELDS[err.constraint as string]
+    if (field) {
+      throw new ValidationFailedError(`${field} does not exist`, [
+        { field, message: `${field} does not exist`, code: 'not-found' },
+      ])
+    }
+  }
+  throw err
 }
 
 /** `.min(1)` on the response would turn one hand-edited row into a 500 for the
@@ -302,15 +317,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
           open?.id,
         )
       }
-      if (err instanceof Error && 'code' in err && err.code === '23503' && 'constraint' in err) {
-        const field = FK_FIELDS[err.constraint as string]
-        if (field) {
-          throw new ValidationFailedError(`${field} does not exist`, [
-            { field, message: `${field} does not exist`, code: 'not-found' },
-          ])
-        }
-      }
-      throw err
+      rethrowMissingReference(err)
     }
   }
 
@@ -370,19 +377,23 @@ export class TicketsRepository implements TicketsRepositoryPort {
   }
 
   async update(id: string, data: UpdateTicketBody): Promise<Ticket | undefined> {
-    const row = await this.db
-      .updateTable('tickets')
-      .set({
-        ...(data.queueId !== undefined && { queue_id: data.queueId }),
-        ...(data.assigneeId !== undefined && { assignee_id: data.assigneeId }),
-        ...(data.tags !== undefined && { tags: data.tags }),
-        ...(data.forceCompletion !== undefined && { force_completion: data.forceCompletion }),
-        ...(data.parentTicketId !== undefined && { parent_ticket_id: data.parentTicketId }),
-      })
-      .where('id', '=', id)
-      .returningAll()
-      .executeTakeFirst()
+    try {
+      const row = await this.db
+        .updateTable('tickets')
+        .set({
+          ...(data.queueId !== undefined && { queue_id: data.queueId }),
+          ...(data.assigneeId !== undefined && { assignee_id: data.assigneeId }),
+          ...(data.tags !== undefined && { tags: data.tags }),
+          ...(data.forceCompletion !== undefined && { force_completion: data.forceCompletion }),
+          ...(data.parentTicketId !== undefined && { parent_ticket_id: data.parentTicketId }),
+        })
+        .where('id', '=', id)
+        .returningAll()
+        .executeTakeFirst()
 
-    return row ? toTicket(row) : undefined
+      return row ? toTicket(row) : undefined
+    } catch (err) {
+      rethrowMissingReference(err)
+    }
   }
 }
