@@ -1,7 +1,8 @@
 import { sql, type Kysely, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
-import { ConflictError } from '../../shared/errors.js'
+import { ValidationFailedError } from '../../shared/errors.js'
+import { OpenTicketConflictError } from './errors.js'
 import { movementFieldsOf, relationshipOf, snapshotString } from './enrollment-snapshot.js'
 import { actionDateWindowCondition, ticketFilterConditions } from './filter-resolver.js'
 import type { TicketRowPayload, TicketRowsQuery } from './rows-schema.js'
@@ -20,6 +21,11 @@ export type ChangeStatusResult =
   { kind: 'not-found' } | { kind: 'already-closed' } | { kind: 'ok'; ticket: Ticket }
 
 const OPEN_ENROLLMENT_CONSTRAINT = 'uq_tickets_open_enrollment'
+
+const FK_FIELDS: Record<string, string> = {
+  tickets_group_id_fkey: 'groupId',
+  tickets_parent_ticket_id_fkey: 'parentTicketId',
+}
 
 /** `.min(1)` on the response would turn one hand-edited row into a 500 for the
  *  whole page, so a blank column reads as the null it means. */
@@ -42,8 +48,8 @@ function toTicket(row: Selectable<Tickets>): Ticket {
     companyId: row.company_id,
     tags: row.tags as string[],
     pendingDocumentation: row.pending_documentation as string[],
-    requester: row.requester as Record<string, unknown> | null,
-    collaborators: row.collaborators as Array<Record<string, unknown>>,
+    requester: row.requester as Ticket['requester'],
+    collaborators: row.collaborators as Ticket['collaborators'],
     forceCompletion: row.force_completion,
     enrollmentSnapshot: row.enrollment_snapshot as Record<string, unknown>,
     carrierId: blankAsNull(row.carrier_id),
@@ -53,6 +59,7 @@ function toTicket(row: Selectable<Tickets>): Ticket {
     companySize: blankAsNull(toClient('companySize', row.company_size)),
     relationship: relationshipSchema.safeParse(row.relationship).data ?? null,
     sourceSystem: row.source_system,
+    origin: blankAsNull(row.origin),
     parentTicketId: row.parent_ticket_id,
     closedAt: row.closed_at ? row.closed_at.toISOString() : null,
     createdAt: row.created_at.toISOString(),
@@ -249,15 +256,21 @@ export class TicketsRepository implements TicketsRepositoryPort {
           company_id: data.companyId,
           source_system: data.sourceSystem,
           enrollment_snapshot: JSON.stringify(data.enrollmentSnapshot),
+          title: data.title,
+          action_date: data.actionDate,
+          origin: data.origin,
+          requester: data.requester ? JSON.stringify(data.requester) : null,
+          collaborators: JSON.stringify(data.collaborators ?? []),
           carrier_id: data.carrierId ?? derived.carrierId,
           carrier_name: data.carrierName ?? derived.carrierName,
           product: data.product ?? derived.product,
           contract_type: data.contractType ?? derived.contractType,
           company_size: data.companySize ?? derived.companySize,
           relationship: relationshipOf(data.enrollmentSnapshot),
-          status: data.status ?? 'broker-processing',
+          status: 'broker-processing',
           queue_id: data.queueId,
           assignee_id: data.assigneeId,
+          group_id: data.groupId,
           tags: data.tags ?? [],
           force_completion: data.forceCompletion ?? false,
           parent_ticket_id: data.parentTicketId,
@@ -274,7 +287,28 @@ export class TicketsRepository implements TicketsRepositoryPort {
         'constraint' in err &&
         err.constraint === OPEN_ENROLLMENT_CONSTRAINT
       ) {
-        throw new ConflictError(`Enrollment ${data.enrollmentId} already has an open ticket`)
+        // Optional on purpose: this read must not turn the 409 into a 500, and
+        // the open ticket may have been closed between the INSERT and it.
+        const open = await this.db
+          .selectFrom('tickets')
+          .select('id')
+          .where('enrollment_id', '=', data.enrollmentId)
+          .where('status', 'not in', [...CLOSED_STATUSES])
+          .executeTakeFirst()
+          .catch(() => undefined)
+
+        throw new OpenTicketConflictError(
+          `Enrollment ${data.enrollmentId} already has an open ticket`,
+          open?.id,
+        )
+      }
+      if (err instanceof Error && 'code' in err && err.code === '23503' && 'constraint' in err) {
+        const field = FK_FIELDS[err.constraint as string]
+        if (field) {
+          throw new ValidationFailedError(`${field} does not exist`, [
+            { field, message: `${field} does not exist`, code: 'not-found' },
+          ])
+        }
       }
       throw err
     }

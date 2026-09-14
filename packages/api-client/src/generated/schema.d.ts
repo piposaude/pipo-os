@@ -1715,7 +1715,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": components["schemas"]["OpenTicketConflict"];
                     };
                 };
                 /** @description Default Response */
@@ -1729,6 +1729,15 @@ export interface paths {
                 };
                 /** @description Default Response */
                 415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2185,12 +2194,33 @@ export interface components {
             enrollmentSnapshot: {
                 [key: string]: unknown;
             };
+            title?: string;
+            /** Format: date-time */
+            actionDate?: string;
+            origin?: string;
+            requester?: {
+                /** Format: email */
+                email: string;
+                name?: string;
+                phone?: string;
+                /** @enum {string} */
+                preferredChannel?: "platform" | "email";
+            };
+            collaborators?: {
+                /** Format: email */
+                email: string;
+                name?: string;
+                phone?: string;
+                /** @enum {string} */
+                preferredChannel?: "platform" | "email";
+            }[];
             carrierId?: string;
             carrierName?: string;
             product?: string;
             contractType?: string;
             companySize?: string;
-            status?: components["schemas"]["TicketStatusInput"];
+            /** Format: uuid */
+            groupId?: string;
             /** Format: uuid */
             queueId?: string;
             assigneeId?: string;
@@ -2286,6 +2316,14 @@ export interface components {
         Relationship: "holder" | "dependent" | "family-group";
         /** @enum {string} */
         TicketPriority: "urgent" | "high" | "medium" | "low";
+        TicketPerson: {
+            /** Format: email */
+            email: string;
+            name?: string;
+            phone?: string;
+            /** @enum {string} */
+            preferredChannel?: "platform" | "email";
+        };
         Ticket: {
             /** Format: uuid */
             id: string;
@@ -2304,12 +2342,8 @@ export interface components {
             companyId: string;
             tags: string[];
             pendingDocumentation: string[];
-            requester: {
-                [key: string]: unknown;
-            } | null;
-            collaborators: {
-                [key: string]: unknown;
-            }[];
+            requester: components["schemas"]["TicketPerson"] | null;
+            collaborators: components["schemas"]["TicketPerson"][];
             forceCompletion: boolean;
             enrollmentSnapshot: {
                 [key: string]: unknown;
@@ -2321,12 +2355,20 @@ export interface components {
             companySize: string | null;
             relationship: components["schemas"]["Relationship"] | null;
             sourceSystem: string;
+            origin: string | null;
             parentTicketId: string | null;
             closedAt: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        OpenTicketConflict: {
+            error: string;
+            message: string;
+            details?: components["schemas"]["ErrorDetail"][];
+            /** Format: uuid */
+            ticketId?: string;
         };
         TicketList: {
             data: components["schemas"]["Ticket"][];

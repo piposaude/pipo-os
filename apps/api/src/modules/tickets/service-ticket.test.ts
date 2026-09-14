@@ -89,6 +89,46 @@ describe('a ticket opened by a service', () => {
     expect(response.json().enrollmentId).toBe(ENROLLMENT_ID)
   })
 
+  it('carries the subject, the HR contacts, the schedule and how it came in', async () => {
+    const payload = {
+      enrollmentId: ENROLLMENT_ID,
+      enrollmentType: 'inclusion',
+      companyId: COMPANY_ID,
+      sourceSystem: 'enrollment-integrations',
+      title: 'Bradesco | ACME LTDA | 🩺 Saúde | Inclusão de titular - MARIA SILVA',
+      requester: { email: 'rh@acme.com.br', name: 'Sergio Gouveia' },
+      collaborators: [{ email: 'dp@acme.com.br' }],
+      actionDate: '2026-10-01T03:00:00.000Z',
+      origin: 'automation-failure',
+      enrollmentSnapshot: { name: 'Maria Silva' },
+    }
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/tickets',
+      headers: { authorization },
+      payload,
+    })
+
+    expect(response.statusCode).toBe(201)
+    const ticket = response.json()
+    expect(ticket.title).toBe(payload.title)
+    expect(ticket.requester).toEqual(payload.requester)
+    expect(ticket.collaborators).toEqual(payload.collaborators)
+    expect(ticket.actionDate).toBe(payload.actionDate)
+    expect(ticket.origin).toBe(payload.origin)
+    expect(ticket.status).toBe('broker-processing')
+  })
+
+  it('is told which ticket is open when it tries twice', async () => {
+    const created = await openTicket()
+
+    const again = await openTicket()
+
+    expect(again.statusCode).toBe(409)
+    expect(again.json().ticketId).toBe(created.json().id)
+  })
+
   // What keeps the EI idempotent: it asks whether the enrollment already has a
   // ticket before opening another one.
   it('is found again by its enrollmentId', async () => {

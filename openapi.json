@@ -63,6 +63,82 @@
             },
             "additionalProperties": {}
           },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "actionDate": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "origin": {
+            "type": "string",
+            "minLength": 1
+          },
+          "requester": {
+            "type": "object",
+            "properties": {
+              "email": {
+                "type": "string",
+                "format": "email",
+                "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "phone": {
+                "type": "string",
+                "minLength": 1
+              },
+              "preferredChannel": {
+                "type": "string",
+                "enum": [
+                  "platform",
+                  "email"
+                ]
+              }
+            },
+            "required": [
+              "email"
+            ],
+            "additionalProperties": false
+          },
+          "collaborators": {
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "email": {
+                  "type": "string",
+                  "format": "email",
+                  "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "phone": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "preferredChannel": {
+                  "type": "string",
+                  "enum": [
+                    "platform",
+                    "email"
+                  ]
+                }
+              },
+              "required": [
+                "email"
+              ],
+              "additionalProperties": false
+            }
+          },
           "carrierId": {
             "type": "string",
             "minLength": 1
@@ -83,8 +159,10 @@
             "type": "string",
             "minLength": 1
           },
-          "status": {
-            "$ref": "#/components/schemas/TicketStatusInput"
+          "groupId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
           },
           "queueId": {
             "type": "string",
@@ -557,6 +635,35 @@
           "low"
         ]
       },
+      "TicketPerson": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "phone": {
+            "type": "string",
+            "minLength": 1
+          },
+          "preferredChannel": {
+            "type": "string",
+            "enum": [
+              "platform",
+              "email"
+            ]
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "additionalProperties": false
+      },
       "Ticket": {
         "type": "object",
         "properties": {
@@ -666,11 +773,7 @@
           "requester": {
             "anyOf": [
               {
-                "type": "object",
-                "propertyNames": {
-                  "type": "string"
-                },
-                "additionalProperties": {}
+                "$ref": "#/components/schemas/TicketPerson"
               },
               {
                 "type": "null"
@@ -680,11 +783,7 @@
           "collaborators": {
             "type": "array",
             "items": {
-              "type": "object",
-              "propertyNames": {
-                "type": "string"
-              },
-              "additionalProperties": {}
+              "$ref": "#/components/schemas/TicketPerson"
             }
           },
           "forceCompletion": {
@@ -765,6 +864,17 @@
           "sourceSystem": {
             "type": "string"
           },
+          "origin": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "parentTicketId": {
             "anyOf": [
               {
@@ -826,10 +936,39 @@
           "companySize",
           "relationship",
           "sourceSystem",
+          "origin",
           "parentTicketId",
           "closedAt",
           "createdAt",
           "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "OpenTicketConflict": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "details": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ErrorDetail"
+            }
+          },
+          "ticketId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "error",
+          "message"
         ],
         "additionalProperties": false
       },
@@ -3701,7 +3840,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/OpenTicketConflict"
                 }
               }
             }
@@ -3717,6 +3856,16 @@
             }
           },
           "415": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
             "description": "Default Response",
             "content": {
               "application/json": {

@@ -5,9 +5,11 @@ import { businessToday } from '../../shared/business-date.js'
 import { errorResponseSchema } from '../../shared/schemas.js'
 import { TICKET_POLICY } from '../auth/policy.js'
 import { ticketRowsQuerySchema, ticketRowsSchema } from './rows-schema.js'
+import { OpenTicketConflictError } from './errors.js'
 import {
   createTicketBodySchema,
   listTicketsQuerySchema,
+  openTicketConflictSchema,
   ticketListSchema,
   ticketParamsSchema,
   ticketSchema,
@@ -97,16 +99,28 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
           400: errorResponseSchema,
           401: errorResponseSchema,
           403: errorResponseSchema,
-          409: errorResponseSchema,
+          409: openTicketConflictSchema,
           413: errorResponseSchema,
           415: errorResponseSchema,
+          422: errorResponseSchema,
         },
       },
     },
     async (request, reply) => {
-      const ticket = await service.create(request.body)
-      reply.status(201)
-      return ticket
+      try {
+        const ticket = await service.create(request.body)
+        reply.status(201)
+        return ticket
+      } catch (err) {
+        // The shared handler serializes error, message and details only, so the
+        // id is added here; without this catch the 409 is still correct.
+        if (err instanceof OpenTicketConflictError) {
+          return reply
+            .status(409)
+            .send({ error: err.name, message: err.message, ticketId: err.ticketId })
+        }
+        throw err
+      }
     },
   )
 
