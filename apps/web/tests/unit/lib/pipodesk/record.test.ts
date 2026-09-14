@@ -57,6 +57,7 @@ const source: RecordSource = {
       kind: 'RG',
       at: '2026-07-01',
       sizeKb: 10,
+      note: null,
     },
     {
       id: 'doc-2',
@@ -67,6 +68,7 @@ const source: RecordSource = {
       kind: 'QSA',
       at: '2026-01-15',
       sizeKb: 20,
+      note: null,
     },
     {
       id: 'doc-3',
@@ -77,6 +79,7 @@ const source: RecordSource = {
       kind: 'contrato',
       at: '2025-01-01',
       sizeKb: 30,
+      note: null,
     },
   ],
   beneficiaries: [

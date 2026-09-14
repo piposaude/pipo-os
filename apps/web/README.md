@@ -96,7 +96,7 @@ protótipo `pipodesk` (repositório `prototipos`, ao lado deste) com o
 vocabulário já traduzido para o da API.
 
 - Regerar, de dentro de `apps/web`, no commit-base do protótipo:
-  `pnpm fixture:export 79becc7`
+  `pnpm fixture:export 7279ccf`
   O script (`scripts/export-fixture.mts`) lê o protótipo por `git archive`, então
   não toca nele nem depende do que está checado lá; o repositório é procurado em
   `../prototipos` (ou em `PIPODESK_PROTOTYPE=<caminho>`).
@@ -110,15 +110,24 @@ vocabulário já traduzido para o da API.
 O comportamento-alvo é o protótipo `pipodesk`. Divergência visual ou de regra
 entre os dois é bug aqui, salvo decisão registrada no plano.
 
-**Base do protótipo: `79becc7` (5 set 2026)**, o commit com que a fixture e as
+**Base do protótipo: `7279ccf` (8 set 2026)**, o commit com que a fixture e as
 telas foram sincronizadas pela última vez. Para re-sincronizar, ao menos uma vez
-por semana: `git log 79becc7..origin/main -- pipodesk/src` no repositório do
-protótipo lista o que mudou; regerar o dataset e atualizar este commit.
+por semana: `git log 7279ccf..origin/main -- pipodesk/src` no repositório do
+protótipo lista o que mudou; regerar as fixtures e atualizar este commit.
 
-O exportador vive no protótipo, e a conferência de que ele continua fiel é
-gerar no commit-base atual e comparar com o `dataset.json` commitado: os dois
-têm que sair idênticos. Foi assim que a reconstrução dele na ACE-193 se provou,
-e é assim que se descobre que uma tradução de borda mudou.
+**O commit-base diz de onde partir, não o que já foi portado.** Ele marca a
+última rodada, e uma rodada pode ter deixado ponto para trás — na rodada de 14
+set o `returnTo` da fila, que existe no protótipo desde `aaad394`, muito antes
+do pino, nunca tinha sido portado, e sair da busca caía sempre em Meus tickets.
+A lista de commits pega o que é novo; o que ficou para trás só aparece
+conferindo o código dos dois lados, e o mesmo vale ao contrário: a rodada de 14
+set achou a DSP-120 já implementada aqui antes de o commit chegar ao pino.
+
+O exportador (`scripts/export-fixture.mts`) vive aqui, não no protótipo, e lê o
+outro repositório por `git archive` — nunca escreve nele. A conferência de que
+ele continua fiel é gerar no commit-base atual e comparar com as fixtures
+commitadas: têm que sair idênticas. Foi assim que a reconstrução dele na
+ACE-193 se provou, e é assim que se descobre que uma tradução de borda mudou.
 
 Plano e backlog: [Pipodesk no Notion](https://app.notion.com/p/3cd4744bd8038168bb39d69ed7252d4d);
 tickets no Linear, projeto “Pipodesk no PipOS”.

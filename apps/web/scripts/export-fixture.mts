@@ -126,6 +126,9 @@ interface Document {
   kind: string
   at: string
   sizeKb: number
+  /** The note belongs to the file, not to the ticket: in a long process the
+   *  same document comes and goes, and a ticket-wide note cannot say which. */
+  note: string | null
 }
 
 interface Dataset {
@@ -407,7 +410,7 @@ async function main(): Promise<void> {
         access: contract.access,
       })),
       documents: DATASET.documents.map(
-        ({ id, name, scope, scopeId, origin, kind, at, sizeKb }) => ({
+        ({ id, name, scope, scopeId, origin, kind, at, sizeKb, note }) => ({
           id,
           name,
           scope: oneOf(DOCUMENT_SCOPE, scope, `escopo do documento ${id}`),
@@ -416,6 +419,7 @@ async function main(): Promise<void> {
           kind,
           at,
           sizeKb,
+          note: note ?? null,
         }),
       ),
       beneficiaries: DATASET.beneficiaries.map((person) => ({
