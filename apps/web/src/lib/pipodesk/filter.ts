@@ -47,8 +47,8 @@ export function assertNever(value: never): never {
  *  API by the boundary tickets in contract/ticket-filter-cases.json. */
 export const SLEEP_DAYS = 2
 
-/** Twin of `foldQuery` in api/src/modules/tickets/filter-resolver.ts:
- *  decompose, drop the combining marks, lower. Change one, change both. */
+/** Twin of `foldText` in api/src/shared/text.ts: decompose, drop the combining
+ *  marks, lower. Change one, change both. */
 export const normalizeText = (text: string): string =>
   text
     .normalize('NFD')

@@ -1,6 +1,10 @@
 import { z } from 'zod'
 import type { ErrorDetail } from './errors.js'
 
+/** One rule for every e-mail the API validates or serialises: a second one,
+ *  written by hand, diverges on the next zod bump. */
+export const emailSchema = z.email()
+
 export const errorDetailSchema = z
   .object({
     field: z.string(),
