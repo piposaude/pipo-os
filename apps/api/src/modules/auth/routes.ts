@@ -3,6 +3,7 @@ import type { ZodTypeProvider } from '@fastify/type-provider-zod'
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { errorResponseSchema } from '../../shared/schemas.js'
+import type { GroupMembersRepositoryPort } from '../groups/repository.js'
 import { requireUser } from './authenticate.js'
 import type { AuthConfig } from './config.js'
 import { googleCallbackQuerySchema, googleLoginQuerySchema, meResponseSchema } from './schemas.js'
@@ -57,10 +58,18 @@ function parseStateCookie(value: string | null | undefined): OAuthState | null {
   return null
 }
 
+/** What the rich session needs beyond the token: the name, which lives in the
+ *  auth-service, and the pods, which live in this database. */
+export interface ViewerSources {
+  nameOf(email: string): Promise<string | null>
+  members: Pick<GroupMembersRepositoryPort, 'listByUser'>
+}
+
 export function registerAuthRoutes(
   app: FastifyInstance,
   service: AuthService,
   config: AuthConfig,
+  viewer: ViewerSources,
 ): void {
   const server = app.withTypeProvider<ZodTypeProvider>()
 
@@ -140,7 +149,17 @@ export function registerAuthRoutes(
     },
     async (request) => {
       const principal = requireUser(request)
-      return { email: principal.email, policies: principal.policies }
+      const sub = principal.sub?.trim() || null
+
+      // In parallel: the name comes from the auth-service over HTTP and the
+      // pods from this database, with no data between them. In series, a cold
+      // user list would hold the query back by the whole listing timeout.
+      const [name, groups] = await Promise.all([
+        viewer.nameOf(principal.email),
+        sub ? viewer.members.listByUser(sub) : [],
+      ])
+
+      return { sub, email: principal.email, name, policies: principal.policies, groups }
     },
   )
 

@@ -21,14 +21,20 @@ describe('useSessionStore', () => {
 
   it('authenticates when /api/auth/me succeeds', async () => {
     fetchMock.mockResolvedValueOnce(
-      jsonResponse({ email: 'pikachu@piposaude.com.br', policies: [] }),
+      jsonResponse({
+        sub: 'pikachu@piposaude.com.br',
+        email: 'pikachu@piposaude.com.br',
+        name: 'Pikachu',
+        policies: [],
+        groups: [],
+      }),
     )
 
     await useSessionStore.getState().load()
 
     expect(useSessionStore.getState()).toMatchObject({
       status: 'authenticated',
-      user: { email: 'pikachu@piposaude.com.br', policies: [] },
+      user: { sub: 'pikachu@piposaude.com.br', email: 'pikachu@piposaude.com.br', name: 'Pikachu' },
     })
   })
 
@@ -63,7 +69,13 @@ describe('useSessionStore', () => {
   it('clears the session on logout even when the API call fails', async () => {
     useSessionStore.setState({
       status: 'authenticated',
-      user: { email: 'pikachu@piposaude.com.br', policies: [] },
+      user: {
+        sub: 'pikachu@piposaude.com.br',
+        email: 'pikachu@piposaude.com.br',
+        name: 'Pikachu',
+        policies: [],
+        groups: [],
+      },
     })
     fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'))
 

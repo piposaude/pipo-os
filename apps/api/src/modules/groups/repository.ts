@@ -221,10 +221,17 @@ export class GroupsRepository implements GroupsRepositoryPort {
   }
 }
 
+/** A person's place in the structure: the pod and the role they hold in it. */
+export interface Membership {
+  groupId: string
+  role: MemberRole
+}
+
 export interface GroupMembersRepositoryPort {
   add(groupId: string, data: AddMemberBody): Promise<GroupMember>
   remove(groupId: string, userId: string): Promise<boolean>
   update(groupId: string, userId: string, data: UpdateMemberBody): Promise<GroupMember | undefined>
+  listByUser(userId: string): Promise<Membership[]>
 }
 
 export class GroupMembersRepository implements GroupMembersRepositoryPort {
@@ -250,6 +257,20 @@ export class GroupMembersRepository implements GroupMembersRepositoryPort {
       }
       throw err
     }
+  }
+
+  // Active only: a deactivated membership is history, and reading it as current
+  // would hand the person a pod they no longer answer for.
+  async listByUser(userId: string): Promise<Membership[]> {
+    const rows = await this.db
+      .selectFrom('ticket_group_members')
+      .select(['group_id', 'role'])
+      .where('user_id', '=', userId)
+      .where('active', '=', true)
+      .orderBy('group_id')
+      .execute()
+
+    return rows.map((row) => ({ groupId: row.group_id, role: row.role as MemberRole }))
   }
 
   async remove(groupId: string, userId: string): Promise<boolean> {

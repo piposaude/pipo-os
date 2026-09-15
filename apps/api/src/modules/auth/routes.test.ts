@@ -267,8 +267,11 @@ describe('auth routes', () => {
 
       expect(response.statusCode).toBe(200)
       expect(response.json()).toEqual({
+        sub: 'pikachu@piposaude.com.br',
         email: 'pikachu@piposaude.com.br',
+        name: null,
         policies: ['admin/allow/administrate/pipodesk/ticket'],
+        groups: [],
       })
     })
   })
