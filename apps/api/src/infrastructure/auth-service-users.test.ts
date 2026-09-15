@@ -92,8 +92,6 @@ describe('listPipoUsers', () => {
     expect(fetchMock).toHaveBeenCalledTimes(MAX_PAGES)
   })
 
-  // Inverted, the warning never fires and the ceiling goes back to being mute,
-  // which is the failure the warning exists to prevent.
   it('warns before the ceiling, not after it', () => {
     expect(PAGES_WARNING_AT).toBeLessThan(MAX_PAGES)
   })
@@ -191,9 +189,6 @@ describe('listPipoUsers', () => {
     })
   })
 
-  // Dropped rows are counted against the total, which the upstream builds
-  // before our own e-mail rule runs: counting the kept ones would refuse a page
-  // whose only sin was carrying a broken address.
   it('accepts a listing whose total counts a row this side dropped', async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse({
@@ -254,7 +249,7 @@ describe('listPipoUsers', () => {
     expect(warn).toHaveBeenCalledWith({ dropped: 1, seen: 3, kept: 2 }, expect.any(String))
   })
 
-  it('says nothing when the cursor merely repeated someone', async () => {
+  it('warns when the pages repeated someone, so fewer people arrived than counted', async () => {
     const warn = vi.fn()
     fetchMock
       .mockResolvedValueOnce(
@@ -274,7 +269,7 @@ describe('listPipoUsers', () => {
 
     await listPipoUsers({ baseUrl: BASE_URL, logger: { warn } })
 
-    expect(warn).not.toHaveBeenCalled()
+    expect(warn).toHaveBeenCalledWith({ kept: 2, dropped: 0, total: 3 }, expect.any(String))
   })
 
   it('says nothing when it drops nobody', async () => {
@@ -362,8 +357,6 @@ describe('listPipoUsers', () => {
     ])
   })
 
-  // The upstream rebuilds its snapshot every 60 s; shrinking mid-drain makes
-  // the next offset start past someone, and the total is the only sign.
   it('refuses a listing whose upstream snapshot shrank mid-drain', async () => {
     fetchMock
       .mockResolvedValueOnce(
@@ -386,8 +379,6 @@ describe('listPipoUsers', () => {
     })
   })
 
-  // Growing only hands over a duplicate, which the map absorbs: nobody is
-  // left behind.
   it('accepts a listing whose upstream snapshot grew mid-drain', async () => {
     fetchMock
       .mockResolvedValueOnce(
@@ -558,7 +549,7 @@ describe('listPipoUsers', () => {
 
     // fetch resolves on the headers: a deadline cleared there would leave a
     // body that trickles in afterwards unbounded.
-    it('keeps the page deadline running while the body is being read', async () => {
+    it('keeps the page signal armed while the body is being read', async () => {
       let abortedDuringBody: boolean | null = null
 
       fetchMock.mockImplementationOnce(async (_url: string, options: { signal: AbortSignal }) => ({

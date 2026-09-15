@@ -29,9 +29,8 @@ const PAGE_SIZE = 100
  *  per page this is 5.000 people — far past the size the Pipo has. */
 export const MAX_PAGES = 50
 
-/** The same number is the guard-rail and the capacity ceiling, and crossing it
- *  fails the whole listing rather than truncating it — so the growth that gets
- *  there has to be readable before it becomes a permanent 503. */
+/** Crossing MAX_PAGES fails the listing rather than truncating it, so the
+ *  growth that gets there has to be readable before it becomes a 503. */
 export const PAGES_WARNING_AT = 30
 
 /** One budget for the whole listing: fifty pages of five seconds each would hold
@@ -231,14 +230,21 @@ export async function listPipoUsers({
 
         const next = data['next-cursor']
         if (next === null || next === undefined) {
-          // Upstream only omits the cursor once offset + page >= total, so it
-          // never ends short of its own count. Ending short anyway means the
-          // pages stopped early, and returning here would cache half the Pipo
-          // as if it were all of it.
+          // Upstream omits the cursor only once offset + page >= total, so
+          // ending short of its own count means the pages stopped early.
           if (expectedTotal !== null && seen < expectedTotal) {
             throw new ServiceUnavailableError('auth-service user listing is unavailable', {
               cause: new Error(`listing ended after ${seen} of ${expectedTotal} people`),
             })
+          }
+
+          // Rows can cover the total while distinct people do not: a snapshot
+          // rebuilt mid-drain repeats someone and skips someone else.
+          if (expectedTotal !== null && users.size + dropped < expectedTotal) {
+            logger?.warn(
+              { kept: users.size, dropped, total: expectedTotal },
+              'pipo user list: fewer people than the listing counted, so a page repeated someone',
+            )
           }
 
           return [...users.values()]
