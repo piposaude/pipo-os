@@ -1,27 +1,26 @@
+import { appEnv, isDeployedEnvironment } from '../../shared/environment.js'
 export interface AuthConfig {
   authServiceUrl: string
   authServiceInternalUrl: string
   googleClientId: string
   appBaseUrl: string
   allowedEmailDomains: string[]
-  isProduction: boolean
+  isDeployed: boolean
   devLoginEnabled: boolean
   devLoginEmail: string
 }
 
-const DEPLOYED_APP_ENVS = new Set(['stag', 'prod'])
-
 // Without this, a missing AUTH_SERVICE_URL/GOOGLE_OAUTH_CLIENT_ID/APP_BASE_URL
-// in production silently falls back to a localhost value, the API boots fine,
-// and login only breaks at the first real attempt — the same class of failure
-// COOKIE_SECRET already guards against in app.ts.
-function requiredInProduction(name: string, fallback: string, isProduction: boolean): string {
+// in a deployed environment silently falls back to a localhost value, the API
+// boots fine, and login only breaks at the first real attempt — the same class
+// of failure COOKIE_SECRET already guards against in app.ts.
+function requiredWhenDeployed(name: string, fallback: string, isDeployed: boolean): string {
   const value = process.env[name]
   if (value) {
     return value
   }
-  if (isProduction) {
-    throw new Error(`${name} must be set in production`)
+  if (isDeployed) {
+    throw new Error(`${name} must be set in a deployed environment`)
   }
   return fallback
 }
@@ -31,21 +30,16 @@ function requiredInProduction(name: string, fallback: string, isProduction: bool
 // authentication bypass. Refusing to boot turns a misconfiguration into a loud
 // CrashLoop instead of a silently open door — the same fail-fast stance the
 // COOKIE_SECRET check in app.ts takes.
-function resolveDevLoginEnabled(
-  isProduction: boolean,
-  devLoginEmail: string,
-  allowedEmailDomains: string[],
-): boolean {
+function resolveDevLoginEnabled(devLoginEmail: string, allowedEmailDomains: string[]): boolean {
   const requested = process.env.DEV_LOGIN_ENABLED === 'true'
   if (!requested) {
     return false
   }
 
-  const appEnv = (process.env.APP_ENV ?? '').trim().toLowerCase()
-  if (isProduction || DEPLOYED_APP_ENVS.has(appEnv)) {
+  if (isDeployedEnvironment()) {
     throw new Error(
       'DEV_LOGIN_ENABLED must never be set in a deployed environment ' +
-        `(NODE_ENV=${process.env.NODE_ENV}, APP_ENV=${appEnv || '<unset>'})`,
+        `(NODE_ENV=${process.env.NODE_ENV}, APP_ENV=${appEnv() || '<unset>'})`,
     )
   }
 
@@ -61,7 +55,7 @@ function resolveDevLoginEnabled(
   return true
 }
 
-// Not requiredInProduction like its neighbours: the address is fixed in the
+// Not requiredWhenDeployed like its neighbours: the address is fixed in the
 // cluster, and a missing variable must not take down the screens that never
 // call a service. Wrong, it surfaces as a 503 on the service call instead.
 export function authServiceInternalUrl(): string {
@@ -69,21 +63,24 @@ export function authServiceInternalUrl(): string {
 }
 
 export function authConfig(): AuthConfig {
-  const isProduction = process.env.NODE_ENV === 'production'
+  const isDeployed = isDeployedEnvironment()
   const allowedEmailDomains = (process.env.ALLOWED_EMAIL_DOMAINS ?? 'piposaude.com.br,pipo.ai')
     .split(',')
     .map((domain) => domain.trim().toLowerCase())
     .filter(Boolean)
   const devLoginEmail = process.env.DEV_LOGIN_EMAIL ?? 'dev@piposaude.com.br'
+  // Before the required variables below: a deployed pod carrying the login
+  // bypass must say so, not report the first address it happens to be missing.
+  const devLoginEnabled = resolveDevLoginEnabled(devLoginEmail, allowedEmailDomains)
 
   return {
-    authServiceUrl: requiredInProduction('AUTH_SERVICE_URL', 'http://localhost:9090', isProduction),
+    authServiceUrl: requiredWhenDeployed('AUTH_SERVICE_URL', 'http://localhost:9090', isDeployed),
     authServiceInternalUrl: authServiceInternalUrl(),
-    googleClientId: requiredInProduction('GOOGLE_OAUTH_CLIENT_ID', '', isProduction),
-    appBaseUrl: requiredInProduction('APP_BASE_URL', 'http://localhost:5173', isProduction),
+    googleClientId: requiredWhenDeployed('GOOGLE_OAUTH_CLIENT_ID', '', isDeployed),
+    appBaseUrl: requiredWhenDeployed('APP_BASE_URL', 'http://localhost:5173', isDeployed),
     allowedEmailDomains,
-    isProduction,
-    devLoginEnabled: resolveDevLoginEnabled(isProduction, devLoginEmail, allowedEmailDomains),
+    isDeployed,
+    devLoginEnabled,
     devLoginEmail,
   }
 }

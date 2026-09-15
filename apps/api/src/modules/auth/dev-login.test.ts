@@ -92,7 +92,7 @@ describe('dev login', () => {
   // a missing AUTH_SERVICE_URL/GOOGLE_OAUTH_CLIENT_ID/APP_BASE_URL in
   // production would otherwise silently fall back to a localhost value and
   // only break at the first real login attempt.
-  describe('production config guard', () => {
+  describe('deployed config guard', () => {
     const validProdEnv = {
       NODE_ENV: 'production',
       AUTH_SERVICE_URL: 'https://auth-service.piposaude.com.br',
@@ -108,16 +108,29 @@ describe('dev login', () => {
     })
 
     it.each(['AUTH_SERVICE_URL', 'GOOGLE_OAUTH_CLIENT_ID', 'APP_BASE_URL'])(
-      'throws when %s is missing in production',
+      'throws when %s is missing in a deployed environment',
       (missingVar) => {
         Object.assign(process.env, validProdEnv)
         delete process.env[missingVar]
 
-        expect(() => authConfig()).toThrow(new RegExp(`${missingVar} must be set in production`))
+        expect(() => authConfig()).toThrow(
+          new RegExp(`${missingVar} must be set in a deployed environment`),
+        )
       },
     )
 
-    it('does not require these vars outside production', () => {
+    it('throws for a deployed APP_ENV even when NODE_ENV is not production', () => {
+      Object.assign(process.env, validProdEnv)
+      process.env.NODE_ENV = 'staging'
+      process.env.APP_ENV = 'stag'
+      delete process.env.GOOGLE_OAUTH_CLIENT_ID
+
+      expect(() => authConfig()).toThrow(
+        /GOOGLE_OAUTH_CLIENT_ID must be set in a deployed environment/,
+      )
+    })
+
+    it('does not require these vars outside a deployed environment', () => {
       process.env.NODE_ENV = 'development'
       delete process.env.APP_ENV
       delete process.env.AUTH_SERVICE_URL

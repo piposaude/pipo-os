@@ -21,6 +21,7 @@ import dbPlugin from './infrastructure/db.js'
 import errorHandlerPlugin from './infrastructure/error-handler.js'
 import authenticatePlugin from './modules/auth/authenticate.js'
 import authorizePlugin from './modules/auth/authorize.js'
+import { isDeployedEnvironment } from './shared/environment.js'
 
 function corsOrigins(): string[] {
   return (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
@@ -31,15 +32,15 @@ function corsOrigins(): string[] {
 // The session and oauth-state cookies are signed with this secret (HMAC) — it's
 // what lets the API trust a cookie's contents without being able to verify the
 // auth-service's JWT signature locally (that key lives in AWS KMS, see the auth
-// module). A weak/default secret in production would let anyone forge a session,
-// so we fail fast there instead of booting with a guessable value.
+// module). A weak/default secret in a deployed environment would let anyone
+// forge a session, so we fail fast there instead of booting with a guessable one.
 function cookieSecret(): string {
   const secret = process.env.COOKIE_SECRET
   if (secret) {
     return secret
   }
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('COOKIE_SECRET must be set in production')
+  if (isDeployedEnvironment()) {
+    throw new Error('COOKIE_SECRET must be set in a deployed environment')
   }
   return 'dev-only-cookie-secret-change-me'
 }
@@ -133,6 +134,11 @@ export function buildApp(): FastifyInstance {
   app.register(autoload, {
     dir: path.join(import.meta.dirname, 'modules'),
     dirNameRoutePrefix: false,
+    // The autoload root takes loose files, imported before it decides whether
+    // they are plugins: a test there brings the boot down. Anchored to the
+    // extension, so a fixture named for what it feeds is not dropped from the
+    // route tree — which no boot check would catch.
+    ignorePattern: /\.test\.[cm]?[jt]s$/,
   })
 
   return app

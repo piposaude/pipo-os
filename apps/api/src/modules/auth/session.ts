@@ -9,7 +9,7 @@ export const DEFAULT_SESSION_MAX_AGE_SECONDS = 8 * 60 * 60
 export function baseCookieOptions(config: AuthConfig): CookieSerializeOptions {
   return {
     httpOnly: true,
-    secure: config.isProduction,
+    secure: config.isDeployed,
     // Lax (not Strict): the oauth-state cookie must survive the top-level,
     // cross-site GET navigation Google issues back to our callback.
     sameSite: 'lax',
