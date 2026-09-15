@@ -15,6 +15,10 @@ export const MAX_STALE_MS = 30 * 60 * 1000
  *  it every request would pay the listing timeout before falling back. */
 export const RETRY_FLOOR_MS = 30 * 1000
 
+/** What a session waits on a cold list before answering with no name: the page
+ *  load blocks on it, and the listing budget is measured in tens of seconds. */
+export const NAME_WAIT_MS = 2 * 1000
+
 declare module 'fastify' {
   interface FastifyInstance {
     users: UsersService
@@ -81,17 +85,34 @@ export class UsersService {
       : [...snapshot.users]
   }
 
-  /** The exact e-mail, not `search`: the session already knows whose name it
-   *  wants, and the fuzzy match is the end user's tool, normalising every name
-   *  in the list to answer a question that is an equality. */
+  /** The exact e-mail, not `search`: the fuzzy match is a substring one, and
+   *  `ana@` would answer with `ana.souza@`'s name. */
   async byEmail(email: string): Promise<AuthServiceUser | null> {
-    // Both sides lowercased here rather than trusting the loader to have done
-    // it: a list that arrives in mixed case would answer no name at all,
-    // and a missing name is indistinguishable from a person who has none.
+    // Both sides lowercased here, not trusted to the loader: a list in mixed
+    // case would answer no name, which reads as a person who has none.
     const wanted = email.trim().toLowerCase()
-    const { users } = await this.current()
+    const snapshot = await this.currentWithin(NAME_WAIT_MS)
 
-    return users.find((user) => user.email.toLowerCase() === wanted) ?? null
+    return snapshot?.users.find((user) => user.email.toLowerCase() === wanted) ?? null
+  }
+
+  /** The snapshot if it arrives within `ms`, otherwise null — the listing runs
+   *  on, so whoever loads the next page finds it warm. */
+  private async currentWithin(ms: number): Promise<Snapshot | null> {
+    const current = this.current()
+    // Outliving the race, its rejection needs an owner here as well.
+    current.catch(() => undefined)
+
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const capped = new Promise<null>((resolve) => {
+      timer = setTimeout(() => resolve(null), ms)
+    })
+
+    try {
+      return await Promise.race([current, capped])
+    } finally {
+      clearTimeout(timer)
+    }
   }
 
   private async current(): Promise<Snapshot> {
@@ -137,6 +158,12 @@ export class UsersService {
           throw new ServiceUnavailableError('auth-service user listing is unavailable', {
             cause: new Error('listed nobody, and there were people a moment ago'),
           })
+        }
+
+        // A first listing that is empty is cached like any other, so the queue
+        // would carry no names at all for a whole TTL.
+        if (users.length === 0) {
+          this.logger?.warn('pipo user list: the first listing came back empty')
         }
 
         // Smaller than last time is either people leaving or a listing cut

@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AuthServiceUser } from '../../infrastructure/auth-service-users.js'
-import { MAX_STALE_MS, RETRY_FLOOR_MS, UsersService, USERS_TTL_MS } from './service.js'
+import {
+  MAX_STALE_MS,
+  NAME_WAIT_MS,
+  RETRY_FLOOR_MS,
+  UsersService,
+  USERS_TTL_MS,
+} from './service.js'
 
 const ANA = { email: 'ana.souza@piposaude.com.br', name: 'Ana Souza' }
 const BRUNO = { email: 'bruno@piposaude.com.br', name: 'Bruno Lima' }
@@ -46,8 +52,6 @@ describe('UsersService', () => {
     expect(await service.byEmail('  ANA.SOUZA@piposaude.com.br ')).toEqual(ANA)
   })
 
-  // The fuzzy search would answer the neighbour: `ana@` is a substring of
-  // `ana.souza@`, and the session would publish the wrong person's name.
   it('answers nobody for an e-mail that only looks like one in the list', async () => {
     const { service } = serviceOver([[ANA, BRUNO]])
 
@@ -113,8 +117,6 @@ describe('UsersService', () => {
     expect(load).toHaveBeenCalledTimes(2)
   })
 
-  // Without this, every call during a long outage pays the full listing
-  // timeout before failing.
   it('fails fast inside the retry floor instead of calling the auth-service again', async () => {
     const load = vi
       .fn<() => Promise<AuthServiceUser[]>>()
@@ -159,8 +161,6 @@ describe('UsersService', () => {
     await expect(service.list({})).rejects.toThrow('auth-service is down')
   })
 
-  // /api/auth/me runs through here on every page load, and the session store
-  // sits in `loading` while it waits.
   it('answers from the snapshot while the refresh runs behind it', async () => {
     let finishRefresh: (users: AuthServiceUser[]) => void = () => undefined
     const load = vi
@@ -246,8 +246,6 @@ describe('UsersService', () => {
     await expect(service.list({})).rejects.toThrow('auth-service is down')
   })
 
-  // The age that matters is the data's, not the last attempt's: a retry that
-  // refreshed the clock would hide an outage of any length.
   it('counts the age from the last success, however many refreshes failed meanwhile', async () => {
     const load = vi
       .fn<() => Promise<AuthServiceUser[]>>()
@@ -286,8 +284,6 @@ describe('UsersService', () => {
     expect(load).toHaveBeenCalledTimes(3)
   })
 
-  // The window is counted on top of the TTL: a longer TTL must not swallow the
-  // ceiling, nor erase the stale window it grants.
   it('grants the stale window on top of whatever TTL it was given', async () => {
     const ONE_HOUR = 60 * 60 * 1000
     const load = vi
@@ -305,8 +301,6 @@ describe('UsersService', () => {
     await expect(service.list({})).rejects.toThrow('auth-service is down')
   })
 
-  // Nobody awaits a background refresh: without this line the auth-service can
-  // be down for 35 minutes with no trace in this service.
   it('logs the failure of a refresh that nobody is waiting for', async () => {
     const warn = vi.fn()
     const load = vi
@@ -359,8 +353,6 @@ describe('UsersService', () => {
     expect(warn).not.toHaveBeenCalled()
   })
 
-  // The upstream builds its total from what it loaded, so a listing it
-  // truncated arrives consistent with itself and passes every check.
   it('refuses a list that came back empty when it had people a moment ago', async () => {
     const load = vi
       .fn<() => Promise<AuthServiceUser[]>>()
@@ -384,10 +376,27 @@ describe('UsersService', () => {
     })
   })
 
-  it('accepts an empty list when there was nothing before it', async () => {
-    const { service } = serviceOver([[]])
+  it('accepts an empty list when there was nothing before it, and says so', async () => {
+    const warn = vi.fn()
+    const service = new UsersService(async () => [], { warn })
 
     expect(await service.list({})).toEqual([])
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('first listing'))
+  })
+
+  it('answers no name rather than hold the page while a cold listing drags on', async () => {
+    let release: (users: AuthServiceUser[]) => void = () => undefined
+    const service = new UsersService(async () => new Promise((resolve) => (release = resolve)))
+
+    const name = service.byEmail(ANA.email)
+    await vi.advanceTimersByTimeAsync(NAME_WAIT_MS)
+
+    expect(await name).toBeNull()
+
+    // The listing is not cancelled, so the next page load finds it warm.
+    release([ANA])
+    await vi.advanceTimersByTimeAsync(0)
+    expect(await service.byEmail(ANA.email)).toEqual(ANA)
   })
 
   it('keeps one listing in flight when two callers arrive on a cold snapshot', async () => {

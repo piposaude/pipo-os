@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify'
+import { ServiceUnavailableError } from '../../shared/errors.js'
 import { GroupMembersRepository } from '../groups/repository.js'
 import { authConfig } from './config.js'
 import { registerDevLoginRoute } from './dev-login.js'
@@ -14,10 +15,14 @@ export default async function authModule(app: FastifyInstance): Promise<void> {
 
   registerAuthRoutes(app, service, config, {
     // A broken auth-service costs the session its name, never the session.
+    // Narrow on purpose: anything else here is a bug, not an outage.
     nameOf: async (email) => {
       try {
         return (await app.users.byEmail(email))?.name ?? null
       } catch (error) {
+        if (!(error instanceof ServiceUnavailableError)) {
+          throw error
+        }
         app.log.warn(error, 'session name unresolved: the pipo user list is unavailable')
         return null
       }
