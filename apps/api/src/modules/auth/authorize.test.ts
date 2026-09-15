@@ -265,7 +265,7 @@ describe('the policy each route requires', () => {
         ({ method, url }) => url.startsWith('/api') && method !== 'HEAD' && method !== 'OPTIONS',
       )
 
-  const EXPECTED: Array<[string, PolicyRequirement | null]> = [
+  const EXPECTED: Array<[string, PolicyRequirement | PolicyRequirement[] | null]> = [
     ['DELETE /api/groups/:id', STRUCTURE],
     ['DELETE /api/groups/:id/members/:memberId', STRUCTURE],
     ['DELETE /api/queues/:id', STRUCTURE],
@@ -282,6 +282,7 @@ describe('the policy each route requires', () => {
     ['GET /api/tickets/:id/comments', TICKET],
     ['GET /api/tickets/:id/timeline', TICKET],
     ['GET /api/tickets/rows', TICKET],
+    ['GET /api/users', [TICKET, STRUCTURE]],
     ['PATCH /api/groups/:id', STRUCTURE],
     ['PATCH /api/groups/:id/members/:memberId', STRUCTURE],
     ['PATCH /api/queues/:id', STRUCTURE],
@@ -298,9 +299,9 @@ describe('the policy each route requires', () => {
 
   it('is exactly the routes whose side is already stated', () => {
     const inventory = apiRoutes()
-      .map(({ method, url, config }): [string, PolicyRequirement | null] => [
+      .map(({ method, url, config }): [string, PolicyRequirement | PolicyRequirement[] | null] => [
         `${method} ${url}`,
-        config?.policy === undefined ? null : (config.policy as PolicyRequirement),
+        config?.policy ?? null,
       ])
       .sort(([a], [b]) => a.localeCompare(b))
 
