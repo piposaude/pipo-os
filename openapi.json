@@ -60,10 +60,17 @@
             }
           },
           "groups": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AuthMeGroup"
-            }
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AuthMeGroup"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [

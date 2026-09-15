@@ -2097,7 +2097,7 @@ export interface components {
             email: string;
             name: string | null;
             policies: string[];
-            groups: components["schemas"]["AuthMeGroup"][];
+            groups: components["schemas"]["AuthMeGroup"][] | null;
         };
         AuthMeGroup: {
             /** Format: uuid */

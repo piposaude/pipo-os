@@ -151,12 +151,18 @@ export function registerAuthRoutes(
       const principal = requireUser(request)
       const sub = principal.sub?.trim() || null
 
-      // In parallel: the name comes from the auth-service over HTTP and the
-      // pods from this database, with no data between them. In series, a cold
-      // user list would hold the query back by the whole listing timeout.
+      // The name is keyed by e-mail, which is how the pipo list is indexed, and
+      // the pods by sub, which is what the author columns store.
       const [name, groups] = await Promise.all([
         viewer.nameOf(principal.email),
-        sub ? viewer.members.listByUser(sub) : [],
+        // `null` is "unknown", never "in no pod": the screen hides actions on
+        // an empty list, and a database outage must not look like one.
+        sub
+          ? viewer.members.listByUser(sub).catch((error: unknown) => {
+              request.log.warn(error, 'session pods unresolved: the database is unavailable')
+              return null
+            })
+          : [],
       ])
 
       return { sub, email: principal.email, name, policies: principal.policies, groups }

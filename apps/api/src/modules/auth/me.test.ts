@@ -143,15 +143,14 @@ describe('GET /api/auth/me — the rich session', () => {
     expect(response.json()).toMatchObject({ sub: null, email: VIEWER, groups: [] })
   })
 
-  // The pods decide what the screen allows: claiming the viewer is in none,
-  // when it is the database that is gone, hides actions without saying so.
-  it('fails, rather than claim the viewer is in no pod, when the database is gone', async () => {
+  it('keeps the session, with the pods unknown, when the database is gone', async () => {
     await app.db.destroy()
     poolDestroyed = true
 
     const response = await me()
 
-    expect(response.statusCode).toBe(500)
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toMatchObject({ email: VIEWER, groups: null })
   })
 
   it('leaves out the pods of everyone else', async () => {

@@ -29,7 +29,9 @@ export const meResponseSchema = z
     email: emailSchema,
     name: z.string().nullable(),
     policies: z.array(z.string()),
-    groups: z.array(viewerGroupSchema),
+    // Null when the database did not answer: an empty list means the viewer
+    // really is in no pod, and the screen reads the two differently.
+    groups: z.array(viewerGroupSchema).nullable(),
   })
   .meta({ id: 'AuthMe' })
 
