@@ -49,12 +49,35 @@ function pruneUnusedSchemas(spec: { components?: { schemas?: Record<string, unkn
   }
 }
 
+// Left alone, the paths come out in the order the autoload happened to read the
+// modules, and the components in the order those modules were evaluated — so a
+// module or an import added anywhere reshuffles hundreds of lines and buries
+// the change the contract actually made. Not localeCompare: the CI drift check
+// re-exports the file on another machine.
+const byName = ([a]: [string, unknown], [b]: [string, unknown]): number =>
+  a < b ? -1 : a > b ? 1 : 0
+
+function sortForDiff(spec: {
+  paths?: Record<string, unknown>
+  components?: { schemas?: Record<string, unknown> }
+}): void {
+  if (spec.paths) {
+    spec.paths = Object.fromEntries(Object.entries(spec.paths).sort(byName))
+  }
+
+  const { components } = spec
+  if (components?.schemas) {
+    components.schemas = Object.fromEntries(Object.entries(components.schemas).sort(byName))
+  }
+}
+
 async function main(): Promise<void> {
   const app = buildApp()
   await app.ready()
 
   const spec = app.swagger()
   pruneUnusedSchemas(spec)
+  sortForDiff(spec)
 
   const outFile = path.join(import.meta.dirname, '../../../openapi.json')
 
