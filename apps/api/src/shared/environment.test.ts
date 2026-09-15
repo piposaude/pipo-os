@@ -5,15 +5,18 @@ afterEach(() => {
   vi.unstubAllEnvs()
 })
 
-/* One function now answers for both boot guards — the dev login and a pasted
-   service token — so a regression here disarms the two at once. */
+// One function answers for the three boot guards — the cookie secret, the
+// required addresses and the dev login — so a regression here disarms all three.
 describe('isDeployedEnvironment', () => {
-  it('reads a cluster APP_ENV however it was typed', () => {
-    for (const value of ['stag', 'prod', ' PROD ', 'Stag']) {
+  it.each([['stag'], ['prod'], [' PROD '], ['Stag']])(
+    'reads a cluster APP_ENV typed as %s',
+    (value) => {
+      vi.stubEnv('NODE_ENV', 'test')
       vi.stubEnv('APP_ENV', value)
+
       expect(isDeployedEnvironment()).toBe(true)
-    }
-  })
+    },
+  )
 
   it('counts NODE_ENV=production on its own, whatever APP_ENV says', () => {
     vi.stubEnv('NODE_ENV', 'production')

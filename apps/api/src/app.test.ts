@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { buildApp } from './app.js'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
@@ -82,5 +82,27 @@ describe('app', () => {
     const capturedId = await captureRequestId({ 'x-request-id': 'a'.repeat(65) })
 
     expect(capturedId).toMatch(UUID_PATTERN)
+  })
+})
+
+describe('the cookie secret guard', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('refuses to boot without COOKIE_SECRET in a deployed environment', () => {
+    vi.stubEnv('NODE_ENV', 'staging')
+    vi.stubEnv('APP_ENV', 'stag')
+    vi.stubEnv('COOKIE_SECRET', '')
+
+    expect(() => buildApp()).toThrow(/COOKIE_SECRET must be set in a deployed environment/)
+  })
+
+  it('falls back to the development secret outside one', () => {
+    vi.stubEnv('NODE_ENV', 'test')
+    vi.stubEnv('APP_ENV', '')
+    vi.stubEnv('COOKIE_SECRET', '')
+
+    expect(() => buildApp()).not.toThrow()
   })
 })

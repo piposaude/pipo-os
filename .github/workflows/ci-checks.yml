@@ -59,6 +59,11 @@ jobs:
       - name: Typecheck
         run: pnpm -r typecheck
 
+      # Contra o dist, que é o que a imagem roda: dentro do vitest o autoload
+      # pula arquivo de teste e toda devDependency resolve.
+      - name: Boot check
+        run: pnpm --filter pipo-os-backend boot:check
+
       - name: Check openapi.json and api-client drift
         run: |
           pnpm --filter pipo-os-backend openapi:export
