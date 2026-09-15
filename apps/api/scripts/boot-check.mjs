@@ -7,14 +7,15 @@ const from = process.argv[2] === 'src' ? '../src/app.ts' : '../dist/app.js'
 
 const { buildApp } = await import(from)
 
-// Before buildApp, as server.ts does: the Node instrumentation is order-bound.
-initSentryNode()
-
 const app = buildApp()
 
 try {
-  // Awaited, because server.ts exits 1 when this rejects. Ephemeral port, so a
-  // `pnpm dev` holding the metrics port cannot fail a boot production would not.
+  // The same order server.ts uses: the metrics hook is registered before ready.
+  initSentryNode()
+  // Awaited, because server.ts exits 1 when this rejects: swallowed, the check
+  // would print `boot ok` for a process that dies in production. On an ephemeral
+  // port, so a `pnpm dev` already holding the metrics port cannot fail it for a
+  // reason production would not have.
   await startMetricsServer(app, 0)
   await app.ready()
   console.log('boot ok')

@@ -17,10 +17,16 @@ import metricsPlugin from '@pipo-os/observability/metrics'
 import Fastify, { LogController, type FastifyInstance } from 'fastify'
 import { sql } from 'kysely'
 import { z } from 'zod'
+import {
+  assertServiceTokenIsLocalOnly,
+  listPipoUsers,
+} from './infrastructure/auth-service-users.js'
 import dbPlugin from './infrastructure/db.js'
 import errorHandlerPlugin from './infrastructure/error-handler.js'
 import authenticatePlugin from './modules/auth/authenticate.js'
 import authorizePlugin from './modules/auth/authorize.js'
+import { authServiceInternalUrl } from './modules/auth/config.js'
+import { UsersService } from './modules/users/service.js'
 import { isDeployedEnvironment } from './shared/environment.js'
 
 function corsOrigins(): string[] {
@@ -83,6 +89,18 @@ export function buildApp(): FastifyInstance {
   app.register(dbPlugin)
   app.register(errorHandlerPlugin)
 
+  assertServiceTokenIsLocalOnly()
+
+  // One user list for the whole app, decorated before the autoload so both the
+  // users module and the session route share a single snapshot.
+  app.decorate(
+    'users',
+    new UsersService(
+      () => listPipoUsers({ baseUrl: authServiceInternalUrl(), logger: app.log }),
+      app.log,
+    ),
+  )
+
   app.register(swagger, {
     openapi: {
       openapi: '3.1.0',
@@ -134,9 +152,11 @@ export function buildApp(): FastifyInstance {
   app.register(autoload, {
     dir: path.join(import.meta.dirname, 'modules'),
     dirNameRoutePrefix: false,
-    // Anchored to the extension: loose in the pattern, it would drop from the
-    // route tree any file with `.test.` in the middle of its name.
-    ignorePattern: /\.test(-helpers)?\.[cm]?[jt]s$/,
+    // The autoload root takes loose files, imported before it decides whether
+    // they are plugins: a test there brings the boot down. Anchored to the
+    // extension, so a fixture named for what it feeds is not dropped from the
+    // route tree — which no boot check would catch.
+    ignorePattern: /\.test\.[cm]?[jt]s$/,
   })
 
   return app
