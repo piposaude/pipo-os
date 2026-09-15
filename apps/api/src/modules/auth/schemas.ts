@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { emailSchema } from '../../shared/schemas.js'
 
 export const googleLoginQuerySchema = z.object({
   redirect: z.string().optional(),
@@ -12,7 +13,7 @@ export const googleCallbackQuerySchema = z.object({
 
 export const meResponseSchema = z
   .object({
-    email: z.email(),
+    email: emailSchema,
     policies: z.array(z.string()),
   })
   .meta({ id: 'AuthMe' })
