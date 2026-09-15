@@ -5,8 +5,6 @@ afterEach(() => {
   vi.unstubAllEnvs()
 })
 
-// One function answers for the three boot guards — the cookie secret, the
-// required addresses and the dev login — so a regression here disarms all three.
 describe('isDeployedEnvironment', () => {
   it.each([['stag'], ['prod'], [' PROD '], ['Stag']])(
     'reads a cluster APP_ENV typed as %s',

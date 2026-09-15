@@ -1,10 +1,8 @@
-// Boots outside the test runner, where the suite cannot look: inside vitest the
-// autoload skips test files, so a file that only breaks the boot passes green.
+// Keep this out of vitest: inside the runner the autoload skips test files, so
+// a boot broken by one of them passes green.
 import { startMetricsServer } from '@pipo-os/observability/metrics'
 import { initSentryNode } from '@pipo-os/observability/sentry-node'
 
-// `src` under tsx needs no build and reaches the same modules; `dist` is what
-// the image runs.
 const from = process.argv[2] === 'src' ? '../src/app.ts' : '../dist/app.js'
 
 const { buildApp } = await import(from)

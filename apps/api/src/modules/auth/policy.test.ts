@@ -98,7 +98,6 @@ describe('isAuthorized', () => {
     ).toBe(false)
   })
 
-  // A deny of one alternative refuses the request, not just that alternative.
   it('refuses a route of two alternatives when one of them is denied', () => {
     expect(
       isAuthorized(
