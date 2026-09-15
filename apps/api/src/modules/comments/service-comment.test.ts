@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildApp } from '../../app.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
+import { jsonResponse } from '../../shared/json.test-helpers.js'
 
 const SERVICE_NAME = 'enrollment-integrations-worker'
 const IDENTITY_ID = '3f1a6d6e-9c1e-4f0b-9d0e-2b7a1c5f8e42'
@@ -22,13 +23,6 @@ function serviceAccountToken(name: string): string {
     ),
     'not-a-signature',
   ].join('.')
-}
-
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  })
 }
 
 function cookieValue(

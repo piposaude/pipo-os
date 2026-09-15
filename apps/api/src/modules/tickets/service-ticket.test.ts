@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildApp } from '../../app.js'
+import { jsonResponse } from '../../shared/json.test-helpers.js'
 
 const SERVICE_ACCOUNT = 'cronjobs/enrollment-integrations-worker'
 const IDENTITY_ID = '3f1a6d6e-9c1e-4f0b-9d0e-2b7a1c5f8e42'
@@ -24,13 +25,6 @@ function serviceAccountToken(): string {
     ),
     'not-a-signature',
   ].join('.')
-}
-
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  })
 }
 
 // The EI's own path, against a real Postgres and with no session anywhere: open

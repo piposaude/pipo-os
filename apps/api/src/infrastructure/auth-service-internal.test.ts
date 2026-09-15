@@ -1,16 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { verifyToken } from './auth-service-internal.js'
+import { jsonResponse } from '../shared/json.test-helpers.js'
 
 const BASE_URL = 'http://auth-service.platform:4000'
 const TICKET_POLICY = 'admin/allow/administrate/pipodesk/ticket'
 const SERVICE_TOKEN = 'header.payload.signature'
-
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  })
-}
 
 describe('verifyToken', () => {
   const fetchMock = vi.fn()
