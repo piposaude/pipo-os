@@ -53,11 +53,6 @@ describe('dev login', () => {
     it('throws when enabled with NODE_ENV=production', () => {
       process.env.DEV_LOGIN_ENABLED = 'true'
       process.env.NODE_ENV = 'production'
-      // Otherwise the production-required-vars check (a separate guard) would
-      // throw first and this test would not exercise the dev-login refusal.
-      process.env.AUTH_SERVICE_URL = 'https://auth-service.piposaude.com.br'
-      process.env.GOOGLE_OAUTH_CLIENT_ID = 'test-client-id'
-      process.env.APP_BASE_URL = 'https://os.piposaude.com.br'
 
       expect(() => authConfig()).toThrow(/never be set in a deployed environment/)
     })
