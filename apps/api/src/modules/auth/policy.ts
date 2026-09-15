@@ -61,8 +61,8 @@ export function policyMatches(held: string, required: string): boolean {
 export function isAuthorized(policies: string[], required: PolicyRequirement[]): boolean {
   const wanted = required.map(policyString)
 
-  // A deny naming one of the required policies refuses the whole request, the
-  // way filter-authorized-policies does — exact string, no wildcard expansion.
+  // A deny naming ANY of the required policies refuses the whole request, even
+  // when another alternative is allowed — has-denied-policies? in token.clj.
   const denied = new Set(policies.filter((held) => effectOf(held) === 'deny').map(asAllow))
   if (wanted.some((policy) => denied.has(policy))) {
     return false

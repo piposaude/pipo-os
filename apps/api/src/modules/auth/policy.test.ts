@@ -98,6 +98,20 @@ describe('isAuthorized', () => {
     ).toBe(false)
   })
 
+  // GET /api/users accepts either policy, and the house reads a deny of one of
+  // them as a refusal of the request — not of that alternative alone.
+  it('refuses a route of two alternatives when one of them is denied', () => {
+    expect(
+      isAuthorized(
+        ['admin/allow/administrate/pipodesk/structure', 'admin/deny/administrate/pipodesk/ticket'],
+        [
+          { domain: 'pipodesk', specific: 'ticket' },
+          { domain: 'pipodesk', specific: 'structure' },
+        ],
+      ),
+    ).toBe(false)
+  })
+
   it('leaves a deny of another policy alone', () => {
     expect(
       isAuthorized(
