@@ -152,11 +152,9 @@ export function buildApp(): FastifyInstance {
   app.register(autoload, {
     dir: path.join(import.meta.dirname, 'modules'),
     dirNameRoutePrefix: false,
-    // The autoload root takes loose files, imported before it decides whether
-    // they are plugins: a test there brings the boot down. Anchored to the
-    // extension, so a fixture named for what it feeds is not dropped from the
-    // route tree — which no boot check would catch.
-    ignorePattern: /\.test\.[cm]?[jt]s$/,
+    // Autoload imports a loose file before deciding it is not a plugin, so a
+    // test or fixture here would pull vitest into the production boot.
+    ignorePattern: /\.test(-helpers)?\.[cm]?[jt]s$/,
   })
 
   return app
