@@ -11,9 +11,8 @@ export function registerUserRoutes(app: FastifyInstance, service: UsersService):
   server.get(
     '/api/users',
     {
-      // Either policy opens it: the queue names the owner of every row and
-      // carries only the ticket one, so demanding `structure` would empty it.
-      // A deny of either one still closes the route — see isAuthorized.
+      // Either policy opens it, and a deny of either still closes it: the queue
+      // names the owner of every row carrying only the ticket policy.
       config: { policy: [TICKET_POLICY, STRUCTURE_POLICY] },
       schema: {
         querystring: listUsersQuerySchema,

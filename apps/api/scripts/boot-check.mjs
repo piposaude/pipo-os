@@ -12,10 +12,8 @@ const app = buildApp()
 try {
   // The same order server.ts uses: the metrics hook is registered before ready.
   initSentryNode()
-  // Awaited, because server.ts exits 1 when this rejects: swallowed, the check
-  // would print `boot ok` for a process that dies in production. On an ephemeral
-  // port, so a `pnpm dev` already holding the metrics port cannot fail it for a
-  // reason production would not have.
+  // Awaited: server.ts exits 1 when this rejects. Port 0, so a `pnpm dev`
+  // holding the metrics port cannot fail a check production would pass.
   await startMetricsServer(app, 0)
   await app.ready()
   console.log('boot ok')
