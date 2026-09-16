@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import type { FastifyBaseLogger } from 'fastify'
 import { ServiceUnavailableError } from '../shared/errors.js'
-import { appEnv, isDeployedEnvironment } from '../shared/environment.js'
+import { assertNotSetInDeployed } from '../shared/environment.js'
 import { isEmail } from '../shared/schemas.js'
 
 /** A person as the Pipodesk needs them: the e-mail is the join key, because it
@@ -56,12 +56,7 @@ export function assertServiceTokenIsLocalOnly(): void {
     return
   }
 
-  if (isDeployedEnvironment()) {
-    throw new Error(
-      'SERVICE_ACCOUNT_TOKEN must never be set in a deployed environment ' +
-        `(NODE_ENV=${process.env.NODE_ENV}, APP_ENV=${appEnv() || '<unset>'})`,
-    )
-  }
+  assertNotSetInDeployed('SERVICE_ACCOUNT_TOKEN')
 }
 
 // Read on every call, never cached: the kubelet rotates the projected token, so
