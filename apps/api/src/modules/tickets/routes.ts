@@ -19,12 +19,6 @@ import {
 } from './schemas.js'
 import type { TicketsService } from './service.js'
 
-/** The body here is still whatever the caller sent: the hook runs before
- *  validation, so nothing may read it as the validated shape. */
-function foldRawBody(request: { body: unknown }): void {
-  request.body = foldEnrollmentWords(request.body)
-}
-
 export function registerTicketRoutes(app: FastifyInstance, service: TicketsService): void {
   const server = app.withTypeProvider<ZodTypeProvider>()
 
@@ -101,8 +95,9 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
       config: { policy: TICKET_POLICY, serviceAllowed: true },
       // Before validation, so the enum below stays the published vocabulary
       // while a word the EI forwards in another case still opens the ticket.
-      preValidation: (request, _reply, done) => {
-        foldRawBody(request)
+      // `body` is loose on purpose: nothing has validated it yet.
+      preValidation: (request: { body: unknown }, _reply, done) => {
+        request.body = foldEnrollmentWords(request.body)
         done()
       },
       schema: {
