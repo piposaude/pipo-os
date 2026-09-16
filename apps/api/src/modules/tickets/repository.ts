@@ -10,7 +10,7 @@ import { toClient } from './vocabulary.js'
 import {
   CLOSED_STATUSES,
   relationshipSchema,
-  type CreateTicketBody,
+  type CreateTicketData,
   type ListTicketsQuery,
   type Ticket,
   type TicketStatus,
@@ -84,7 +84,7 @@ function toTicket(row: Selectable<Tickets>): Ticket {
 
 export interface TicketsRepositoryPort {
   findById(id: string): Promise<Ticket | undefined>
-  create(data: CreateTicketBody): Promise<Ticket>
+  create(data: CreateTicketData): Promise<Ticket>
   update(id: string, data: UpdateTicketBody): Promise<Ticket | undefined>
   claimOpen(id: string, assigneeId: string): Promise<Ticket | undefined>
   changeStatus(
@@ -258,7 +258,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
     return { data, total: rows.length > 0 ? Number(rows[0].total_count) : 0 }
   }
 
-  async create(data: CreateTicketBody): Promise<Ticket> {
+  async create(data: CreateTicketData): Promise<Ticket> {
     // The body wins; the snapshot fills what the EI does not send yet (PD-207).
     const derived = movementFieldsOf(data.enrollmentSnapshot)
 

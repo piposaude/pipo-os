@@ -1,3 +1,5 @@
+import { CANONICAL_ENROLLMENT_TYPES } from './enrollment-type.js'
+
 const own = (map: Record<string, string>, key: string): boolean =>
   Object.prototype.hasOwnProperty.call(map, key)
 
@@ -40,9 +42,16 @@ const insuranceSuffix: Vocabulary = {
     clientValue.endsWith('-insurance') ? [] : [clientValue, `${clientValue}-insurance`],
 }
 
+/** Identity, not a de-para: the service translates on write, so the column
+ *  already holds the client word. */
+const canonicalWords: Vocabulary = fromTable(
+  Object.fromEntries(CANONICAL_ENROLLMENT_TYPES.map((word) => [word, word])),
+)
+
 export const VOCABULARIES = {
   companySize: fromTable({ smb: 'pme', 'smb-plus': 'pme-plus', corporate: 'enterprise' }),
   contractType: fromTable({ 'brazil-labor-law': 'clt', 'services-contract': 'pj' }),
+  enrollmentType: canonicalWords,
   product: insuranceSuffix,
 } as const
 

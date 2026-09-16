@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { QueueRow } from '@/components/pipodesk/queue/QueueRow'
+import { ENROLLMENT_TYPE_COPY } from '@/constants/pipodesk/domain'
 import { queueSeed } from '@/fixtures/pipodesk/dataset'
 
 const columns = [
@@ -55,5 +56,27 @@ describe('QueueRow', () => {
     renderRow({ ...queueSeed[0], actionDate: '2026-08-01' }, withPrazo)
 
     expect(screen.getByText('6d')).toBeInTheDocument()
+  })
+
+  it('should label a combined change and give it the tone of a plan change', () => {
+    const withClassification = [
+      ...columns,
+      { key: 'classification', label: 'Classificação', width: '120px' },
+    ]
+    renderRow(
+      { ...queueSeed[0], id: 'combined', enrollmentType: 'combined_change' },
+      withClassification,
+    )
+    renderRow({ ...queueSeed[0], id: 'plan', enrollmentType: 'plan_change' }, withClassification)
+    renderRow({ ...queueSeed[0], id: 'inclusion', enrollmentType: 'inclusion' }, withClassification)
+
+    // The variant reaches the DOM as the Status class, so comparing the chips
+    // proves the row applies it, not just that the map agrees with itself.
+    const chip = (label: string) => screen.getByText(label).className
+
+    const combined = chip(ENROLLMENT_TYPE_COPY.combined_change)
+
+    expect(combined).toBe(chip(ENROLLMENT_TYPE_COPY.plan_change))
+    expect(combined).not.toBe(chip(ENROLLMENT_TYPE_COPY.inclusion))
   })
 })

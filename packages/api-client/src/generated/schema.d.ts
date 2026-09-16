@@ -1210,6 +1210,7 @@ export interface paths {
                     enrollmentId?: string;
                     queueId?: string;
                     assigneeId?: string;
+                    /** @description Compara a palavra exatamente; o vocabulário gravado é minúsculo */
                     enrollmentType?: string;
                     sourceSystem?: string;
                     companyId?: string;
@@ -1371,6 +1372,7 @@ export interface paths {
                     companyIds?: string[];
                     carrierIds?: string[];
                     products?: string[];
+                    /** @description Compara a palavra exatamente; o vocabulário gravado é minúsculo */
                     types?: string[];
                     companySizes?: string[];
                     contractTypes?: (string | null)[];
@@ -2041,7 +2043,16 @@ export interface components {
         CreateTicketBodyInput: {
             /** Format: uuid */
             enrollmentId: string;
-            enrollmentType: string;
+            /**
+             * @description Lido sem distinção de caixa; a forma publicada e gravada é a minúscula
+             * @enum {string}
+             */
+            enrollmentType: "inclusion" | "exclusion" | "plan_change" | "registration_data_change" | "combined_change" | "alteration";
+            /**
+             * @description Lido sem distinção de caixa; a forma publicada é a minúscula
+             * @enum {string}
+             */
+            alterationType?: "plan" | "registration" | "registration-data" | "combined";
             /** Format: uuid */
             companyId: string;
             sourceSystem: string;
@@ -2237,6 +2248,7 @@ export interface components {
             companyIds?: string[];
             carrierIds?: string[];
             products?: string[];
+            /** @description Compara a palavra exatamente; o vocabulário gravado é minúsculo */
             types?: string[];
             companySizes?: string[];
             contractTypes?: (string | null)[];
@@ -2260,6 +2272,7 @@ export interface components {
             companyIds?: string[];
             carrierIds?: string[];
             products?: string[];
+            /** @description Compara a palavra exatamente; o vocabulário gravado é minúsculo */
             types?: string[];
             companySizes?: string[];
             contractTypes?: (string | null)[];

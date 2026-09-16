@@ -6,6 +6,7 @@ import { errorResponseSchema } from '../../shared/schemas.js'
 import { TICKET_POLICY } from '../auth/policy.js'
 import { ticketRowsQuerySchema, ticketRowsSchema } from './rows-schema.js'
 import { OpenTicketConflictError } from './errors.js'
+import { foldEnrollmentWords } from './enrollment-type.js'
 import {
   createTicketBodySchema,
   listTicketsQuerySchema,
@@ -92,6 +93,13 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
     '/api/tickets',
     {
       config: { policy: TICKET_POLICY, serviceAllowed: true },
+      // Before validation, so the enum below stays the published vocabulary
+      // while a word the EI forwards in another case still opens the ticket.
+      // `body` is loose on purpose: nothing has validated it yet.
+      preValidation: (request: { body: unknown }, _reply, done) => {
+        request.body = foldEnrollmentWords(request.body)
+        done()
+      },
       schema: {
         body: createTicketBodySchema,
         response: {

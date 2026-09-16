@@ -136,7 +136,26 @@
             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
           },
           "enrollmentType": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "inclusion",
+              "exclusion",
+              "plan_change",
+              "registration_data_change",
+              "combined_change",
+              "alteration"
+            ],
+            "description": "Lido sem distinção de caixa; a forma publicada e gravada é a minúscula"
+          },
+          "alterationType": {
+            "type": "string",
+            "enum": [
+              "plan",
+              "registration",
+              "registration-data",
+              "combined"
+            ],
+            "description": "Lido sem distinção de caixa; a forma publicada é a minúscula"
           },
           "companyId": {
             "type": "string",
@@ -1112,7 +1131,8 @@
             "items": {
               "type": "string",
               "minLength": 1
-            }
+            },
+            "description": "Compara a palavra exatamente; o vocabulário gravado é minúsculo"
           },
           "companySizes": {
             "minItems": 1,
@@ -1264,7 +1284,8 @@
             "items": {
               "type": "string",
               "minLength": 1
-            }
+            },
+            "description": "Compara a palavra exatamente; o vocabulário gravado é minúsculo"
           },
           "companySizes": {
             "minItems": 1,
@@ -3366,7 +3387,8 @@
             },
             "in": "query",
             "name": "enrollmentType",
-            "required": false
+            "required": false,
+            "description": "Compara a palavra exatamente; o vocabulário gravado é minúsculo"
           },
           {
             "schema": {
@@ -3633,7 +3655,8 @@
             },
             "in": "query",
             "name": "types",
-            "required": false
+            "required": false,
+            "description": "Compara a palavra exatamente; o vocabulário gravado é minúsculo"
           },
           {
             "schema": {

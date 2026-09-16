@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { movementFieldsOf, relationshipOf } from './enrollment-snapshot.js'
+import { alterationTypeOf, movementFieldsOf, relationshipOf } from './enrollment-snapshot.js'
 
 describe('relationshipOf', () => {
   it('is dependent when the moved member is the dependent', () => {
@@ -121,5 +121,27 @@ describe('movementFieldsOf', () => {
 
   it('does not walk into a segment that is not an object', () => {
     expect(movementFieldsOf({ carrier: 'unimed' }).carrierId).toBeNull()
+  })
+})
+
+describe('alterationTypeOf', () => {
+  it('reads alteration_type in any of the three spellings', () => {
+    expect(alterationTypeOf({ alteration_type: 'plan' })).toBe('plan')
+    expect(alterationTypeOf({ 'alteration-type': 'registration' })).toBe('registration')
+    expect(alterationTypeOf({ alterationType: 'combined' })).toBe('combined')
+  })
+
+  it('is null when the snapshot does not say, or says it blank', () => {
+    expect(alterationTypeOf({ request_type: 'alteration' })).toBeNull()
+    expect(alterationTypeOf({ alteration_type: '  ' })).toBeNull()
+    expect(alterationTypeOf('not a snapshot')).toBeNull()
+  })
+
+  it('hands a value that is not a word over as it is, for the caller to refuse', () => {
+    expect(alterationTypeOf({ alteration_type: 1 })).toBe(1)
+  })
+
+  it('returns the word raw, known or not', () => {
+    expect(alterationTypeOf({ alteration_type: 'cnpj' })).toBe('cnpj')
   })
 })

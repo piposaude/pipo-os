@@ -360,6 +360,112 @@ describe('tickets routes', () => {
       },
     )
 
+    describe('o tipo da movimentação, traduzido na entrada', () => {
+      const post = (overrides: Record<string, unknown>) =>
+        app.inject({
+          method: 'POST',
+          url: '/api/tickets',
+          payload: { ...validTicketBody, ...overrides },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+
+      it.each([
+        ['plan', 'plan_change'],
+        ['registration', 'registration_data_change'],
+        ['registration-data', 'registration_data_change'],
+        ['combined', 'combined_change'],
+      ])('grava alteration + %s como %s', async (alterationType, expected) => {
+        const response = await post({ enrollmentType: 'alteration', alterationType })
+
+        expect(response.statusCode).toBe(201)
+        expect(response.json().enrollmentType).toBe(expected)
+      })
+
+      it('lê o alteration_type do snapshot quando o corpo não o traz', async () => {
+        const response = await post({
+          enrollmentType: 'alteration',
+          enrollmentSnapshot: { request_type: 'alteration', alteration_type: 'plan' },
+        })
+
+        expect(response.statusCode).toBe(201)
+        expect(response.json().enrollmentType).toBe('plan_change')
+      })
+
+      it('o corpo vence o snapshot', async () => {
+        const response = await post({
+          enrollmentType: 'alteration',
+          alterationType: 'combined',
+          enrollmentSnapshot: { alteration_type: 'plan' },
+        })
+
+        expect(response.json().enrollmentType).toBe('combined_change')
+      })
+
+      it('aceita o tipo em qualquer caixa, vindo do corpo', async () => {
+        const response = await post({ enrollmentType: 'Alteration', alterationType: 'Plan' })
+
+        expect(response.statusCode).toBe(201)
+        expect(response.json().enrollmentType).toBe('plan_change')
+      })
+
+      it('aceita o alteration_type em qualquer caixa, vindo do snapshot', async () => {
+        const response = await post({
+          enrollmentType: 'alteration',
+          enrollmentSnapshot: { alteration_type: 'COMBINED' },
+        })
+
+        expect(response.statusCode).toBe(201)
+        expect(response.json().enrollmentType).toBe('combined_change')
+      })
+
+      it('uma palavra já canônica passa reta, ignorando o alterationType', async () => {
+        const response = await post({ enrollmentType: 'exclusion', alterationType: 'plan' })
+
+        expect(response.statusCode).toBe(201)
+        expect(response.json().enrollmentType).toBe('exclusion')
+      })
+
+      it.each([
+        ['sem pista nenhuma', { name: 'Test User' }, 'required'],
+        ['com uma palavra que o EI não emite no snapshot', { alteration_type: 'cnpj' }, 'invalid'],
+        ['com um alteration_type que nem palavra é', { alteration_type: 42 }, 'invalid'],
+      ])('responde 422 %s, nomeando o alterationType', async (_case, enrollmentSnapshot, code) => {
+        const response = await post({ enrollmentType: 'alteration', enrollmentSnapshot })
+
+        expect(response.statusCode).toBe(422)
+        expect(response.json().error).toBe('ValidationFailedError')
+        expect(response.json().details[0]).toMatchObject({ field: 'alterationType', code })
+      })
+
+      it.each([
+        ['enrollmentType', 'cancellation'],
+        ['alterationType', 'cnpj'],
+      ])('responde 400 para %s fora do vocabulário', async (field, word) => {
+        const response = await post({ enrollmentType: 'alteration', [field]: word })
+
+        expect(response.statusCode).toBe(400)
+      })
+
+      it('o filtro Tipo acha o chamado que o EI abriu como alteration', async () => {
+        await post({ enrollmentType: 'alteration', alterationType: 'plan' })
+
+        const list = await app.inject({
+          method: 'GET',
+          url: '/api/tickets?enrollmentType=plan_change',
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        expect(list.json().total).toBe(1)
+
+        const rows = await app.inject({
+          method: 'GET',
+          url: '/api/tickets/rows?types=plan_change',
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        expect(rows.json().total).toBe(1)
+        expect(rows.json().data[0].enrollmentType).toBe('plan_change')
+      })
+    })
+
     it('returns 400 for missing required fields', async () => {
       const response = await app.inject({
         method: 'POST',

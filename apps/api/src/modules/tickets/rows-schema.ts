@@ -22,7 +22,9 @@ export const ticketRowsQuerySchema = z.object({
   companyIds: list(z.uuid()).optional(),
   carrierIds: list(text).optional(),
   products: list(text).optional(),
-  types: list(text).optional(),
+  types: list(text)
+    .describe('Compara a palavra exatamente; o vocabulário gravado é minúsculo')
+    .optional(),
   companySizes: list(text).optional(),
   contractTypes: list(text.nullable()).optional(),
   relationships: list(relationshipSchema).optional(),
@@ -107,7 +109,8 @@ export const ROW_FIELD_PII = {
   displayNumber: 'ticket number, not a person',
   title: true,
   enrollmentId: 'internal uuid',
-  enrollmentType: 'inclusion | exclusion | plan_change',
+  enrollmentType:
+    'inclusion | exclusion | plan_change | registration_data_change | combined_change',
   status: 'closed vocabulary',
   priority: 'closed vocabulary',
   actionDate: 'date of the work, not of the person',

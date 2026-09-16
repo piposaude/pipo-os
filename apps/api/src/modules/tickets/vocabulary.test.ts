@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { CANONICAL_ENROLLMENT_TYPES } from './enrollment-type.js'
 import { INSURANCE_SUFFIX, VOCABULARIES, toClient, toStored } from './vocabulary.js'
 
 describe('toClient', () => {
@@ -106,4 +107,13 @@ describe('INSURANCE_SUFFIX', () => {
       expect(stored.replace(new RegExp(INSURANCE_SUFFIX), '')).toBe(toClient('product', stored))
     },
   )
+})
+
+/** Identity today, and the row mappers and the `types` filter read the column
+ *  literally: the day this stops being identity, they have to translate. */
+describe('the enrollmentType vocabulary', () => {
+  it.each(CANONICAL_ENROLLMENT_TYPES)('leaves %s exactly as the column holds it', (word) => {
+    expect(toClient('enrollmentType', word)).toBe(word)
+    expect(toStored('enrollmentType', word)).toEqual([word])
+  })
 })

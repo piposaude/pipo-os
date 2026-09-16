@@ -17,7 +17,20 @@ export const ENROLLMENT_TYPE_COPY: Record<string, string> = {
   exclusion: 'Exclusão',
   plan_change: 'Alteração',
   registration_data_change: 'Alteração cadastral',
+  combined_change: 'Alteração combinada',
 }
+
+/** O tom do chip de classificação: uma palavra nova sem entrada aqui cai em
+ *  `neutral`. */
+export const ENROLLMENT_TYPE_VARIANT: Record<string, 'neutral' | 'warning' | 'alert' | 'success'> =
+  {
+    inclusion: 'success',
+    exclusion: 'alert',
+    plan_change: 'warning',
+    registration_data_change: 'neutral',
+    // Carrega uma troca de plano, então lê com o mesmo tom.
+    combined_change: 'warning',
+  }
 
 export const COMPANY_SIZE_COPY: Record<string, string> = {
   pme: 'PME',

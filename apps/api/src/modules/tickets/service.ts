@@ -1,4 +1,10 @@
-import { NotFoundError, UnprocessableEntityError } from '../../shared/errors.js'
+import {
+  NotFoundError,
+  UnprocessableEntityError,
+  ValidationFailedError,
+} from '../../shared/errors.js'
+import { alterationTypeOf } from './enrollment-snapshot.js'
+import { canonicalEnrollmentType, parseAlterationType } from './enrollment-type.js'
 import type { TicketRowsQuery } from './rows-schema.js'
 import type { TicketsRepositoryPort } from './repository.js'
 import {
@@ -24,8 +30,31 @@ export class TicketsService {
     return ticket
   }
 
-  create(data: CreateTicketBody): Promise<Ticket> {
-    return this.repository.create(data)
+  async create(body: CreateTicketBody): Promise<Ticket> {
+    const { alterationType, ...data } = body
+    // The body wins; the snapshot fills what the EI does not send yet, as for
+    // the movement columns (PD-207).
+    const written = alterationType ?? alterationTypeOf(data.enrollmentSnapshot)
+    const enrollmentType = canonicalEnrollmentType(
+      data.enrollmentType,
+      parseAlterationType(written),
+    )
+    if (enrollmentType === null) {
+      // A word we do not know is a different refusal from no word at all, and
+      // the caller fixes each one differently.
+      const [code, message] =
+        written !== null
+          ? ([
+              'invalid',
+              'alteration_type in the snapshot is not a word this API knows: send alterationType in the body instead',
+            ] as const)
+          : ([
+              'required',
+              'alterationType is required when enrollmentType is alteration: in the body, or as alteration_type in the snapshot',
+            ] as const)
+      throw new ValidationFailedError(message, [{ field: 'alterationType', message, code }])
+    }
+    return this.repository.create({ ...data, enrollmentType })
   }
 
   async update(id: string, data: UpdateTicketBody): Promise<Ticket> {

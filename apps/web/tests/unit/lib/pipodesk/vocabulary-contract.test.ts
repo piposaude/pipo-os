@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { ENROLLMENT_TYPE_VARIANT } from '@/constants/pipodesk/domain'
 import { optionLabel, type LabelContext } from '@/lib/pipodesk/filter-copy'
 import type { FilterField } from '@/lib/pipodesk/filter'
 
@@ -18,6 +19,7 @@ const { clientWords } = JSON.parse(readFileSync(WORDS_PATH, 'utf-8')) as {
 const FIELD_OF: Record<string, FilterField> = {
   companySize: 'companySizes',
   contractType: 'contractTypes',
+  enrollmentType: 'types',
 }
 
 const ctx: LabelContext = {
@@ -36,4 +38,11 @@ describe('the client vocabulary the API sends', () => {
   )('should give %s value "%s" a label of its own', (name, word) => {
     expect(optionLabel(FIELD_OF[name], word, ctx)).not.toBe(word)
   })
+
+  it.each(clientWords.enrollmentType)(
+    'should give enrollment type "%s" a chip tone of its own',
+    (word) => {
+      expect(ENROLLMENT_TYPE_VARIANT).toHaveProperty(word)
+    },
+  )
 })
