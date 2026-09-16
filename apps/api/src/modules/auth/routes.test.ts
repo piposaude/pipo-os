@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildApp } from '../../app.js'
 import { SESSION_COOKIE_NAME } from './session.js'
+import { jsonResponse } from '../../shared/json.test-helpers.js'
 
 const { privateKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' })
 
@@ -27,13 +28,6 @@ function buildAccessToken(overrides: Partial<Record<string, unknown>> = {}): str
     exp: now + 28800,
     policies: ['admin/allow/administrate/pipodesk/ticket'],
     ...overrides,
-  })
-}
-
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
   })
 }
 

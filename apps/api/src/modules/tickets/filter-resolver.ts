@@ -1,6 +1,7 @@
 import { sql, type Expression, type ExpressionBuilder, type RawBuilder, type SqlBool } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import { startOfBusinessDay } from '../../shared/business-date.js'
+import { foldText } from '../../shared/text.js'
 import { snapshotString } from './enrollment-snapshot.js'
 import type { TicketFilter } from './filter-schema.js'
 import { INSURANCE_SUFFIX, toStored, type VocabularyName } from './vocabulary.js'
@@ -51,15 +52,9 @@ const SUBJECT = sql`coalesce(
   id::text
 )`
 
-/** Twin of `normalizeText` in web/src/lib/pipodesk/filter.ts: decompose, drop
- *  the combining marks, lower. Change one, change both. */
+/** The SQL half of `foldText` in shared/text.ts, which the needle below uses:
+ *  decompose, drop the combining marks, lower. Change one, change both. */
 const FOLDED_SUBJECT = sql`lower(regexp_replace(normalize(${SUBJECT}, NFD), '[\\u0300-\\u036f]', '', 'g'))`
-
-const foldQuery = (text: string): string =>
-  text
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
 
 /** The columns that hold the EI's word, each with the vocabulary that reads it. */
 const VOCABULARY_OF = {
@@ -122,7 +117,7 @@ export const FIELD_RESOLVERS: Record<keyof TicketFilter, Resolver> = {
   priorities: (eb, { priorities }) =>
     priorities?.length ? inOrNull(eb, 'priority', priorities) : null,
   subjectQuery: (_eb, { subjectQuery }) => {
-    const needle = foldQuery(subjectQuery ?? '')
+    const needle = foldText(subjectQuery ?? '')
     // `strpos(x, '')` is 1, so an empty needle would widen the filter, not cut it.
     return needle === '' ? null : sql<SqlBool>`strpos(${FOLDED_SUBJECT}, ${needle}) > 0`
   },

@@ -49,12 +49,32 @@ function pruneUnusedSchemas(spec: { components?: { schemas?: Record<string, unkn
   }
 }
 
+// Not localeCompare: the CI drift check re-exports this file on another machine,
+// where the locale can order the keys differently.
+const byName = ([a]: [string, unknown], [b]: [string, unknown]): number =>
+  a < b ? -1 : a > b ? 1 : 0
+
+function sortForDiff(spec: {
+  paths?: Record<string, unknown>
+  components?: { schemas?: Record<string, unknown> }
+}): void {
+  if (spec.paths) {
+    spec.paths = Object.fromEntries(Object.entries(spec.paths).sort(byName))
+  }
+
+  const { components } = spec
+  if (components?.schemas) {
+    components.schemas = Object.fromEntries(Object.entries(components.schemas).sort(byName))
+  }
+}
+
 async function main(): Promise<void> {
   const app = buildApp()
   await app.ready()
 
   const spec = app.swagger()
   pruneUnusedSchemas(spec)
+  sortForDiff(spec)
 
   const outFile = path.join(import.meta.dirname, '../../../openapi.json')
 

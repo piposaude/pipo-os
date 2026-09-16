@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "DEV_LOGIN_ENABLED=true tsx --watch --env-file-if-exists=.env src/server.ts",
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run --passWithNoTests",
@@ -13,6 +13,7 @@
     "db:migrate": "kysely migrate:latest",
     "db:rollback": "kysely migrate:down",
     "openapi:export": "tsx scripts/export-openapi.ts",
+    "boot:check": "node scripts/boot-check.mjs",
     "db:codegen": "kysely-codegen --out-file src/infrastructure/db-types.ts --url \"${DATABASE_URL:-postgresql://pipo_os:pipo_os@localhost:5432/pipo_os}\""
   },
   "dependencies": {

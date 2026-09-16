@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildApp } from '../../app.js'
 import { requirePrincipal, requireUser } from './authenticate.js'
+import { jsonResponse } from '../../shared/json.test-helpers.js'
 
 const TICKET = { domain: 'pipodesk', specific: 'ticket' }
 const TICKET_POLICY = 'admin/allow/administrate/pipodesk/ticket'
@@ -32,13 +33,6 @@ function serviceAccountToken(
     }),
   )
   return `${header}.${payload}.not-a-signature`
-}
-
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  })
 }
 
 describe('a service calling the API', () => {

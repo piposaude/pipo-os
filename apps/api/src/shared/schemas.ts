@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import type { ErrorDetail } from './errors.js'
 
+export const emailSchema = z.email()
+
 export const errorDetailSchema = z
   .object({
     field: z.string(),

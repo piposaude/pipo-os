@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { errorResponseSchema } from '../../shared/schemas.js'
+import { emailSchema, errorResponseSchema } from '../../shared/schemas.js'
 
 export const ticketStatusSchema = z
   .enum([
@@ -29,7 +29,7 @@ export const ticketPrioritySchema = z
 
 export const ticketPersonSchema = z
   .object({
-    email: z.email(),
+    email: emailSchema,
     name: z.string().min(1).optional(),
     phone: z.string().min(1).optional(),
     preferredChannel: z.enum(['platform', 'email']).optional(),

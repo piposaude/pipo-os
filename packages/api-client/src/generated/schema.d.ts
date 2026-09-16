@@ -76,50 +76,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Default Response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["AuthMe"];
-                    };
-                };
-                /** @description Default Response */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/auth/logout": {
         parameters: {
             query?: never;
@@ -153,7 +109,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tickets/{id}/comments": {
+    "/api/auth/me": {
         parameters: {
             query?: never;
             header?: never;
@@ -164,9 +120,7 @@ export interface paths {
             parameters: {
                 query?: never;
                 header?: never;
-                path: {
-                    id: string;
-                };
+                path?: never;
                 cookie?: never;
             };
             requestBody?: never;
@@ -177,194 +131,11 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["CommentList"];
-                    };
-                };
-                /** @description Default Response */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": components["schemas"]["AuthMe"];
                     };
                 };
                 /** @description Default Response */
                 401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description Default Response */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description Default Response */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["CreateCommentBodyInput"];
-                };
-            };
-            responses: {
-                /** @description Default Response */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["TicketComment"];
-                    };
-                };
-                /** @description Default Response */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description Default Response */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description Default Response */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description Default Response */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description Default Response */
-                413: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description Default Response */
-                415: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/tickets/{id}/timeline": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: {
-                    limit?: number;
-                    cursor?: string;
-                    visibility?: "public";
-                };
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Default Response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Timeline"];
-                    };
-                };
-                /** @description Default Response */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description Default Response */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description Default Response */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description Default Response */
-                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1821,6 +1592,240 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/tickets/{id}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Ticket"];
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tickets/{id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CommentList"];
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateCommentBodyInput"];
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TicketComment"];
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tickets/{id}/status": {
         parameters: {
             query?: never;
@@ -1925,18 +1930,20 @@ export interface paths {
         };
         trace?: never;
     };
-    "/api/tickets/{id}/claim": {
+    "/api/tickets/{id}/timeline": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
-        post: {
+        get: {
             parameters: {
-                query?: never;
+                query?: {
+                    limit?: number;
+                    cursor?: string;
+                    visibility?: "public";
+                };
                 header?: never;
                 path: {
                     id: string;
@@ -1951,7 +1958,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Ticket"];
+                        "application/json": components["schemas"]["Timeline"];
                     };
                 };
                 /** @description Default Response */
@@ -1990,17 +1997,10 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description Default Response */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
             };
         };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2011,12 +2011,33 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** @enum {string} */
-        TicketStatusInput: "broker-processing" | "carrier-processing" | "broker-open-issue" | "missing-documents" | "incorrect-data" | "completed" | "cancelled" | "submitted-cancellation";
-        /** @enum {string} */
-        RelationshipInput: "holder" | "dependent" | "family-group";
-        /** @enum {string} */
-        TicketPriorityInput: "urgent" | "high" | "medium" | "low";
+        AddGroupMemberBodyInput: {
+            /** @description Trimmed before validation: whitespace only is rejected. */
+            userId: string;
+            role?: components["schemas"]["GroupMemberRoleInput"];
+        };
+        AuthMe: {
+            /** Format: email */
+            email: string;
+            policies: string[];
+        };
+        CommentList: {
+            data: components["schemas"]["TicketComment"][];
+        };
+        CreateCommentBodyInput: {
+            /** @enum {string} */
+            visibility: "public" | "private";
+            body: string;
+        };
+        CreateGroupBodyInput: {
+            /** @description Trimmed before validation: whitespace only is rejected. */
+            name: string;
+            parentId?: string | null;
+        };
+        CreateQueueBodyInput: {
+            name: string;
+            filters?: components["schemas"]["TicketFilterInput"];
+        };
         CreateTicketBodyInput: {
             /** Format: uuid */
             enrollmentId: string;
@@ -2062,74 +2083,6 @@ export interface components {
             /** Format: uuid */
             parentTicketId?: string;
         };
-        UpdateTicketBodyInput: {
-            queueId?: string | null;
-            assigneeId?: string | null;
-            tags?: string[];
-            forceCompletion?: boolean;
-            parentTicketId?: string | null;
-        };
-        UpdateTicketStatusBodyInput: {
-            status: components["schemas"]["TicketStatusInput"];
-            reason?: string;
-        };
-        CreateCommentBodyInput: {
-            /** @enum {string} */
-            visibility: "public" | "private";
-            body: string;
-        };
-        /** @enum {string} */
-        GroupMemberRoleInput: "admin" | "member";
-        CreateGroupBodyInput: {
-            /** @description Trimmed before validation: whitespace only is rejected. */
-            name: string;
-            parentId?: string | null;
-        };
-        UpdateGroupBodyInput: {
-            /** @description Trimmed before validation: whitespace only is rejected. */
-            name?: string;
-            parentId?: string | null;
-        };
-        AddGroupMemberBodyInput: {
-            /** @description Trimmed before validation: whitespace only is rejected. */
-            userId: string;
-            role?: components["schemas"]["GroupMemberRoleInput"];
-        };
-        UpdateGroupMemberBodyInput: {
-            active?: boolean;
-            role?: components["schemas"]["GroupMemberRoleInput"];
-        };
-        TicketFilterInput: {
-            statuses?: components["schemas"]["TicketStatusInput"][];
-            companyIds?: string[];
-            carrierIds?: string[];
-            products?: string[];
-            types?: string[];
-            companySizes?: string[];
-            contractTypes?: (string | null)[];
-            relationships?: components["schemas"]["RelationshipInput"][];
-            origins?: string[];
-            groupIds?: string[];
-            tags?: string[];
-            assigneeIds?: (string | null)[];
-            priorities?: (components["schemas"]["TicketPriorityInput"] | null)[];
-            subjectQuery?: string;
-            /** Format: date */
-            actionDateBefore?: string;
-            /** Format: date */
-            urgentBy?: string;
-            /** Format: date */
-            createdSince?: string;
-            archived?: boolean;
-        };
-        CreateQueueBodyInput: {
-            name: string;
-            filters?: components["schemas"]["TicketFilterInput"];
-        };
-        UpdateQueueBodyInput: {
-            name?: string;
-            filters?: components["schemas"]["TicketFilterInput"];
-        };
         ErrorDetail: {
             field: string;
             message: string;
@@ -2140,25 +2093,87 @@ export interface components {
             message: string;
             details?: components["schemas"]["ErrorDetail"][];
         };
-        AuthMe: {
-            /** Format: email */
-            email: string;
-            policies: string[];
+        /** @description The group by itself: POST and PATCH answer with this shape. Only GroupDetail, from the two read routes, carries companyIds and members. */
+        Group: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            parentId: string | null;
+            createdBy: string;
+            updatedBy: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        GroupDetail: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            parentId: string | null;
+            createdBy: string;
+            updatedBy: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            companyIds: string[];
+            members: components["schemas"]["GroupDetailMember"][];
+        };
+        GroupDetailMember: {
+            userId: string;
+            role: components["schemas"]["GroupMemberRole"];
+            active: boolean;
+            companyIds: string[];
+        };
+        GroupList: {
+            data: components["schemas"]["GroupDetail"][];
+            total: number;
+            page: number;
+            pageSize: number;
+        };
+        GroupMember: {
+            /** Format: uuid */
+            groupId: string;
+            userId: string;
+            role: components["schemas"]["GroupMemberRole"];
+            active: boolean;
+            /** Format: date-time */
+            createdAt: string;
         };
         /** @enum {string} */
-        TicketStatus: "broker-processing" | "carrier-processing" | "broker-open-issue" | "missing-documents" | "incorrect-data" | "completed" | "cancelled" | "submitted-cancellation";
+        GroupMemberRole: "admin" | "member";
+        /** @enum {string} */
+        GroupMemberRoleInput: "admin" | "member";
+        OpenTicketConflict: {
+            error: string;
+            message: string;
+            details?: components["schemas"]["ErrorDetail"][];
+            /** Format: uuid */
+            ticketId?: string;
+        };
+        Queue: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            filters: components["schemas"]["TicketFilter"] | null;
+            createdBy: string;
+            updatedBy: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        QueueList: {
+            data: components["schemas"]["Queue"][];
+            total: number;
+            page: number;
+            pageSize: number;
+        };
         /** @enum {string} */
         Relationship: "holder" | "dependent" | "family-group";
         /** @enum {string} */
-        TicketPriority: "urgent" | "high" | "medium" | "low";
-        TicketPerson: {
-            /** Format: email */
-            email: string;
-            name?: string;
-            phone?: string;
-            /** @enum {string} */
-            preferredChannel?: "platform" | "email";
-        };
+        RelationshipInput: "holder" | "dependent" | "family-group";
         Ticket: {
             /** Format: uuid */
             id: string;
@@ -2198,19 +2213,6 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
-        OpenTicketConflict: {
-            error: string;
-            message: string;
-            details?: components["schemas"]["ErrorDetail"][];
-            /** Format: uuid */
-            ticketId?: string;
-        };
-        TicketList: {
-            data: components["schemas"]["Ticket"][];
-            total: number;
-            page: number;
-            pageSize: number;
-        };
         TicketComment: {
             /** Format: uuid */
             id: string;
@@ -2229,108 +2231,6 @@ export interface components {
                 [key: string]: unknown;
             };
             createdAt: string;
-        };
-        CommentList: {
-            data: components["schemas"]["TicketComment"][];
-        };
-        TimelineComment: {
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            ticketId: string;
-            authorId: string | null;
-            createdAt: string;
-            /** @constant */
-            type: "comment";
-            /** @enum {string} */
-            channel: "internal" | "email";
-            /** @enum {string} */
-            visibility: "public" | "private";
-            body: string;
-        };
-        TimelineEvent: {
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            ticketId: string;
-            authorId: string | null;
-            createdAt: string;
-            /** @constant */
-            type: "event";
-            eventType: string | null;
-            body: string;
-            metadata: {
-                [key: string]: unknown;
-            };
-        };
-        TimelineStatusChange: {
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            ticketId: string;
-            authorId: string | null;
-            createdAt: string;
-            /** @constant */
-            type: "status-changed";
-            fromStatus: string;
-            toStatus: string;
-            reason: string | null;
-            authorType: string;
-        };
-        TimelineItem: components["schemas"]["TimelineComment"] | components["schemas"]["TimelineEvent"] | components["schemas"]["TimelineStatusChange"];
-        Timeline: {
-            data: components["schemas"]["TimelineItem"][];
-            nextCursor?: string;
-        };
-        /** @description The group by itself: POST and PATCH answer with this shape. Only GroupDetail, from the two read routes, carries companyIds and members. */
-        Group: {
-            /** Format: uuid */
-            id: string;
-            name: string;
-            parentId: string | null;
-            createdBy: string;
-            updatedBy: string | null;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        /** @enum {string} */
-        GroupMemberRole: "admin" | "member";
-        GroupMember: {
-            /** Format: uuid */
-            groupId: string;
-            userId: string;
-            role: components["schemas"]["GroupMemberRole"];
-            active: boolean;
-            /** Format: date-time */
-            createdAt: string;
-        };
-        GroupDetailMember: {
-            userId: string;
-            role: components["schemas"]["GroupMemberRole"];
-            active: boolean;
-            companyIds: string[];
-        };
-        GroupDetail: {
-            /** Format: uuid */
-            id: string;
-            name: string;
-            parentId: string | null;
-            createdBy: string;
-            updatedBy: string | null;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-            companyIds: string[];
-            members: components["schemas"]["GroupDetailMember"][];
-        };
-        GroupList: {
-            data: components["schemas"]["GroupDetail"][];
-            total: number;
-            page: number;
-            pageSize: number;
         };
         TicketFilter: {
             statuses?: components["schemas"]["TicketStatus"][];
@@ -2355,24 +2255,47 @@ export interface components {
             createdSince?: string;
             archived?: boolean;
         };
-        Queue: {
-            /** Format: uuid */
-            id: string;
-            name: string;
-            filters: components["schemas"]["TicketFilter"] | null;
-            createdBy: string;
-            updatedBy: string | null;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
+        TicketFilterInput: {
+            statuses?: components["schemas"]["TicketStatusInput"][];
+            companyIds?: string[];
+            carrierIds?: string[];
+            products?: string[];
+            types?: string[];
+            companySizes?: string[];
+            contractTypes?: (string | null)[];
+            relationships?: components["schemas"]["RelationshipInput"][];
+            origins?: string[];
+            groupIds?: string[];
+            tags?: string[];
+            assigneeIds?: (string | null)[];
+            priorities?: (components["schemas"]["TicketPriorityInput"] | null)[];
+            subjectQuery?: string;
+            /** Format: date */
+            actionDateBefore?: string;
+            /** Format: date */
+            urgentBy?: string;
+            /** Format: date */
+            createdSince?: string;
+            archived?: boolean;
         };
-        QueueList: {
-            data: components["schemas"]["Queue"][];
+        TicketList: {
+            data: components["schemas"]["Ticket"][];
             total: number;
             page: number;
             pageSize: number;
         };
+        TicketPerson: {
+            /** Format: email */
+            email: string;
+            name?: string;
+            phone?: string;
+            /** @enum {string} */
+            preferredChannel?: "platform" | "email";
+        };
+        /** @enum {string} */
+        TicketPriority: "urgent" | "high" | "medium" | "low";
+        /** @enum {string} */
+        TicketPriorityInput: "urgent" | "high" | "medium" | "low";
         TicketRow: {
             /** Format: uuid */
             id: string;
@@ -2408,6 +2331,83 @@ export interface components {
         TicketRows: {
             data: components["schemas"]["TicketRow"][];
             total: number;
+        };
+        /** @enum {string} */
+        TicketStatus: "broker-processing" | "carrier-processing" | "broker-open-issue" | "missing-documents" | "incorrect-data" | "completed" | "cancelled" | "submitted-cancellation";
+        /** @enum {string} */
+        TicketStatusInput: "broker-processing" | "carrier-processing" | "broker-open-issue" | "missing-documents" | "incorrect-data" | "completed" | "cancelled" | "submitted-cancellation";
+        Timeline: {
+            data: components["schemas"]["TimelineItem"][];
+            nextCursor?: string;
+        };
+        TimelineComment: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            ticketId: string;
+            authorId: string | null;
+            createdAt: string;
+            /** @constant */
+            type: "comment";
+            /** @enum {string} */
+            channel: "internal" | "email";
+            /** @enum {string} */
+            visibility: "public" | "private";
+            body: string;
+        };
+        TimelineEvent: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            ticketId: string;
+            authorId: string | null;
+            createdAt: string;
+            /** @constant */
+            type: "event";
+            eventType: string | null;
+            body: string;
+            metadata: {
+                [key: string]: unknown;
+            };
+        };
+        TimelineItem: components["schemas"]["TimelineComment"] | components["schemas"]["TimelineEvent"] | components["schemas"]["TimelineStatusChange"];
+        TimelineStatusChange: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            ticketId: string;
+            authorId: string | null;
+            createdAt: string;
+            /** @constant */
+            type: "status-changed";
+            fromStatus: string;
+            toStatus: string;
+            reason: string | null;
+            authorType: string;
+        };
+        UpdateGroupBodyInput: {
+            /** @description Trimmed before validation: whitespace only is rejected. */
+            name?: string;
+            parentId?: string | null;
+        };
+        UpdateGroupMemberBodyInput: {
+            active?: boolean;
+            role?: components["schemas"]["GroupMemberRoleInput"];
+        };
+        UpdateQueueBodyInput: {
+            name?: string;
+            filters?: components["schemas"]["TicketFilterInput"];
+        };
+        UpdateTicketBodyInput: {
+            queueId?: string | null;
+            assigneeId?: string | null;
+            tags?: string[];
+            forceCompletion?: boolean;
+            parentTicketId?: string | null;
+        };
+        UpdateTicketStatusBodyInput: {
+            status: components["schemas"]["TicketStatusInput"];
+            reason?: string;
         };
     };
     responses: never;
