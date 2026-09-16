@@ -1,12 +1,7 @@
 import { sql, type Kysely } from 'kysely'
 
 export async function up(db: Kysely<unknown>): Promise<void> {
-  // The default only backfills the rows that already exist (all manual, all by
-  // people); it is dropped right after so every writer has to state the type.
-  await sql`ALTER TABLE ticket_comments ADD COLUMN author_type text NOT NULL DEFAULT 'user'`.execute(
-    db,
-  )
-  await sql`ALTER TABLE ticket_comments ALTER COLUMN author_type DROP DEFAULT`.execute(db)
+  await sql`ALTER TABLE ticket_comments ADD COLUMN author_type text NOT NULL`.execute(db)
   await sql`
     ALTER TABLE ticket_comments
       ADD CONSTRAINT ticket_comments_author_type_check
