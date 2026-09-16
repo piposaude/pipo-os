@@ -298,7 +298,20 @@ Limites de corpo, do mais externo para o mais interno: **1 MB** global (o mesmo 
 
 ### Payload de criação
 
-`POST /api/tickets` recebe a movimentação que origina o ticket. Obrigatórios: `enrollmentId`, `enrollmentType`, `companyId`, `sourceSystem` e `enrollmentSnapshot` (o retrato da movimentação, guardado como jsonb). Opcionais: `status`, `queueId`, `assigneeId`, `tags`, `forceCompletion` e `parentTicketId`.
+`POST /api/tickets` recebe a movimentação que origina o ticket. Obrigatórios: `enrollmentId`, `enrollmentType`, `companyId`, `sourceSystem` e `enrollmentSnapshot` (o retrato da movimentação, guardado como jsonb). Opcionais: `alterationType`, `title`, `actionDate`, `origin`, `requester`, `collaborators`, `carrierId`, `carrierName`, `product`, `contractType`, `companySize`, `groupId`, `queueId`, `assigneeId`, `tags`, `forceCompletion` e `parentTicketId`. `status` não entra no corpo: o chamado nasce em `broker-processing`, e só o `PATCH /api/tickets/:id/status` o move.
+
+#### O tipo da movimentação
+
+O EI (enrollment-integrations) diz o que aconteceu em duas palavras: `request_type` (`inclusion`, `exclusion` ou `alteration`) e, quando é alteração, `alteration_type` (`plan`, `registration` ou `combined`). A fila conhece uma palavra só por tipo. A API traduz na entrada e grava a palavra canônica em `enrollment_type`; sem isso o chamado nascia com `alteration` na coluna e o filtro Tipo, que compara texto igual a texto, nunca o achava.
+
+| O EI manda                                                            | A coluna guarda            |
+| --------------------------------------------------------------------- | -------------------------- |
+| `inclusion`, `exclusion`, ou uma palavra já canônica                  | a mesma palavra            |
+| `alteration` + `plan`                                                 | `plan_change`              |
+| `alteration` + `registration` (ou o alias legado `registration-data`) | `registration_data_change` |
+| `alteration` + `combined`                                             | `combined_change`          |
+
+O `alterationType` vem do corpo ou, na falta dele, do `alteration_type` do snapshot; o corpo vence. `alteration` sem nenhum dos dois responde `422` nomeando `alterationType`; uma palavra fora desse vocabulário responde `400`, então um `request_type` novo no EI passa a exigir deploy desta API em vez de chegar cru a uma linha. A leitura continua devolvendo `enrollmentType` como texto, porque a coluna pode guardar dado anterior a esta regra. A fonte dos cinco valores é `apps/api/src/modules/tickets/enrollment-type.ts`, e `contract/ticket-vocabulary.json` prende o web a ter copy para cada um.
 
 Status possíveis: `broker-processing`, `carrier-processing`, `broker-open-issue`, `missing-documents`, `incorrect-data`, `submitted-cancellation`, `completed` e `cancelled`. O contrato completo é o `openapi.json` (ver abaixo).
 

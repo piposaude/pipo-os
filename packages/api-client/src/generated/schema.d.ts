@@ -2041,7 +2041,10 @@ export interface components {
         CreateTicketBodyInput: {
             /** Format: uuid */
             enrollmentId: string;
-            enrollmentType: string;
+            /** @enum {string} */
+            enrollmentType: "inclusion" | "exclusion" | "plan_change" | "registration_data_change" | "combined_change" | "alteration";
+            /** @enum {string} */
+            alterationType?: "plan" | "registration" | "registration-data" | "combined";
             /** Format: uuid */
             companyId: string;
             sourceSystem: string;
