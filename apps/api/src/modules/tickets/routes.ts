@@ -6,7 +6,7 @@ import { errorResponseSchema } from '../../shared/schemas.js'
 import { TICKET_POLICY } from '../auth/policy.js'
 import { ticketRowsQuerySchema, ticketRowsSchema } from './rows-schema.js'
 import { OpenTicketConflictError } from './errors.js'
-import { foldEnrollmentWords } from './enrollment-type.js'
+import { foldEnrollmentWordsOf } from './enrollment-type.js'
 import {
   createTicketBodySchema,
   listTicketsQuerySchema,
@@ -96,10 +96,7 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
       // Before validation, so the enum below stays the published vocabulary
       // while a word the EI forwards in another case still opens the ticket.
       preValidation: (request, _reply, done) => {
-        // The provider types `body` as the validated shape, but this hook runs
-        // before validation: what is there is still whatever the caller sent,
-        // and the assertion restores the declared lie, not the value.
-        request.body = foldEnrollmentWords(request.body) as typeof request.body
+        foldEnrollmentWordsOf(request)
         done()
       },
       schema: {
