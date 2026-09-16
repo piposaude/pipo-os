@@ -144,7 +144,8 @@
               "registration_data_change",
               "combined_change",
               "alteration"
-            ]
+            ],
+            "description": "Lido sem distinção de caixa; a forma publicada e gravada é a minúscula"
           },
           "alterationType": {
             "type": "string",
@@ -153,7 +154,8 @@
               "registration",
               "registration-data",
               "combined"
-            ]
+            ],
+            "description": "Lido sem distinção de caixa; a forma publicada é a minúscula"
           },
           "companyId": {
             "type": "string",

@@ -91,10 +91,14 @@ export const createTicketBodySchema = z
     enrollmentId: z.uuid(),
     // Closed on the way in and open on the way out (`ticketSchema` stays a
     // string), because the column holds legacy words.
-    enrollmentType: incomingEnrollmentTypeSchema,
+    enrollmentType: incomingEnrollmentTypeSchema.describe(
+      'Lido sem distinção de caixa; a forma publicada e gravada é a minúscula',
+    ),
     // Only read next to `alteration`; the snapshot's alteration_type fills it
     // when the body does not say.
-    alterationType: alterationTypeSchema.optional(),
+    alterationType: alterationTypeSchema
+      .describe('Lido sem distinção de caixa; a forma publicada é a minúscula')
+      .optional(),
     companyId: z.uuid(),
     sourceSystem: z.string(),
     enrollmentSnapshot: z.record(z.string(), z.unknown()),

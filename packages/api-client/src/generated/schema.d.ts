@@ -2043,9 +2043,15 @@ export interface components {
         CreateTicketBodyInput: {
             /** Format: uuid */
             enrollmentId: string;
-            /** @enum {string} */
+            /**
+             * @description Lido sem distinção de caixa; a forma publicada e gravada é a minúscula
+             * @enum {string}
+             */
             enrollmentType: "inclusion" | "exclusion" | "plan_change" | "registration_data_change" | "combined_change" | "alteration";
-            /** @enum {string} */
+            /**
+             * @description Lido sem distinção de caixa; a forma publicada é a minúscula
+             * @enum {string}
+             */
             alterationType?: "plan" | "registration" | "registration-data" | "combined";
             /** Format: uuid */
             companyId: string;
