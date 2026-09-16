@@ -104,6 +104,22 @@ describe('comments schema — submission and author columns', () => {
         ),
       )
       expect(code).toBe(NOT_NULL_VIOLATION)
+
+    it('closes the same set on ticket_status_history', async () => {
+      const code = await codeOf(
+        app.db
+          .insertInto('ticket_status_history')
+          .values({
+            ticket_id: ticketId,
+            from_status: 'broker-processing',
+            to_status: 'carrier-processing',
+            author_type: 'robot',
+            author_id: AUTHOR,
+          })
+          .execute(),
+      )
+      expect(code).toBe(CHECK_VIOLATION)
+    })
     })
 
     it('accepts a system row without an author id', async () => {

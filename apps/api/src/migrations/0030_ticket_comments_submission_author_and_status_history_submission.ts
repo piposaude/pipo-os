@@ -25,9 +25,17 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     db,
   )
   await sql`ALTER TABLE ticket_status_history ADD COLUMN submission_id uuid`.execute(db)
+  await sql`
+    ALTER TABLE ticket_status_history
+      ADD CONSTRAINT ticket_status_history_author_type_check
+      CHECK (author_type IN ('user', 'service', 'system'))
+  `.execute(db)
 }
 
 export async function down(db: Kysely<unknown>): Promise<void> {
+  await sql`ALTER TABLE ticket_status_history DROP CONSTRAINT IF EXISTS ticket_status_history_author_type_check`.execute(
+    db,
+  )
   await sql`ALTER TABLE ticket_status_history DROP COLUMN submission_id`.execute(db)
   await sql`ALTER TABLE ticket_comments DROP COLUMN in_reply_to, DROP COLUMN submission_id`.execute(
     db,
