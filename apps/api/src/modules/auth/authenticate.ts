@@ -33,6 +33,13 @@ export interface ServicePrincipal {
 
 export type Principal = UserPrincipal | ServicePrincipal
 
+/** The author stamped on a row. `type` is the principal's kind, not a copy of
+ *  its values: the column and the caller cannot drift apart. */
+export interface Author {
+  id: string
+  type: Principal['kind']
+}
+
 declare module 'fastify' {
   interface FastifyRequest {
     // Optional on purpose: a public route has no principal, and the compiler is
@@ -72,13 +79,15 @@ export function requireUser(request: FastifyRequest): UserPrincipal {
   return principal
 }
 
-/** Who to record as the author of a write. A person is their `sub`; a service
- *  is `svc:<name>`, in the same text column, because blanking the author would
- *  lose who wrote it. */
-export function requireActor(request: FastifyRequest): string {
+/** Who to record as the author of a write, id and kind resolved in one place
+ *  so no writer has to infer one from the other. A person is their `sub`; a
+ *  service is `svc:<name>`, in the same text column, because blanking the
+ *  author would lose who wrote it. */
+export function requireAuthor(request: FastifyRequest): Author {
   const principal = requirePrincipal(request)
+  const id = principal.kind === 'service' ? `svc:${principal.name}` : requireUserId(request)
 
-  return principal.kind === 'service' ? `svc:${principal.name}` : requireUserId(request)
+  return { id, type: principal.kind }
 }
 
 // The access-token may carry no `sub`, so a handler writing an author or an

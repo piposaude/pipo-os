@@ -2,6 +2,7 @@ import { sql, type Kysely, type Selectable } from 'kysely'
 import { z } from 'zod'
 import type { Database } from '../../infrastructure/db.js'
 import type { TicketComments } from '../../infrastructure/db-types.js'
+import type { Author } from '../auth/authenticate.js'
 import type { Comment, CreateCommentBody, TimelineItem } from './schemas.js'
 
 function toComment(row: Selectable<TicketComments>): Comment {
@@ -92,13 +93,8 @@ export interface TimelinePage {
   nextKey?: TimelineKey
 }
 
-export interface CommentAuthor {
-  id: string
-  type: 'user' | 'service'
-}
-
 export interface CommentsRepositoryPort {
-  create(ticketId: string, data: CreateCommentBody, author: CommentAuthor): Promise<Comment>
+  create(ticketId: string, data: CreateCommentBody, author: Author): Promise<Comment>
   findMany(ticketId: string): Promise<Comment[]>
   findTimeline(
     ticketId: string,
@@ -111,7 +107,7 @@ export interface CommentsRepositoryPort {
 export class CommentsRepository implements CommentsRepositoryPort {
   constructor(private readonly db: Kysely<Database>) {}
 
-  async create(ticketId: string, data: CreateCommentBody, author: CommentAuthor): Promise<Comment> {
+  async create(ticketId: string, data: CreateCommentBody, author: Author): Promise<Comment> {
     const row = await this.db
       .insertInto('ticket_comments')
       .values({
