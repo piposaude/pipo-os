@@ -1,5 +1,10 @@
 import { z } from 'zod'
 import { emailSchema, errorResponseSchema } from '../../shared/schemas.js'
+import {
+  alterationTypeSchema,
+  incomingEnrollmentTypeSchema,
+  type CanonicalEnrollmentType,
+} from './enrollment-type.js'
 
 export const ticketStatusSchema = z
   .enum([
@@ -84,7 +89,13 @@ const tagSchema = z.string().regex(/^[a-z0-9_:-]+$/)
 export const createTicketBodySchema = z
   .object({
     enrollmentId: z.uuid(),
-    enrollmentType: z.string(),
+    // Closed on the way in and open on the way out (`ticketSchema` stays a
+    // string): the column holds legacy words, and a word the EI adds tomorrow
+    // must fail here loudly instead of reaching a row raw.
+    enrollmentType: incomingEnrollmentTypeSchema,
+    // Only read next to `alteration`, which it disambiguates; the snapshot's
+    // alteration_type fills it when the body does not say.
+    alterationType: alterationTypeSchema.optional(),
     companyId: z.uuid(),
     sourceSystem: z.string(),
     enrollmentSnapshot: z.record(z.string(), z.unknown()),
@@ -189,6 +200,11 @@ export type TicketStatus = z.infer<typeof ticketStatusSchema>
 export type Ticket = z.infer<typeof ticketSchema>
 export type TicketParams = z.infer<typeof ticketParamsSchema>
 export type CreateTicketBody = z.infer<typeof createTicketBodySchema>
+/** What the repository writes: the body after the service translated the
+ *  type, so `alteration` cannot reach the column by construction. */
+export type CreateTicketData = Omit<CreateTicketBody, 'enrollmentType' | 'alterationType'> & {
+  enrollmentType: CanonicalEnrollmentType
+}
 export type UpdateTicketBody = z.infer<typeof updateTicketBodySchema>
 export type UpdateTicketStatusBody = z.infer<typeof updateTicketStatusBodySchema>
 export type TicketList = z.infer<typeof ticketListSchema>

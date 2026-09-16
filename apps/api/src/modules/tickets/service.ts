@@ -1,4 +1,10 @@
-import { NotFoundError, UnprocessableEntityError } from '../../shared/errors.js'
+import {
+  NotFoundError,
+  UnprocessableEntityError,
+  ValidationFailedError,
+} from '../../shared/errors.js'
+import { alterationTypeOf } from './enrollment-snapshot.js'
+import { canonicalEnrollmentType, parseAlterationType } from './enrollment-type.js'
 import type { TicketRowsQuery } from './rows-schema.js'
 import type { TicketsRepositoryPort } from './repository.js'
 import {
@@ -24,8 +30,22 @@ export class TicketsService {
     return ticket
   }
 
-  create(data: CreateTicketBody): Promise<Ticket> {
-    return this.repository.create(data)
+  async create(body: CreateTicketBody): Promise<Ticket> {
+    const { alterationType, ...data } = body
+    // The body wins; the snapshot fills what the EI does not send yet, as for
+    // the movement columns (PD-207).
+    const enrollmentType = canonicalEnrollmentType(
+      data.enrollmentType,
+      alterationType ?? parseAlterationType(alterationTypeOf(data.enrollmentSnapshot)),
+    )
+    if (enrollmentType === null) {
+      const message =
+        'alterationType is required when enrollmentType is alteration: in the body, or as alteration_type in the snapshot'
+      throw new ValidationFailedError(message, [
+        { field: 'alterationType', message, code: 'required' },
+      ])
+    }
+    return this.repository.create({ ...data, enrollmentType })
   }
 
   async update(id: string, data: UpdateTicketBody): Promise<Ticket> {
