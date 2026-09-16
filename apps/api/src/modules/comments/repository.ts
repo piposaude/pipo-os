@@ -92,8 +92,13 @@ export interface TimelinePage {
   nextKey?: TimelineKey
 }
 
+export interface CommentAuthor {
+  id: string
+  type: 'user' | 'service'
+}
+
 export interface CommentsRepositoryPort {
-  create(ticketId: string, data: CreateCommentBody, authorId: string): Promise<Comment>
+  create(ticketId: string, data: CreateCommentBody, author: CommentAuthor): Promise<Comment>
   findMany(ticketId: string): Promise<Comment[]>
   findTimeline(
     ticketId: string,
@@ -106,7 +111,7 @@ export interface CommentsRepositoryPort {
 export class CommentsRepository implements CommentsRepositoryPort {
   constructor(private readonly db: Kysely<Database>) {}
 
-  async create(ticketId: string, data: CreateCommentBody, authorId: string): Promise<Comment> {
+  async create(ticketId: string, data: CreateCommentBody, author: CommentAuthor): Promise<Comment> {
     const row = await this.db
       .insertInto('ticket_comments')
       .values({
@@ -115,7 +120,8 @@ export class CommentsRepository implements CommentsRepositoryPort {
         channel: 'internal',
         visibility: data.visibility,
         body: data.body,
-        author_id: authorId,
+        author_id: author.id,
+        author_type: author.type,
         event_type: null,
       })
       .returningAll()

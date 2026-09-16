@@ -1,6 +1,6 @@
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
 import type { FastifyInstance } from 'fastify'
-import { requireActor } from '../auth/authenticate.js'
+import { requireActor, requirePrincipal } from '../auth/authenticate.js'
 import { errorResponseSchema } from '../../shared/schemas.js'
 import { TICKET_POLICY } from '../auth/policy.js'
 import { ticketParamsSchema } from '../tickets/schemas.js'
@@ -81,8 +81,8 @@ export function registerCommentRoutes(app: FastifyInstance, service: CommentsSer
       },
     },
     async (request, reply) => {
-      const authorId = requireActor(request)
-      const comment = await service.add(request.params.id, request.body, authorId)
+      const author = { id: requireActor(request), type: requirePrincipal(request).kind }
+      const comment = await service.add(request.params.id, request.body, author)
       reply.status(201)
       return comment
     },

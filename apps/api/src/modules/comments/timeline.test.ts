@@ -94,9 +94,9 @@ describe('GET /api/tickets/:id/timeline', () => {
      round `.000Z` above — is the shape production data actually has. */
   const seedCommentAtMicro = (body: string, createdAt: string) =>
     sql`insert into ticket_comments
-          (ticket_id, kind, channel, visibility, event_type, author_id, body, created_at)
+          (ticket_id, kind, channel, visibility, event_type, author_id, author_type, body, created_at)
         values (${ticketId}::uuid, 'manual', 'internal', 'public', null,
-                ${DEV_LOGIN_USER_ID}, ${body}, ${createdAt}::timestamptz)`.execute(app.db)
+                ${DEV_LOGIN_USER_ID}, 'user', ${body}, ${createdAt}::timestamptz)`.execute(app.db)
 
   it('merges comments and status changes into one chronology', async () => {
     await addComment('primeiro')
@@ -161,6 +161,7 @@ describe('GET /api/tickets/:id/timeline', () => {
         visibility: 'public',
         event_type: 'priority_changed',
         author_id: DEV_LOGIN_USER_ID,
+        author_type: 'user',
         body: 'Prioridade alterada para urgente',
         metadata: { priority: 'urgent', previous: null },
       })
@@ -227,6 +228,7 @@ describe('GET /api/tickets/:id/timeline', () => {
         visibility: 'public',
         event_type: null,
         author_id: DEV_LOGIN_USER_ID,
+        author_type: 'user',
         body,
         created_at: new Date(createdAt),
       })
@@ -368,6 +370,7 @@ describe('GET /api/tickets/:id/timeline', () => {
           visibility: 'public',
           event_type: 'action_date_changed',
           author_id: DEV_LOGIN_USER_ID,
+          author_type: 'user',
           body: 'Agendado para 13 de Julho',
           metadata: {},
         })

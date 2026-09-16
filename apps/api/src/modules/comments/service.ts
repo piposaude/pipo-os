@@ -1,6 +1,6 @@
 import { BadRequestError, NotFoundError } from '../../shared/errors.js'
 import type { TicketsRepositoryPort } from '../tickets/repository.js'
-import type { CommentsRepositoryPort, TimelineKey } from './repository.js'
+import type { CommentAuthor, CommentsRepositoryPort, TimelineKey } from './repository.js'
 import type { Comment, CommentList, CreateCommentBody, Timeline, TimelineQuery } from './schemas.js'
 
 /* The cursor is base64 of "<created_at>|<id>" — opaque so the keyset can
@@ -35,10 +35,10 @@ export class CommentsService {
     private readonly ticketsRepository: TicketsRepositoryPort,
   ) {}
 
-  async add(ticketId: string, data: CreateCommentBody, authorId: string): Promise<Comment> {
+  async add(ticketId: string, data: CreateCommentBody, author: CommentAuthor): Promise<Comment> {
     const ticket = await this.ticketsRepository.findById(ticketId)
     if (!ticket) throw new NotFoundError(`Ticket ${ticketId} not found`)
-    return this.repository.create(ticketId, data, authorId)
+    return this.repository.create(ticketId, data, author)
   }
 
   async list(ticketId: string): Promise<CommentList> {
