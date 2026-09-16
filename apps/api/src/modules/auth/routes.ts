@@ -159,7 +159,9 @@ export function registerAuthRoutes(
         // an empty list, and a database outage must not look like one.
         sub
           ? viewer.members.listByUser(sub).catch((error: unknown) => {
-              request.log.warn(error, 'session pods unresolved: the database is unavailable')
+              // Broad, unlike nameOf above: a Kysely failure carries nothing
+              // that tells an outage from a bug, so the message claims neither.
+              request.log.warn(error, 'session pods unresolved: reading the pods failed')
               return null
             })
           : [],
