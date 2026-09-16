@@ -2242,6 +2242,7 @@ export interface components {
             companyIds?: string[];
             carrierIds?: string[];
             products?: string[];
+            /** @description Compara a palavra exatamente; o vocabulário gravado é minúsculo */
             types?: string[];
             companySizes?: string[];
             contractTypes?: (string | null)[];
@@ -2265,6 +2266,7 @@ export interface components {
             companyIds?: string[];
             carrierIds?: string[];
             products?: string[];
+            /** @description Compara a palavra exatamente; o vocabulário gravado é minúsculo */
             types?: string[];
             companySizes?: string[];
             contractTypes?: (string | null)[];

@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { QueueRow } from '@/components/pipodesk/queue/QueueRow'
+import { ENROLLMENT_TYPE_COPY } from '@/constants/pipodesk/domain'
 import { queueSeed } from '@/fixtures/pipodesk/dataset'
 
 const columns = [
@@ -73,7 +74,9 @@ describe('QueueRow', () => {
     // proves the row applies it, not just that the map agrees with itself.
     const chip = (label: string) => screen.getByText(label).className
 
-    expect(chip('Alteração combinada')).toBe(chip('Alteração'))
-    expect(chip('Alteração combinada')).not.toBe(chip('Inclusão'))
+    const combined = chip(ENROLLMENT_TYPE_COPY.combined_change)
+
+    expect(combined).toBe(chip(ENROLLMENT_TYPE_COPY.plan_change))
+    expect(combined).not.toBe(chip(ENROLLMENT_TYPE_COPY.inclusion))
   })
 })

@@ -1129,7 +1129,8 @@
             "items": {
               "type": "string",
               "minLength": 1
-            }
+            },
+            "description": "Compara a palavra exatamente; o vocabulário gravado é minúsculo"
           },
           "companySizes": {
             "minItems": 1,
@@ -1281,7 +1282,8 @@
             "items": {
               "type": "string",
               "minLength": 1
-            }
+            },
+            "description": "Compara a palavra exatamente; o vocabulário gravado é minúsculo"
           },
           "companySizes": {
             "minItems": 1,

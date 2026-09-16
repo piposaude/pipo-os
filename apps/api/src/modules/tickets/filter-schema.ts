@@ -22,7 +22,11 @@ export const ticketFilterSchema = z
     companyIds: z.array(z.uuid()).min(1).optional(),
     carrierIds: z.array(nonEmptyText).min(1).optional(),
     products: z.array(nonEmptyText).min(1).optional(),
-    types: z.array(nonEmptyText).min(1).optional(),
+    types: z
+      .array(nonEmptyText)
+      .min(1)
+      .describe('Compara a palavra exatamente; o vocabulário gravado é minúsculo')
+      .optional(),
     companySizes: z.array(nonEmptyText).min(1).optional(),
     /** `null` = no contract in the snapshot, a value the MOV PJ cut needs. */
     contractTypes: z.array(nonEmptyText.nullable()).min(1).optional(),
