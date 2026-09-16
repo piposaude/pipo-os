@@ -77,11 +77,14 @@ export function relationshipOf(snapshot: unknown): Relationship | null {
   }
 }
 
-/** The EI's `alteration_type`, as written: judging whether the word is one we
- *  know belongs to `enrollment-type.ts`. */
-export function alterationTypeOf(snapshot: unknown): string | null {
+/** The EI's `alteration_type` as written — a number as much as a word, because
+ *  a value we cannot read is still an answer, and it earns a different 422 from
+ *  silence. A blank is silence. Judging it belongs to `enrollment-type.ts`. */
+export function alterationTypeOf(snapshot: unknown): unknown {
   if (!isRecord(snapshot)) return null
-  return readString(snapshot, ['alteration-type'])
+  const written = readPath(snapshot, ['alteration-type'])
+  if (written === undefined || (typeof written === 'string' && written.trim() === '')) return null
+  return written
 }
 
 export interface MovementFields {

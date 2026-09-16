@@ -29,30 +29,32 @@ export const alterationTypeSchema = z.enum([
 
 export type AlterationType = z.infer<typeof alterationTypeSchema>
 
-const OF_ALTERATION: Record<AlterationType, CanonicalEnrollmentType> = {
-  plan: 'plan_change',
-  registration: 'registration_data_change',
-  'registration-data': 'registration_data_change',
-  combined: 'combined_change',
-}
-
 export function canonicalEnrollmentType(
   type: IncomingEnrollmentType,
   alterationType: AlterationType | null | undefined,
 ): CanonicalEnrollmentType | null {
   if (type !== 'alteration') return type
-  // Own keys only: an unvalidated caller would otherwise read `constructor`
-  // off the prototype and write a function to the column.
-  if (!alterationType || !Object.prototype.hasOwnProperty.call(OF_ALTERATION, alterationType)) {
-    return null
+  switch (alterationType) {
+    case 'plan':
+      return 'plan_change'
+    case 'registration':
+    case 'registration-data':
+      return 'registration_data_change'
+    case 'combined':
+      return 'combined_change'
+    // A word we do not know is not a plan change: the guess freezes in the
+    // column. `alterationTypeSchema.options` is pinned to this list by a test.
+    default:
+      return null
   }
-  return OF_ALTERATION[alterationType]
 }
 
-/** A word we do not know reads as absent. Surrounding whitespace is not
- *  trimmed: ` plan ` is still unknown. */
-export function parseAlterationType(value: string | null): AlterationType | null {
-  const parsed = alterationTypeSchema.safeParse(value?.toLowerCase() ?? null)
+/** A value we do not know reads as absent — a number as much as a word we do
+ *  not emit. Surrounding whitespace is not trimmed: ` plan ` is still unknown. */
+export function parseAlterationType(value: unknown): AlterationType | null {
+  const parsed = alterationTypeSchema.safeParse(
+    typeof value === 'string' ? value.toLowerCase() : value,
+  )
   return parsed.success ? parsed.data : null
 }
 

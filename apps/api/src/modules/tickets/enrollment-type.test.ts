@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   CANONICAL_ENROLLMENT_TYPES,
   type AlterationType,
+  alterationTypeSchema,
   canonicalEnrollmentType,
   foldEnrollmentWords,
   incomingEnrollmentTypeSchema,
@@ -27,7 +28,14 @@ describe('canonicalEnrollmentType', () => {
     expect(canonicalEnrollmentType(type, null)).toBe(type)
   })
 
-  it('does not read a value off Object.prototype', () => {
+  it('has a canonical type for every word the schema accepts', () => {
+    for (const word of alterationTypeSchema.options) {
+      expect(canonicalEnrollmentType('alteration', word)).not.toBeNull()
+    }
+  })
+
+  it('is null for a word that is not one of ours, a prototype key included', () => {
+    expect(canonicalEnrollmentType('alteration', 'cnpj' as AlterationType)).toBeNull()
     expect(canonicalEnrollmentType('alteration', 'constructor' as AlterationType)).toBeNull()
   })
 
@@ -54,6 +62,11 @@ describe('parseAlterationType', () => {
     expect(parseAlterationType('cnpj')).toBeNull()
     expect(parseAlterationType('')).toBeNull()
     expect(parseAlterationType(null)).toBeNull()
+  })
+
+  it('is null for a value that is not a word, instead of throwing', () => {
+    expect(parseAlterationType(42)).toBeNull()
+    expect(parseAlterationType({ plan: true })).toBeNull()
   })
 })
 

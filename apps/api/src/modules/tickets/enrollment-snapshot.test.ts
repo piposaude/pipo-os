@@ -137,8 +137,8 @@ describe('alterationTypeOf', () => {
     expect(alterationTypeOf('not a snapshot')).toBeNull()
   })
 
-  it('only counts a string, so a number does not become a word', () => {
-    expect(alterationTypeOf({ alteration_type: 1 })).toBeNull()
+  it('hands a value that is not a word over as it is, for the caller to refuse', () => {
+    expect(alterationTypeOf({ alteration_type: 1 })).toBe(1)
   })
 
   it('returns the word raw, known or not', () => {

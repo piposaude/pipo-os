@@ -428,6 +428,7 @@ describe('tickets routes', () => {
       it.each([
         ['sem pista nenhuma', { name: 'Test User' }, 'required'],
         ['com uma palavra que o EI não emite no snapshot', { alteration_type: 'cnpj' }, 'invalid'],
+        ['com um alteration_type que nem palavra é', { alteration_type: 42 }, 'invalid'],
       ])('responde 422 %s, nomeando o alterationType', async (_case, enrollmentSnapshot, code) => {
         const response = await post({ enrollmentType: 'alteration', enrollmentSnapshot })
 
