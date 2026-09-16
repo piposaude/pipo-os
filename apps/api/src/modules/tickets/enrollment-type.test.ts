@@ -27,15 +27,10 @@ describe('canonicalEnrollmentType', () => {
     expect(canonicalEnrollmentType(type, null)).toBe(type)
   })
 
-  /** The map is an object literal, so a word that never passed the schema could
-   *  read a member off the prototype and write a function to the column. It is
-   *  the guard, and the test, that `vocabulary.ts` already carries. */
   it('does not read a value off Object.prototype', () => {
     expect(canonicalEnrollmentType('alteration', 'constructor' as AlterationType)).toBeNull()
   })
 
-  /** The body may carry both; only `alteration` is ambiguous enough to read
-   *  the second field. */
   it('ignores the alterationType next to a word that is already canonical', () => {
     expect(canonicalEnrollmentType('inclusion', 'plan')).toBe('inclusion')
     expect(canonicalEnrollmentType('plan_change', 'registration')).toBe('plan_change')
@@ -47,9 +42,6 @@ describe('parseAlterationType', () => {
     expect(parseAlterationType(word)).toBe(word)
   })
 
-  /** Folded for symmetry with the word beside it, not because the EI forwards
-   *  it in mixed case — it compares the wire field with `==`. See
-   *  `foldEnrollmentWords`. */
   it.each([
     ['Plan', 'plan'],
     ['COMBINED', 'combined'],
@@ -72,14 +64,10 @@ describe('incomingEnrollmentTypeSchema', () => {
     }
   })
 
-  /** The schema itself stays strict, so the exported contract keeps the
-   *  lowercase vocabulary and `enrollmentType` stays required; the case the EI
-   *  forwards is folded before validation, by `foldEnrollmentWords`. */
   it.each(['Alteration', 'Inclusion', 'PLAN_CHANGE'])('refuses %s unfolded', (word) => {
     expect(incomingEnrollmentTypeSchema.safeParse(word).success).toBe(false)
   })
 
-  /** The two the EI has a label for and never opens a ticket about. */
   it.each(['cancellation', 'exclusion-with-extension-plan', 'inclusao', ''])(
     'refuses %s',
     (word) => {
@@ -89,8 +77,6 @@ describe('incomingEnrollmentTypeSchema', () => {
 })
 
 describe('foldEnrollmentWords', () => {
-  /** `EqualFold` on request_type (`enrollment.go:432`): the EI never minds the
-   *  case of the word it forwards. */
   it('lowercases the two words the enum is about to judge', () => {
     expect(foldEnrollmentWords({ enrollmentType: 'Alteration', alterationType: 'Plan' })).toEqual({
       enrollmentType: 'alteration',

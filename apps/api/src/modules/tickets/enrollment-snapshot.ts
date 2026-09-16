@@ -77,11 +77,8 @@ export function relationshipOf(snapshot: unknown): Relationship | null {
   }
 }
 
-/**
- * The EI's `alteration_type`, as written — the pairing with `alteration` and
- * the judgement of whether the word is one we know live in `enrollment-type.ts`.
- * Read here because this is the one module that knows the snapshot's shape.
- */
+/** The EI's `alteration_type`, as written: judging whether the word is one we
+ *  know belongs to `enrollment-type.ts`. */
 export function alterationTypeOf(snapshot: unknown): string | null {
   if (!isRecord(snapshot)) return null
   return readString(snapshot, ['alteration-type'])

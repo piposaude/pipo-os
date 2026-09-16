@@ -3383,7 +3383,8 @@
             },
             "in": "query",
             "name": "enrollmentType",
-            "required": false
+            "required": false,
+            "description": "Compara a palavra exatamente; o vocabulário gravado é minúsculo"
           },
           {
             "schema": {

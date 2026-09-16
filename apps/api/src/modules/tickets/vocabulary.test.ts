@@ -109,16 +109,8 @@ describe('INSURANCE_SUFFIX', () => {
   )
 })
 
-/**
- * `enrollmentType` is declared so the contract holds the web to copy for each
- * canonical word, and it is identity because the service canonizes on write.
- * Nothing consults it: the row mappers read `enrollment_type` raw and
- * `filter-resolver`'s `VOCABULARY_OF` does not list the column, so `types`
- * resolves with a literal `in`. The day it stops being identity — a canonical
- * word renamed, a legacy word folded — this is the test that says the filter
- * and the two mappers have to start translating, instead of the queue quietly
- * not finding the rows this ticket exists to find.
- */
+/** Identity today, and the row mappers and the `types` filter read the column
+ *  literally: the day this stops being identity, they have to translate. */
 describe('the enrollmentType vocabulary', () => {
   it.each(CANONICAL_ENROLLMENT_TYPES)('leaves %s exactly as the column holds it', (word) => {
     expect(toClient('enrollmentType', word)).toBe(word)

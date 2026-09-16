@@ -42,9 +42,8 @@ const insuranceSuffix: Vocabulary = {
     clientValue.endsWith('-insurance') ? [] : [clientValue, `${clientValue}-insurance`],
 }
 
-/** Identity, not a de-para: the service translates the EI's pair on write
- *  (`enrollment-type.ts`), so the column already holds the client word. It is
- *  declared so the contract holds the web to copy for each of the five. */
+/** Identity, not a de-para: the service translates on write, so the column
+ *  already holds the client word. */
 const canonicalWords: Vocabulary = fromTable(
   Object.fromEntries(CANONICAL_ENROLLMENT_TYPES.map((word) => [word, word])),
 )

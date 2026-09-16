@@ -1210,6 +1210,7 @@ export interface paths {
                     enrollmentId?: string;
                     queueId?: string;
                     assigneeId?: string;
+                    /** @description Compara a palavra exatamente; o vocabulário gravado é minúsculo */
                     enrollmentType?: string;
                     sourceSystem?: string;
                     companyId?: string;

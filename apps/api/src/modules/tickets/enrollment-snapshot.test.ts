@@ -125,8 +125,6 @@ describe('movementFieldsOf', () => {
 })
 
 describe('alterationTypeOf', () => {
-  /** The Go payload writes snake_case; the contract is not frozen (PD-001),
-   *  so the other two spellings must read the same. */
   it('reads alteration_type in any of the three spellings', () => {
     expect(alterationTypeOf({ alteration_type: 'plan' })).toBe('plan')
     expect(alterationTypeOf({ 'alteration-type': 'registration' })).toBe('registration')
@@ -143,8 +141,6 @@ describe('alterationTypeOf', () => {
     expect(alterationTypeOf({ alteration_type: 1 })).toBeNull()
   })
 
-  /** Reading is not judging: the word comes back as written, and
-   *  `parseAlterationType` decides whether it is one we know. */
   it('returns the word raw, known or not', () => {
     expect(alterationTypeOf({ alteration_type: 'cnpj' })).toBe('cnpj')
   })

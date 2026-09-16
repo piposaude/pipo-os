@@ -90,11 +90,10 @@ export const createTicketBodySchema = z
   .object({
     enrollmentId: z.uuid(),
     // Closed on the way in and open on the way out (`ticketSchema` stays a
-    // string): the column holds legacy words, and a word the EI adds tomorrow
-    // must fail here loudly instead of reaching a row raw.
+    // string), because the column holds legacy words.
     enrollmentType: incomingEnrollmentTypeSchema,
-    // Only read next to `alteration`, which it disambiguates; the snapshot's
-    // alteration_type fills it when the body does not say.
+    // Only read next to `alteration`; the snapshot's alteration_type fills it
+    // when the body does not say.
     alterationType: alterationTypeSchema.optional(),
     companyId: z.uuid(),
     sourceSystem: z.string(),
@@ -152,7 +151,10 @@ export const listTicketsQuerySchema = z.object({
   enrollmentId: z.uuid().optional(),
   queueId: z.uuid().optional(),
   assigneeId: z.string().min(1).optional(),
-  enrollmentType: z.string().optional(),
+  enrollmentType: z
+    .string()
+    .describe('Compara a palavra exatamente; o vocabulário gravado é minúsculo')
+    .optional(),
   sourceSystem: z.string().optional(),
   companyId: z.uuid().optional(),
   tags: z
