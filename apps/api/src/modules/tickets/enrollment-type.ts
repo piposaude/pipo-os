@@ -60,7 +60,13 @@ export function canonicalEnrollmentType(
   alterationType: AlterationType | null | undefined,
 ): CanonicalEnrollmentType | null {
   if (type !== 'alteration') return type
-  return alterationType ? OF_ALTERATION[alterationType] : null
+  // Own keys only, as `vocabulary.ts` does: the types say a word got here
+  // through the schema, and a caller that skips it must not read `constructor`
+  // off the prototype and write a function to the column.
+  if (!alterationType || !Object.prototype.hasOwnProperty.call(OF_ALTERATION, alterationType)) {
+    return null
+  }
+  return OF_ALTERATION[alterationType]
 }
 
 /** The snapshot's word, if it is one we know; anything else reads as absent.

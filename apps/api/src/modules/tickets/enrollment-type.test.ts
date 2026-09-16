@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   CANONICAL_ENROLLMENT_TYPES,
+  type AlterationType,
   canonicalEnrollmentType,
   foldEnrollmentWords,
   incomingEnrollmentTypeSchema,
@@ -24,6 +25,13 @@ describe('canonicalEnrollmentType', () => {
 
   it.each(CANONICAL_ENROLLMENT_TYPES)('passes %s through untouched', (type) => {
     expect(canonicalEnrollmentType(type, null)).toBe(type)
+  })
+
+  /** The map is an object literal, so a word that never passed the schema could
+   *  read a member off the prototype and write a function to the column. It is
+   *  the guard, and the test, that `vocabulary.ts` already carries. */
+  it('does not read a value off Object.prototype', () => {
+    expect(canonicalEnrollmentType('alteration', 'constructor' as AlterationType)).toBeNull()
   })
 
   /** The body may carry both; only `alteration` is ambiguous enough to read
