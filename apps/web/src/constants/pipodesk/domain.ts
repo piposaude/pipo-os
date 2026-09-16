@@ -20,6 +20,18 @@ export const ENROLLMENT_TYPE_COPY: Record<string, string> = {
   combined_change: 'Alteração combinada',
 }
 
+/** O tom do chip de classificação. Uma palavra nova sem entrada aqui cai em
+ *  `neutral`, e o teste de contrato do vocabulário é o que a cobra. */
+export const ENROLLMENT_TYPE_VARIANT: Record<string, 'neutral' | 'warning' | 'alert' | 'success'> =
+  {
+    inclusion: 'success',
+    exclusion: 'alert',
+    plan_change: 'warning',
+    registration_data_change: 'neutral',
+    // Carrega uma troca de plano, então lê com o mesmo tom.
+    combined_change: 'warning',
+  }
+
 export const COMPANY_SIZE_COPY: Record<string, string> = {
   pme: 'PME',
   'pme-plus': 'PME+',

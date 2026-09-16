@@ -1,7 +1,12 @@
 import { Link } from '@tanstack/react-router'
 import { CarrierLogo, Status } from '@piposaude/design-system'
 import { DISPLAY_STATUS_COPY, PENDING_REASON_COPY } from '@/constants/pipodesk/status'
-import { ENROLLMENT_TYPE_COPY, PRODUCT_COPY, RELATIONSHIP_COPY } from '@/constants/pipodesk/domain'
+import {
+  ENROLLMENT_TYPE_COPY,
+  ENROLLMENT_TYPE_VARIANT,
+  PRODUCT_COPY,
+  RELATIONSHIP_COPY,
+} from '@/constants/pipodesk/domain'
 import type { QueueColumn } from '@/lib/pipodesk/columns'
 import { formatDayMonth, formatPrazo, prazoVariant } from '@/lib/pipodesk/format'
 import { companyTitleOf, principalNameOf, type TicketRow } from '@/lib/pipodesk/ticket-row'
@@ -21,16 +26,6 @@ const CARRIER_SLUG: Record<string, string> = {
   MetLife: 'metlife',
   Wellhub: 'wellhub',
   'Unimed Mineira': 'seguros-unimed',
-}
-
-/** Classification chip color — presentation decision, lives here. */
-const CLASSIFICATION: Record<string, 'neutral' | 'warning' | 'alert' | 'success'> = {
-  inclusion: 'success',
-  exclusion: 'alert',
-  plan_change: 'warning',
-  registration_data_change: 'neutral',
-  // Carries a plan change, so it reads with that tone.
-  combined_change: 'warning',
 }
 
 export interface QueueRowProps {
@@ -139,7 +134,7 @@ export function QueueRow({
     classification: (
       <td key="classification">
         <Status
-          variant={CLASSIFICATION[ticket.enrollmentType] ?? 'neutral'}
+          variant={ENROLLMENT_TYPE_VARIANT[ticket.enrollmentType] ?? 'neutral'}
           className={styles.rowChip}
         >
           {ENROLLMENT_TYPE_COPY[ticket.enrollmentType] ?? ticket.enrollmentType}

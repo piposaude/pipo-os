@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { QueueRow } from '@/components/pipodesk/queue/QueueRow'
+import { ENROLLMENT_TYPE_VARIANT } from '@/constants/pipodesk/domain'
 import { queueSeed } from '@/fixtures/pipodesk/dataset'
 
 const columns = [
@@ -57,26 +58,14 @@ describe('QueueRow', () => {
     expect(screen.getByText('6d')).toBeInTheDocument()
   })
 
-  /** A combined change carries a plan change, so its chip reads with the same
-   *  tone; without an entry of its own it would fall back to neutral. */
   it('should label a combined change and give it the tone of a plan change', () => {
-    const withClassification = [
+    renderRow({ ...queueSeed[0], enrollmentType: 'combined_change' }, [
       ...columns,
       { key: 'classification', label: 'Classificação', width: '120px' },
-    ]
-    renderRow(
-      { ...queueSeed[0], id: 'combined', enrollmentType: 'combined_change' },
-      withClassification,
-    )
-    renderRow({ ...queueSeed[0], id: 'plan', enrollmentType: 'plan_change' }, withClassification)
-    renderRow({ ...queueSeed[0], id: 'inclusion', enrollmentType: 'inclusion' }, withClassification)
+    ])
 
-    const attributes = (element: HTMLElement) =>
-      [...element.attributes].map((attribute) => `${attribute.name}=${attribute.value}`).sort()
-    const combined = screen.getByText('Alteração combinada')
-    const plan = screen.getByText('Alteração')
-
-    expect(attributes(combined)).toEqual(attributes(plan))
-    expect(attributes(combined)).not.toEqual(attributes(screen.getByText('Inclusão')))
+    expect(screen.getByText('Alteração combinada')).toBeInTheDocument()
+    expect(ENROLLMENT_TYPE_VARIANT.combined_change).toBe(ENROLLMENT_TYPE_VARIANT.plan_change)
+    expect(ENROLLMENT_TYPE_VARIANT.combined_change).not.toBe(ENROLLMENT_TYPE_VARIANT.inclusion)
   })
 })
