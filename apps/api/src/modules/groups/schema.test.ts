@@ -1,6 +1,13 @@
 import type { FastifyInstance } from 'fastify'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
+import {
+  UNIQUE_VIOLATION,
+  FK_VIOLATION,
+  CHECK_VIOLATION,
+  INVALID_TEXT_REPRESENTATION,
+  codeOf,
+} from '../../shared/pg.test-helpers.js'
 
 const POD_3 = 'POD 3'
 const POD_5 = 'POD 5'
@@ -8,22 +15,6 @@ const ANA = 'ana@pipo.health'
 const BRUNO = 'bruno@pipo.health'
 const COMPANY_A = '00000000-0000-4000-8000-00000000000a'
 const COMPANY_C = '00000000-0000-4000-8000-00000000000c'
-
-const UNIQUE_VIOLATION = '23505'
-const FK_VIOLATION = '23503'
-const CHECK_VIOLATION = '23514'
-const INVALID_TEXT_REPRESENTATION = '22P02'
-
-async function codeOf(write: Promise<unknown>): Promise<string | undefined> {
-  try {
-    await write
-    return undefined
-  } catch (err) {
-    if (err instanceof Error && 'code' in err) return err.code as string
-    // No Postgres code means the test itself is broken, not a constraint firing.
-    throw err
-  }
-}
 
 describe('groups schema — hierarchy and portfolio constraints', () => {
   let app: FastifyInstance

@@ -1,12 +1,15 @@
 import type { FastifyInstance } from 'fastify'
-import { sql } from 'kysely'
+import { sql, type Insertable } from 'kysely'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
+import type { TicketComments } from '../../infrastructure/db-types.js'
+import {
+  UNIQUE_VIOLATION,
+  NOT_NULL_VIOLATION,
+  CHECK_VIOLATION,
+  codeOf,
+} from '../../shared/pg.test-helpers.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
-
-const CHECK_VIOLATION = '23514'
-const NOT_NULL_VIOLATION = '23502'
-const UNIQUE_VIOLATION = '23505'
 
 const AUTHOR = 'dev@piposaude.com.br'
 const SUBMISSION = '00000000-0000-4000-8000-0000000000aa'
@@ -19,17 +22,6 @@ const ticketBody = (enrollmentId: string) => ({
   sourceSystem: 'enrollment-integrations',
   enrollmentSnapshot: { name: 'Test User' },
 })
-
-async function codeOf(write: Promise<unknown>): Promise<string | undefined> {
-  try {
-    await write
-    return undefined
-  } catch (err) {
-    if (err instanceof Error && 'code' in err) return err.code as string
-    // No Postgres code means the test itself is broken, not a constraint firing.
-    throw err
-  }
-}
 
 describe('comments schema — submission and author columns', () => {
   let app: FastifyInstance
@@ -85,7 +77,10 @@ describe('comments schema — submission and author columns', () => {
     event_type: null,
   })
 
-  const comment = (values: Record<string, unknown> = {}, ticket = ticketId): Promise<unknown> =>
+  const comment = (
+    values: Partial<Insertable<TicketComments>> = {},
+    ticket = ticketId,
+  ): Promise<unknown> =>
     app.db
       .insertInto('ticket_comments')
       .values({ ...base(ticket), author_type: 'user', ...values })
@@ -104,6 +99,11 @@ describe('comments schema — submission and author columns', () => {
         ),
       )
       expect(code).toBe(NOT_NULL_VIOLATION)
+    })
+
+    it('accepts a system row without an author id', async () => {
+      await expect(comment({ author_type: 'system', author_id: null })).resolves.toBeTruthy()
+    })
 
     it('closes the same set on ticket_status_history', async () => {
       const code = await codeOf(
@@ -119,11 +119,6 @@ describe('comments schema — submission and author columns', () => {
           .execute(),
       )
       expect(code).toBe(CHECK_VIOLATION)
-    })
-    })
-
-    it('accepts a system row without an author id', async () => {
-      await expect(comment({ author_type: 'system', author_id: null })).resolves.toBeTruthy()
     })
   })
 

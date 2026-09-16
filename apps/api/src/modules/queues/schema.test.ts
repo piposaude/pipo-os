@@ -4,6 +4,12 @@ import { sql, type Insertable } from 'kysely'
 import type { FastifyInstance } from 'fastify'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
+import {
+  UNIQUE_VIOLATION,
+  FK_VIOLATION,
+  CHECK_VIOLATION,
+  codeOf,
+} from '../../shared/pg.test-helpers.js'
 import type { TicketQueues } from '../../infrastructure/db-types.js'
 
 const ANA = 'ana@pipo.health'
@@ -22,21 +28,6 @@ const { sortFields, sortDirections, groupBy, defaultSort } = JSON.parse(
   sortDirections: string[]
   groupBy: string[]
   defaultSort: { by: string; direction: string }
-}
-
-const UNIQUE_VIOLATION = '23505'
-const FK_VIOLATION = '23503'
-const CHECK_VIOLATION = '23514'
-
-async function codeOf(write: Promise<unknown>): Promise<string | undefined> {
-  try {
-    await write
-    return undefined
-  } catch (err) {
-    if (err instanceof Error && 'code' in err) return err.code as string
-    // No Postgres code means the test itself is broken, not a constraint firing.
-    throw err
-  }
 }
 
 describe('queues schema — saved view constraints', () => {

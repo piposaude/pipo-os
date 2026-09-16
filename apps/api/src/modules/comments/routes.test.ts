@@ -174,6 +174,7 @@ describe('comments routes', () => {
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
         payload: { visibility: 'private', body: 'anotação' },
       })
+      expect(response.statusCode).toBe(201)
 
       const row = await app.db
         .selectFrom('ticket_comments')
