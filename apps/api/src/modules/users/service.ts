@@ -34,6 +34,9 @@ interface Snapshot {
   /** `users[i]` folded for search, once per refresh: the filter runs over the
    *  whole list on every keystroke the queue sends. */
   folded: Array<{ name: string; email: string }>
+  /** Keyed lowercase, not trusted to the loader: a list in mixed case would
+   *  answer no name, which reads as a person who has none. */
+  byEmail: Map<string, AuthServiceUser>
   /** When it was loaded *successfully* — a failed refresh must not rejuvenate
    *  it, or a long outage would stay hidden forever. */
   loadedAt: number
@@ -46,6 +49,7 @@ function snapshotOf(users: AuthServiceUser[]): Snapshot {
       name: foldText(user.name ?? ''),
       email: foldText(user.email),
     })),
+    byEmail: new Map(users.map((user) => [user.email.toLowerCase(), user])),
     loadedAt: Date.now(),
   }
 }
@@ -88,17 +92,20 @@ export class UsersService {
   /** The exact e-mail, not `search`: the fuzzy match is a substring one, and
    *  `ana@` would answer with `ana.souza@`'s name. */
   async byEmail(email: string): Promise<AuthServiceUser | null> {
-    // Both sides lowercased here, not trusted to the loader: a list in mixed
-    // case would answer no name, which reads as a person who has none.
-    const wanted = email.trim().toLowerCase()
     const snapshot = await this.currentWithin(NAME_WAIT_MS)
 
-    return snapshot?.users.find((user) => user.email.toLowerCase() === wanted) ?? null
+    return snapshot?.byEmail.get(email.trim().toLowerCase()) ?? null
   }
 
   /** The snapshot if it arrives within `ms`, otherwise null — the listing runs
    *  on, so whoever loads the next page finds it warm. */
   private async currentWithin(ms: number): Promise<Snapshot | null> {
+    // A timer and a race per session read, with nothing to wait for.
+    const fresh = this.within(this.ttlMs)
+    if (fresh) {
+      return fresh
+    }
+
     const current = this.current()
     // Outliving the race, its rejection needs an owner here as well.
     current.catch(() => undefined)
@@ -116,18 +123,20 @@ export class UsersService {
   }
 
   private async current(): Promise<Snapshot> {
-    const failure = this.failure
-    const holdingOff = failure !== null && Date.now() < failure.retryAt
-    const servable = this.within(this.maxStaleMs)
-
-    const usable = this.within(this.ttlMs) ?? (holdingOff ? servable : null)
-    if (usable) {
-      return usable
+    const fresh = this.within(this.ttlMs)
+    if (fresh) {
+      return fresh
     }
 
-    // Inside the hold-off with nothing worth serving: refuse right away instead
-    // of making every caller wait out the listing timeout again.
-    if (holdingOff) {
+    const failure = this.failure
+    const stale = this.within(this.maxStaleMs)
+
+    // Inside the hold-off: whatever is left is served, and with nothing left the
+    // refusal is immediate instead of one listing timeout per caller.
+    if (failure !== null && Date.now() < failure.retryAt) {
+      if (stale) {
+        return stale
+      }
       throw failure.error
     }
 
@@ -135,13 +144,13 @@ export class UsersService {
 
     // Stale while revalidating: /api/auth/me runs through here on every page
     // load, and the session store sits in `loading` until it answers.
-    if (servable) {
+    if (stale) {
       refresh.catch(() => undefined)
-      return servable
+      return stale
     }
 
-    // Nothing usable in hand: this caller waits, and hears about it. Serving
-    // stale returned above, before the await.
+    // Nothing in hand: this caller waits, and hears about it. Serving stale
+    // returned above, before the await.
     return refresh
   }
 
