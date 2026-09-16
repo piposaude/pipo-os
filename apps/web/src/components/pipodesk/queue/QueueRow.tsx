@@ -29,6 +29,8 @@ const CLASSIFICATION: Record<string, 'neutral' | 'warning' | 'alert' | 'success'
   exclusion: 'alert',
   plan_change: 'warning',
   registration_data_change: 'neutral',
+  // Carries a plan change, so it reads with that tone.
+  combined_change: 'warning',
 }
 
 export interface QueueRowProps {

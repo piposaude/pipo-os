@@ -107,7 +107,8 @@ export const ROW_FIELD_PII = {
   displayNumber: 'ticket number, not a person',
   title: true,
   enrollmentId: 'internal uuid',
-  enrollmentType: 'inclusion | exclusion | plan_change',
+  enrollmentType:
+    'inclusion | exclusion | plan_change | registration_data_change | combined_change',
   status: 'closed vocabulary',
   priority: 'closed vocabulary',
   actionDate: 'date of the work, not of the person',

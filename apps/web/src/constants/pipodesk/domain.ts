@@ -17,6 +17,7 @@ export const ENROLLMENT_TYPE_COPY: Record<string, string> = {
   exclusion: 'Exclusão',
   plan_change: 'Alteração',
   registration_data_change: 'Alteração cadastral',
+  combined_change: 'Alteração combinada',
 }
 
 export const COMPANY_SIZE_COPY: Record<string, string> = {

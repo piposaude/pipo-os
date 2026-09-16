@@ -18,6 +18,7 @@ const { clientWords } = JSON.parse(readFileSync(WORDS_PATH, 'utf-8')) as {
 const FIELD_OF: Record<string, FilterField> = {
   companySize: 'companySizes',
   contractType: 'contractTypes',
+  enrollmentType: 'types',
 }
 
 const ctx: LabelContext = {
