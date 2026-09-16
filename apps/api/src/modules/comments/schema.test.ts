@@ -105,6 +105,13 @@ describe('comments schema — submission and author columns', () => {
       await expect(comment({ author_type: 'system', author_id: null })).resolves.toBeTruthy()
     })
 
+    it('refuses a person or a service without an author id', async () => {
+      expect(await codeOf(comment({ author_type: 'user', author_id: null }))).toBe(CHECK_VIOLATION)
+      expect(await codeOf(comment({ author_type: 'service', author_id: null }))).toBe(
+        CHECK_VIOLATION,
+      )
+    })
+
     it('closes the same set on ticket_status_history', async () => {
       const code = await codeOf(
         app.db
@@ -115,6 +122,37 @@ describe('comments schema — submission and author columns', () => {
             to_status: 'carrier-processing',
             author_type: 'robot',
             author_id: AUTHOR,
+          })
+          .execute(),
+      )
+      expect(code).toBe(CHECK_VIOLATION)
+    })
+
+    it('accepts a system status change without an author id', async () => {
+      await expect(
+        app.db
+          .insertInto('ticket_status_history')
+          .values({
+            ticket_id: ticketId,
+            from_status: 'broker-processing',
+            to_status: 'carrier-processing',
+            author_type: 'system',
+            author_id: null,
+          })
+          .execute(),
+      ).resolves.toBeTruthy()
+    })
+
+    it('closes the same author id rule on ticket_status_history', async () => {
+      const code = await codeOf(
+        app.db
+          .insertInto('ticket_status_history')
+          .values({
+            ticket_id: ticketId,
+            from_status: 'broker-processing',
+            to_status: 'carrier-processing',
+            author_type: 'user',
+            author_id: null,
           })
           .execute(),
       )

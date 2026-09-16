@@ -12,6 +12,8 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     ALTER TABLE ticket_comments
       ADD COLUMN author_type text NOT NULL DEFAULT 'user',
       ADD CONSTRAINT ticket_comments_author_type_check CHECK (author_type IN ${AUTHOR_TYPES}),
+      ADD CONSTRAINT ticket_comments_author_id_check
+        CHECK (author_type = 'system' OR author_id IS NOT NULL),
       ADD COLUMN idempotency_key text,
       ADD COLUMN submission_id uuid,
       -- in_reply_to holds the submission_id of the thread root, not a row id:
@@ -29,19 +31,23 @@ export async function up(db: Kysely<unknown>): Promise<void> {
   await sql`
     ALTER TABLE ticket_status_history
       ADD COLUMN submission_id uuid,
-      ADD CONSTRAINT ticket_status_history_author_type_check CHECK (author_type IN ${AUTHOR_TYPES})
+      ADD CONSTRAINT ticket_status_history_author_type_check CHECK (author_type IN ${AUTHOR_TYPES}),
+      ADD CONSTRAINT ticket_status_history_author_id_check
+        CHECK (author_type = 'system' OR author_id IS NOT NULL)
   `.execute(db)
 }
 
 export async function down(db: Kysely<unknown>): Promise<void> {
   await sql`
     ALTER TABLE ticket_status_history
+      DROP CONSTRAINT IF EXISTS ticket_status_history_author_id_check,
       DROP CONSTRAINT IF EXISTS ticket_status_history_author_type_check,
       DROP COLUMN submission_id
   `.execute(db)
   await sql`DROP INDEX IF EXISTS uq_ticket_comments_idempotency`.execute(db)
   await sql`
     ALTER TABLE ticket_comments
+      DROP CONSTRAINT IF EXISTS ticket_comments_author_id_check,
       DROP CONSTRAINT IF EXISTS ticket_comments_author_type_check,
       DROP COLUMN in_reply_to,
       DROP COLUMN submission_id,
