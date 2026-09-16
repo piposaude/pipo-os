@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { CANONICAL_ENROLLMENT_TYPES } from './enrollment-type.js'
 import { INSURANCE_SUFFIX, VOCABULARIES, toClient, toStored } from './vocabulary.js'
 
 describe('toClient', () => {
@@ -106,4 +107,21 @@ describe('INSURANCE_SUFFIX', () => {
       expect(stored.replace(new RegExp(INSURANCE_SUFFIX), '')).toBe(toClient('product', stored))
     },
   )
+})
+
+/**
+ * `enrollmentType` is declared so the contract holds the web to copy for each
+ * canonical word, and it is identity because the service canonizes on write.
+ * Nothing consults it: the row mappers read `enrollment_type` raw and
+ * `filter-resolver`'s `VOCABULARY_OF` does not list the column, so `types`
+ * resolves with a literal `in`. The day it stops being identity — a canonical
+ * word renamed, a legacy word folded — this is the test that says the filter
+ * and the two mappers have to start translating, instead of the queue quietly
+ * not finding the rows this ticket exists to find.
+ */
+describe('the enrollmentType vocabulary', () => {
+  it.each(CANONICAL_ENROLLMENT_TYPES)('leaves %s exactly as the column holds it', (word) => {
+    expect(toClient('enrollmentType', word)).toBe(word)
+    expect(toStored('enrollmentType', word)).toEqual([word])
+  })
 })
