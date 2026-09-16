@@ -34,16 +34,24 @@ export class TicketsService {
     const { alterationType, ...data } = body
     // The body wins; the snapshot fills what the EI does not send yet, as for
     // the movement columns (PD-207).
+    const written = alterationTypeOf(data.enrollmentSnapshot)
     const enrollmentType = canonicalEnrollmentType(
       data.enrollmentType,
-      alterationType ?? parseAlterationType(alterationTypeOf(data.enrollmentSnapshot)),
+      alterationType ?? parseAlterationType(written),
     )
     if (enrollmentType === null) {
-      const message =
-        'alterationType is required when enrollmentType is alteration: in the body, or as alteration_type in the snapshot'
-      throw new ValidationFailedError(message, [
-        { field: 'alterationType', message, code: 'required' },
-      ])
+      // A word in the snapshot we do not know is a different refusal from no
+      // word at all, and the caller fixes each one differently.
+      const [code, message] = written
+        ? ([
+            'invalid',
+            'alteration_type in the snapshot is not a word this API knows: send alterationType in the body instead',
+          ] as const)
+        : ([
+            'required',
+            'alterationType is required when enrollmentType is alteration: in the body, or as alteration_type in the snapshot',
+          ] as const)
+      throw new ValidationFailedError(message, [{ field: 'alterationType', message, code }])
     }
     return this.repository.create({ ...data, enrollmentType })
   }

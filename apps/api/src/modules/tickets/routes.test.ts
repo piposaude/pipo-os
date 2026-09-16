@@ -401,8 +401,6 @@ describe('tickets routes', () => {
         expect(response.json().enrollmentType).toBe('combined_change')
       })
 
-      /** The EI reads its own request_type with EqualFold, so the case it
-       *  forwards is not stable and a capital letter must not cost a ticket. */
       it('aceita o tipo em qualquer caixa, vindo do corpo', async () => {
         const response = await post({ enrollmentType: 'Alteration', alterationType: 'Plan' })
 
@@ -428,21 +426,16 @@ describe('tickets routes', () => {
       })
 
       it.each([
-        ['sem pista nenhuma', { name: 'Test User' }],
-        ['com uma palavra que o EI não emite no snapshot', { alteration_type: 'cnpj' }],
-      ])(
-        'responde 422 nomeando o alterationType para uma alteration %s',
-        async (_case, enrollmentSnapshot) => {
-          const response = await post({ enrollmentType: 'alteration', enrollmentSnapshot })
+        ['sem pista nenhuma', { name: 'Test User' }, 'required'],
+        ['com uma palavra que o EI não emite no snapshot', { alteration_type: 'cnpj' }, 'invalid'],
+      ])('responde 422 %s, nomeando o alterationType', async (_case, enrollmentSnapshot, code) => {
+        const response = await post({ enrollmentType: 'alteration', enrollmentSnapshot })
 
-          expect(response.statusCode).toBe(422)
-          expect(response.json().error).toBe('ValidationFailedError')
-          expect(response.json().details[0].field).toBe('alterationType')
-        },
-      )
+        expect(response.statusCode).toBe(422)
+        expect(response.json().error).toBe('ValidationFailedError')
+        expect(response.json().details[0]).toMatchObject({ field: 'alterationType', code })
+      })
 
-      /** The point of the enum: a word the EI adds tomorrow fails loudly here
-       *  instead of reaching a row raw. */
       it.each([
         ['enrollmentType', 'cancellation'],
         ['alterationType', 'cnpj'],
