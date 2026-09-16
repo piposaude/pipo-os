@@ -60,9 +60,10 @@ export function canonicalEnrollmentType(
   alterationType: AlterationType | null | undefined,
 ): CanonicalEnrollmentType | null {
   if (type !== 'alteration') return type
-  // Own keys only, as `vocabulary.ts` does: the types say a word got here
-  // through the schema, and a caller that skips it must not read `constructor`
-  // off the prototype and write a function to the column.
+  // Own keys only, as `vocabulary.ts` does. No path reaches here unvalidated
+  // today — both callers gate on `alterationTypeSchema` — so this guards the
+  // module boundary, not a live bug: a caller that skipped the schema would
+  // otherwise read `constructor` off the prototype and write it to the column.
   if (!alterationType || !Object.prototype.hasOwnProperty.call(OF_ALTERATION, alterationType)) {
     return null
   }
@@ -70,23 +71,35 @@ export function canonicalEnrollmentType(
 }
 
 /** The snapshot's word, if it is one we know; anything else reads as absent.
- *  Folded like the body's, because the snapshot is the EI's payload verbatim. */
+ *  Folded like the body's. Whitespace is not: `readString` calls a blank absent
+ *  but hands the value back untrimmed, and trimming there would part company
+ *  with its twin in the web's `ticket-row`, so ` plan ` is still a 422. */
 export function parseAlterationType(value: string | null): AlterationType | null {
   const parsed = alterationTypeSchema.safeParse(value?.toLowerCase() ?? null)
   return parsed.success ? parsed.data : null
 }
 
 /**
- * Lowercases the two words before the enum sees them. The EI compares both with
- * `EqualFold` — `request_type` in `enrollment.go:432`, `alteration_type` in
- * `:332` — so the case it forwards is not stable, and refusing `Alteration`
- * would cost a whole ticket over a letter. It is the same fold `relationshipOf`
- * applies to `member-type`.
+ * Lowercases the two words before the enum sees them.
+ *
+ * For `request_type` the reason is the producer: the EI reads its own with
+ * `EqualFold` (`enrollment.go:432`), so the case it forwards is not stable, and
+ * refusing `Alteration` would cost a whole ticket over a letter. It is the fold
+ * `relationshipOf` already applies to `member-type`.
+ *
+ * For `alterationType` the reason is only symmetry and a public door. The wire
+ * field is `Payload.AlterationType` (`:402`) and the EI compares it with `==`
+ * (`:446`, `:453`), so a mixed-case one never survives `ValidAlteration` over
+ * there — this fold rescues nothing the EI would have sent. Folding one word
+ * and not the word beside it is the surprise worth avoiding.
  *
  * It runs before validation, not inside the schema: wrapping the enum in a
  * `preprocess` makes the exported contract drop `enrollmentType` from
  * `required`, and a required field turning optional in the generated client is
- * a worse bug than the one being fixed. The published vocabulary stays lowercase.
+ * a worse bug than the one being fixed. The published vocabulary stays
+ * lowercase, and so does the column — which is why reading stays literal:
+ * `listTicketsQuerySchema.enrollmentType` and the `types` resolver compare
+ * exactly, where a fold would cost the index and rescue no row.
  */
 export function foldEnrollmentWords(body: unknown): unknown {
   if (typeof body !== 'object' || body === null || Array.isArray(body)) return body

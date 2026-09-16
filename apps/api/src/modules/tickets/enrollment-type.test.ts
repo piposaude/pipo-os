@@ -47,9 +47,9 @@ describe('parseAlterationType', () => {
     expect(parseAlterationType(word)).toBe(word)
   })
 
-  /** The EI compares its own alteration_type with EqualFold
-   *  (`enrollment.go:332`), so the case that reaches a snapshot is not stable —
-   *  the same reason `relationshipOf` folds `member-type`. */
+  /** Folded for symmetry with the word beside it, not because the EI forwards
+   *  it in mixed case — it compares the wire field with `==`. See
+   *  `foldEnrollmentWords`. */
   it.each([
     ['Plan', 'plan'],
     ['COMBINED', 'combined'],
@@ -89,8 +89,8 @@ describe('incomingEnrollmentTypeSchema', () => {
 })
 
 describe('foldEnrollmentWords', () => {
-  /** `EqualFold` on request_type (`enrollment.go:432`) and on alteration_type
-   *  (`:332`): the EI never minds the case of what it forwards. */
+  /** `EqualFold` on request_type (`enrollment.go:432`): the EI never minds the
+   *  case of the word it forwards. */
   it('lowercases the two words the enum is about to judge', () => {
     expect(foldEnrollmentWords({ enrollmentType: 'Alteration', alterationType: 'Plan' })).toEqual({
       enrollmentType: 'alteration',

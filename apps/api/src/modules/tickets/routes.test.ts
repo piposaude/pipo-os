@@ -401,8 +401,8 @@ describe('tickets routes', () => {
         expect(response.json().enrollmentType).toBe('combined_change')
       })
 
-      /** The EI forwards request_type and alteration_type without minding their
-       *  case (EqualFold), so a capital letter must not cost a ticket. */
+      /** The EI reads its own request_type with EqualFold, so the case it
+       *  forwards is not stable and a capital letter must not cost a ticket. */
       it('aceita o tipo em qualquer caixa, vindo do corpo', async () => {
         const response = await post({ enrollmentType: 'Alteration', alterationType: 'Plan' })
 
