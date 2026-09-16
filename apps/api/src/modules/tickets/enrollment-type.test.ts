@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   CANONICAL_ENROLLMENT_TYPES,
   canonicalEnrollmentType,
+  foldEnrollmentWords,
   incomingEnrollmentTypeSchema,
   parseAlterationType,
 } from './enrollment-type.js'
@@ -38,6 +39,17 @@ describe('parseAlterationType', () => {
     expect(parseAlterationType(word)).toBe(word)
   })
 
+  /** The EI compares its own alteration_type with EqualFold
+   *  (`enrollment.go:332`), so the case that reaches a snapshot is not stable —
+   *  the same reason `relationshipOf` folds `member-type`. */
+  it.each([
+    ['Plan', 'plan'],
+    ['COMBINED', 'combined'],
+    ['Registration-Data', 'registration-data'],
+  ])('reads %s as %s', (written, expected) => {
+    expect(parseAlterationType(written)).toBe(expected)
+  })
+
   it('is null for a word the EI does not emit, and for nothing at all', () => {
     expect(parseAlterationType('cnpj')).toBeNull()
     expect(parseAlterationType('')).toBeNull()
@@ -52,11 +64,51 @@ describe('incomingEnrollmentTypeSchema', () => {
     }
   })
 
+  /** The schema itself stays strict, so the exported contract keeps the
+   *  lowercase vocabulary and `enrollmentType` stays required; the case the EI
+   *  forwards is folded before validation, by `foldEnrollmentWords`. */
+  it.each(['Alteration', 'Inclusion', 'PLAN_CHANGE'])('refuses %s unfolded', (word) => {
+    expect(incomingEnrollmentTypeSchema.safeParse(word).success).toBe(false)
+  })
+
   /** The two the EI has a label for and never opens a ticket about. */
-  it.each(['cancellation', 'exclusion-with-extension-plan', 'Inclusion', ''])(
+  it.each(['cancellation', 'exclusion-with-extension-plan', 'inclusao', ''])(
     'refuses %s',
     (word) => {
       expect(incomingEnrollmentTypeSchema.safeParse(word).success).toBe(false)
     },
   )
+})
+
+describe('foldEnrollmentWords', () => {
+  /** `EqualFold` on request_type (`enrollment.go:432`) and on alteration_type
+   *  (`:332`): the EI never minds the case of what it forwards. */
+  it('lowercases the two words the enum is about to judge', () => {
+    expect(foldEnrollmentWords({ enrollmentType: 'Alteration', alterationType: 'Plan' })).toEqual({
+      enrollmentType: 'alteration',
+      alterationType: 'plan',
+    })
+  })
+
+  it('leaves every other field of the body alone', () => {
+    const body = { enrollmentType: 'INCLUSION', title: 'Bradesco | ACME | Inclusão - MARIA' }
+
+    expect(foldEnrollmentWords(body)).toEqual({ ...body, enrollmentType: 'inclusion' })
+  })
+
+  it('passes through what is not an object to fold, for the schema to refuse', () => {
+    expect(foldEnrollmentWords(null)).toBeNull()
+    expect(foldEnrollmentWords('alteration')).toBe('alteration')
+    expect(foldEnrollmentWords([1])).toEqual([1])
+  })
+
+  it('does not invent a key the caller did not send', () => {
+    expect(foldEnrollmentWords({ enrollmentType: 'inclusion' })).not.toHaveProperty(
+      'alterationType',
+    )
+  })
+
+  it('leaves a non-string value for the schema to refuse, instead of throwing', () => {
+    expect(foldEnrollmentWords({ enrollmentType: 7 })).toEqual({ enrollmentType: 7 })
+  })
 })

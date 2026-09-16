@@ -63,8 +63,32 @@ export function canonicalEnrollmentType(
   return alterationType ? OF_ALTERATION[alterationType] : null
 }
 
-/** The snapshot's word, if it is one we know; anything else reads as absent. */
+/** The snapshot's word, if it is one we know; anything else reads as absent.
+ *  Folded like the body's, because the snapshot is the EI's payload verbatim. */
 export function parseAlterationType(value: string | null): AlterationType | null {
-  const parsed = alterationTypeSchema.safeParse(value)
+  const parsed = alterationTypeSchema.safeParse(value?.toLowerCase() ?? null)
   return parsed.success ? parsed.data : null
+}
+
+/**
+ * Lowercases the two words before the enum sees them. The EI compares both with
+ * `EqualFold` — `request_type` in `enrollment.go:432`, `alteration_type` in
+ * `:332` — so the case it forwards is not stable, and refusing `Alteration`
+ * would cost a whole ticket over a letter. It is the same fold `relationshipOf`
+ * applies to `member-type`.
+ *
+ * It runs before validation, not inside the schema: wrapping the enum in a
+ * `preprocess` makes the exported contract drop `enrollmentType` from
+ * `required`, and a required field turning optional in the generated client is
+ * a worse bug than the one being fixed. The published vocabulary stays lowercase.
+ */
+export function foldEnrollmentWords(body: unknown): unknown {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) return body
+
+  const folded: Record<string, unknown> = { ...(body as Record<string, unknown>) }
+  for (const key of ['enrollmentType', 'alterationType']) {
+    const value = folded[key]
+    if (typeof value === 'string') folded[key] = value.toLowerCase()
+  }
+  return folded
 }

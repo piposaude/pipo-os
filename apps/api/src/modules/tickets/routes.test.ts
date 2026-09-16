@@ -401,6 +401,25 @@ describe('tickets routes', () => {
         expect(response.json().enrollmentType).toBe('combined_change')
       })
 
+      /** The EI forwards request_type and alteration_type without minding their
+       *  case (EqualFold), so a capital letter must not cost a ticket. */
+      it('aceita o tipo em qualquer caixa, vindo do corpo', async () => {
+        const response = await post({ enrollmentType: 'Alteration', alterationType: 'Plan' })
+
+        expect(response.statusCode).toBe(201)
+        expect(response.json().enrollmentType).toBe('plan_change')
+      })
+
+      it('aceita o alteration_type em qualquer caixa, vindo do snapshot', async () => {
+        const response = await post({
+          enrollmentType: 'alteration',
+          enrollmentSnapshot: { alteration_type: 'COMBINED' },
+        })
+
+        expect(response.statusCode).toBe(201)
+        expect(response.json().enrollmentType).toBe('combined_change')
+      })
+
       it('uma palavra já canônica passa reta, ignorando o alterationType', async () => {
         const response = await post({ enrollmentType: 'exclusion', alterationType: 'plan' })
 
