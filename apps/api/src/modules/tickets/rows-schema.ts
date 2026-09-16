@@ -22,7 +22,9 @@ export const ticketRowsQuerySchema = z.object({
   companyIds: list(z.uuid()).optional(),
   carrierIds: list(text).optional(),
   products: list(text).optional(),
-  types: list(text).optional(),
+  types: list(text)
+    .describe('Compara a palavra exatamente; o vocabulário gravado é minúsculo')
+    .optional(),
   companySizes: list(text).optional(),
   contractTypes: list(text.nullable()).optional(),
   relationships: list(relationshipSchema).optional(),

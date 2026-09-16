@@ -68,8 +68,3 @@ export function foldEnrollmentWords(body: unknown): unknown {
   }
   return folded
 }
-
-/** Folds in place so the route hook needs no assertion over the raw body. */
-export function foldEnrollmentWordsOf(request: { body: unknown }): void {
-  request.body = foldEnrollmentWords(request.body)
-}

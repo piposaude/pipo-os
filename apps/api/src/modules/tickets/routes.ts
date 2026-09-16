@@ -6,7 +6,7 @@ import { errorResponseSchema } from '../../shared/schemas.js'
 import { TICKET_POLICY } from '../auth/policy.js'
 import { ticketRowsQuerySchema, ticketRowsSchema } from './rows-schema.js'
 import { OpenTicketConflictError } from './errors.js'
-import { foldEnrollmentWordsOf } from './enrollment-type.js'
+import { foldEnrollmentWords } from './enrollment-type.js'
 import {
   createTicketBodySchema,
   listTicketsQuerySchema,
@@ -18,6 +18,12 @@ import {
   updateTicketStatusBodySchema,
 } from './schemas.js'
 import type { TicketsService } from './service.js'
+
+/** The body here is still whatever the caller sent: the hook runs before
+ *  validation, so nothing may read it as the validated shape. */
+function foldRawBody(request: { body: unknown }): void {
+  request.body = foldEnrollmentWords(request.body)
+}
 
 export function registerTicketRoutes(app: FastifyInstance, service: TicketsService): void {
   const server = app.withTypeProvider<ZodTypeProvider>()
@@ -96,7 +102,7 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
       // Before validation, so the enum below stays the published vocabulary
       // while a word the EI forwards in another case still opens the ticket.
       preValidation: (request, _reply, done) => {
-        foldEnrollmentWordsOf(request)
+        foldRawBody(request)
         done()
       },
       schema: {

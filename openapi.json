@@ -3651,7 +3651,8 @@
             },
             "in": "query",
             "name": "types",
-            "required": false
+            "required": false,
+            "description": "Compara a palavra exatamente; o vocabulário gravado é minúsculo"
           },
           {
             "schema": {
