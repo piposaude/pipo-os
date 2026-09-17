@@ -57,7 +57,7 @@ describe('insertEvent', () => {
   })
 
   it('records what happened, with the person who caused it as the author', async () => {
-    const event = await insertEvent(
+    const { comment, created } = await insertEvent(
       app.db,
       {
         ticketId,
@@ -68,7 +68,8 @@ describe('insertEvent', () => {
       ANALYST,
     )
 
-    expect(event).toMatchObject({
+    expect(created).toBe(true)
+    expect(comment).toMatchObject({
       kind: 'automated_event',
       eventType: 'assigned',
       authorId: ANALYST.id,
@@ -77,13 +78,52 @@ describe('insertEvent', () => {
   })
 
   it('keeps the event out of the public cut unless it is told otherwise', async () => {
-    const event = await insertEvent(
+    const { comment } = await insertEvent(
       app.db,
       { ticketId, eventType: 'priority_changed', body: 'Prioridade alterada' },
       ANALYST,
     )
 
-    expect(event.visibility).toBe('private')
+    expect(comment.visibility).toBe('private')
+  })
+
+  /* The collision cannot surface as an error here: inside a transaction a 23505
+     aborts the whole block, so the redelivery the key exists to absorb would
+     undo the assignment the event was written to explain. */
+  it('absorbs a redelivery without killing the transaction it was handed', async () => {
+    const idempotencyKey = 'ei:enrollment-1:assigned'
+    const event = {
+      ticketId,
+      eventType: 'assigned',
+      body: 'Atribuído a Carla Porto',
+      idempotencyKey,
+    } as const
+
+    const first = await insertEvent(app.db, event, ANALYST)
+
+    const replay = await app.db.transaction().execute(async (trx) => {
+      const again = await insertEvent(trx, event, ANALYST)
+      await trx
+        .updateTable('tickets')
+        .set({ priority: 'urgent' })
+        .where('id', '=', ticketId)
+        .execute()
+      return again
+    })
+
+    expect(replay.created).toBe(false)
+    expect(replay.comment.id).toBe(first.comment.id)
+
+    const rows = await app.db.selectFrom('ticket_comments').selectAll().execute()
+    expect(rows).toHaveLength(1)
+
+    // The change the event came with committed: the replay absorbed, not aborted.
+    const ticket = await app.db
+      .selectFrom('tickets')
+      .select('priority')
+      .where('id', '=', ticketId)
+      .executeTakeFirstOrThrow()
+    expect(ticket.priority).toBe('urgent')
   })
 
   it('rolls back with the change that caused it', async () => {

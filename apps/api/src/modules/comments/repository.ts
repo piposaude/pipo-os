@@ -1,7 +1,6 @@
 import { sql, type Kysely, type Selectable, type Transaction } from 'kysely'
 import { z } from 'zod'
 import type { Database } from '../../infrastructure/db.js'
-import { UNIQUE_VIOLATION } from '../../shared/pg.js'
 import type { TicketComments } from '../../infrastructure/db-types.js'
 import type { Author } from '../auth/authenticate.js'
 import type { TicketEventType } from './event-types.js'
@@ -22,13 +21,17 @@ function toComment(row: Selectable<TicketComments>): Comment {
   }
 }
 
-/** The partial unique index migration 0030 creates. Named here so the catch
- *  below reacts to that one collision and not to any other. */
-export const IDEMPOTENCY_CONSTRAINT = 'uq_ticket_comments_idempotency'
-
 /** The API's own writes go through the caller's transaction when there is one,
  *  so an event and the change that caused it commit or roll back together. */
 export type CommentExecutor = Kysely<Database> | Transaction<Database>
+
+/** `created` is false when the write found the event already there — a
+ *  redelivery, not a second event. The route answers 200 instead of 201, and
+ *  a caller inside a transaction learns it without an error being raised. */
+export interface WrittenComment {
+  comment: Comment
+  created: boolean
+}
 
 /** What the API says happened to a ticket it just changed. */
 export interface TicketEventInput {
@@ -47,12 +50,17 @@ export interface TicketEventInput {
  * seam the rest of the backlog plugs into: PD-047 writes the assignment inside
  * the transaction of the UPDATE, PD-036 the priority — never a column that
  * moved with no line saying so, never a line for a change that rolled back.
+ *
+ * The redelivery is absorbed here, by the index, and never as a raised error:
+ * inside a transaction a 23505 aborts the whole block, so a replay would undo
+ * the very change the event was written to explain. `DO NOTHING` returns no
+ * row, and that absence is what says the event was already there.
  */
 export async function insertEvent(
   executor: CommentExecutor,
   event: TicketEventInput,
   author: Author,
-): Promise<Comment> {
+): Promise<WrittenComment> {
   const row = await executor
     .insertInto('ticket_comments')
     .values({
@@ -67,10 +75,42 @@ export async function insertEvent(
       metadata: JSON.stringify(event.metadata ?? {}),
       idempotency_key: event.idempotencyKey ?? null,
     })
+    /* The predicate has to match the partial index, or Postgres finds no
+       arbiter for it. A row with no key never conflicts: the partial index
+       does not hold it. */
+    .onConflict((oc) =>
+      oc
+        .columns(['ticket_id', 'idempotency_key'])
+        .where('idempotency_key', 'is not', null)
+        .doNothing(),
+    )
     .returningAll()
-    .executeTakeFirstOrThrow()
+    .executeTakeFirst()
 
-  return toComment(row)
+  if (row) return { comment: toComment(row), created: true }
+
+  const existing = await findByIdempotencyKey(executor, event.ticketId, event.idempotencyKey!)
+  /* Only the index above can make the insert return nothing, and it only fires
+     on a key that is already there — so the read cannot come back empty
+     unless the row was deleted between the two statements. */
+  if (!existing) throw new Error('Automated event vanished between insert and read')
+
+  return { comment: existing, created: false }
+}
+
+async function findByIdempotencyKey(
+  executor: CommentExecutor,
+  ticketId: string,
+  key: string,
+): Promise<Comment | undefined> {
+  const row = await executor
+    .selectFrom('ticket_comments')
+    .selectAll()
+    .where('ticket_id', '=', ticketId)
+    .where('idempotency_key', '=', key)
+    .executeTakeFirst()
+
+  return row && toComment(row)
 }
 
 /**
@@ -146,19 +186,8 @@ export interface TimelinePage {
   nextKey?: TimelineKey
 }
 
-export function isIdempotencyCollision(err: unknown): boolean {
-  return (
-    err instanceof Error &&
-    'code' in err &&
-    err.code === UNIQUE_VIOLATION &&
-    'constraint' in err &&
-    err.constraint === IDEMPOTENCY_CONSTRAINT
-  )
-}
-
 export interface CommentsRepositoryPort {
-  create(ticketId: string, data: CreateCommentBody, author: Author): Promise<Comment>
-  findByIdempotencyKey(ticketId: string, key: string): Promise<Comment | undefined>
+  create(ticketId: string, data: CreateCommentBody, author: Author): Promise<WrittenComment>
   findMany(ticketId: string): Promise<Comment[]>
   findTimeline(
     ticketId: string,
@@ -171,7 +200,7 @@ export interface CommentsRepositoryPort {
 export class CommentsRepository implements CommentsRepositoryPort {
   constructor(private readonly db: Kysely<Database>) {}
 
-  async create(ticketId: string, data: CreateCommentBody, author: Author): Promise<Comment> {
+  async create(ticketId: string, data: CreateCommentBody, author: Author): Promise<WrittenComment> {
     if (data.kind === 'automated_event') {
       return insertEvent(this.db, { ...data, ticketId }, author)
     }
@@ -195,18 +224,7 @@ export class CommentsRepository implements CommentsRepositoryPort {
       .returningAll()
       .executeTakeFirstOrThrow()
 
-    return toComment(row)
-  }
-
-  async findByIdempotencyKey(ticketId: string, key: string): Promise<Comment | undefined> {
-    const row = await this.db
-      .selectFrom('ticket_comments')
-      .selectAll()
-      .where('ticket_id', '=', ticketId)
-      .where('idempotency_key', '=', key)
-      .executeTakeFirst()
-
-    return row && toComment(row)
+    return { comment: toComment(row), created: true }
   }
 
   async findMany(ticketId: string): Promise<Comment[]> {
