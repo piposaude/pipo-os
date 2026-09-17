@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider, createRouter, createMemoryHistory } from '@tanstack/react-router'
 import { routeTree } from '@/routeTree.gen'
 import { useSessionStore } from '@/stores/session'
+import { DESK_POLICIES } from '@/lib/policy'
 import loginConstants from '@/constants/pages/auth/login'
 import devConstants from '@/constants/pages/auth/login/dev'
 import sidebarConstants from '@/constants/pipodesk/sidebar'
@@ -208,7 +209,7 @@ describe('auth/login', () => {
       {
         method: 'GET',
         path: '/api/auth/me',
-        reply: () => jsonResponse({ email: 'pikachu@piposaude.com.br', policies: [] }),
+        reply: () => jsonResponse({ email: 'pikachu@piposaude.com.br', policies: DESK_POLICIES }),
       },
       { method: 'GET', path: '/api/tickets', reply: () => jsonResponse([]) },
     ])
@@ -225,7 +226,7 @@ describe('auth/login', () => {
       {
         method: 'GET',
         path: '/api/auth/me',
-        reply: () => jsonResponse({ email: 'pikachu@piposaude.com.br', policies: [] }),
+        reply: () => jsonResponse({ email: 'pikachu@piposaude.com.br', policies: DESK_POLICIES }),
       },
       { method: 'GET', path: '/api/tickets', reply: () => jsonResponse([]) },
       {
@@ -258,7 +259,7 @@ describe('auth/login', () => {
       {
         method: 'GET',
         path: '/api/auth/me',
-        reply: () => jsonResponse({ email: 'pikachu@piposaude.com.br', policies: [] }),
+        reply: () => jsonResponse({ email: 'pikachu@piposaude.com.br', policies: DESK_POLICIES }),
       },
       { method: 'GET', path: '/api/tickets', reply: () => jsonResponse([]) },
     ])
@@ -278,7 +279,7 @@ describe('auth/login', () => {
       {
         method: 'GET',
         path: '/api/auth/me',
-        reply: () => jsonResponse({ email: 'pikachu@piposaude.com.br', policies: [] }),
+        reply: () => jsonResponse({ email: 'pikachu@piposaude.com.br', policies: DESK_POLICIES }),
       },
       { method: 'GET', path: '/api/tickets', reply: () => jsonResponse([]) },
     ])

@@ -1,0 +1,41 @@
+.no-access-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--pipo-space-large);
+  background: var(--pipo-brand-primary-lightest);
+  color-scheme: light;
+}
+
+.no-access-page .no-access-card {
+  width: 100%;
+  max-width: 344px;
+  text-align: center;
+}
+
+.no-access-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pipo-space-medium);
+}
+
+.no-access-identity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pipo-space-xsmall);
+}
+
+/* Label, not headline: the DS h1 is 48px serif and would fight the wordmark. */
+.no-access-page .no-access-title {
+  font-family: var(--pipo-font-body);
+  font-size: var(--pipo-fs-h3);
+  font-weight: var(--pipo-fw-bold);
+  line-height: 1.2;
+}
+
+.no-access-footer {
+  padding-top: var(--pipo-space-medium);
+  border-top: var(--pipo-border-width-small) solid var(--pipo-border);
+}

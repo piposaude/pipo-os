@@ -4,11 +4,7 @@ import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/rea
 import { routeTree } from '@/routeTree.gen'
 import constants from '@/constants/pages/pipodesk/ticket'
 
-vi.mock('@/lib/auth', () => ({
-  ensureSession: vi.fn().mockResolvedValue(undefined),
-  isAuthenticated: vi.fn().mockReturnValue(true),
-  logout: vi.fn(),
-}))
+vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
 /**
  * A pod with coordination but no analyst — a new pod, or one whose analysts
