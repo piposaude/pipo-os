@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import * as policyModule from './policy.js'
 import {
   STRUCTURE_POLICY,
   TICKET_POLICY,
@@ -43,6 +44,21 @@ describe('the Pipodesk policy contract', () => {
     for (const [door, policy] of Object.entries(deskPolicies)) {
       expect(policyString(DOORS[door as Door])).toBe(policy)
     }
+  })
+
+  // The door a route requires and the contract never heard of is the dangerous
+  // direction: the web guard would refuse a session this API admits, which is
+  // the failure the guard exists to avoid. Every requirement declared here has
+  // to reach the contract, not only the two spelled above.
+  it('declares no policy the contract does not carry', () => {
+    const declared = Object.values(policyModule).filter(
+      (value): value is PolicyRequirement =>
+        typeof value === 'object' &&
+        value !== null &&
+        typeof (value as PolicyRequirement).domain === 'string',
+    )
+
+    expect(declared.map(policyString).sort()).toEqual(Object.values(deskPolicies).sort())
   })
 
   it.each(matchCases)('agrees with the web app: $why', ({ held, required, authorized }) => {
