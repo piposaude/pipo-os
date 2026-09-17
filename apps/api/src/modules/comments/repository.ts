@@ -108,17 +108,24 @@ export class CommentsRepository implements CommentsRepositoryPort {
   constructor(private readonly db: Kysely<Database>) {}
 
   async create(ticketId: string, data: CreateCommentBody, author: Author): Promise<Comment> {
+    const event = data.kind === 'automated_event' ? data : null
     const row = await this.db
       .insertInto('ticket_comments')
       .values({
         ticket_id: ticketId,
-        kind: 'manual',
+        kind: data.kind,
+        // Still the only channel anyone writes. `platform` — the HR side of the
+        // composer — comes with the submission, in the second half of PD-040.
         channel: 'internal',
         visibility: data.visibility,
         body: data.body,
         author_id: author.id,
         author_type: author.type,
-        event_type: null,
+        event_type: event?.eventType ?? null,
+        // Left out for a manual comment, so the column default stands instead
+        // of an empty object written by hand.
+        ...(event ? { metadata: JSON.stringify(event.metadata) } : {}),
+        idempotency_key: event?.idempotencyKey ?? null,
       })
       .returningAll()
       .executeTakeFirstOrThrow()

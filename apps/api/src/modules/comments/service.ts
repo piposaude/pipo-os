@@ -1,4 +1,4 @@
-import { BadRequestError, NotFoundError } from '../../shared/errors.js'
+import { BadRequestError, ForbiddenError, NotFoundError } from '../../shared/errors.js'
 import type { TicketsRepositoryPort } from '../tickets/repository.js'
 import type { Author } from '../auth/authenticate.js'
 import type { CommentsRepositoryPort, TimelineKey } from './repository.js'
@@ -37,6 +37,14 @@ export class CommentsService {
   ) {}
 
   async add(ticketId: string, data: CreateCommentBody, author: Author): Promise<Comment> {
+    /* Before the ticket is even looked up: a person writing "Sistema:
+       atribuído a mim" is forgery, and the chronology is what the operation
+       reads to know what happened. The API records the events it causes
+       itself through the repository, not through this route. */
+    if (data.kind === 'automated_event' && author.type !== 'service') {
+      throw new ForbiddenError('An automated event is written by a service, not by a person')
+    }
+
     const ticket = await this.ticketsRepository.findById(ticketId)
     if (!ticket) throw new NotFoundError(`Ticket ${ticketId} not found`)
     return this.repository.create(ticketId, data, author)

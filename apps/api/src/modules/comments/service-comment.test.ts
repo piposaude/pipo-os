@@ -104,6 +104,76 @@ describe('a comment written by a service', () => {
     expect(row.author_type).toBe('service')
   })
 
+  it('writes the automated event it says it is writing', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/tickets/${ticketId}/comments`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        kind: 'automated_event',
+        eventType: 'document_signature_sent',
+        visibility: 'private',
+        body: 'Documento enviado para assinatura',
+        metadata: { documentType: 'termo-adesao' },
+      },
+    })
+
+    expect(response.statusCode).toBe(201)
+    expect(response.json()).toMatchObject({
+      kind: 'automated_event',
+      eventType: 'document_signature_sent',
+      metadata: { documentType: 'termo-adesao' },
+      authorId: `svc:${SERVICE_NAME}`,
+    })
+  })
+
+  it('puts the automated event in the chronology as an event, not as a comment', async () => {
+    await app.inject({
+      method: 'POST',
+      url: `/api/tickets/${ticketId}/comments`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        kind: 'automated_event',
+        eventType: 'hr_platform_reply',
+        visibility: 'public',
+        body: 'segue o RG',
+        metadata: { userEmail: 'rh@empresa.com.br' },
+      },
+    })
+
+    const timeline = await app.inject({
+      method: 'GET',
+      url: `/api/tickets/${ticketId}/timeline`,
+      cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+    })
+
+    expect(timeline.json().data[0]).toMatchObject({
+      type: 'event',
+      eventType: 'hr_platform_reply',
+      metadata: { userEmail: 'rh@empresa.com.br' },
+    })
+  })
+
+  // A person writing "Sistema: atribuído a mim" is forgery, and the chronology
+  // is what the operation reads to know what happened.
+  it('is the only kind of caller that can write one — a person is refused', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/tickets/${ticketId}/comments`,
+      cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      payload: {
+        kind: 'automated_event',
+        eventType: 'assigned',
+        visibility: 'private',
+        body: 'Atribuído a mim',
+      },
+    })
+
+    expect(response.statusCode).toBe(403)
+    const rows = await app.db.selectFrom('ticket_comments').selectAll().execute()
+    expect(rows).toHaveLength(0)
+  })
+
   it('shows up in the chronology under the same author', async () => {
     await app.inject({
       method: 'POST',
