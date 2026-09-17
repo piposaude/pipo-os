@@ -15,21 +15,25 @@ const POLICY_PATH = fileURLToPath(
   new URL('../../../../../contract/pipodesk-policies.json', import.meta.url),
 )
 
+type Door = 'ticket' | 'structure'
+
 interface MatchCase {
   why: string
   held: string[]
-  required: ('ticket' | 'structure')[]
+  required: Door[]
   authorized: boolean
 }
 
 const { deskPolicies, matchCases } = JSON.parse(readFileSync(POLICY_PATH, 'utf-8')) as {
-  deskPolicies: { ticket: string; structure: string }
+  deskPolicies: Record<Door, string>
   matchCases: MatchCase[]
 }
 
 describe('the Pipodesk policy contract', () => {
-  it('should carry the two doors the API requires, in the order the guard asks them', () => {
-    expect(DESK_POLICIES).toEqual([deskPolicies.ticket, deskPolicies.structure])
+  // Object.values, not the two keys spelled out: a door added to the contract
+  // and not to DESK_POLICIES is a door the route guard never asks about.
+  it('should carry every door the contract declares', () => {
+    expect(DESK_POLICIES).toEqual(Object.values(deskPolicies))
   })
 
   it.each(matchCases)('should agree with the API: $why', ({ held, required, authorized }) => {

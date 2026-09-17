@@ -35,7 +35,13 @@
       "authorized": true
     },
     {
-      "why": "a held policy longer than the requirement never matches",
+      "why": "a held policy longer than the requirement never matches, even sharing the whole prefix",
+      "held": ["admin/allow/administrate/pipodesk/ticket/*"],
+      "required": ["ticket"],
+      "authorized": false
+    },
+    {
+      "why": "a policy of another action, in the shape the auth-service really issues",
       "held": ["admin/allow/read/email/hr/company/abc"],
       "required": ["ticket"],
       "authorized": false

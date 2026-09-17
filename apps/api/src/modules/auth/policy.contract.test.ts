@@ -19,27 +19,33 @@ const POLICY_PATH = fileURLToPath(
   new URL('../../../../../contract/pipodesk-policies.json', import.meta.url),
 )
 
+type Door = 'ticket' | 'structure'
+
 interface MatchCase {
   why: string
   held: string[]
-  required: ('ticket' | 'structure')[]
+  required: Door[]
   authorized: boolean
 }
 
 const { deskPolicies, matchCases } = JSON.parse(readFileSync(POLICY_PATH, 'utf-8')) as {
-  deskPolicies: { ticket: string; structure: string }
+  deskPolicies: Record<Door, string>
   matchCases: MatchCase[]
 }
 
-const DOORS: Record<'ticket' | 'structure', PolicyRequirement> = {
+const DOORS: Record<Door, PolicyRequirement> = {
   ticket: TICKET_POLICY,
   structure: STRUCTURE_POLICY,
 }
 
 describe('the Pipodesk policy contract', () => {
-  it('spells the two doors the way the web app expects to read them', () => {
-    expect(policyString(TICKET_POLICY)).toBe(deskPolicies.ticket)
-    expect(policyString(STRUCTURE_POLICY)).toBe(deskPolicies.structure)
+  // Every door the contract names, not two by hand: a door added there and
+  // never mapped here would leave this half of the twin silently untested.
+  it('spells every door the way the web app expects to read them', () => {
+    expect(Object.keys(deskPolicies).sort()).toEqual(Object.keys(DOORS).sort())
+    for (const [door, policy] of Object.entries(deskPolicies)) {
+      expect(policyString(DOORS[door as Door])).toBe(policy)
+    }
   })
 
   it.each(matchCases)('agrees with the web app: $why', ({ held, required, authorized }) => {
