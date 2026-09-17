@@ -9,12 +9,9 @@ import {
   type PolicyRequirement,
 } from './policy.js'
 
-/** Twin of apps/web's policy-contract.test.ts: change one, change both.
- *
- *  The web app carries its own copy of this matcher, so its route guard can
- *  decide without asking the API. This file is the other half of what keeps
- *  the two from drifting — a policy renamed here alone turns the guard
- *  stricter than the routes it is guarding. */
+/** Twin of apps/web's policy-contract.test.ts: change one, change both. The web
+ *  app carries its own copy of this matcher so the route guard can decide
+ *  without asking the API; the two files are what keep the copies in sync. */
 const POLICY_PATH = fileURLToPath(
   new URL('../../../../../contract/pipodesk-policies.json', import.meta.url),
 )
@@ -39,8 +36,8 @@ const DOORS: Record<Door, PolicyRequirement> = {
 }
 
 describe('the Pipodesk policy contract', () => {
-  // Every door the contract names, not two by hand: a door added there and
-  // never mapped here would leave this half of the twin silently untested.
+  // Reads every door from the contract instead of naming two by hand: a door
+  // added there would otherwise stay untested on this side.
   it('spells every door the way the web app expects to read them', () => {
     expect(Object.keys(deskPolicies).sort()).toEqual(Object.keys(DOORS).sort())
     for (const [door, policy] of Object.entries(deskPolicies)) {

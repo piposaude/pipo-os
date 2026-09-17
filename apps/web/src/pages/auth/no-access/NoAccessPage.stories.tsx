@@ -8,11 +8,9 @@ import {
 } from '@tanstack/react-router'
 import NoAccessPage from './index'
 
-// The page's only action navigates, and useNavigate outside a router returns a
-// callback that throws when clicked — the story would render a screen whose
-// button is broken. A memory router keeps the story honest, and /login lands on
-// a marker of its own so the navigation is visible instead of looking like
-// nothing happened on the same screen.
+// The page's only action navigates, and useNavigate outside a router throws
+// when the button is clicked. /login gets a marker of its own so the
+// navigation is visible in the story.
 const rootRoute = createRootRoute()
 
 const noAccessRoute = createRoute({
@@ -27,8 +25,8 @@ const loginRoute = createRoute({
   component: () => <p>Tela de login</p>,
 })
 
-// Built per render, not once per module: a router kept in module scope would
-// stay on /login for every later render of the story.
+// Built per render: a router in module scope would stay on /login after the
+// first navigation.
 function NoAccessStory() {
   const router = createRouter({
     routeTree: rootRoute.addChildren([noAccessRoute, loginRoute]),

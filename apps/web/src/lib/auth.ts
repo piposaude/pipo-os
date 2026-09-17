@@ -23,9 +23,8 @@ export function isAuthenticated(): boolean {
   return useSessionStore.getState().status === 'authenticated'
 }
 
-/** What `/api/auth/me` returned for this session, for a guard to weigh against
- *  what a route requires. Empty without a session — a guard that reaches this
- *  before `isAuthenticated()` should refuse, not admit. */
+/** The policies `/api/auth/me` returned for this session. Empty without a
+ *  session, so guards check `isAuthenticated()` first. */
 export function sessionPolicies(): string[] {
   return useSessionStore.getState().user?.policies ?? []
 }

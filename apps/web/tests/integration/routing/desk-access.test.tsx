@@ -33,18 +33,12 @@ async function renderAt(path: string) {
   return router
 }
 
-/** Being logged in is not being allowed in. Anyone with a Pipo e-mail can
- *  reach a session, so the policy is what separates the Pipodesk screens from
- *  the rest of the company. */
 describe('acesso ao Pipodesk', () => {
-  // The logout button reaches the real store, which posts to the API. Without
-  // this the suite opens a TCP connection to VITE_API_URL on every run, and the
-  // assertion below would be met by the request *failing* — the store clears
-  // the session either way.
+  // The logout button reaches the real store, which posts to the API: without a
+  // stub the suite opens a connection to VITE_API_URL on every run.
   //
-  // Save and restore this one global: `vi.unstubAllGlobals()` would also drop
-  // the `Request` stub `tests/setup.ts` installs, and the setup runs once per
-  // file — every later test in here would build requests with the native one.
+  // Restored by hand instead of `vi.unstubAllGlobals()`, which would also drop
+  // the `Request` stub `tests/setup.ts` installs once per file.
   const nativeFetch = globalThis.fetch
 
   beforeEach(() => {
@@ -82,8 +76,7 @@ describe('acesso ao Pipodesk', () => {
     expect(await screen.findByRole('navigation', { name: /pipodesk/i })).toBeInTheDocument()
   })
 
-  // The API matches policies by prefix, so a broad admin reaches every
-  // Pipodesk route. Refusing them here would lock out someone the API admits.
+  // The API matches policies by prefix, so a broad admin reaches every Pipodesk route.
   it('should open the queue for a wildcard broad enough to cover Pipodesk', async () => {
     authenticateWith(['admin/allow/*'])
 
@@ -115,8 +108,6 @@ describe('acesso ao Pipodesk', () => {
     expect(router.state.location.pathname).toBe('/no-access')
   })
 
-  // The mirror of the /login redirect: a screen that tells someone they have
-  // no access, when they do, is as wrong as the shell that breaks on 403.
   it('should send a session that does have access away from the no-access screen', async () => {
     authenticateWith([TICKET])
 
@@ -141,8 +132,8 @@ describe('acesso ao Pipodesk', () => {
 
     await user.click(await screen.findByRole('button', { name: constants.logout }))
 
-    // The landing matters as much as the button: the store drops the session on
-    // logout, so /login no longer bounces the visitor back to the queue.
+    // The landing matters as much as the button: with the session dropped,
+    // /login no longer bounces the visitor back to the queue.
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/login')
     })

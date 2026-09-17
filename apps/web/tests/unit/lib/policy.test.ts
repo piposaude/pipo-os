@@ -28,9 +28,7 @@ describe('hasDeskAccess', () => {
   })
 
   // Each door is asked on its own: the API requires one policy per route, so
-  // someone denied the tickets still reaches the structure screens. Asking for
-  // both at once would refuse this session, which the API does not — the
-  // shared case table pins that difference.
+  // someone denied the tickets still reaches the structure screens.
   it('should let in when one door is denied and the other is allowed', () => {
     expect(hasDeskAccess([STRUCTURE, 'admin/deny/administrate/pipodesk/ticket'])).toBe(true)
   })

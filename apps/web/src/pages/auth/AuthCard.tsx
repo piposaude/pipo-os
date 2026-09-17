@@ -5,15 +5,13 @@ import './auth-card.css'
 export interface AuthCardProps {
   title: string
   subtitle: string
-  /** The actions of the screen: the buttons, and whatever has to sit with them. */
+  /** The actions of the screen, between the header and the footer. */
   children: ReactNode
-  /** Below the rule, where the screen says who to ask. */
+  /** Below the divider, where the screen says who to ask. */
   footer: ReactNode
 }
 
-/** The card both screens outside the desk are built on — signing in, and being
- *  told there is nothing to sign into. They looked alike by being written
- *  twice, comment included; sharing it is what keeps them alike. */
+/** The card shared by the two screens outside the desk: login and no-access. */
 export function AuthCard({ title, subtitle, children, footer }: AuthCardProps) {
   return (
     <main className="auth-page">
@@ -35,8 +33,8 @@ export function AuthCard({ title, subtitle, children, footer }: AuthCardProps) {
 
           {children}
 
-          {/* Required, but ReactNode still admits null: an empty footer would
-              draw the rule and the padding with nothing under them. */}
+          {/* Typed as required, but ReactNode still admits null: an empty
+              footer would draw the divider with nothing under it. */}
           {footer && <footer className="auth-footer">{footer}</footer>}
         </div>
       </Card>

@@ -1,4 +1,4 @@
-/* Only what belongs to the login screen — the card it sits on is auth-card.css. */
+/* Only the login screen — the card it sits on is auth-card.css. */
 
 .login-actions {
   display: flex;
