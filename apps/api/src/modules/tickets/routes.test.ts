@@ -1358,21 +1358,119 @@ describe('tickets routes', () => {
       })
     })
 
+    it('grava a matriz e o CNPJ que o snapshot traz, quando a empresa é filial', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: {
+          ...validTicketBody,
+          enrollmentSnapshot: {
+            company: {
+              'company-tax-id': '11.111.111/0001-11',
+              'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
+              'parent-company-name': 'Meridiano Holding',
+              'parent-company-tax-id': '22.222.222/0001-22',
+              'company-subsidiary': true,
+            },
+          },
+        },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(created.json()).toMatchObject({
+        parentCompanyId: '00000000-0000-4000-8000-0000000000a1',
+        parentCompanyName: 'Meridiano Holding',
+        companyTaxId: '11.111.111/0001-11',
+      })
+
+      const stored = await app.db
+        .selectFrom('tickets')
+        .select(['parent_company_id', 'parent_company_name', 'company_tax_id'])
+        .where('id', '=', created.json().id)
+        .executeTakeFirstOrThrow()
+
+      expect(stored).toEqual({
+        parent_company_id: '00000000-0000-4000-8000-0000000000a1',
+        parent_company_name: 'Meridiano Holding',
+        company_tax_id: '11.111.111/0001-11',
+      })
+    })
+
+    /** The EI sends the parent for a parent company too; writing it would make
+     *  the company a branch of itself. */
+    it('não grava matriz quando o snapshot diz que a empresa não é filial', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: {
+          ...validTicketBody,
+          enrollmentSnapshot: {
+            company: {
+              'company-tax-id': '11.111.111/0001-11',
+              'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
+              'parent-company-name': 'Meridiano Holding',
+              'parent-company-tax-id': '11.111.111/0001-11',
+            },
+          },
+        },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(created.json()).toMatchObject({
+        parentCompanyId: null,
+        parentCompanyName: null,
+        companyTaxId: '11.111.111/0001-11',
+      })
+    })
+
+    it('prefere a empresa do corpo à do snapshot', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: {
+          ...validTicketBody,
+          parentCompanyId: '00000000-0000-4000-8000-0000000000b2',
+          parentCompanyName: 'Matriz do corpo',
+          companyTaxId: '33.333.333/0001-33',
+          enrollmentSnapshot: {
+            company: {
+              'company-tax-id': '11.111.111/0001-11',
+              'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
+              'parent-company-name': 'Meridiano Holding',
+              'company-subsidiary': true,
+            },
+          },
+        },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(created.json()).toMatchObject({
+        parentCompanyId: '00000000-0000-4000-8000-0000000000b2',
+        parentCompanyName: 'Matriz do corpo',
+        companyTaxId: '33.333.333/0001-33',
+      })
+    })
+
     /** A blank column is worse than a null one: the screen would show a value
      *  that does not exist, and the filter an option nobody picks. */
-    it.each(['carrierId', 'carrierName', 'product', 'contractType', 'companySize'])(
-      'recusa %s em branco em vez de gravar coluna vazia',
-      async (field) => {
-        const response = await app.inject({
-          method: 'POST',
-          url: '/api/tickets',
-          payload: { ...validTicketBody, [field]: '' },
-          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        })
+    it.each([
+      'carrierId',
+      'carrierName',
+      'product',
+      'contractType',
+      'companySize',
+      'parentCompanyName',
+      'companyTaxId',
+    ])('recusa %s em branco em vez de gravar coluna vazia', async (field) => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, [field]: '' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
 
-        expect(response.statusCode).toBe(400)
-      },
-    )
+      expect(response.statusCode).toBe(400)
+    })
 
     it('prefere o corpo ao snapshot quando os dois trazem o campo', async () => {
       const response = await app.inject({

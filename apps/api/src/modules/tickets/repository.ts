@@ -4,7 +4,12 @@ import type { Tickets } from '../../infrastructure/db-types.js'
 import { ValidationFailedError } from '../../shared/errors.js'
 import { FK_VIOLATION, UNIQUE_VIOLATION } from '../../shared/pg.js'
 import { OpenTicketConflictError } from './errors.js'
-import { movementFieldsOf, relationshipOf, snapshotString } from './enrollment-snapshot.js'
+import {
+  companyFieldsOf,
+  movementFieldsOf,
+  relationshipOf,
+  snapshotString,
+} from './enrollment-snapshot.js'
 import { actionDateWindowCondition, ticketFilterConditions } from './filter-resolver.js'
 import type { TicketRowPayload, TicketRowsQuery } from './rows-schema.js'
 import { toClient } from './vocabulary.js'
@@ -73,6 +78,9 @@ function toTicket(row: Selectable<Tickets>): Ticket {
     product: blankAsNull(toClient('product', row.product)),
     contractType: blankAsNull(toClient('contractType', row.contract_type)),
     companySize: blankAsNull(toClient('companySize', row.company_size)),
+    parentCompanyId: row.parent_company_id,
+    parentCompanyName: blankAsNull(row.parent_company_name),
+    companyTaxId: blankAsNull(row.company_tax_id),
     relationship: relationshipSchema.safeParse(row.relationship).data ?? null,
     sourceSystem: row.source_system,
     origin: blankAsNull(row.origin),
@@ -262,6 +270,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
   async create(data: CreateTicketData): Promise<Ticket> {
     // The body wins; the snapshot fills what the EI does not send yet (PD-207).
     const derived = movementFieldsOf(data.enrollmentSnapshot)
+    const company = companyFieldsOf(data.enrollmentSnapshot)
 
     try {
       const row = await this.db
@@ -282,6 +291,9 @@ export class TicketsRepository implements TicketsRepositoryPort {
           product: data.product ?? derived.product,
           contract_type: data.contractType ?? derived.contractType,
           company_size: data.companySize ?? derived.companySize,
+          parent_company_id: data.parentCompanyId ?? company.parentCompanyId,
+          parent_company_name: data.parentCompanyName ?? company.parentCompanyName,
+          company_tax_id: data.companyTaxId ?? company.companyTaxId,
           relationship: relationshipOf(data.enrollmentSnapshot),
           status: 'broker-processing',
           queue_id: data.queueId,
