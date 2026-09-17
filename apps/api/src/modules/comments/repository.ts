@@ -102,6 +102,7 @@ function toTimelineItem(row: TimelineRow): TimelineItem {
     id: row.id,
     ticketId: row.ticket_id,
     authorId: row.author_id,
+    authorType: row.author_type!,
     createdAt: row.created_at.toISOString(),
   }
 
@@ -112,7 +113,6 @@ function toTimelineItem(row: TimelineRow): TimelineItem {
       fromStatus: row.from_status!,
       toStatus: row.to_status!,
       reason: row.reason,
-      authorType: row.author_type!,
     }
   }
 
@@ -263,7 +263,7 @@ export class CommentsRepository implements CommentsRepositoryPort {
         select 'comment' as source, id, ticket_id, author_id, created_at,
                kind, channel, visibility, event_type, body, metadata,
                null as from_status, null as to_status, null as reason,
-               null as author_type
+               author_type
           from ticket_comments
          where ticket_id = ${ticketId} ${publicComments}
         ${historyBranch}

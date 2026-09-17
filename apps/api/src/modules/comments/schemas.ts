@@ -89,6 +89,10 @@ const timelineItemBase = {
   id: z.uuid(),
   ticketId: z.uuid(),
   authorId: z.string().nullable(),
+  /* `user`, `service` or `system`. On all three variants because the front
+     tells a line someone wrote from a line the automation left, and the author
+     id alone does not say which — `svc:` is a prefix, not a type. */
+  authorType: z.string(),
   createdAt: z.string(),
 }
 
@@ -119,7 +123,6 @@ export const timelineStatusChangeSchema = z
     fromStatus: z.string(),
     toStatus: z.string(),
     reason: z.string().nullable(),
-    authorType: z.string(),
   })
   .meta({ id: 'TimelineStatusChange' })
 

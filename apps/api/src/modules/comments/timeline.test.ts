@@ -3,6 +3,7 @@ import { sql } from 'kysely'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
+import { insertEvent } from './repository.js'
 
 function cookieValue(
   response: { cookies: Array<{ name: string; value: string }> },
@@ -126,6 +127,7 @@ describe('GET /api/tickets/:id/timeline', () => {
       visibility: 'public',
       channel: 'internal',
       authorId: DEV_LOGIN_USER_ID,
+      authorType: 'user',
     })
     expect(item.id).toEqual(expect.any(String))
     expect(item.createdAt).toEqual(expect.any(String))
@@ -149,23 +151,22 @@ describe('GET /api/tickets/:id/timeline', () => {
     expect(item.createdAt).toEqual(expect.any(String))
   })
 
-  /* Nothing writes `automated_event` yet — ACE-58 will. The row is seeded
-     directly so the timeline is proven to render it before that lands. */
+  /* Written through the production writer, not seeded: a row this suite
+     fabricated would prove the rendering of something the system might not be
+     able to produce. The HTTP half of that path is in service-comment.test.ts,
+     which posts as a service. */
   it('carries every field of an automated event item', async () => {
-    await app.db
-      .insertInto('ticket_comments')
-      .values({
-        ticket_id: ticketId,
-        kind: 'automated_event',
-        channel: 'internal',
+    await insertEvent(
+      app.db,
+      {
+        ticketId,
+        eventType: 'priority_changed',
         visibility: 'public',
-        event_type: 'priority_changed',
-        author_id: DEV_LOGIN_USER_ID,
-        author_type: 'user',
         body: 'Prioridade alterada para urgente',
         metadata: { priority: 'urgent', previous: null },
-      })
-      .execute()
+      },
+      { id: DEV_LOGIN_USER_ID, type: 'user' },
+    )
 
     const [item] = (await getTimeline()).json().data
 
@@ -175,6 +176,7 @@ describe('GET /api/tickets/:id/timeline', () => {
       eventType: 'priority_changed',
       body: 'Prioridade alterada para urgente',
       authorId: DEV_LOGIN_USER_ID,
+      authorType: 'user',
       metadata: { priority: 'urgent', previous: null },
     })
     expect(item.id).toEqual(expect.any(String))
