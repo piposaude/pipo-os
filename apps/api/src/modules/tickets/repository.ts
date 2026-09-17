@@ -124,6 +124,9 @@ export class TicketsRepository implements TicketsRepositoryPort {
     return row ? toTicket(row) : undefined
   }
 
+  /** `companyId` here is the ticket's own company, exact — unlike `companyIds`
+   *  of `/tickets/rows`, which reaches the branches through the parent. This is
+   *  the EI's idempotency path, where the company asked for is the company. */
   async findMany(query: ListTicketsQuery): Promise<{ data: Ticket[]; total: number }> {
     const offset = (query.page - 1) * query.pageSize
 

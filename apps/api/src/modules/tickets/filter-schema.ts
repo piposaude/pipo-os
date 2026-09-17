@@ -59,11 +59,9 @@ export const ticketFilterSchema = z
  * `ticketFilterSchema` keeps it out of the saved view, where it would be a
  * criterion nobody chose.
  */
-export const ticketReadFilterSchema = ticketFilterSchema
-  .extend({
-    companyIdsExact: z.array(z.uuid()).min(1).optional(),
-  })
-  .meta({ id: 'TicketReadFilter' })
+export const ticketReadFilterSchema = ticketFilterSchema.extend({
+  companyIdsExact: z.array(z.uuid()).min(1).optional(),
+})
 
 export type AssigneeFilterValue = z.infer<typeof assigneeFilterValueSchema>
 export type TicketFilter = z.infer<typeof ticketFilterSchema>

@@ -19,6 +19,7 @@ type Seed = {
   contractType?: string | null
   companySize?: string | null
   relationship?: string | null
+  companyId?: string
   parentCompanyId?: string | null
   parentCompanyName?: string | null
   companyTaxId?: string | null
@@ -68,7 +69,7 @@ describe('GET /api/tickets/rows', () => {
         rows.map((row) => ({
           enrollment_id: randomUUID(),
           enrollment_type: 'inclusion',
-          company_id: COMPANY,
+          company_id: row.companyId ?? COMPANY,
           source_system: 'enrollment-integrations',
           status: row.status ?? 'broker-processing',
           assignee_id: row.assigneeId ?? null,
@@ -170,22 +171,24 @@ describe('GET /api/tickets/rows', () => {
   })
 
   it('filters by the parent and reaches the branch, over the query string', async () => {
+    const PARENT = '00000000-0000-4000-8000-0000000000a1'
     await seed([
-      { title: 'da-matriz' },
-      {
-        title: 'da-filial',
-        parentCompanyId: '00000000-0000-4000-8000-0000000000a1',
-        parentCompanyName: 'Meridiano Holding',
-      },
+      { title: 'da-matriz', companyId: PARENT },
+      { title: 'da-filial', parentCompanyId: PARENT, parentCompanyName: 'Meridiano Holding' },
+      { title: 'outra' },
     ])
 
-    const byParent = await get('?companyIds=00000000-0000-4000-8000-0000000000a1')
-    const exact = await get('?companyIdsExact=00000000-0000-4000-8000-0000000000a1')
+    const byParent = await get(`?companyIds=${PARENT}`)
+    const exactParent = await get(`?companyIdsExact=${PARENT}`)
+    const exactOwn = await get(`?companyIdsExact=${COMPANY}`)
 
-    // Both rows carry COMPANY as their own company; only the second is a branch
-    // of the parent asked for.
-    expect(titles(byParent.body)).toEqual(['da-filial'])
-    expect(titles(exact.body)).toEqual([])
+    // Every row carries COMPANY as its own company; only da-filial is a branch
+    // of PARENT, and da-matriz is PARENT itself.
+    expect(titles(byParent.body)).toEqual(['da-filial', 'da-matriz'])
+    // The exact cut names a company and stops there — it reaches the parent's
+    // own tickets, never the branches under it.
+    expect(titles(exactParent.body)).toEqual(['da-matriz'])
+    expect(titles(exactOwn.body)).toEqual(['da-filial', 'outra'])
   })
 
   it('says null for the parent of a company that is its own', async () => {

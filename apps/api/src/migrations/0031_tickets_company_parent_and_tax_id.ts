@@ -12,16 +12,17 @@ export async function up(db: Kysely<unknown>): Promise<void> {
   `.execute(db)
 
   // Sibling of ix_tickets_company: the queue filter matches either column, so
-  // both sides of the OR have to be indexed.
-  await db.schema
-    .createIndex('ix_tickets_parent_company')
-    .on('tickets')
-    .column('parent_company_id')
-    .execute()
+  // both sides of the OR have to be indexed. Partial, unlike its sibling: the
+  // column is null for every company that already is the parent, which is most
+  // of them, and `IN (...)` never matches a null anyway.
+  await sql`
+    CREATE INDEX ix_tickets_parent_company ON tickets (parent_company_id)
+    WHERE parent_company_id IS NOT NULL
+  `.execute(db)
 }
 
 export async function down(db: Kysely<unknown>): Promise<void> {
-  await db.schema.dropIndex('ix_tickets_parent_company').execute()
+  await sql`DROP INDEX ix_tickets_parent_company`.execute(db)
   await sql`
     ALTER TABLE tickets
       DROP COLUMN parent_company_id,
