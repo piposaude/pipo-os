@@ -1,7 +1,13 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { TICKET_EVENT_TYPES, ticketEventTypeSchema } from './event-types.js'
+import {
+  API_EVENT_TYPES,
+  SERVICE_EVENT_TYPES,
+  TICKET_EVENT_TYPES,
+  serviceEventTypeSchema,
+  ticketEventTypeSchema,
+} from './event-types.js'
 
 describe('the automated event catalog', () => {
   it.each(TICKET_EVENT_TYPES)('accepts %s', (eventType) => {
@@ -17,6 +23,22 @@ describe('the automated event catalog', () => {
   })
 })
 
+/* The split is the rule about who may write what: a caller posting `assigned`
+   would put a line in the chronology with no assignment behind it. */
+describe('the half a service may post', () => {
+  it.each(SERVICE_EVENT_TYPES)('accepts %s', (eventType) => {
+    expect(serviceEventTypeSchema.parse(eventType)).toBe(eventType)
+  })
+
+  it.each(API_EVENT_TYPES)('refuses %s, which only the API records', (eventType) => {
+    expect(serviceEventTypeSchema.safeParse(eventType).success).toBe(false)
+  })
+
+  it('together with the API half, is the whole catalog', () => {
+    expect([...SERVICE_EVENT_TYPES, ...API_EVENT_TYPES]).toEqual([...TICKET_EVENT_TYPES])
+  })
+})
+
 /** The catalog is a vocabulary the front has to have copy for, so it is
  *  declared in contract/ like the others. It is not in ticket-vocabulary.json:
  *  that file holds apps/web to pt-BR copy for every word, and the web does not
@@ -27,11 +49,16 @@ const CATALOG_PATH = fileURLToPath(
 )
 
 describe('the catalog declared in the contract', () => {
-  const { eventTypes } = JSON.parse(readFileSync(CATALOG_PATH, 'utf-8')) as {
+  const { eventTypes, writableByService } = JSON.parse(readFileSync(CATALOG_PATH, 'utf-8')) as {
     eventTypes: string[]
+    writableByService: { eventTypes: string[] }
   }
 
   it('lists exactly what an automated event can say happened', () => {
     expect([...eventTypes].sort()).toEqual([...TICKET_EVENT_TYPES].sort())
+  })
+
+  it('names exactly the half the route accepts', () => {
+    expect([...writableByService.eventTypes].sort()).toEqual([...SERVICE_EVENT_TYPES].sort())
   })
 })

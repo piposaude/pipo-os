@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { ticketEventTypeSchema } from './event-types.js'
+import { serviceEventTypeSchema } from './event-types.js'
 
 export const commentSchema = z
   .object({
@@ -58,7 +58,9 @@ export const createAutomatedEventBodySchema = z
   .object({
     ...commentBodyBase,
     kind: z.literal('automated_event'),
-    eventType: ticketEventTypeSchema,
+    /* The service half of the catalog only: `assigned` and the other three the
+       API records about its own writes have no legitimate caller out here. */
+    eventType: serviceEventTypeSchema,
     metadata: metadataSchema,
     /* The EI writes from a Kafka consumer, where redelivery is ordinary: the
        key is what makes the second pass find the first row instead of adding

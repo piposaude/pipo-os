@@ -1,5 +1,5 @@
 {
-  "readme": "What an automated event can say happened to a ticket — the closed set apps/api/src/modules/comments/event-types.ts accepts on POST /api/tickets/:id/comments, and the one the chronology reads back. Declared here, next to ticket-vocabulary.json, because it is a vocabulary the front has to have copy for: an event whose type has no pt-BR phrase would reach the timeline raw. It is NOT in ticket-vocabulary.json on purpose — that file holds apps/web to copy for every word it names, and the web still renders the chronology from the fixture (PD-103), so putting these there would turn the web suite red for a screen that does not read them yet. Until PD-103, the API is the only reader of this file; the web joins it then.",
+  "readme": "What an automated event can say happened to a ticket — the closed set apps/api/src/modules/comments/event-types.ts accepts, and the one the chronology reads back. Declared here, next to ticket-vocabulary.json, because it is a vocabulary the front has to have copy for: an event whose type has no pt-BR phrase would reach the timeline raw. It is NOT in ticket-vocabulary.json on purpose — that file holds apps/web to copy for every word it names, and the web still renders the chronology from the fixture (PD-103), so putting these there would turn the web suite red for a screen that does not read them yet. Until PD-103, the API is the only reader of this file; the web joins it then.",
   "eventTypes": [
     "hr_platform_reply",
     "enrollment_cancellation_requested",
@@ -10,5 +10,15 @@
     "priority_changed",
     "action_date_changed",
     "document_attached"
-  ]
+  ],
+  "writableByService": {
+    "readme": "The half POST /api/tickets/:id/comments accepts. The rest is what the API records about its own writes, through insertEvent and inside the transaction that moved the column — posted from outside it would be a chronology line with no change behind it.",
+    "eventTypes": [
+      "hr_platform_reply",
+      "enrollment_cancellation_requested",
+      "document_signature_sent",
+      "contractor_document_failed",
+      "internal_note"
+    ]
+  }
 }

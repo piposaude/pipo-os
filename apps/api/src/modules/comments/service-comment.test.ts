@@ -200,6 +200,29 @@ describe('a comment written by a service', () => {
     expect(response.json().details[0]).toMatchObject({ field: 'eventType' })
   })
 
+  /* The API records the assignment itself, in the transaction of the UPDATE
+     (PD-047). Accepted here it would be a line saying the ticket was assigned
+     with no assignee behind it. */
+  it('cannot post the event the API records about its own writes', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/tickets/${ticketId}/comments`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        kind: 'automated_event',
+        eventType: 'assigned',
+        visibility: 'private',
+        body: 'Atribuído a Carla Porto',
+      },
+    })
+
+    expect(response.statusCode).toBe(400)
+    expect(response.json().details[0]).toMatchObject({ field: 'eventType' })
+
+    const rows = await app.db.selectFrom('ticket_comments').selectAll().execute()
+    expect(rows).toHaveLength(0)
+  })
+
   it('puts the automated event in the chronology as an event, not as a comment', async () => {
     await app.inject({
       method: 'POST',
@@ -227,8 +250,8 @@ describe('a comment written by a service', () => {
     })
   })
 
-  // A person writing "Sistema: atribuído a mim" is forgery, and the chronology
-  // is what the operation reads to know what happened.
+  // A person writing "o RH respondeu" is forgery, and the chronology is what
+  // the operation reads to know what happened.
   it('is the only kind of caller that can write one — a person is refused', async () => {
     const response = await app.inject({
       method: 'POST',
@@ -236,9 +259,9 @@ describe('a comment written by a service', () => {
       cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
       payload: {
         kind: 'automated_event',
-        eventType: 'assigned',
+        eventType: 'hr_platform_reply',
         visibility: 'private',
-        body: 'Atribuído a mim',
+        body: 'O RH respondeu',
       },
     })
 

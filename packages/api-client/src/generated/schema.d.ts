@@ -2123,7 +2123,7 @@ export interface components {
             /** @constant */
             kind: "automated_event";
             /** @enum {string} */
-            eventType: "hr_platform_reply" | "enrollment_cancellation_requested" | "document_signature_sent" | "contractor_document_failed" | "internal_note" | "assigned" | "priority_changed" | "action_date_changed" | "document_attached";
+            eventType: "hr_platform_reply" | "enrollment_cancellation_requested" | "document_signature_sent" | "contractor_document_failed" | "internal_note";
             /**
              * @description Free-form event data, at most 8192 bytes serialised
              * @default {}

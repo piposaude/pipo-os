@@ -31,6 +31,16 @@ describe('the body of POST /tickets/:id/comments', () => {
     expect(parsed.error?.issues[0]?.path).toEqual(['eventType'])
   })
 
+  /* `assigned` and the three beside it are written by the API itself, inside
+     the transaction that moved the column — over the route they would be a
+     chronology line with no change behind it. */
+  it('refuses a type only the API records, naming the field', () => {
+    const parsed = createCommentBodySchema.safeParse({ ...event, eventType: 'assigned' })
+
+    expect(parsed.success).toBe(false)
+    expect(parsed.error?.issues[0]?.path).toEqual(['eventType'])
+  })
+
   it('refuses an event with no type at all', () => {
     const { kind, visibility, body } = event
     expect(createCommentBodySchema.safeParse({ kind, visibility, body }).success).toBe(false)
