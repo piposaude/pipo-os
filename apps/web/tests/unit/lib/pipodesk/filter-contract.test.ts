@@ -68,6 +68,7 @@ const toRow = (seed: FixtureTicket): TicketRow => ({
   // does here. `companyIdsExact` is the cut that must not expand.
   parentCompanyId: seed.parentCompanyId,
   parentCompanyName: seed.parentCompanyName,
+  companyTaxId: seed.companyTaxId,
   companySize: seed.client.companySize,
   carrierId: seed.carrierId,
   carrierName: seed.carrierName,

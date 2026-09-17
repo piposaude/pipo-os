@@ -127,6 +127,10 @@ export function toSeedRows(rows: RawRow[]): TicketRow[] {
       display: display.status,
       reason: display.reason,
       companySize: porte,
+      /* The exported row carries no CNPJ: in the fixture it lives in the company
+         registry, which is what searchQueue still reads from the outside. It
+         moves to the row when the queue reads the API (PD-102). */
+      companyTaxId: null,
       relationship: vinculo === null ? null : (RELATIONSHIP_OF[vinculo] ?? null),
       priority: row.priority as Priority | null,
     })

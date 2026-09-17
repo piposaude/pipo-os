@@ -17,6 +17,7 @@ function row(overrides: Partial<TicketRow> & { id: string }): TicketRow {
     companyName: null,
     parentCompanyId: null,
     parentCompanyName: null,
+    companyTaxId: null,
     companySize: null,
     carrierId: null,
     carrierName: null,

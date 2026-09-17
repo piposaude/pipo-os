@@ -210,15 +210,35 @@ describe('toTicketRow — assunto da linha', () => {
   })
 })
 
+/* The API had no column for the parent until PD-046, and the test that stood
+   here asserted the null on purpose, so the gap would not pass in silence. The
+   column exists now, and these take its place. */
 describe('empresa matriz na projeção da API', () => {
-  it('should carry no parent company, because the API has no column for it yet', () => {
-    const row = toTicketRow(apiTicket())
-
-    expect(row.parentCompanyId).toBeNull()
-    expect(row.parentCompanyName).toBeNull()
+  const daFilial = apiTicket({
+    companyId: 'company-filial',
+    parentCompanyId: 'company-matriz',
+    parentCompanyName: 'Meridiano Holding',
+    companyTaxId: '11.111.111/0001-11',
+    enrollmentSnapshot: { company: { 'company-name': 'Meridiano Filial SP' } },
   })
 
-  it('should fall back to the ticket own company while the parent is missing', () => {
+  it('should carry the parent company and the CNPJ the API sends', () => {
+    const row = toTicketRow(daFilial)
+
+    expect(row.parentCompanyId).toBe('company-matriz')
+    expect(row.parentCompanyName).toBe('Meridiano Holding')
+    expect(row.companyTaxId).toBe('11.111.111/0001-11')
+  })
+
+  it('should group a branch under its parent, and name the pair on hover', () => {
+    const row = toTicketRow(daFilial)
+
+    expect(principalIdOf(row)).toBe('company-matriz')
+    expect(principalNameOf(row)).toBe('Meridiano Holding')
+    expect(companyTitleOf(row)).toBe('Meridiano Holding › Meridiano Filial SP')
+  })
+
+  it('should fall back to the ticket own company when it has no parent', () => {
     const row = toTicketRow(apiTicket())
 
     expect(principalIdOf(row)).toBe(row.companyId)

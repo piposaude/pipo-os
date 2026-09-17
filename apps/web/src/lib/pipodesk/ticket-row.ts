@@ -56,6 +56,9 @@ export interface TicketRow {
    *  the parent. The key the queue filters and groups by (DSP-36). */
   parentCompanyId: string | null
   parentCompanyName: string | null
+  /** The company's CNPJ. `taxId` above is the beneficiary's CPF — the two
+   *  neighbours are not the same kind of number. */
+  companyTaxId: string | null
   companySize: string | null
   carrierId: string | null
   carrierName: string | null
@@ -165,9 +168,11 @@ export function toTicketRow(ticket: Ticket): TicketRow {
     beneficiaryName,
     taxId: readString(snapshot, ['primary', 'profile', 'tax-id']),
     companyName: readString(snapshot, ['company', 'company-name'], ['company', 'name']),
-    // No column for the parent in `GET /tickets/rows` yet — PD-043 adds it.
-    parentCompanyId: null,
-    parentCompanyName: null,
+    /* Columns since PD-046, not read from the snapshot: whether the company is
+       a branch is decided once, on the way in, by the same rule the EI uses. */
+    parentCompanyId: ticket.parentCompanyId,
+    parentCompanyName: ticket.parentCompanyName,
+    companyTaxId: ticket.companyTaxId,
     companySize: ticket.companySize,
     carrierId: ticket.carrierId,
     carrierName: ticket.carrierName,
