@@ -94,6 +94,17 @@ export function registerCommentRoutes(app: FastifyInstance, service: CommentsSer
     async (request, reply) => {
       const author = requireAuthor(request)
       const { comment, created } = await service.add(request.params.id, request.body, author)
+
+      /* A replay is absorbed on purpose, but silently absorbing it leaves no
+         way to see a caller reusing one key for two different events — the
+         second would vanish from the chronology with nothing to look at. */
+      if (!created) {
+        request.log.info(
+          { ticketId: request.params.id, commentId: comment.id },
+          'automated event replay absorbed',
+        )
+      }
+
       reply.status(created ? 201 : 200)
       return comment
     },
