@@ -97,10 +97,17 @@ export function registerCommentRoutes(app: FastifyInstance, service: CommentsSer
 
       /* A replay is absorbed on purpose, but silently absorbing it leaves no
          way to see a caller reusing one key for two different events — the
-         second would vanish from the chronology with nothing to look at. */
-      if (!created) {
+         second would vanish from the chronology with nothing to look at. Both
+         types are logged because that is what tells the two apart. */
+      if (!created && request.body.kind === 'automated_event') {
         request.log.info(
-          { ticketId: request.params.id, commentId: comment.id },
+          {
+            ticketId: request.params.id,
+            commentId: comment.id,
+            idempotencyKey: request.body.idempotencyKey,
+            eventType: request.body.eventType,
+            storedEventType: comment.eventType,
+          },
           'automated event replay absorbed',
         )
       }
