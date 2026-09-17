@@ -35,7 +35,9 @@ export function AuthCard({ title, subtitle, children, footer }: AuthCardProps) {
 
           {children}
 
-          <footer className="auth-footer">{footer}</footer>
+          {/* Required, but ReactNode still admits null: an empty footer would
+              draw the rule and the padding with nothing under them. */}
+          {footer && <footer className="auth-footer">{footer}</footer>}
         </div>
       </Card>
     </main>

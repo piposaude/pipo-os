@@ -30,10 +30,11 @@ const { deskPolicies, matchCases } = JSON.parse(readFileSync(POLICY_PATH, 'utf-8
 }
 
 describe('the Pipodesk policy contract', () => {
-  // Object.values, not the two keys spelled out: a door added to the contract
-  // and not to DESK_POLICIES is a door the route guard never asks about.
+  // The set, not the sequence: a door added to the contract and not to
+  // DESK_POLICIES is a door the route guard never asks about, while the order
+  // of two doors means nothing — hasDeskAccess asks each on its own.
   it('should carry every door the contract declares', () => {
-    expect(DESK_POLICIES).toEqual(Object.values(deskPolicies))
+    expect([...DESK_POLICIES].sort()).toEqual(Object.values(deskPolicies).sort())
   })
 
   it.each(matchCases)('should agree with the API: $why', ({ held, required, authorized }) => {
