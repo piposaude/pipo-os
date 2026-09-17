@@ -10,6 +10,7 @@ import {
   createCommentBodySchema,
   timelineQuerySchema,
   timelineSchema,
+  withDefaultKind,
 } from './schemas.js'
 import type { CommentsService } from './service.js'
 
@@ -66,10 +67,20 @@ export function registerCommentRoutes(app: FastifyInstance, service: CommentsSer
       // A quarter of the global limit, over 5x the 50k characters the schema
       // accepts as raw UTF-8, so a multibyte body still reaches the field check.
       bodyLimit: 262_144,
+      // Before validation, so a body with no `kind` — which is every caller
+      // today — is still the manual comment it always was. `body` is loose on
+      // purpose: nothing has validated it yet.
+      preValidation: (request: { body: unknown }, _reply, done) => {
+        request.body = withDefaultKind(request.body)
+        done()
+      },
       schema: {
         params: ticketParamsSchema,
         body: createCommentBodySchema,
         response: {
+          // 200 is the redelivery answering with the event already written;
+          // 201 is the one that wrote it.
+          200: commentSchema,
           201: commentSchema,
           400: errorResponseSchema,
           401: errorResponseSchema,
@@ -82,8 +93,32 @@ export function registerCommentRoutes(app: FastifyInstance, service: CommentsSer
     },
     async (request, reply) => {
       const author = requireAuthor(request)
-      const comment = await service.add(request.params.id, request.body, author)
-      reply.status(201)
+      const { comment, created } = await service.add(request.params.id, request.body, author)
+
+      /* Absorbing a replay in silence leaves no way to see a key reused for two
+         different events, and the second would vanish from the chronology.
+         Type and body are both compared because either one alone lets a reused
+         key pass as a legitimate redelivery. */
+      if (!created && request.body.kind === 'automated_event') {
+        const bodyMismatch = request.body.body !== comment.body
+        const reusedKey = request.body.eventType !== comment.eventType || bodyMismatch
+
+        request.log[reusedKey ? 'warn' : 'info'](
+          {
+            ticketId: request.params.id,
+            commentId: comment.id,
+            idempotencyKey: request.body.idempotencyKey,
+            eventType: request.body.eventType,
+            storedEventType: comment.eventType,
+            bodyMismatch,
+          },
+          reusedKey
+            ? 'automated event replay absorbed a key reused for a different event'
+            : 'automated event replay absorbed',
+        )
+      }
+
+      reply.status(created ? 201 : 200)
       return comment
     },
   )
