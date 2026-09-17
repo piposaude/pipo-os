@@ -75,10 +75,15 @@ describe('a comment written by a service', () => {
     delete process.env.SERVICE_ALLOWED_ACCOUNTS
   })
 
+  /* A `Response` body reads once, so `mockResolvedValue` of a single one turns
+     the second service call of any test into a 503. An implementation, not a
+     value: each verify-token gets its own. */
   beforeEach(() => {
     fetchMock.mockReset()
     vi.stubGlobal('fetch', fetchMock)
-    fetchMock.mockResolvedValue(jsonResponse({ 'identity-id': IDENTITY_ID }))
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(jsonResponse({ 'identity-id': IDENTITY_ID })),
+    )
   })
 
   afterEach(async () => {
@@ -115,15 +120,6 @@ describe('a comment written by a service', () => {
       body: 'Movimentação cancelada na origem',
       idempotencyKey: 'ei:enrollment-1:cancellation',
     }
-
-    /* A `Response` body reads once, so the shared `mockResolvedValue` of the
-       outer `beforeEach` turns the second verify-token of a test into a 503.
-       These tests are the first to call as a service twice. */
-    beforeEach(() => {
-      fetchMock.mockImplementation(() =>
-        Promise.resolve(jsonResponse({ 'identity-id': IDENTITY_ID })),
-      )
-    })
 
     const post = (ticket: string) =>
       app.inject({
@@ -185,6 +181,23 @@ describe('a comment written by a service', () => {
       metadata: { documentType: 'termo-adesao' },
       authorId: `svc:${SERVICE_NAME}`,
     })
+  })
+
+  it('refuses an event type outside the catalog, naming the field', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/tickets/${ticketId}/comments`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        kind: 'automated_event',
+        eventType: 'ticket_exploded',
+        visibility: 'private',
+        body: 'algo aconteceu',
+      },
+    })
+
+    expect(response.statusCode).toBe(400)
+    expect(response.json().details[0]).toMatchObject({ field: 'eventType' })
   })
 
   it('puts the automated event in the chronology as an event, not as a comment', async () => {
