@@ -91,8 +91,14 @@ type Resolver = (eb: Eb, filter: TicketFilter, viewerId: string) => Expression<S
  */
 export const FIELD_RESOLVERS: Record<keyof TicketFilter, Resolver> = {
   statuses: (eb, { statuses }) => (statuses?.length ? eb('status', 'in', statuses) : null),
+  // Either column, as `missesCompany` matches on the web: the queue groups by
+  // the parent, so a cut by client has to reach the branches it covers.
   companyIds: (eb, { companyIds }) =>
-    companyIds?.length ? eb('company_id', 'in', companyIds) : null,
+    companyIds?.length
+      ? eb.or([eb('company_id', 'in', companyIds), eb('parent_company_id', 'in', companyIds)])
+      : null,
+  companyIdsExact: (eb, { companyIdsExact }) =>
+    companyIdsExact?.length ? eb('company_id', 'in', companyIdsExact) : null,
   carrierIds: (eb, { carrierIds }) =>
     carrierIds?.length ? eb('carrier_id', 'in', carrierIds) : null,
   products: (eb, { products }) => (products?.length ? translatedIn(eb, 'product', products) : null),

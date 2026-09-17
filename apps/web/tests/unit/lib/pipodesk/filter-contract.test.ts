@@ -18,6 +18,9 @@ type FixtureTicket = {
   beneficiaryName: string | null
   status: string
   companyId: string
+  parentCompanyId: string | null
+  parentCompanyName: string | null
+  companyTaxId: string | null
   enrollmentType: string
   sourceSystem: string
   groupId: string | null
@@ -60,10 +63,11 @@ const toRow = (seed: FixtureTicket): TicketRow => ({
   beneficiaryName: seed.beneficiaryName,
   taxId: null,
   companyName: null,
-  // GET /tickets/rows has no parent column, so parity on the matriz expansion
-  // cannot be claimed here; whoever adds it decides which side expands.
-  parentCompanyId: null,
-  parentCompanyName: null,
+  // The parent rides the row since PD-046, and the expansion is the SQL's:
+  // `companyIds` matches company_id OR parent_company_id, as missesCompany
+  // does here. `companyIdsExact` is the cut that must not expand.
+  parentCompanyId: seed.parentCompanyId,
+  parentCompanyName: seed.parentCompanyName,
   companySize: seed.client.companySize,
   carrierId: seed.carrierId,
   carrierName: seed.carrierName,

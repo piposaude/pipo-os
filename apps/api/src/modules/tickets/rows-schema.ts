@@ -20,6 +20,7 @@ const text = z.string().min(1)
 export const ticketRowsQuerySchema = z.object({
   statuses: list(ticketStatusSchema).optional(),
   companyIds: list(z.uuid()).optional(),
+  companyIdsExact: list(z.uuid()).optional(),
   carrierIds: list(text).optional(),
   products: list(text).optional(),
   types: list(text)
@@ -49,6 +50,7 @@ export type TicketRowsQuery = z.infer<typeof ticketRowsQuerySchema>
 export const QUERY_FIELD_PII = {
   statuses: 'closed vocabulary',
   companyIds: 'internal uuid',
+  companyIdsExact: 'internal uuid',
   carrierIds: 'carrier, not a person',
   products: 'closed vocabulary',
   types: 'closed vocabulary',

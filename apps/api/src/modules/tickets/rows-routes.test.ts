@@ -157,6 +157,25 @@ describe('GET /api/tickets/rows', () => {
     })
   })
 
+  it('filters by the parent and reaches the branch, over the query string', async () => {
+    await seed([
+      { title: 'da-matriz' },
+      {
+        title: 'da-filial',
+        parentCompanyId: '00000000-0000-4000-8000-0000000000a1',
+        parentCompanyName: 'Meridiano Holding',
+      },
+    ])
+
+    const byParent = await get('?companyIds=00000000-0000-4000-8000-0000000000a1')
+    const exact = await get('?companyIdsExact=00000000-0000-4000-8000-0000000000a1')
+
+    // Both rows carry COMPANY as their own company; only the second is a branch
+    // of the parent asked for.
+    expect(titles(byParent.body)).toEqual(['da-filial'])
+    expect(titles(exact.body)).toEqual([])
+  })
+
   it('says null for the parent of a company that is its own', async () => {
     await seed([{ title: 'a', companyTaxId: '11.111.111/0001-11' }])
 

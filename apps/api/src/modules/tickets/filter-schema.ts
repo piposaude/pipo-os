@@ -19,7 +19,12 @@ const dateCut = z.iso.date()
 export const ticketFilterSchema = z
   .object({
     statuses: z.array(ticketStatusSchema).min(1).optional(),
+    /** Matches the ticket's own company or the parent it is a branch of, so a
+     *  cut by client covers the whole group (DSP-36). */
     companyIds: z.array(z.uuid()).min(1).optional(),
+    /** These companies and not their branches: a cut derived from a row the
+     *  person is looking at must not widen into the rest of the group. */
+    companyIdsExact: z.array(z.uuid()).min(1).optional(),
     carrierIds: z.array(nonEmptyText).min(1).optional(),
     products: z.array(nonEmptyText).min(1).optional(),
     types: z

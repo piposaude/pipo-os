@@ -23,6 +23,9 @@ type FixtureTicket = {
   beneficiaryName: string | null
   status: string
   companyId: string
+  parentCompanyId: string | null
+  parentCompanyName: string | null
+  companyTaxId: string | null
   enrollmentType: string
   sourceSystem: string
   groupId: string | null
@@ -75,6 +78,9 @@ describe('the shared filter corpus, resolved in SQL', () => {
           enrollment_id: enrollmentIdByCase.get(seed.id)!,
           enrollment_type: seed.enrollmentType,
           company_id: seed.companyId,
+          parent_company_id: seed.parentCompanyId,
+          parent_company_name: seed.parentCompanyName,
+          company_tax_id: seed.companyTaxId,
           source_system: seed.sourceSystem,
           status: seed.status,
           group_id: seed.groupId,

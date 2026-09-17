@@ -322,6 +322,7 @@ describe('FIELD_RESOLVERS', () => {
   const SAMPLE: { [K in keyof TicketFilter]-?: NonNullable<TicketFilter[K]> } = {
     statuses: ['completed'],
     companyIds: [COMPANY_A],
+    companyIdsExact: [COMPANY_A],
     carrierIds: ['carrier-amil'],
     products: ['health'],
     types: ['inclusion'],

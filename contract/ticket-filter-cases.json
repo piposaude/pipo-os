@@ -33,7 +33,10 @@
         "product": "health",
         "contractType": "pj",
         "companySize": "enterprise"
-      }
+      },
+      "parentCompanyId": null,
+      "parentCompanyName": null,
+      "companyTaxId": null
     },
     {
       "id": "da-ana-atrasado",
@@ -62,7 +65,10 @@
         "product": "health",
         "contractType": "clt",
         "companySize": "pme"
-      }
+      },
+      "parentCompanyId": null,
+      "parentCompanyName": null,
+      "companyTaxId": null
     },
     {
       "id": "da-ana-sem-prioridade",
@@ -91,7 +97,10 @@
         "product": "pet",
         "contractType": null,
         "companySize": "pme-plus"
-      }
+      },
+      "parentCompanyId": null,
+      "parentCompanyName": null,
+      "companyTaxId": null
     },
     {
       "id": "do-bruno",
@@ -120,7 +129,10 @@
         "product": "mental-health",
         "contractType": "intern",
         "companySize": "enterprise"
-      }
+      },
+      "parentCompanyId": null,
+      "parentCompanyName": null,
+      "companyTaxId": null
     },
     {
       "id": "fechado",
@@ -149,7 +161,10 @@
         "product": "gym",
         "contractType": "pj",
         "companySize": "pme"
-      }
+      },
+      "parentCompanyId": null,
+      "parentCompanyName": null,
+      "companyTaxId": null
     },
     {
       "id": "acorda-no-limite",
@@ -178,7 +193,10 @@
         "product": "dental",
         "contractType": "clt",
         "companySize": "pme"
-      }
+      },
+      "parentCompanyId": null,
+      "parentCompanyName": null,
+      "companyTaxId": null
     },
     {
       "id": "dorme-um-dia-alem",
@@ -207,7 +225,10 @@
         "product": "dental",
         "contractType": "clt",
         "companySize": "pme"
-      }
+      },
+      "parentCompanyId": null,
+      "parentCompanyName": null,
+      "companyTaxId": null
     },
     {
       "id": "vira-o-dia-so-em-utc",
@@ -236,7 +257,42 @@
         "product": "dental",
         "contractType": "clt",
         "companySize": "pme"
-      }
+      },
+      "parentCompanyId": null,
+      "parentCompanyName": null,
+      "companyTaxId": null
+    },
+    {
+      "id": "da-filial",
+      "title": null,
+      "carrierName": "Unimed",
+      "beneficiaryName": "José Conceição",
+      "status": "broker-processing",
+      "companyId": "00000000-0000-4000-8000-0000000000c1",
+      "enrollmentType": "inclusion",
+      "sourceSystem": "enrollment-integrations",
+      "groupId": "00000000-0000-4000-8000-0000000000c3",
+      "assigneeId": null,
+      "priority": "urgent",
+      "tags": ["vip"],
+      "actionDate": null,
+      "createdAt": "2026-08-30T09:00:00.000Z",
+      "closedAt": null,
+      "carrierId": "carrier-unimed",
+      "relationship": "holder",
+      "stored": {
+        "product": "health-insurance",
+        "contractType": "services-contract",
+        "companySize": "corporate"
+      },
+      "client": {
+        "product": "health",
+        "contractType": "pj",
+        "companySize": "enterprise"
+      },
+      "parentCompanyId": "00000000-0000-4000-8000-0000000000a1",
+      "parentCompanyName": "Meridiano Holding",
+      "companyTaxId": "11.111.111/0001-11"
     }
   ],
   "cases": [
@@ -251,7 +307,8 @@
         "dorme-um-dia-alem",
         "fechado",
         "livre-urgente",
-        "vira-o-dia-so-em-utc"
+        "vira-o-dia-so-em-utc",
+        "da-filial"
       ]
     },
     {
@@ -281,21 +338,21 @@
       "filter": {
         "tags": ["vip"]
       },
-      "expected": ["da-ana-atrasado", "fechado", "livre-urgente"]
+      "expected": ["da-ana-atrasado", "fechado", "livre-urgente", "da-filial"]
     },
     {
       "name": "null is a value in assigneeIds",
       "filter": {
         "assigneeIds": [null]
       },
-      "expected": ["livre-urgente"]
+      "expected": ["livre-urgente", "da-filial"]
     },
     {
       "name": "null rides along with a real assignee",
       "filter": {
         "assigneeIds": ["bruno@pipo.health", null]
       },
-      "expected": ["do-bruno", "livre-urgente"]
+      "expected": ["do-bruno", "livre-urgente", "da-filial"]
     },
     {
       "name": "@me resolves to the viewer",
@@ -316,7 +373,7 @@
       "filter": {
         "groupIds": ["00000000-0000-4000-8000-0000000000c3"]
       },
-      "expected": ["da-ana-atrasado", "do-bruno", "fechado", "livre-urgente"]
+      "expected": ["da-ana-atrasado", "do-bruno", "fechado", "livre-urgente", "da-filial"]
     },
     {
       "name": "types and origins",
@@ -324,7 +381,7 @@
         "types": ["inclusion"],
         "origins": ["enrollment-integrations"]
       },
-      "expected": ["fechado", "livre-urgente"]
+      "expected": ["fechado", "livre-urgente", "da-filial"]
     },
     {
       "name": "actionDateBefore cuts by day and drops the ones with no date",
@@ -338,14 +395,14 @@
       "filter": {
         "urgentBy": "2026-08-31"
       },
-      "expected": ["da-ana-atrasado", "livre-urgente"]
+      "expected": ["da-ana-atrasado", "livre-urgente", "da-filial"]
     },
     {
       "name": "createdSince cuts by creation day",
       "filter": {
         "createdSince": "2026-08-29"
       },
-      "expected": ["da-ana-sem-prioridade", "do-bruno", "livre-urgente"]
+      "expected": ["da-ana-sem-prioridade", "do-bruno", "livre-urgente", "da-filial"]
     },
     {
       "name": "archived false keeps the open ones",
@@ -359,7 +416,8 @@
         "do-bruno",
         "dorme-um-dia-alem",
         "livre-urgente",
-        "vira-o-dia-so-em-utc"
+        "vira-o-dia-so-em-utc",
+        "da-filial"
       ]
     },
     {
@@ -387,7 +445,8 @@
         "da-ana-atrasado",
         "do-bruno",
         "livre-urgente",
-        "vira-o-dia-so-em-utc"
+        "vira-o-dia-so-em-utc",
+        "da-filial"
       ]
     },
     {
@@ -408,7 +467,8 @@
         "dorme-um-dia-alem",
         "fechado",
         "livre-urgente",
-        "vira-o-dia-so-em-utc"
+        "vira-o-dia-so-em-utc",
+        "da-filial"
       ]
     },
     {
@@ -438,21 +498,21 @@
       "filter": {
         "companySizes": ["enterprise"]
       },
-      "expected": ["do-bruno", "livre-urgente"]
+      "expected": ["do-bruno", "livre-urgente", "da-filial"]
     },
     {
       "name": "contract type, translated on the way in",
       "filter": {
         "contractTypes": ["pj"]
       },
-      "expected": ["fechado", "livre-urgente"]
+      "expected": ["fechado", "livre-urgente", "da-filial"]
     },
     {
       "name": "one client word matches both stored forms of a product",
       "filter": {
         "products": ["health"]
       },
-      "expected": ["da-ana-atrasado", "livre-urgente"]
+      "expected": ["da-ana-atrasado", "livre-urgente", "da-filial"]
     },
     {
       "name": "a product with no translation still matches",
@@ -481,7 +541,7 @@
         "contractTypes": ["pj"],
         "archived": false
       },
-      "expected": ["livre-urgente"]
+      "expected": ["livre-urgente", "da-filial"]
     },
     {
       "name": "a filter in the word the column stores matches nothing on either side",
@@ -502,7 +562,7 @@
       "filter": {
         "subjectQuery": "jose"
       },
-      "expected": ["livre-urgente"]
+      "expected": ["livre-urgente", "da-filial"]
     },
     {
       "name": "subjectQuery ignores case",
@@ -553,6 +613,34 @@
         "subjectQuery": "reembolso"
       },
       "expected": []
+    },
+    {
+      "name": "companyIds reaches the branch through its parent",
+      "filter": {
+        "companyIds": ["00000000-0000-4000-8000-0000000000a1"]
+      },
+      "expected": ["livre-urgente", "da-ana-atrasado", "fechado", "da-filial"]
+    },
+    {
+      "name": "the branch id selects the branch alone",
+      "filter": {
+        "companyIds": ["00000000-0000-4000-8000-0000000000c1"]
+      },
+      "expected": ["da-filial"]
+    },
+    {
+      "name": "companyIdsExact stops at the company named, never its branches",
+      "filter": {
+        "companyIdsExact": ["00000000-0000-4000-8000-0000000000a1"]
+      },
+      "expected": ["livre-urgente", "da-ana-atrasado", "fechado"]
+    },
+    {
+      "name": "companyIdsExact still names the branch directly",
+      "filter": {
+        "companyIdsExact": ["00000000-0000-4000-8000-0000000000c1"]
+      },
+      "expected": ["da-filial"]
     }
   ]
 }
