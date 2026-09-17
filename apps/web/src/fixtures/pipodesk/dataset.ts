@@ -24,6 +24,11 @@ interface RawRow {
   companyName: string | null
   parentCompanyId: string | null
   parentCompanyName: string | null
+  /** Optional because the exporter does not emit it yet: in the fixture the
+   *  CNPJ lives in the company registry, which is what `searchQueue` still
+   *  reads from the outside. Declared here so the day it is emitted the row
+   *  carries it, instead of being flattened to null in silence (PD-102). */
+  companyTaxId?: string | null
   porte: string | null
   carrierId: string | null
   carrierName: string | null
@@ -127,10 +132,7 @@ export function toSeedRows(rows: RawRow[]): TicketRow[] {
       display: display.status,
       reason: display.reason,
       companySize: porte,
-      /* The exported row carries no CNPJ: in the fixture it lives in the company
-         registry, which is what searchQueue still reads from the outside. It
-         moves to the row when the queue reads the API (PD-102). */
-      companyTaxId: null,
+      companyTaxId: row.companyTaxId ?? null,
       relationship: vinculo === null ? null : (RELATIONSHIP_OF[vinculo] ?? null),
       priority: row.priority as Priority | null,
     })
