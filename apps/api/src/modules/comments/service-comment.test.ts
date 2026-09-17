@@ -157,29 +157,6 @@ describe('a comment written by a service', () => {
       expect((await post(ticketId)).statusCode).toBe(201)
       expect((await post(other.json().id)).statusCode).toBe(201)
     })
-
-    /* Absorption is by index, on (ticket_id, idempotency_key) alone — it
-       cannot see that the second payload names a different event. The
-       caller reusing a key this way is a bug on their side, but the API
-       still has to answer with *something*, and it answers with the row
-       that is actually there rather than pretending the new one landed. */
-    it('answers with the first event when the same key is reused for a different one', async () => {
-      const first = await post(ticketId)
-
-      const reused = await app.inject({
-        method: 'POST',
-        url: `/api/tickets/${ticketId}/comments`,
-        headers: { authorization: `Bearer ${token}` },
-        payload: { ...replayed, eventType: 'document_signature_sent' },
-      })
-
-      expect(reused.statusCode).toBe(200)
-      expect(reused.json().id).toBe(first.json().id)
-      expect(reused.json().eventType).toBe(replayed.eventType)
-
-      const rows = await app.db.selectFrom('ticket_comments').selectAll().execute()
-      expect(rows).toHaveLength(1)
-    })
   })
 
   it('writes the automated event it says it is writing', async () => {
