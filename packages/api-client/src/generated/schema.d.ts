@@ -1370,6 +1370,7 @@ export interface paths {
                 query?: {
                     statuses?: components["schemas"]["TicketStatusInput"][];
                     companyIds?: string[];
+                    companyIdsExact?: string[];
                     carrierIds?: string[];
                     products?: string[];
                     /** @description Compara a palavra exatamente; o vocabulário gravado é minúsculo */
@@ -2166,6 +2167,10 @@ export interface components {
             contractType?: string;
             companySize?: string;
             /** Format: uuid */
+            parentCompanyId?: string;
+            parentCompanyName?: string;
+            companyTaxId?: string;
+            /** Format: uuid */
             groupId?: string;
             /** Format: uuid */
             queueId?: string;
@@ -2295,6 +2300,9 @@ export interface components {
             product: string | null;
             contractType: string | null;
             companySize: string | null;
+            parentCompanyId: string | null;
+            parentCompanyName: string | null;
+            companyTaxId: string | null;
             relationship: components["schemas"]["Relationship"] | null;
             sourceSystem: string;
             origin: string | null;
@@ -2406,6 +2414,9 @@ export interface components {
             /** Format: uuid */
             companyId: string;
             companyName: string | null;
+            parentCompanyId: string | null;
+            parentCompanyName: string | null;
+            companyTaxId: string | null;
             beneficiaryName: string | null;
             taxId: string | null;
             carrierId: string | null;

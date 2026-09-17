@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 import type { FastifyInstance } from 'fastify'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
-import type { TicketFilter } from './filter-schema.js'
+import type { TicketReadFilter } from './filter-schema.js'
 import {
   actionDateWindowCondition,
   ticketFilterConditions,
@@ -46,7 +46,12 @@ type CaseFile = {
   today: string
   groupA: string
   tickets: FixtureTicket[]
-  cases: { name: string; filter: TicketFilter; window?: ActionDateWindow; expected: string[] }[]
+  cases: {
+    name: string
+    filter: TicketReadFilter
+    window?: ActionDateWindow
+    expected: string[]
+  }[]
 }
 
 const fixture = JSON.parse(readFileSync(CASES_PATH, 'utf8')) as CaseFile

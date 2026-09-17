@@ -3,7 +3,7 @@ import type { Database } from '../../infrastructure/db.js'
 import { startOfBusinessDay } from '../../shared/business-date.js'
 import { foldText } from '../../shared/text.js'
 import { snapshotString } from './enrollment-snapshot.js'
-import type { TicketFilter } from './filter-schema.js'
+import type { TicketReadFilter } from './filter-schema.js'
 import { INSURANCE_SUFFIX, toStored, type VocabularyName } from './vocabulary.js'
 
 /** Twin of SLEEP_DAYS in web/src/lib/pipodesk/filter.ts. The two boundary
@@ -79,7 +79,7 @@ function translatedIn(
   return eb.or(parts)
 }
 
-type Resolver = (eb: Eb, filter: TicketFilter, viewerId: string) => Expression<SqlBool> | null
+type Resolver = (eb: Eb, filter: TicketReadFilter, viewerId: string) => Expression<SqlBool> | null
 
 /**
  * One resolver per field of the contract. The type makes a field added to the
@@ -89,7 +89,7 @@ type Resolver = (eb: Eb, filter: TicketFilter, viewerId: string) => Expression<S
  * Fields are an AND, values inside a list are an OR. Two exceptions: `tags`
  * asks for all of them, and `urgentBy` is itself an OR.
  */
-export const FIELD_RESOLVERS: Record<keyof TicketFilter, Resolver> = {
+export const FIELD_RESOLVERS: Record<keyof TicketReadFilter, Resolver> = {
   statuses: (eb, { statuses }) => (statuses?.length ? eb('status', 'in', statuses) : null),
   // Either column, as `missesCompany` matches on the web: the queue groups by
   // the parent, so a cut by client has to reach the branches it covers.
@@ -146,7 +146,7 @@ export const FIELD_RESOLVERS: Record<keyof TicketFilter, Resolver> = {
 /** The saved filter as a list of conditions, one per field that is set. */
 export function ticketFilterConditions(
   eb: Eb,
-  filter: TicketFilter,
+  filter: TicketReadFilter,
   viewerId: string,
 ): Expression<SqlBool>[] {
   return Object.values(FIELD_RESOLVERS)

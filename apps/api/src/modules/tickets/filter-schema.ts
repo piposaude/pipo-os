@@ -22,9 +22,6 @@ export const ticketFilterSchema = z
     /** Matches the ticket's own company or the parent it is a branch of, so a
      *  cut by client covers the whole group (DSP-36). */
     companyIds: z.array(z.uuid()).min(1).optional(),
-    /** These companies and not their branches: a cut derived from a row the
-     *  person is looking at must not widen into the rest of the group. */
-    companyIdsExact: z.array(z.uuid()).min(1).optional(),
     carrierIds: z.array(nonEmptyText).min(1).optional(),
     products: z.array(nonEmptyText).min(1).optional(),
     types: z
@@ -52,5 +49,22 @@ export const ticketFilterSchema = z
   .strict()
   .meta({ id: 'TicketFilter' })
 
+/**
+ * The filter as a READ accepts it: everything a view saves, plus the cuts a
+ * screen derives per render and never stores.
+ *
+ * `companyIdsExact` is the second kind. `companyIds` reaches the branches
+ * through the parent, which is what a cut by client means; a cut derived from
+ * the row someone is looking at must stay on that company. Keeping it out of
+ * `ticketFilterSchema` keeps it out of the saved view, where it would be a
+ * criterion nobody chose.
+ */
+export const ticketReadFilterSchema = ticketFilterSchema
+  .extend({
+    companyIdsExact: z.array(z.uuid()).min(1).optional(),
+  })
+  .meta({ id: 'TicketReadFilter' })
+
 export type AssigneeFilterValue = z.infer<typeof assigneeFilterValueSchema>
 export type TicketFilter = z.infer<typeof ticketFilterSchema>
+export type TicketReadFilter = z.infer<typeof ticketReadFilterSchema>
