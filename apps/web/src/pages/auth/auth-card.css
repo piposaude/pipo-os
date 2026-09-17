@@ -1,4 +1,4 @@
-.no-access-page {
+.auth-page {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -8,19 +8,19 @@
   color-scheme: light;
 }
 
-.no-access-page .no-access-card {
+.auth-page .auth-card {
   width: 100%;
   max-width: 344px;
   text-align: center;
 }
 
-.no-access-stack {
+.auth-stack {
   display: flex;
   flex-direction: column;
   gap: var(--pipo-space-medium);
 }
 
-.no-access-identity {
+.auth-identity {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -28,14 +28,17 @@
 }
 
 /* Label, not headline: the DS h1 is 48px serif and would fight the wordmark. */
-.no-access-page .no-access-title {
+.auth-page .auth-title {
   font-family: var(--pipo-font-body);
   font-size: var(--pipo-fs-h3);
   font-weight: var(--pipo-fw-bold);
   line-height: 1.2;
 }
 
-.no-access-footer {
+.auth-footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pipo-space-xxsmall);
   padding-top: var(--pipo-space-medium);
   border-top: var(--pipo-border-width-small) solid var(--pipo-border);
 }

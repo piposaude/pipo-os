@@ -1,5 +1,7 @@
-import { Banner, Button, Card, Heading, Logo, Text } from '@piposaude/design-system'
+import { Banner, Button } from '@piposaude/design-system'
+import { Text } from '@piposaude/design-system'
 import constants from '@/constants/pages/auth/login'
+import { AuthCard } from '../AuthCard'
 import { DevLoginButton } from './DevLoginButton'
 import { GoogleIcon } from './GoogleIcon'
 import './style.css'
@@ -23,48 +25,34 @@ export default function LoginPage({ redirect, error }: LoginPageProps) {
   const message = errorMessage(error)
 
   return (
-    <main className="login-page">
-      <Card
-        className="login-card"
-        paddingVertical="var(--pipo-space-large)"
-        paddingHorizontal="var(--pipo-space-large)"
-      >
-        <div className="login-stack">
-          <header className="login-identity">
-            <Logo variant="color" size="sm" />
-            <Heading level="h1" textAlign="center" className="login-title">
-              {constants.title}
-            </Heading>
-            <Text variant="bodySmall" textAlign="center" color="var(--pipo-text-secondary)">
-              {constants.subtitle}
-            </Text>
-          </header>
+    <AuthCard
+      title={constants.title}
+      subtitle={constants.subtitle}
+      footer={
+        <>
+          <Text variant="bodySmall" textAlign="center" color="var(--pipo-text-secondary)">
+            {constants.footer.domains}
+          </Text>
+          <Text variant="bodySmall" textAlign="center" color="var(--pipo-text-secondary)">
+            {constants.footer.partners}
+          </Text>
+        </>
+      }
+    >
+      {message && <Banner variant="alert">{message}</Banner>}
 
-          {message && <Banner variant="alert">{message}</Banner>}
-
-          <div className="login-actions">
-            <Button
-              variant="primary"
-              leftIcon={<GoogleIcon />}
-              onClick={() => {
-                window.location.assign(googleHref)
-              }}
-            >
-              {constants.googleButton}
-            </Button>
-            {import.meta.env.DEV && <DevLoginButton redirect={redirect} />}
-          </div>
-
-          <footer className="login-footer">
-            <Text variant="bodySmall" textAlign="center" color="var(--pipo-text-secondary)">
-              {constants.footer.domains}
-            </Text>
-            <Text variant="bodySmall" textAlign="center" color="var(--pipo-text-secondary)">
-              {constants.footer.partners}
-            </Text>
-          </footer>
-        </div>
-      </Card>
-    </main>
+      <div className="login-actions">
+        <Button
+          variant="primary"
+          leftIcon={<GoogleIcon />}
+          onClick={() => {
+            window.location.assign(googleHref)
+          }}
+        >
+          {constants.googleButton}
+        </Button>
+        {import.meta.env.DEV && <DevLoginButton redirect={redirect} />}
+      </div>
+    </AuthCard>
   )
 }
