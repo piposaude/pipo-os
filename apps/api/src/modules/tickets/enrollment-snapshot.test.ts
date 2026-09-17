@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { alterationTypeOf, movementFieldsOf, relationshipOf } from './enrollment-snapshot.js'
+import {
+  alterationTypeOf,
+  companyFieldsOf,
+  movementFieldsOf,
+  relationshipOf,
+} from './enrollment-snapshot.js'
 
 describe('relationshipOf', () => {
   it('is dependent when the moved member is the dependent', () => {
@@ -143,5 +148,138 @@ describe('alterationTypeOf', () => {
 
   it('returns the word raw, known or not', () => {
     expect(alterationTypeOf({ alteration_type: 'cnpj' })).toBe('cnpj')
+  })
+})
+
+describe('companyFieldsOf', () => {
+  /** The EI fills `parent_company_*` for a parent company too, so the flag is
+   *  what tells a branch from a company that is its own parent. */
+  it('brings the parent when the EI says the company is a branch', () => {
+    expect(
+      companyFieldsOf({
+        company: {
+          'company-tax-id': '11.111.111/0001-11',
+          'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
+          'parent-company-name': 'Meridiano Holding',
+          'parent-company-tax-id': '22.222.222/0001-22',
+          'company-subsidiary': true,
+        },
+      }),
+    ).toEqual({
+      parentCompanyId: '00000000-0000-4000-8000-0000000000a1',
+      parentCompanyName: 'Meridiano Holding',
+      companyTaxId: '11.111.111/0001-11',
+    })
+  })
+
+  /** Without this the company becomes a branch of itself, and the Empresa cell
+   *  reads `Meridiano › Meridiano`. */
+  it('drops the parent when the EI says the company is not a branch', () => {
+    expect(
+      companyFieldsOf({
+        company: {
+          'company-tax-id': '11.111.111/0001-11',
+          'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
+          'parent-company-name': 'Meridiano Holding',
+          'parent-company-tax-id': '22.222.222/0001-22',
+          'company-subsidiary': false,
+        },
+      }),
+    ).toEqual({
+      parentCompanyId: null,
+      parentCompanyName: null,
+      companyTaxId: '11.111.111/0001-11',
+    })
+  })
+
+  /** `company_subsidiary` is a pointer in the EI and arrives absent, so the
+   *  fallback is the same one `hasParentCompany` uses: the two tax ids. */
+  it('is a branch, with no flag, when the parent tax id is another company', () => {
+    expect(
+      companyFieldsOf({
+        company: {
+          'company-tax-id': '11.111.111/0001-11',
+          'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
+          'parent-company-name': 'Meridiano Holding',
+          'parent-company-tax-id': '22.222.222/0001-22',
+        },
+      }).parentCompanyId,
+    ).toBe('00000000-0000-4000-8000-0000000000a1')
+  })
+
+  it('is not a branch, with no flag, when the parent tax id is its own', () => {
+    expect(
+      companyFieldsOf({
+        company: {
+          'company-tax-id': '11.111.111/0001-11',
+          'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
+          'parent-company-name': 'Meridiano Logistica',
+          'parent-company-tax-id': '11.111.111/0001-11',
+        },
+      }).parentCompanyId,
+    ).toBeNull()
+  })
+
+  it('is not a branch when there is no parent tax id to compare', () => {
+    expect(
+      companyFieldsOf({
+        company: {
+          'company-tax-id': '11.111.111/0001-11',
+          'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
+          'parent-company-name': 'Meridiano Holding',
+        },
+      }).parentCompanyId,
+    ).toBeNull()
+  })
+
+  /** The CNPJ tells apart two companies of the same trade name, so it is read
+   *  for every ticket — branch or not. */
+  it('reads the company tax id even when the company is its own parent', () => {
+    expect(companyFieldsOf({ company: { company_tax_id: '11.111.111/0001-11' } })).toEqual({
+      parentCompanyId: null,
+      parentCompanyName: null,
+      companyTaxId: '11.111.111/0001-11',
+    })
+  })
+
+  it('reads the keys without depending on case or separator', () => {
+    expect(
+      companyFieldsOf({
+        company: {
+          companyTaxId: '11.111.111/0001-11',
+          parentCompanyId: '00000000-0000-4000-8000-0000000000a1',
+          parentCompanyName: 'Meridiano Holding',
+          companySubsidiary: true,
+        },
+      }),
+    ).toEqual({
+      parentCompanyId: '00000000-0000-4000-8000-0000000000a1',
+      parentCompanyName: 'Meridiano Holding',
+      companyTaxId: '11.111.111/0001-11',
+    })
+  })
+
+  /** A word is the only answer that counts: a `true` typed as text is not the
+   *  EI's boolean, and reading it as one would flip a company into a branch. */
+  it('falls back to the tax ids when the flag is not a boolean', () => {
+    expect(
+      companyFieldsOf({
+        company: {
+          'company-tax-id': '11.111.111/0001-11',
+          'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
+          'parent-company-name': 'Meridiano Holding',
+          'parent-company-tax-id': '11.111.111/0001-11',
+          'company-subsidiary': 'true',
+        },
+      }).parentCompanyId,
+    ).toBeNull()
+  })
+
+  it('is all null when there is nothing to read', () => {
+    const empty = { parentCompanyId: null, parentCompanyName: null, companyTaxId: null }
+    expect(companyFieldsOf({})).toEqual(empty)
+    expect(companyFieldsOf({ company: {} })).toEqual(empty)
+    expect(companyFieldsOf(null)).toEqual(empty)
+    expect(companyFieldsOf('not a snapshot')).toEqual(empty)
   })
 })

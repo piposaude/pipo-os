@@ -119,6 +119,61 @@ export function movementFieldsOf(snapshot: unknown): MovementFields {
   }
 }
 
+export interface CompanyFields {
+  /** The parent company, `null` when this one already is the parent. The key
+   *  the queue filters and groups by (DSP-36). */
+  parentCompanyId: string | null
+  parentCompanyName: string | null
+  /** The company's CNPJ — the beneficiary's CPF is `tax_id`, another column. */
+  companyTaxId: string | null
+}
+
+const NO_COMPANY: CompanyFields = {
+  parentCompanyId: null,
+  parentCompanyName: null,
+  companyTaxId: null,
+}
+
+/**
+ * Whether the company of the movement is a branch, by the same rule the EI
+ * uses in `hasParentCompany` (zendesk/alteration_template.go): the flag when
+ * it is there, the two tax ids when it is not.
+ *
+ * It matters because the EI fills `parent_company_*` for a parent company as
+ * well — reading them without this would make every company a branch of
+ * itself, and the Empresa cell would read `Meridiano › Meridiano`.
+ */
+function isBranch(company: Record<string, unknown>): boolean {
+  const flag = readPath(company, ['company-subsidiary'])
+  // Only a JSON boolean answers: the string "true" is not the EI's flag, and
+  // taking it for one would flip a parent company into a branch.
+  if (typeof flag === 'boolean') return flag
+
+  const parentTaxId = readString(company, ['parent-company-tax-id'])
+  return parentTaxId !== null && parentTaxId !== readString(company, ['company-tax-id'])
+}
+
+/**
+ * The company columns of the row, frozen at creation like the movement ones.
+ * The CNPJ is read for every ticket — it is what tells apart two companies
+ * sharing a trade name — while the parent only survives `isBranch`.
+ */
+export function companyFieldsOf(snapshot: unknown): CompanyFields {
+  if (!isRecord(snapshot)) return NO_COMPANY
+
+  const company = readPath(snapshot, ['company'])
+  if (!isRecord(company)) return NO_COMPANY
+
+  const companyTaxId = readString(company, ['company-tax-id'])
+  if (!isBranch(company)) return { ...NO_COMPANY, companyTaxId }
+
+  return {
+    parentCompanyId: readString(company, ['parent-company-id']),
+    parentCompanyName: readString(company, ['parent-company-name']),
+    companyTaxId,
+  }
+}
+
 /**
  * The first key under `parent` that holds a real word, mirroring the web's
  * `readString` in `ticket-row.ts` — the queue has to read the snapshot the
