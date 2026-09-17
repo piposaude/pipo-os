@@ -19,6 +19,9 @@ type Seed = {
   contractType?: string | null
   companySize?: string | null
   relationship?: string | null
+  parentCompanyId?: string | null
+  parentCompanyName?: string | null
+  companyTaxId?: string | null
   snapshot?: Record<string, unknown>
 }
 
@@ -80,6 +83,9 @@ describe('GET /api/tickets/rows', () => {
           tags: [],
           title: row.title,
           carrier_name: row.carrierName ?? null,
+          parent_company_id: row.parentCompanyId ?? null,
+          parent_company_name: row.parentCompanyName ?? null,
+          company_tax_id: row.companyTaxId ?? null,
         })),
       )
       .execute()
@@ -126,6 +132,40 @@ describe('GET /api/tickets/rows', () => {
       companyName: 'Caiçara Metalurgia',
       beneficiaryName: 'Renata',
       taxId: '266.348.750-73',
+    })
+  })
+
+  /** The queue groups and filters by the parent, and the CNPJ is what tells
+   *  apart two companies sharing a trade name — both have to ride the row. */
+  it('carries the parent company and the company tax id of the branch', async () => {
+    await seed([
+      {
+        title: 'a',
+        parentCompanyId: '00000000-0000-4000-8000-0000000000a1',
+        parentCompanyName: 'Meridiano Holding',
+        companyTaxId: '11.111.111/0001-11',
+      },
+    ])
+
+    const { body } = await get()
+
+    expect(body.data[0]).toMatchObject({
+      companyId: COMPANY,
+      parentCompanyId: '00000000-0000-4000-8000-0000000000a1',
+      parentCompanyName: 'Meridiano Holding',
+      companyTaxId: '11.111.111/0001-11',
+    })
+  })
+
+  it('says null for the parent of a company that is its own', async () => {
+    await seed([{ title: 'a', companyTaxId: '11.111.111/0001-11' }])
+
+    const { body } = await get()
+
+    expect(body.data[0]).toMatchObject({
+      parentCompanyId: null,
+      parentCompanyName: null,
+      companyTaxId: '11.111.111/0001-11',
     })
   })
 

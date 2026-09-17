@@ -86,6 +86,13 @@ export const ticketRowSchema = z
     assigneeId: z.string().min(1).nullable(),
     companyId: z.uuid(),
     companyName: z.string().min(1).nullable(),
+    /** The parent company when this one is a branch, `null` when it already is
+     *  the parent. The key the queue filters, groups and counts by (DSP-36). */
+    parentCompanyId: z.uuid().nullable(),
+    parentCompanyName: z.string().min(1).nullable(),
+    /** The company's CNPJ, not the beneficiary's CPF — that one is `taxId`
+     *  below, and it is the PII of a person. */
+    companyTaxId: z.string().min(1).nullable(),
     beneficiaryName: z.string().min(1).nullable(),
     taxId: z.string().min(1).nullable(),
     carrierId: z.string().nullable(),
@@ -118,6 +125,9 @@ export const ROW_FIELD_PII = {
   assigneeId: 'Pipo user id, not the beneficiary — ACE-196',
   companyId: 'internal uuid',
   companyName: 'legal entity, not a natural person',
+  parentCompanyId: 'internal uuid',
+  parentCompanyName: 'legal entity, not a natural person',
+  companyTaxId: 'CNPJ of a legal entity, unlike the taxId below',
   beneficiaryName: true,
   taxId: true,
   carrierId: 'carrier, not a person',
