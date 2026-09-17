@@ -5,13 +5,6 @@
 //
 // Callers must guard on `import.meta.env.DEV` so Vite drops this from the
 // production bundle at build time.
-// Both doors the Pipodesk routes require; without them the local session logs
-// in and then gets 403.
-export const DEV_POLICIES = [
-  'admin/allow/administrate/pipodesk/ticket',
-  'admin/allow/administrate/pipodesk/structure',
-]
-
 // Explicit on purpose: a default would hand out a privileged session to a
 // caller that meant to exercise one without policies.
 export async function devLogin(policies: string[]): Promise<void> {
