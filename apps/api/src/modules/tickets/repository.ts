@@ -124,9 +124,8 @@ export class TicketsRepository implements TicketsRepositoryPort {
     return row ? toTicket(row) : undefined
   }
 
-  /** `companyId` here is the ticket's own company, exact — unlike `companyIds`
-   *  of `/tickets/rows`, which reaches the branches through the parent. This is
-   *  the EI's idempotency path, where the company asked for is the company. */
+  /** Exact, unlike `companyIds` of `/tickets/rows`: this is the EI's
+   *  idempotency path, where the company asked for is the company. */
   async findMany(query: ListTicketsQuery): Promise<{ data: Ticket[]; total: number }> {
     const offset = (query.page - 1) * query.pageSize
 
@@ -254,8 +253,6 @@ export class TicketsRepository implements TicketsRepositoryPort {
       companyId: row.company_id,
       companyName: row.company_name,
       parentCompanyId: row.parent_company_id,
-      // Same guard as `toTicket`: the schema says word or null, so a blank
-      // column must not fail the serialization of the whole page.
       parentCompanyName: blankAsNull(row.parent_company_name),
       companyTaxId: blankAsNull(row.company_tax_id),
       beneficiaryName: row.beneficiary_name,
@@ -282,10 +279,9 @@ export class TicketsRepository implements TicketsRepositoryPort {
     // The body wins; the snapshot fills what the EI does not send yet (PD-207).
     const derived = movementFieldsOf(data.enrollmentSnapshot)
     const company = companyFieldsOf(data.enrollmentSnapshot)
-    /* The parent is a pair, and the body wins as a whole — never field by
-       field, or an id from the body would carry a name from the snapshot, and
-       a body that sends only the name would write a label with nothing to
-       group by. */
+    /* The parent is a pair and one source wins it whole, never field by
+       field: an id from the body would otherwise carry a name from the
+       snapshot. */
     const named =
       data.parentCompanyId === undefined
         ? { id: company.parentCompanyId, name: company.parentCompanyName }

@@ -168,8 +168,8 @@ export function toTicketRow(ticket: Ticket): TicketRow {
     beneficiaryName,
     taxId: readString(snapshot, ['primary', 'profile', 'tax-id']),
     companyName: readString(snapshot, ['company', 'company-name'], ['company', 'name']),
-    /* Columns since PD-046, not read from the snapshot: whether the company is
-       a branch is decided once, on the way in, by the same rule the EI uses. */
+    /* Columns, not snapshot: whether the company is a branch is decided once,
+       on the way in. */
     parentCompanyId: ticket.parentCompanyId,
     parentCompanyName: ticket.parentCompanyName,
     companyTaxId: ticket.companyTaxId,

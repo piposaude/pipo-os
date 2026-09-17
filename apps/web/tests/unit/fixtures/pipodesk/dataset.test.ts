@@ -85,9 +85,6 @@ describe('toSeedRows', () => {
   })
 })
 
-/** The exporter does not emit the company CNPJ yet — it lives in the company
- *  registry until the queue reads the API (PD-102). The day it does emit,
- *  `toSeedRows` has to carry it instead of quietly flattening it to null. */
 describe('CNPJ da empresa na linha exportada', () => {
   it('should be null while the exporter does not emit it', () => {
     expect(toSeedRows([raw()])[0].companyTaxId).toBeNull()

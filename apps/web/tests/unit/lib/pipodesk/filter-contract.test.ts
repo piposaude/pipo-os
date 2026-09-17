@@ -63,9 +63,6 @@ const toRow = (seed: FixtureTicket): TicketRow => ({
   beneficiaryName: seed.beneficiaryName,
   taxId: null,
   companyName: null,
-  // The parent rides the row since PD-046, and the expansion is the SQL's:
-  // `companyIds` matches company_id OR parent_company_id, as missesCompany
-  // does here. `companyIdsExact` is the cut that must not expand.
   parentCompanyId: seed.parentCompanyId,
   parentCompanyName: seed.parentCompanyName,
   companyTaxId: seed.companyTaxId,

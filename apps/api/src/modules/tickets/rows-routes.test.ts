@@ -136,8 +136,6 @@ describe('GET /api/tickets/rows', () => {
     })
   })
 
-  /** The queue groups and filters by the parent, and the CNPJ is what tells
-   *  apart two companies sharing a trade name — both have to ride the row. */
   it('carries the parent company and the company tax id of the branch', async () => {
     await seed([
       {
@@ -158,9 +156,8 @@ describe('GET /api/tickets/rows', () => {
     })
   })
 
-  /** `''` only gets into the column by hand or by a backfill. When it does, one
-   *  row must not take the whole page down with it — the same rule the ticket
-   *  detail already follows. */
+  /** `''` only reaches the column by hand or by a backfill, and when it does
+   *  it must not take the whole page down with it. */
   it('reads a blank company column as null, instead of failing the page', async () => {
     await seed([{ title: 'a', parentCompanyName: '', companyTaxId: '' }])
 
@@ -182,11 +179,8 @@ describe('GET /api/tickets/rows', () => {
     const exactParent = await get(`?companyIdsExact=${PARENT}`)
     const exactOwn = await get(`?companyIdsExact=${COMPANY}`)
 
-    // Every row carries COMPANY as its own company; only da-filial is a branch
-    // of PARENT, and da-matriz is PARENT itself.
+    // Every row carries COMPANY as its own company; da-matriz is PARENT itself.
     expect(titles(byParent.body)).toEqual(['da-filial', 'da-matriz'])
-    // The exact cut names a company and stops there — it reaches the parent's
-    // own tickets, never the branches under it.
     expect(titles(exactParent.body)).toEqual(['da-matriz'])
     expect(titles(exactOwn.body)).toEqual(['da-filial', 'outra'])
   })

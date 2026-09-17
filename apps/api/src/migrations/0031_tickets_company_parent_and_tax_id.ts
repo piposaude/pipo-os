@@ -1,9 +1,8 @@
 import { sql, type Kysely } from 'kysely'
 
 export async function up(db: Kysely<unknown>): Promise<void> {
-  // The parent is a company id, not a group: the hierarchy of 0024 is of
-  // groups, and the pipo-os has no company table. `null` means the ticket's
-  // company already is the parent — the queue reads the pair that way.
+  // A company id, not a group: the hierarchy of 0024 is of groups, and the
+  // pipo-os has no company table to point an FK at.
   await sql`
     ALTER TABLE tickets
       ADD COLUMN parent_company_id uuid,
@@ -11,10 +10,9 @@ export async function up(db: Kysely<unknown>): Promise<void> {
       ADD COLUMN company_tax_id text
   `.execute(db)
 
-  // Sibling of ix_tickets_company: the queue filter matches either column, so
-  // both sides of the OR have to be indexed. Partial, unlike its sibling: the
-  // column is null for every company that already is the parent, which is most
-  // of them, and `IN (...)` never matches a null anyway.
+  // Sibling of ix_tickets_company: the queue filter ORs the two columns, so
+  // both sides need an index. Partial because the column is null for every
+  // company that already is the parent, and `IN (...)` never matches a null.
   await sql`
     CREATE INDEX ix_tickets_parent_company ON tickets (parent_company_id)
     WHERE parent_company_id IS NOT NULL

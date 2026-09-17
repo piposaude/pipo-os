@@ -152,8 +152,6 @@ describe('alterationTypeOf', () => {
 })
 
 describe('companyFieldsOf', () => {
-  /** The EI fills `parent_company_*` for a parent company too, so the flag is
-   *  what tells a branch from a company that is its own parent. */
   it('brings the parent when the EI says the company is a branch', () => {
     expect(
       companyFieldsOf({
@@ -172,8 +170,6 @@ describe('companyFieldsOf', () => {
     })
   })
 
-  /** Without this the company becomes a branch of itself, and the Empresa cell
-   *  reads `Meridiano › Meridiano`. */
   it('drops the parent when the EI says the company is not a branch', () => {
     expect(
       companyFieldsOf({
@@ -192,8 +188,7 @@ describe('companyFieldsOf', () => {
     })
   })
 
-  /** `company_subsidiary` is a pointer in the EI and arrives absent, so the
-   *  fallback is the same one `hasParentCompany` uses: the two tax ids. */
+  /** `company_subsidiary` is a pointer in the EI, so it often arrives absent. */
   it('is a branch, with no flag, when the parent tax id is another company', () => {
     expect(
       companyFieldsOf({
@@ -232,8 +227,6 @@ describe('companyFieldsOf', () => {
     ).toBeNull()
   })
 
-  /** The CNPJ tells apart two companies of the same trade name, so it is read
-   *  for every ticket — branch or not. */
   it('reads the company tax id even when the company is its own parent', () => {
     expect(companyFieldsOf({ company: { company_tax_id: '11.111.111/0001-11' } })).toEqual({
       parentCompanyId: null,
@@ -259,8 +252,6 @@ describe('companyFieldsOf', () => {
     })
   })
 
-  /** A word is the only answer that counts: a `true` typed as text is not the
-   *  EI's boolean, and reading it as one would flip a company into a branch. */
   it('falls back to the tax ids when the flag is not a boolean', () => {
     expect(
       companyFieldsOf({
@@ -275,9 +266,6 @@ describe('companyFieldsOf', () => {
     ).toBeNull()
   })
 
-  /** The column is `uuid`. The EI types ParentCompanyId as a bare string with
-   *  omitempty, and a value Postgres cannot parse would make the whole ticket
-   *  fail to be created — an unreadable parent is no parent. */
   it('drops a parent whose id is not a uuid, and keeps the ticket creatable', () => {
     expect(
       companyFieldsOf({
@@ -295,9 +283,6 @@ describe('companyFieldsOf', () => {
     })
   })
 
-  /** The two are separate keys with omitempty on the EI side. A name without an
-   *  id is worse than no parent: the queue would group by the branch and label
-   *  every group with the parent's name. */
   it('drops the parent name when the id does not come with it', () => {
     expect(
       companyFieldsOf({
@@ -314,9 +299,6 @@ describe('companyFieldsOf', () => {
     })
   })
 
-  /** The id is what groups; the name is the label. A parent with no name still
-   *  belongs in the column — dropping it would put the branch back in a group
-   *  of its own, which is the bug this whole ticket exists to fix. */
   it('keeps a parent that came without a name', () => {
     expect(
       companyFieldsOf({

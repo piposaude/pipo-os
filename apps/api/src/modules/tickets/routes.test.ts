@@ -1396,8 +1396,6 @@ describe('tickets routes', () => {
       })
     })
 
-    /** The EI sends the parent for a parent company too; writing it would make
-     *  the company a branch of itself. */
     it('não grava matriz quando o snapshot diz que a empresa não é filial', async () => {
       const created = await app.inject({
         method: 'POST',
@@ -1457,7 +1455,6 @@ describe('tickets routes', () => {
       expect(created.json()).toMatchObject({ parentCompanyId: null, parentCompanyName: null })
     })
 
-    /** The pair comes from one source or the other, never half from each. */
     it('não grava nome de matriz que o corpo mandou sem id', async () => {
       const created = await app.inject({
         method: 'POST',
@@ -1497,8 +1494,6 @@ describe('tickets routes', () => {
       })
     })
 
-    /** The column is uuid and the EI types the field as a bare string: an id it
-     *  cannot parse must cost the matriz, never o chamado. */
     it('cria o chamado mesmo quando a matriz do snapshot tem id ilegível', async () => {
       const created = await app.inject({
         method: 'POST',

@@ -210,9 +210,6 @@ describe('toTicketRow — assunto da linha', () => {
   })
 })
 
-/* The API had no column for the parent until PD-046, and the test that stood
-   here asserted the null on purpose, so the gap would not pass in silence. The
-   column exists now, and these take its place. */
 describe('empresa matriz na projeção da API', () => {
   const daFilial = apiTicket({
     companyId: 'company-filial',

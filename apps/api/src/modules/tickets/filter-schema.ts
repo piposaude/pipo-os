@@ -51,12 +51,8 @@ export const ticketFilterSchema = z
 
 /**
  * The filter as a READ accepts it: everything a view saves, plus the cuts a
- * screen derives per render and never stores.
- *
- * `companyIdsExact` is the second kind. `companyIds` reaches the branches
- * through the parent, which is what a cut by client means; a cut derived from
- * the row someone is looking at must stay on that company. Keeping it out of
- * `ticketFilterSchema` keeps it out of the saved view, where it would be a
+ * screen derives per render and never stores. `companyIdsExact` stays out of
+ * `ticketFilterSchema` so it cannot be saved into a view, where it would be a
  * criterion nobody chose.
  */
 export const ticketReadFilterSchema = ticketFilterSchema.extend({

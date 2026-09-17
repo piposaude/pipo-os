@@ -95,11 +95,9 @@ describe('ticketFilterSchema', () => {
   })
 })
 
-/** The querystring is a third hand-kept copy of the filter contract, next to
- *  `ticketReadFilterSchema` and `FIELD_RESOLVERS` — and the only one TypeScript
- *  cannot check, because `{ window, limit, ...filter }` stays assignable to the
- *  filter with a field missing. A criterion left out here is a criterion that is
- *  simply unreachable over HTTP, in silence. */
+/** A third hand-kept copy of the filter contract, and the only one TypeScript
+ *  cannot check: `{ window, limit, ...filter }` stays assignable with a field
+ *  missing, so a criterion left out here is unreachable over HTTP in silence. */
 describe('ticketRowsQuerySchema', () => {
   it('offers every field of the read filter over the query string', () => {
     const OWN_FIELDS = ['window', 'limit']

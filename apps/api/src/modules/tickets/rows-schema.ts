@@ -88,12 +88,10 @@ export const ticketRowSchema = z
     assigneeId: z.string().min(1).nullable(),
     companyId: z.uuid(),
     companyName: z.string().min(1).nullable(),
-    /** The parent company when this one is a branch, `null` when it already is
-     *  the parent. The key the queue filters, groups and counts by (DSP-36). */
+    /** `null` when the company already is the parent. The key the queue
+     *  filters, groups and counts by (DSP-36). */
     parentCompanyId: z.uuid().nullable(),
     parentCompanyName: z.string().min(1).nullable(),
-    /** The company's CNPJ, not the beneficiary's CPF — that one is `taxId`
-     *  below, and it is the PII of a person. */
     companyTaxId: z.string().min(1).nullable(),
     beneficiaryName: z.string().min(1).nullable(),
     taxId: z.string().min(1).nullable(),

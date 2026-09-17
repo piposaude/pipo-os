@@ -24,10 +24,8 @@ interface RawRow {
   companyName: string | null
   parentCompanyId: string | null
   parentCompanyName: string | null
-  /** Optional because the exporter does not emit it yet: in the fixture the
-   *  CNPJ lives in the company registry, which is what `searchQueue` still
-   *  reads from the outside. Declared here so the day it is emitted the row
-   *  carries it, instead of being flattened to null in silence (PD-102). */
+  /** Optional because the exporter does not emit it yet. Declared so the day
+   *  it does, the row carries it instead of being flattened to null (PD-102). */
   companyTaxId?: string | null
   porte: string | null
   carrierId: string | null

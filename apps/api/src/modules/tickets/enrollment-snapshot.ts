@@ -120,11 +120,8 @@ export function movementFieldsOf(snapshot: unknown): MovementFields {
 }
 
 export interface CompanyFields {
-  /** The parent company, `null` when this one already is the parent. The key
-   *  the queue filters and groups by (DSP-36). */
   parentCompanyId: string | null
   parentCompanyName: string | null
-  /** The company's CNPJ — the beneficiary's CPF is `tax_id`, another column. */
   companyTaxId: string | null
 }
 
@@ -135,18 +132,14 @@ const NO_COMPANY: CompanyFields = {
 }
 
 /**
- * Whether the company of the movement is a branch, by the same rule the EI
- * uses in `hasParentCompany` (zendesk/alteration_template.go): the flag when
- * it is there, the two tax ids when it is not.
- *
- * It matters because the EI fills `parent_company_*` for a parent company as
- * well — reading them without this would make every company a branch of
- * itself, and the Empresa cell would read `Meridiano › Meridiano`.
+ * The EI fills `parent_company_*` for a parent company as well, so the columns
+ * alone do not say whether this one is a branch. Same rule as the EI's
+ * `hasParentCompany` (zendesk/alteration_template.go): the flag when it is
+ * there, the two tax ids when it is not.
  */
 function isBranch(company: Record<string, unknown>): boolean {
   const flag = readPath(company, ['company-subsidiary'])
-  // Only a JSON boolean answers: the string "true" is not the EI's flag, and
-  // taking it for one would flip a parent company into a branch.
+  // Only a JSON boolean answers: the string "true" is not the EI's flag.
   if (typeof flag === 'boolean') return flag
 
   const parentTaxId = readString(company, ['parent-company-tax-id'])
@@ -156,22 +149,14 @@ function isBranch(company: Record<string, unknown>): boolean {
 const UUID = z.uuid()
 
 /** The column is `uuid` and the EI types the field as a bare string, so an id
- *  Postgres cannot parse would turn a ticket that should exist into a 500 on
- *  creation. A parent nobody can resolve is no parent. */
+ *  Postgres cannot parse would cost the whole ticket a 500 on creation. */
 const uuidOrNull = (value: string | null): string | null =>
   value !== null && UUID.safeParse(value).success ? value : null
 
 /**
- * The company columns of the row, frozen at creation like the movement ones.
- * The CNPJ is read for every ticket — it is what tells apart two companies
- * sharing a trade name — while the parent only survives `isBranch`.
- *
- * **The id is what decides.** With an id the parent is written, name or no
- * name: the id is what groups the branches, and dropping the parent for a
- * missing label would put the branch back in a group of its own — the bug this
- * column exists to fix. A name without an id is the opposite and never
- * written: the queue would group by the branch and label every one of those
- * groups with the parent's name, while a filter by the parent reached none.
+ * **The id is what decides**, because the id is what groups the branches: a
+ * parent with no name is still written, and a name with no id never is — it
+ * would label a group the filter by that parent could not reach.
  */
 export function companyFieldsOf(snapshot: unknown): CompanyFields {
   if (!isRecord(snapshot)) return NO_COMPANY

@@ -68,12 +68,8 @@ export const ticketSchema = z
     product: z.string().min(1).nullable(),
     contractType: z.string().min(1).nullable(),
     companySize: z.string().min(1).nullable(),
-    /** The parent company when this one is a branch, `null` when it already is
-     *  the parent. The key the queue filters and groups by (DSP-36). */
     parentCompanyId: z.uuid().nullable(),
     parentCompanyName: z.string().min(1).nullable(),
-    /** The company's CNPJ. The beneficiary's CPF is not here — it stays inside
-     *  the snapshot, and the queue projection calls it `taxId`. */
     companyTaxId: z.string().min(1).nullable(),
     relationship: relationshipSchema.nullable(),
     sourceSystem: z.string(),
