@@ -13,8 +13,8 @@ initSentryNode()
 const app = buildApp()
 
 try {
-  // Awaited, because server.ts exits 1 when this rejects. Ephemeral port, so a
-  // `pnpm dev` holding the metrics port cannot fail a boot production would not.
+  // Awaited: server.ts exits 1 when this rejects. Port 0, so a `pnpm dev`
+  // holding the metrics port cannot fail a check production would pass.
   await startMetricsServer(app, 0)
   await app.ready()
   console.log('boot ok')

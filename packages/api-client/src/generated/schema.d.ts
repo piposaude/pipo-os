@@ -2009,6 +2009,79 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserList"];
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2019,9 +2092,17 @@ export interface components {
             role?: components["schemas"]["GroupMemberRoleInput"];
         };
         AuthMe: {
+            sub: string | null;
             /** Format: email */
             email: string;
+            name: string | null;
             policies: string[];
+            groups: components["schemas"]["AuthMeGroup"][] | null;
+        };
+        AuthMeGroup: {
+            /** Format: uuid */
+            groupId: string;
+            role: components["schemas"]["GroupMemberRole"];
         };
         CommentList: {
             data: components["schemas"]["TicketComment"][];
@@ -2421,6 +2502,16 @@ export interface components {
         UpdateTicketStatusBodyInput: {
             status: components["schemas"]["TicketStatusInput"];
             reason?: string;
+        };
+        /** @description Every Pipo member, unpaginated on purpose: the queue needs the whole e-mail to name map to draw a page of tickets. Bounded at 5.000 by the client that fills it. */
+        UserList: {
+            data: components["schemas"]["UserSummary"][];
+        };
+        /** @description A Pipo member. The e-mail is the join key: it is what the session `sub` writes into assigneeId, createdBy and comment authors. */
+        UserSummary: {
+            /** Format: email */
+            email: string;
+            name: string | null;
         };
     };
     responses: never;

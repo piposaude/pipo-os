@@ -88,7 +88,7 @@ describe('dev login', () => {
   // production would otherwise silently fall back to a localhost value and
   // only break at the first real login attempt.
   describe('deployed config guard', () => {
-    const deployedEnv = {
+    const validProdEnv = {
       NODE_ENV: 'production',
       AUTH_SERVICE_URL: 'https://auth-service.piposaude.com.br',
       GOOGLE_OAUTH_CLIENT_ID: 'test-client-id',
@@ -96,7 +96,7 @@ describe('dev login', () => {
     }
 
     it('boots fine when every required var is set', () => {
-      Object.assign(process.env, deployedEnv)
+      Object.assign(process.env, validProdEnv)
       delete process.env.DEV_LOGIN_ENABLED
 
       expect(() => authConfig()).not.toThrow()
@@ -105,7 +105,7 @@ describe('dev login', () => {
     it.each(['AUTH_SERVICE_URL', 'GOOGLE_OAUTH_CLIENT_ID', 'APP_BASE_URL'])(
       'throws when %s is missing in a deployed environment',
       (missingVar) => {
-        Object.assign(process.env, deployedEnv)
+        Object.assign(process.env, validProdEnv)
         delete process.env[missingVar]
 
         expect(() => authConfig()).toThrow(
@@ -115,7 +115,7 @@ describe('dev login', () => {
     )
 
     it('throws for a deployed APP_ENV even when NODE_ENV is not production', () => {
-      Object.assign(process.env, deployedEnv)
+      Object.assign(process.env, validProdEnv)
       process.env.NODE_ENV = 'staging'
       process.env.APP_ENV = 'stag'
       delete process.env.GOOGLE_OAUTH_CLIENT_ID
@@ -160,7 +160,13 @@ describe('dev login', () => {
       })
 
       expect(me.statusCode).toBe(200)
-      expect(me.json()).toEqual({ email: 'dev@piposaude.com.br', policies: [] })
+      expect(me.json()).toEqual({
+        sub: 'dev@piposaude.com.br',
+        email: 'dev@piposaude.com.br',
+        name: null,
+        policies: [],
+        groups: [],
+      })
     })
 
     it('applies the policies given in the body', async () => {
