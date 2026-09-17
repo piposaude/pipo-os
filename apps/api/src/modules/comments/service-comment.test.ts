@@ -96,6 +96,12 @@ describe('a comment written by a service', () => {
 
     expect(response.statusCode).toBe(201)
     expect(response.json().authorId).toBe(`svc:${SERVICE_NAME}`)
+    const row = await app.db
+      .selectFrom('ticket_comments')
+      .select('author_type')
+      .where('id', '=', response.json().id)
+      .executeTakeFirstOrThrow()
+    expect(row.author_type).toBe('service')
   })
 
   it('shows up in the chronology under the same author', async () => {

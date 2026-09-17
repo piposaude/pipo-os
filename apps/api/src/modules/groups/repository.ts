@@ -3,6 +3,7 @@ import type { Database } from '../../infrastructure/db.js'
 import type { TicketGroupMembers, TicketGroups } from '../../infrastructure/db-types.js'
 import { ADVISORY_LOCKS } from '../../shared/advisory-locks.js'
 import { ConflictError, NotFoundError } from '../../shared/errors.js'
+import { FK_VIOLATION } from '../../shared/pg.js'
 import type { GroupNode } from './hierarchy.js'
 import type {
   AddMemberBody,
@@ -21,8 +22,6 @@ export interface GroupRelations {
   companyIds: Map<string, string[]>
   members: Map<string, GroupDetailMember[]>
 }
-
-const PG_FK_VIOLATION = '23503'
 
 /** Five tables point at ticket_groups and all of them block the delete, so the
  *  constraint name is the only thing that says which link refused. */
@@ -210,7 +209,7 @@ export class GroupsRepository implements GroupsRepositoryPort {
 
       return (result?.numDeletedRows ?? 0n) > 0n
     } catch (err) {
-      if (err instanceof Error && 'code' in err && err.code === PG_FK_VIOLATION) {
+      if (err instanceof Error && 'code' in err && err.code === FK_VIOLATION) {
         const constraint = 'constraint' in err ? String(err.constraint) : ''
         throw new ConflictError(
           `Group ${id} ${BLOCKING_LINKS[constraint] ?? 'is still referenced elsewhere'}`,
@@ -252,7 +251,7 @@ export class GroupMembersRepository implements GroupMembersRepositoryPort {
 
       return toMember(row)
     } catch (err) {
-      if (err instanceof Error && 'code' in err && err.code === PG_FK_VIOLATION) {
+      if (err instanceof Error && 'code' in err && err.code === FK_VIOLATION) {
         throw new NotFoundError(`Group ${groupId} not found`)
       }
       throw err

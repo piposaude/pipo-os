@@ -1,5 +1,6 @@
 import { BadRequestError, NotFoundError } from '../../shared/errors.js'
 import type { TicketsRepositoryPort } from '../tickets/repository.js'
+import type { Author } from '../auth/authenticate.js'
 import type { CommentsRepositoryPort, TimelineKey } from './repository.js'
 import type { Comment, CommentList, CreateCommentBody, Timeline, TimelineQuery } from './schemas.js'
 
@@ -35,10 +36,10 @@ export class CommentsService {
     private readonly ticketsRepository: TicketsRepositoryPort,
   ) {}
 
-  async add(ticketId: string, data: CreateCommentBody, authorId: string): Promise<Comment> {
+  async add(ticketId: string, data: CreateCommentBody, author: Author): Promise<Comment> {
     const ticket = await this.ticketsRepository.findById(ticketId)
     if (!ticket) throw new NotFoundError(`Ticket ${ticketId} not found`)
-    return this.repository.create(ticketId, data, authorId)
+    return this.repository.create(ticketId, data, author)
   }
 
   async list(ticketId: string): Promise<CommentList> {

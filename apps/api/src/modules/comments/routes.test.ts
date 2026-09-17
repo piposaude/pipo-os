@@ -167,6 +167,24 @@ describe('comments routes', () => {
       expect(body.metadata).toEqual({})
     })
 
+    it('types the row as written by a user', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/tickets/${ticketId}/comments`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { visibility: 'private', body: 'anotação' },
+      })
+      expect(response.statusCode).toBe(201)
+
+      const row = await app.db
+        .selectFrom('ticket_comments')
+        .select('author_type')
+        .where('id', '=', response.json().id)
+        .executeTakeFirstOrThrow()
+
+      expect(row.author_type).toBe('user')
+    })
+
     it('creates a private comment and returns 201', async () => {
       const response = await app.inject({
         method: 'POST',

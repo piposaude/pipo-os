@@ -2,6 +2,7 @@ import { sql, type Kysely, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
 import { ValidationFailedError } from '../../shared/errors.js'
+import { FK_VIOLATION, UNIQUE_VIOLATION } from '../../shared/pg.js'
 import { OpenTicketConflictError } from './errors.js'
 import { movementFieldsOf, relationshipOf, snapshotString } from './enrollment-snapshot.js'
 import { actionDateWindowCondition, ticketFilterConditions } from './filter-resolver.js'
@@ -31,7 +32,7 @@ const FK_FIELDS: Record<string, string> = {
 /** The write names a row that is not there. Rethrown as a field error so POST
  *  and PATCH answer 422 pointing at the field, not 500. */
 function rethrowMissingReference(err: unknown): never {
-  if (err instanceof Error && 'code' in err && err.code === '23503' && 'constraint' in err) {
+  if (err instanceof Error && 'code' in err && err.code === FK_VIOLATION && 'constraint' in err) {
     const field = FK_FIELDS[err.constraint as string]
     if (field) {
       throw new ValidationFailedError(`${field} does not exist`, [
@@ -298,7 +299,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
       if (
         err instanceof Error &&
         'code' in err &&
-        err.code === '23505' &&
+        err.code === UNIQUE_VIOLATION &&
         'constraint' in err &&
         err.constraint === OPEN_ENROLLMENT_CONSTRAINT
       ) {

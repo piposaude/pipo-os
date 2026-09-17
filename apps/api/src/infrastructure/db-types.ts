@@ -42,13 +42,17 @@ export interface OutboundWebhookDeliveries {
 
 export interface TicketComments {
   author_id: string | null;
+  author_type: string;
   body: string;
   channel: Generated<string>;
   created_at: Generated<Timestamp>;
   event_type: string | null;
   id: Generated<string>;
+  idempotency_key: string | null;
+  in_reply_to: string | null;
   kind: string;
   metadata: Generated<Json>;
+  submission_id: string | null;
   ticket_id: string;
   visibility: string;
 }
@@ -181,6 +185,7 @@ export interface TicketStatusHistory {
   from_status: string | null;
   id: Generated<string>;
   reason: string | null;
+  submission_id: string | null;
   ticket_id: string;
   to_status: string;
 }
