@@ -104,6 +104,66 @@ describe('a comment written by a service', () => {
     expect(row.author_type).toBe('service')
   })
 
+  /* The EI writes from a Kafka consumer: a redelivery replays the same event,
+     and the chronology is the screen the operation reads. The second pass has
+     to find the first line, not add one and not fail. */
+  describe('redelivery of the same event', () => {
+    const replayed = {
+      kind: 'automated_event',
+      eventType: 'enrollment_cancellation_requested',
+      visibility: 'private',
+      body: 'Movimentação cancelada na origem',
+      idempotencyKey: 'ei:enrollment-1:cancellation',
+    }
+
+    /* A `Response` body reads once, so the shared `mockResolvedValue` of the
+       outer `beforeEach` turns the second verify-token of a test into a 503.
+       These tests are the first to call as a service twice. */
+    beforeEach(() => {
+      fetchMock.mockImplementation(() =>
+        Promise.resolve(jsonResponse({ 'identity-id': IDENTITY_ID })),
+      )
+    })
+
+    const post = (ticket: string) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/tickets/${ticket}/comments`,
+        headers: { authorization: `Bearer ${token}` },
+        payload: replayed,
+      })
+
+    it('gives back the line that is already there, and writes no second one', async () => {
+      const first = await post(ticketId)
+      const second = await post(ticketId)
+
+      expect(first.statusCode).toBe(201)
+      expect(second.statusCode).toBe(200)
+      expect(second.json().id).toBe(first.json().id)
+
+      const rows = await app.db.selectFrom('ticket_comments').selectAll().execute()
+      expect(rows).toHaveLength(1)
+    })
+
+    it('is scoped to the ticket, so the same key elsewhere is another event', async () => {
+      const other = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: {
+          enrollmentId: '00000000-0000-4000-8000-000000000103',
+          enrollmentType: 'inclusion',
+          companyId: '00000000-0000-4000-8000-000000000102',
+          sourceSystem: 'enrollment-integrations',
+          enrollmentSnapshot: { name: 'Other User' },
+        },
+      })
+
+      expect((await post(ticketId)).statusCode).toBe(201)
+      expect((await post(other.json().id)).statusCode).toBe(201)
+    })
+  })
+
   it('writes the automated event it says it is writing', async () => {
     const response = await app.inject({
       method: 'POST',

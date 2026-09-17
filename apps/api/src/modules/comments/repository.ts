@@ -1,6 +1,7 @@
 import { sql, type Kysely, type Selectable, type Transaction } from 'kysely'
 import { z } from 'zod'
 import type { Database } from '../../infrastructure/db.js'
+import { UNIQUE_VIOLATION } from '../../shared/pg.js'
 import type { TicketComments } from '../../infrastructure/db-types.js'
 import type { Author } from '../auth/authenticate.js'
 import type { TicketEventType } from './event-types.js'
@@ -20,6 +21,10 @@ function toComment(row: Selectable<TicketComments>): Comment {
     createdAt: row.created_at.toISOString(),
   }
 }
+
+/** The partial unique index migration 0030 creates. Named here so the catch
+ *  below reacts to that one collision and not to any other. */
+export const IDEMPOTENCY_CONSTRAINT = 'uq_ticket_comments_idempotency'
 
 /** The API's own writes go through the caller's transaction when there is one,
  *  so an event and the change that caused it commit or roll back together. */
@@ -141,8 +146,19 @@ export interface TimelinePage {
   nextKey?: TimelineKey
 }
 
+export function isIdempotencyCollision(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    'code' in err &&
+    err.code === UNIQUE_VIOLATION &&
+    'constraint' in err &&
+    err.constraint === IDEMPOTENCY_CONSTRAINT
+  )
+}
+
 export interface CommentsRepositoryPort {
   create(ticketId: string, data: CreateCommentBody, author: Author): Promise<Comment>
+  findByIdempotencyKey(ticketId: string, key: string): Promise<Comment | undefined>
   findMany(ticketId: string): Promise<Comment[]>
   findTimeline(
     ticketId: string,
@@ -180,6 +196,17 @@ export class CommentsRepository implements CommentsRepositoryPort {
       .executeTakeFirstOrThrow()
 
     return toComment(row)
+  }
+
+  async findByIdempotencyKey(ticketId: string, key: string): Promise<Comment | undefined> {
+    const row = await this.db
+      .selectFrom('ticket_comments')
+      .selectAll()
+      .where('ticket_id', '=', ticketId)
+      .where('idempotency_key', '=', key)
+      .executeTakeFirst()
+
+    return row && toComment(row)
   }
 
   async findMany(ticketId: string): Promise<Comment[]> {

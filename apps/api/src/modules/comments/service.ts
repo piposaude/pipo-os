@@ -1,8 +1,20 @@
 import { BadRequestError, ForbiddenError, NotFoundError } from '../../shared/errors.js'
 import type { TicketsRepositoryPort } from '../tickets/repository.js'
 import type { Author } from '../auth/authenticate.js'
-import type { CommentsRepositoryPort, TimelineKey } from './repository.js'
+import {
+  isIdempotencyCollision,
+  type CommentsRepositoryPort,
+  type TimelineKey,
+} from './repository.js'
 import type { Comment, CommentList, CreateCommentBody, Timeline, TimelineQuery } from './schemas.js'
+
+/** `created` is false when the write found the event already there: the route
+ *  answers 200 instead of 201, so a redelivery is never mistaken for a second
+ *  event by whoever is counting. */
+export interface AddedComment {
+  comment: Comment
+  created: boolean
+}
 
 /* The cursor is base64 of "<created_at>|<id>" — opaque so the keyset can
    change without breaking a client that stored one. A malformed cursor is
@@ -36,7 +48,7 @@ export class CommentsService {
     private readonly ticketsRepository: TicketsRepositoryPort,
   ) {}
 
-  async add(ticketId: string, data: CreateCommentBody, author: Author): Promise<Comment> {
+  async add(ticketId: string, data: CreateCommentBody, author: Author): Promise<AddedComment> {
     /* Before the ticket is even looked up: a person writing "Sistema:
        atribuído a mim" is forgery, and the chronology is what the operation
        reads to know what happened. The API records the events it causes
@@ -47,7 +59,23 @@ export class CommentsService {
 
     const ticket = await this.ticketsRepository.findById(ticketId)
     if (!ticket) throw new NotFoundError(`Ticket ${ticketId} not found`)
-    return this.repository.create(ticketId, data, author)
+
+    const key = data.kind === 'automated_event' ? data.idempotencyKey : undefined
+
+    try {
+      return { comment: await this.repository.create(ticketId, data, author), created: true }
+    } catch (err) {
+      /* The index is what decides, not a read before the write: two
+         redeliveries landing together would both find nothing and both
+         insert. Losing the race is the answer, so the loser reads the row the
+         winner wrote. */
+      if (!key || !isIdempotencyCollision(err)) throw err
+
+      const existing = await this.repository.findByIdempotencyKey(ticketId, key)
+      if (!existing) throw err
+
+      return { comment: existing, created: false }
+    }
   }
 
   async list(ticketId: string): Promise<CommentList> {

@@ -78,6 +78,9 @@ export function registerCommentRoutes(app: FastifyInstance, service: CommentsSer
         params: ticketParamsSchema,
         body: createCommentBodySchema,
         response: {
+          // 200 is the redelivery answering with the event already written;
+          // 201 is the one that wrote it.
+          200: commentSchema,
           201: commentSchema,
           400: errorResponseSchema,
           401: errorResponseSchema,
@@ -90,8 +93,8 @@ export function registerCommentRoutes(app: FastifyInstance, service: CommentsSer
     },
     async (request, reply) => {
       const author = requireAuthor(request)
-      const comment = await service.add(request.params.id, request.body, author)
-      reply.status(201)
+      const { comment, created } = await service.add(request.params.id, request.body, author)
+      reply.status(created ? 201 : 200)
       return comment
     },
   )
