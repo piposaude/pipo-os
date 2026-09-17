@@ -153,22 +153,32 @@ function isBranch(company: Record<string, unknown>): boolean {
   return parentTaxId !== null && parentTaxId !== readString(company, ['company-tax-id'])
 }
 
+const UUID = z.uuid()
+
 /** The column is `uuid` and the EI types the field as a bare string, so an id
  *  Postgres cannot parse would turn a ticket that should exist into a 500 on
  *  creation. A parent nobody can resolve is no parent. */
 const uuidOrNull = (value: string | null): string | null =>
-  value !== null && z.uuid().safeParse(value).success ? value : null
+  value !== null && UUID.safeParse(value).success ? value : null
 
 /**
  * The company columns of the row, frozen at creation like the movement ones.
  * The CNPJ is read for every ticket — it is what tells apart two companies
  * sharing a trade name — while the parent only survives `isBranch`.
  *
- * The parent is a pair, written together or not at all: with a name and no id
- * the queue would group by the branch and label every one of those groups with
- * the parent's name, while a filter by the parent reached none of them.
+ * **The id is what decides.** With an id the parent is written, name or no
+ * name: the id is what groups the branches, and dropping the parent for a
+ * missing label would put the branch back in a group of its own — the bug this
+ * column exists to fix. A name without an id is the opposite and never
+ * written: the queue would group by the branch and label every one of those
+ * groups with the parent's name, while a filter by the parent reached none.
+ *
+ * `companyId` is the ticket's own company, and it is here for one case:
+ * `company_subsidiary` decides alone when it comes, so a snapshot that raises
+ * the flag and points the parent at the company itself would write the
+ * `Meridiano › Meridiano` that `isBranch` exists to prevent.
  */
-export function companyFieldsOf(snapshot: unknown): CompanyFields {
+export function companyFieldsOf(snapshot: unknown, companyId: string): CompanyFields {
   if (!isRecord(snapshot)) return NO_COMPANY
 
   const company = readPath(snapshot, ['company'])
@@ -178,7 +188,9 @@ export function companyFieldsOf(snapshot: unknown): CompanyFields {
   if (!isBranch(company)) return { ...NO_COMPANY, companyTaxId }
 
   const parentCompanyId = uuidOrNull(readString(company, ['parent-company-id']))
-  if (parentCompanyId === null) return { ...NO_COMPANY, companyTaxId }
+  if (parentCompanyId === null || parentCompanyId === companyId) {
+    return { ...NO_COMPANY, companyTaxId }
+  }
 
   return {
     parentCompanyId,

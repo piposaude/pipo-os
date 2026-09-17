@@ -1423,6 +1423,46 @@ describe('tickets routes', () => {
       })
     })
 
+    /** The pair comes from one source or the other, never half from each. */
+    it('não grava nome de matriz que o corpo mandou sem id', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, parentCompanyName: 'Meridiano Holding' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(created.statusCode).toBe(201)
+      expect(created.json()).toMatchObject({
+        parentCompanyId: null,
+        parentCompanyName: null,
+      })
+    })
+
+    it('não completa a matriz do corpo com o nome que veio do snapshot', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: {
+          ...validTicketBody,
+          parentCompanyId: '00000000-0000-4000-8000-0000000000b9',
+          enrollmentSnapshot: {
+            company: {
+              'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
+              'parent-company-name': 'Meridiano Holding',
+              'company-subsidiary': true,
+            },
+          },
+        },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(created.json()).toMatchObject({
+        parentCompanyId: '00000000-0000-4000-8000-0000000000b9',
+        parentCompanyName: null,
+      })
+    })
+
     /** The column is uuid and the EI types the field as a bare string: an id it
      *  cannot parse must cost the matriz, never o chamado. */
     it('cria o chamado mesmo quando a matriz do snapshot tem id ilegível', async () => {
