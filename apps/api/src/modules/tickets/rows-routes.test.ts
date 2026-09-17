@@ -157,6 +157,18 @@ describe('GET /api/tickets/rows', () => {
     })
   })
 
+  /** `''` only gets into the column by hand or by a backfill. When it does, one
+   *  row must not take the whole page down with it — the same rule the ticket
+   *  detail already follows. */
+  it('reads a blank company column as null, instead of failing the page', async () => {
+    await seed([{ title: 'a', parentCompanyName: '', companyTaxId: '' }])
+
+    const { status, body } = await get()
+
+    expect(status).toBe(200)
+    expect(body.data[0]).toMatchObject({ parentCompanyName: null, companyTaxId: null })
+  })
+
   it('filters by the parent and reaches the branch, over the query string', async () => {
     await seed([
       { title: 'da-matriz' },

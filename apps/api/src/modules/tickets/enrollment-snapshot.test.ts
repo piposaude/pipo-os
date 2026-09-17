@@ -275,6 +275,45 @@ describe('companyFieldsOf', () => {
     ).toBeNull()
   })
 
+  /** The column is `uuid`. The EI types ParentCompanyId as a bare string with
+   *  omitempty, and a value Postgres cannot parse would make the whole ticket
+   *  fail to be created — an unreadable parent is no parent. */
+  it('drops a parent whose id is not a uuid, and keeps the ticket creatable', () => {
+    expect(
+      companyFieldsOf({
+        company: {
+          'company-tax-id': '11.111.111/0001-11',
+          'parent-company-id': 'parent-1',
+          'parent-company-name': 'Meridiano Holding',
+          'company-subsidiary': true,
+        },
+      }),
+    ).toEqual({
+      parentCompanyId: null,
+      parentCompanyName: null,
+      companyTaxId: '11.111.111/0001-11',
+    })
+  })
+
+  /** The two are separate keys with omitempty on the EI side. A name without an
+   *  id is worse than no parent: the queue would group by the branch and label
+   *  every group with the parent's name. */
+  it('drops the parent name when the id does not come with it', () => {
+    expect(
+      companyFieldsOf({
+        company: {
+          'company-tax-id': '11.111.111/0001-11',
+          'parent-company-name': 'Meridiano Holding',
+          'company-subsidiary': true,
+        },
+      }),
+    ).toEqual({
+      parentCompanyId: null,
+      parentCompanyName: null,
+      companyTaxId: '11.111.111/0001-11',
+    })
+  })
+
   it('is all null when there is nothing to read', () => {
     const empty = { parentCompanyId: null, parentCompanyName: null, companyTaxId: null }
     expect(companyFieldsOf({})).toEqual(empty)

@@ -251,8 +251,10 @@ export class TicketsRepository implements TicketsRepositoryPort {
       companyId: row.company_id,
       companyName: row.company_name,
       parentCompanyId: row.parent_company_id,
-      parentCompanyName: row.parent_company_name,
-      companyTaxId: row.company_tax_id,
+      // Same guard as `toTicket`: the schema says word or null, so a blank
+      // column must not fail the serialization of the whole page.
+      parentCompanyName: blankAsNull(row.parent_company_name),
+      companyTaxId: blankAsNull(row.company_tax_id),
       beneficiaryName: row.beneficiary_name,
       taxId: row.tax_id,
       carrierId: row.carrier_id,

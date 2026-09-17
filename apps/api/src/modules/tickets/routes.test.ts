@@ -1423,6 +1423,34 @@ describe('tickets routes', () => {
       })
     })
 
+    /** The column is uuid and the EI types the field as a bare string: an id it
+     *  cannot parse must cost the matriz, never o chamado. */
+    it('cria o chamado mesmo quando a matriz do snapshot tem id ilegível', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: {
+          ...validTicketBody,
+          enrollmentSnapshot: {
+            company: {
+              'company-tax-id': '11.111.111/0001-11',
+              'parent-company-id': 'parent-1',
+              'parent-company-name': 'Meridiano Holding',
+              'company-subsidiary': true,
+            },
+          },
+        },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(created.statusCode).toBe(201)
+      expect(created.json()).toMatchObject({
+        parentCompanyId: null,
+        parentCompanyName: null,
+        companyTaxId: '11.111.111/0001-11',
+      })
+    })
+
     it('prefere a empresa do corpo à do snapshot', async () => {
       const created = await app.inject({
         method: 'POST',

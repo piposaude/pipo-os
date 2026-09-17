@@ -5,7 +5,7 @@
  */
 
 import { sql, type RawBuilder } from 'kysely'
-import type { z } from 'zod'
+import { z } from 'zod'
 import type { relationshipSchema } from './schemas.js'
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -153,10 +153,20 @@ function isBranch(company: Record<string, unknown>): boolean {
   return parentTaxId !== null && parentTaxId !== readString(company, ['company-tax-id'])
 }
 
+/** The column is `uuid` and the EI types the field as a bare string, so an id
+ *  Postgres cannot parse would turn a ticket that should exist into a 500 on
+ *  creation. A parent nobody can resolve is no parent. */
+const uuidOrNull = (value: string | null): string | null =>
+  value !== null && z.uuid().safeParse(value).success ? value : null
+
 /**
  * The company columns of the row, frozen at creation like the movement ones.
  * The CNPJ is read for every ticket — it is what tells apart two companies
  * sharing a trade name — while the parent only survives `isBranch`.
+ *
+ * The parent is a pair, written together or not at all: with a name and no id
+ * the queue would group by the branch and label every one of those groups with
+ * the parent's name, while a filter by the parent reached none of them.
  */
 export function companyFieldsOf(snapshot: unknown): CompanyFields {
   if (!isRecord(snapshot)) return NO_COMPANY
@@ -167,8 +177,11 @@ export function companyFieldsOf(snapshot: unknown): CompanyFields {
   const companyTaxId = readString(company, ['company-tax-id'])
   if (!isBranch(company)) return { ...NO_COMPANY, companyTaxId }
 
+  const parentCompanyId = uuidOrNull(readString(company, ['parent-company-id']))
+  if (parentCompanyId === null) return { ...NO_COMPANY, companyTaxId }
+
   return {
-    parentCompanyId: readString(company, ['parent-company-id']),
+    parentCompanyId,
     parentCompanyName: readString(company, ['parent-company-name']),
     companyTaxId,
   }
