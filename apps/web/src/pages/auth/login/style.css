@@ -10,7 +10,7 @@
   width: 100%;
 }
 
-.auth-page .login-dev-error {
+.login-dev-error {
   color: var(--pipo-danger-dark);
   font-size: var(--pipo-fs-small);
 }

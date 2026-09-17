@@ -1,5 +1,4 @@
-import { Banner, Button } from '@piposaude/design-system'
-import { Text } from '@piposaude/design-system'
+import { Banner, Button, Text } from '@piposaude/design-system'
 import constants from '@/constants/pages/auth/login'
 import { AuthCard } from '../AuthCard'
 import { DevLoginButton } from './DevLoginButton'

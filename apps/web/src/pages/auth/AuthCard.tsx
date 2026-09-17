@@ -8,7 +8,7 @@ export interface AuthCardProps {
   /** The actions of the screen: the buttons, and whatever has to sit with them. */
   children: ReactNode
   /** Below the rule, where the screen says who to ask. */
-  footer?: ReactNode
+  footer: ReactNode
 }
 
 /** The card both screens outside the desk are built on — signing in, and being
@@ -35,7 +35,7 @@ export function AuthCard({ title, subtitle, children, footer }: AuthCardProps) {
 
           {children}
 
-          {footer && <footer className="auth-footer">{footer}</footer>}
+          <footer className="auth-footer">{footer}</footer>
         </div>
       </Card>
     </main>

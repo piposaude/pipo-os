@@ -37,7 +37,16 @@ async function renderAt(path: string) {
  *  reach a session, so the policy is what separates the Pipodesk screens from
  *  the rest of the company. */
 describe('acesso ao Pipodesk', () => {
+  // The logout button reaches the real store, which posts to the API. Without
+  // this the suite opens a TCP connection to VITE_API_URL on every run, and the
+  // assertion below would be met by the request *failing* — the store clears
+  // the session either way.
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })))
+  })
+
   afterEach(() => {
+    vi.unstubAllGlobals()
     useSessionStore.setState({ status: 'idle', user: null })
   })
 
