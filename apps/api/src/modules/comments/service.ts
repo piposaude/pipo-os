@@ -1,8 +1,8 @@
-import { BadRequestError, NotFoundError } from '../../shared/errors.js'
+import { BadRequestError, ForbiddenError, NotFoundError } from '../../shared/errors.js'
 import type { TicketsRepositoryPort } from '../tickets/repository.js'
 import type { Author } from '../auth/authenticate.js'
-import type { CommentsRepositoryPort, TimelineKey } from './repository.js'
-import type { Comment, CommentList, CreateCommentBody, Timeline, TimelineQuery } from './schemas.js'
+import type { CommentsRepositoryPort, TimelineKey, WrittenComment } from './repository.js'
+import type { CommentList, CreateCommentBody, Timeline, TimelineQuery } from './schemas.js'
 
 /* The cursor is base64 of "<created_at>|<id>" — opaque so the keyset can
    change without breaking a client that stored one. A malformed cursor is
@@ -36,9 +36,20 @@ export class CommentsService {
     private readonly ticketsRepository: TicketsRepositoryPort,
   ) {}
 
-  async add(ticketId: string, data: CreateCommentBody, author: Author): Promise<Comment> {
+  async add(ticketId: string, data: CreateCommentBody, author: Author): Promise<WrittenComment> {
+    /* Before the ticket is even looked up: a person writing "Sistema:
+       atribuído a mim" is forgery, and the chronology is what the operation
+       reads to know what happened. The API records the events it causes
+       itself through the repository, not through this route. */
+    if (data.kind === 'automated_event' && author.type !== 'service') {
+      throw new ForbiddenError('An automated event is written by a service, not by a person')
+    }
+
     const ticket = await this.ticketsRepository.findById(ticketId)
     if (!ticket) throw new NotFoundError(`Ticket ${ticketId} not found`)
+
+    /* The index decides, not a read before the write: two redeliveries landing
+       together would both find nothing and both insert. */
     return this.repository.create(ticketId, data, author)
   }
 

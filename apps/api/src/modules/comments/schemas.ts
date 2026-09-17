@@ -1,4 +1,10 @@
 import { z } from 'zod'
+import { serviceEventTypeSchema, ticketEventTypeSchema } from './event-types.js'
+
+/* The three the CHECK of migration 0030 allows. `system` is wider than
+   `Author['type']` on purpose, for the row no person and no service asked
+   for. */
+const authorTypeSchema = z.enum(['user', 'service', 'system'])
 
 export const commentSchema = z
   .object({
@@ -7,21 +13,87 @@ export const commentSchema = z
     kind: z.enum(['manual', 'automated_event']),
     channel: z.enum(['internal', 'email']),
     visibility: z.enum(['public', 'private']),
-    eventType: z.string().nullable(),
+    eventType: ticketEventTypeSchema.nullable(),
     authorId: z.string().nullable(),
+    authorType: authorTypeSchema,
     body: z.string(),
     metadata: z.record(z.string(), z.unknown()),
     createdAt: z.string(),
   })
   .meta({ id: 'TicketComment' })
 
-export const createCommentBodySchema = z
+/** The events the catalog names carry a handful of fields — an e-mail, a
+ *  document type, a status. The ceiling is here because nothing else caps it:
+ *  `body` stops at 50k characters and metadata would only meet the route's
+ *  256 KB, in a jsonb column the chronology hands back verbatim, 200 rows at
+ *  a time. */
+export const METADATA_MAX_BYTES = 8_192
+
+const metadataSchema = z
+  .record(z.string(), z.unknown())
+  .refine((value) => Buffer.byteLength(JSON.stringify(value)) <= METADATA_MAX_BYTES, {
+    message: `Metadata must serialise to at most ${METADATA_MAX_BYTES} bytes`,
+  })
+  .default({})
+  /* A refine is not expressible in JSON Schema, so the published contract
+     would promise no limit at all without this line. */
+  .describe(`Free-form event data, at most ${METADATA_MAX_BYTES} bytes serialised`)
+
+const commentBodyBase = {
+  visibility: z.enum(['public', 'private']),
+  body: z.string().trim().min(1).max(50_000),
+}
+
+export const createManualCommentBodySchema = z
   .object({
-    visibility: z.enum(['public', 'private']),
-    body: z.string().trim().min(1).max(50_000),
+    ...commentBodyBase,
+    /* Optional in the contract and filled in by the route: every caller today
+       sends a body with no `kind` at all. */
+    kind: z.literal('manual').default('manual'),
   })
   .strict()
+  .meta({ id: 'CreateManualCommentBody' })
+
+/**
+ * What a service says happened to the ticket. `visibility` is stated and never
+ * inferred: the HR answer belongs to the public cut and the note the EI writes
+ * to itself does not, and reading it off the event type would put one of them
+ * on the wrong side.
+ */
+export const createAutomatedEventBodySchema = z
+  .object({
+    ...commentBodyBase,
+    kind: z.literal('automated_event'),
+    /* The service half of the catalog only — see `API_EVENT_TYPES`. */
+    eventType: serviceEventTypeSchema,
+    metadata: metadataSchema,
+    /* The EI writes from a Kafka consumer, where redelivery is ordinary: the
+       key is what makes the second pass find the first row instead of adding
+       a second one. */
+    idempotencyKey: z.string().trim().min(1).max(255).optional(),
+  })
+  .strict()
+  .meta({ id: 'CreateAutomatedEventBody' })
+
+export const createCommentBodySchema = z
+  .discriminatedUnion('kind', [createManualCommentBodySchema, createAutomatedEventBodySchema])
   .meta({ id: 'CreateCommentBody' })
+
+/**
+ * Fills the discriminator that a body without `kind` is missing. Zod 4 refuses
+ * the union before reaching the `manual` default — with no branch chosen there
+ * is no default to read — and a `preprocess` around the union would drop the
+ * required keys from the exported contract, the lesson
+ * `tickets/enrollment-type.ts` already paid for. So the route does it in
+ * `preValidation`, where the body is still untrusted and anything that is not
+ * a plain object passes through for the schema to refuse.
+ */
+export function withDefaultKind(body: unknown): unknown {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) return body
+  if ('kind' in body) return body
+
+  return { ...body, kind: 'manual' }
+}
 
 export const commentListSchema = z
   .object({
@@ -41,6 +113,10 @@ const timelineItemBase = {
   id: z.uuid(),
   ticketId: z.uuid(),
   authorId: z.string().nullable(),
+  /* On all three variants because the front tells a line someone wrote from a
+     line the automation left, and the author id alone does not say which —
+     `svc:` is a prefix, not a type. */
+  authorType: authorTypeSchema,
   createdAt: z.string(),
 }
 
@@ -58,7 +134,10 @@ export const timelineEventSchema = z
   .object({
     ...timelineItemBase,
     type: z.literal('event'),
-    eventType: z.string().nullable(),
+    /* The whole catalog, not just the service half: this side also renders the
+       events the API records itself. Never null — an item is only an event
+       because its row carries a type. */
+    eventType: ticketEventTypeSchema,
     body: z.string(),
     metadata: z.record(z.string(), z.unknown()),
   })
@@ -71,7 +150,6 @@ export const timelineStatusChangeSchema = z
     fromStatus: z.string(),
     toStatus: z.string(),
     reason: z.string().nullable(),
-    authorType: z.string(),
   })
   .meta({ id: 'TimelineStatusChange' })
 
@@ -110,4 +188,6 @@ export type TimelineQuery = z.infer<typeof timelineQuerySchema>
 
 export type Comment = z.infer<typeof commentSchema>
 export type CreateCommentBody = z.infer<typeof createCommentBodySchema>
+export type CreateManualCommentBody = z.infer<typeof createManualCommentBodySchema>
+export type CreateAutomatedEventBody = z.infer<typeof createAutomatedEventBodySchema>
 export type CommentList = z.infer<typeof commentListSchema>

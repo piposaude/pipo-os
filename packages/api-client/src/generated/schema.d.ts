@@ -1759,6 +1759,15 @@ export interface paths {
             };
             responses: {
                 /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TicketComment"];
+                    };
+                };
+                /** @description Default Response */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -2108,15 +2117,38 @@ export interface components {
         CommentList: {
             data: components["schemas"]["TicketComment"][];
         };
-        CreateCommentBodyInput: {
+        CreateAutomatedEventBodyInput: {
             /** @enum {string} */
             visibility: "public" | "private";
             body: string;
+            /** @constant */
+            kind: "automated_event";
+            /** @enum {string} */
+            eventType: "hr_platform_reply" | "enrollment_cancellation_requested" | "document_signature_sent" | "contractor_document_failed" | "internal_note";
+            /**
+             * @description Free-form event data, at most 8192 bytes serialised
+             * @default {}
+             */
+            metadata: {
+                [key: string]: unknown;
+            };
+            idempotencyKey?: string;
         };
+        CreateCommentBodyInput: components["schemas"]["CreateManualCommentBodyInput"] | components["schemas"]["CreateAutomatedEventBodyInput"];
         CreateGroupBodyInput: {
             /** @description Trimmed before validation: whitespace only is rejected. */
             name: string;
             parentId?: string | null;
+        };
+        CreateManualCommentBodyInput: {
+            /** @enum {string} */
+            visibility: "public" | "private";
+            body: string;
+            /**
+             * @default manual
+             * @constant
+             */
+            kind: "manual";
         };
         CreateQueueBodyInput: {
             name: string;
@@ -2324,8 +2356,10 @@ export interface components {
             channel: "internal" | "email";
             /** @enum {string} */
             visibility: "public" | "private";
-            eventType: string | null;
+            eventType: ("hr_platform_reply" | "enrollment_cancellation_requested" | "document_signature_sent" | "contractor_document_failed" | "internal_note" | "assigned" | "priority_changed" | "action_date_changed" | "document_attached") | null;
             authorId: string | null;
+            /** @enum {string} */
+            authorType: "user" | "service" | "system";
             body: string;
             metadata: {
                 [key: string]: unknown;
@@ -2451,6 +2485,8 @@ export interface components {
             /** Format: uuid */
             ticketId: string;
             authorId: string | null;
+            /** @enum {string} */
+            authorType: "user" | "service" | "system";
             createdAt: string;
             /** @constant */
             type: "comment";
@@ -2466,10 +2502,13 @@ export interface components {
             /** Format: uuid */
             ticketId: string;
             authorId: string | null;
+            /** @enum {string} */
+            authorType: "user" | "service" | "system";
             createdAt: string;
             /** @constant */
             type: "event";
-            eventType: string | null;
+            /** @enum {string} */
+            eventType: "hr_platform_reply" | "enrollment_cancellation_requested" | "document_signature_sent" | "contractor_document_failed" | "internal_note" | "assigned" | "priority_changed" | "action_date_changed" | "document_attached";
             body: string;
             metadata: {
                 [key: string]: unknown;
@@ -2482,13 +2521,14 @@ export interface components {
             /** Format: uuid */
             ticketId: string;
             authorId: string | null;
+            /** @enum {string} */
+            authorType: "user" | "service" | "system";
             createdAt: string;
             /** @constant */
             type: "status-changed";
             fromStatus: string;
             toStatus: string;
             reason: string | null;
-            authorType: string;
         };
         UpdateGroupBodyInput: {
             /** @description Trimmed before validation: whitespace only is rejected. */
