@@ -1926,7 +1926,12 @@
             ]
           },
           "authorType": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "user",
+              "service",
+              "system"
+            ]
           },
           "createdAt": {
             "type": "string"
@@ -1990,7 +1995,12 @@
             ]
           },
           "authorType": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "user",
+              "service",
+              "system"
+            ]
           },
           "createdAt": {
             "type": "string"
@@ -2070,7 +2080,12 @@
             ]
           },
           "authorType": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "user",
+              "service",
+              "system"
+            ]
           },
           "createdAt": {
             "type": "string"

@@ -4,6 +4,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { buildApp } from '../../app.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
 import { insertEvent } from './repository.js'
+import { timelineCommentSchema } from './schemas.js'
 
 function cookieValue(
   response: { cookies: Array<{ name: string; value: string }> },
@@ -403,5 +404,30 @@ describe('GET /api/tickets/:id/timeline', () => {
 
     expect(response.statusCode).toBe(404)
     expect(response.json().error).toBe('NotFoundError')
+  })
+})
+
+/* The column is `CHECK (author_type IN ('user','service','system'))` in both
+   tables since migration 0030. Published as a bare string, the front would
+   have to switch on it without the compiler ever telling it a case is
+   missing — the opposite of what `eventType` got. */
+describe('the author type the chronology publishes', () => {
+  const item = {
+    id: '00000000-0000-4000-8000-0000000000ff',
+    ticketId: '00000000-0000-4000-8000-0000000000fe',
+    authorId: 'dev@piposaude.com.br',
+    createdAt: '2026-09-17T10:00:00.000Z',
+    type: 'comment',
+    channel: 'internal',
+    visibility: 'public',
+    body: 'texto',
+  }
+
+  it.each(['user', 'service', 'system'])('names %s', (authorType) => {
+    expect(timelineCommentSchema.safeParse({ ...item, authorType }).success).toBe(true)
+  })
+
+  it('names nothing else', () => {
+    expect(timelineCommentSchema.safeParse({ ...item, authorType: 'robot' }).success).toBe(false)
   })
 })

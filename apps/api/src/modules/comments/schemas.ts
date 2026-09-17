@@ -106,10 +106,12 @@ const timelineItemBase = {
   id: z.uuid(),
   ticketId: z.uuid(),
   authorId: z.string().nullable(),
-  /* `user`, `service` or `system`. On all three variants because the front
-     tells a line someone wrote from a line the automation left, and the author
-     id alone does not say which — `svc:` is a prefix, not a type. */
-  authorType: z.string(),
+  /* On all three variants because the front tells a line someone wrote from a
+     line the automation left, and the author id alone does not say which —
+     `svc:` is a prefix, not a type. The three are what the CHECK of migration
+     0030 allows; `system` is wider than `Author['type']` on purpose, for the
+     row no person and no service asked for. */
+  authorType: z.enum(['user', 'service', 'system']),
   createdAt: z.string(),
 }
 

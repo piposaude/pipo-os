@@ -2472,7 +2472,8 @@ export interface components {
             /** Format: uuid */
             ticketId: string;
             authorId: string | null;
-            authorType: string;
+            /** @enum {string} */
+            authorType: "user" | "service" | "system";
             createdAt: string;
             /** @constant */
             type: "comment";
@@ -2488,7 +2489,8 @@ export interface components {
             /** Format: uuid */
             ticketId: string;
             authorId: string | null;
-            authorType: string;
+            /** @enum {string} */
+            authorType: "user" | "service" | "system";
             createdAt: string;
             /** @constant */
             type: "event";
@@ -2505,7 +2507,8 @@ export interface components {
             /** Format: uuid */
             ticketId: string;
             authorId: string | null;
-            authorType: string;
+            /** @enum {string} */
+            authorType: "user" | "service" | "system";
             createdAt: string;
             /** @constant */
             type: "status-changed";

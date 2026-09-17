@@ -142,7 +142,9 @@ function toTimelineItem(row: TimelineRow): TimelineItem {
     id: row.id,
     ticketId: row.ticket_id,
     authorId: row.author_id,
-    authorType: row.author_type!,
+    // Both tables have the column NOT NULL with the same CHECK; the union's
+    // row type cannot say so, the way it cannot for `channel` below.
+    authorType: row.author_type as TimelineItem['authorType'],
     createdAt: row.created_at.toISOString(),
   }
 
