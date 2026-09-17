@@ -11,5 +11,5 @@ export const deskSession = () => ({
   ensureSession: vi.fn().mockResolvedValue(undefined),
   isAuthenticated: vi.fn().mockReturnValue(true),
   sessionPolicies: vi.fn().mockReturnValue(DESK_POLICIES),
-  logout: vi.fn(),
+  logout: vi.fn().mockResolvedValue(undefined),
 })

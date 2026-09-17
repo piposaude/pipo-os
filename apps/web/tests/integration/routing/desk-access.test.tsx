@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
 import type { AuthMe } from '@pipo-os/api-client'
 import { routeTree } from '@/routeTree.gen'
@@ -120,8 +121,15 @@ describe('acesso ao Pipodesk', () => {
   it('should offer a way out, so the visitor can come back as someone else', async () => {
     authenticateWith([])
 
-    await renderAt('/')
+    const router = await renderAt('/')
+    const user = userEvent.setup()
 
-    expect(await screen.findByRole('button', { name: constants.logout })).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: constants.logout }))
+
+    // The landing matters as much as the button: the store drops the session on
+    // logout, so /login no longer bounces the visitor back to the queue.
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/login')
+    })
   })
 })
