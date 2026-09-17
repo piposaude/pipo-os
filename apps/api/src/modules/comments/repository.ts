@@ -1,8 +1,9 @@
-import { sql, type Kysely, type Selectable } from 'kysely'
+import { sql, type Kysely, type Selectable, type Transaction } from 'kysely'
 import { z } from 'zod'
 import type { Database } from '../../infrastructure/db.js'
 import type { TicketComments } from '../../infrastructure/db-types.js'
 import type { Author } from '../auth/authenticate.js'
+import type { TicketEventType } from './event-types.js'
 import type { Comment, CreateCommentBody, TimelineItem } from './schemas.js'
 
 function toComment(row: Selectable<TicketComments>): Comment {
@@ -18,6 +19,53 @@ function toComment(row: Selectable<TicketComments>): Comment {
     metadata: z.record(z.string(), z.unknown()).parse(row.metadata),
     createdAt: row.created_at.toISOString(),
   }
+}
+
+/** The API's own writes go through the caller's transaction when there is one,
+ *  so an event and the change that caused it commit or roll back together. */
+export type CommentExecutor = Kysely<Database> | Transaction<Database>
+
+/** What the API says happened to a ticket it just changed. */
+export interface TicketEventInput {
+  ticketId: string
+  eventType: TicketEventType
+  body: string
+  /** Private by default: an event nobody decided to show is an internal record
+   *  of the operation, and the public cut is what HR reads. */
+  visibility?: Comment['visibility']
+  metadata?: Record<string, unknown>
+  idempotencyKey?: string
+}
+
+/**
+ * Writes an automated event, on the executor the caller hands over. This is the
+ * seam the rest of the backlog plugs into: PD-047 writes the assignment inside
+ * the transaction of the UPDATE, PD-036 the priority — never a column that
+ * moved with no line saying so, never a line for a change that rolled back.
+ */
+export async function insertEvent(
+  executor: CommentExecutor,
+  event: TicketEventInput,
+  author: Author,
+): Promise<Comment> {
+  const row = await executor
+    .insertInto('ticket_comments')
+    .values({
+      ticket_id: event.ticketId,
+      kind: 'automated_event',
+      channel: 'internal',
+      visibility: event.visibility ?? 'private',
+      body: event.body,
+      author_id: author.id,
+      author_type: author.type,
+      event_type: event.eventType,
+      metadata: JSON.stringify(event.metadata ?? {}),
+      idempotency_key: event.idempotencyKey ?? null,
+    })
+    .returningAll()
+    .executeTakeFirstOrThrow()
+
+  return toComment(row)
 }
 
 /**
@@ -108,12 +156,15 @@ export class CommentsRepository implements CommentsRepositoryPort {
   constructor(private readonly db: Kysely<Database>) {}
 
   async create(ticketId: string, data: CreateCommentBody, author: Author): Promise<Comment> {
-    const event = data.kind === 'automated_event' ? data : null
+    if (data.kind === 'automated_event') {
+      return insertEvent(this.db, { ...data, ticketId }, author)
+    }
+
     const row = await this.db
       .insertInto('ticket_comments')
       .values({
         ticket_id: ticketId,
-        kind: data.kind,
+        kind: 'manual',
         // Still the only channel anyone writes. `platform` — the HR side of the
         // composer — comes with the submission, in the second half of PD-040.
         channel: 'internal',
@@ -121,11 +172,9 @@ export class CommentsRepository implements CommentsRepositoryPort {
         body: data.body,
         author_id: author.id,
         author_type: author.type,
-        event_type: event?.eventType ?? null,
-        // Left out for a manual comment, so the column default stands instead
-        // of an empty object written by hand.
-        ...(event ? { metadata: JSON.stringify(event.metadata) } : {}),
-        idempotency_key: event?.idempotencyKey ?? null,
+        event_type: null,
+        // No metadata key at all, so the column default stands instead of an
+        // empty object written by hand.
       })
       .returningAll()
       .executeTakeFirstOrThrow()
