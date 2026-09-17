@@ -16,6 +16,23 @@ export const commentSchema = z
   })
   .meta({ id: 'TicketComment' })
 
+/** The events the catalog names carry a handful of fields — an e-mail, a
+ *  document type, a status. The ceiling is here because nothing else caps it:
+ *  `body` stops at 50k characters and metadata would only meet the route's
+ *  256 KB, in a jsonb column the chronology hands back verbatim, 200 rows at
+ *  a time. */
+export const METADATA_MAX_BYTES = 8_192
+
+const metadataSchema = z
+  .record(z.string(), z.unknown())
+  .refine((value) => Buffer.byteLength(JSON.stringify(value)) <= METADATA_MAX_BYTES, {
+    message: `Metadata must serialise to at most ${METADATA_MAX_BYTES} bytes`,
+  })
+  .default({})
+  /* A refine is not expressible in JSON Schema, so the published contract
+     would promise no limit at all without this line. */
+  .describe(`Free-form event data, at most ${METADATA_MAX_BYTES} bytes serialised`)
+
 const commentBodyBase = {
   visibility: z.enum(['public', 'private']),
   body: z.string().trim().min(1).max(50_000),
@@ -42,7 +59,7 @@ export const createAutomatedEventBodySchema = z
     ...commentBodyBase,
     kind: z.literal('automated_event'),
     eventType: ticketEventTypeSchema,
-    metadata: z.record(z.string(), z.unknown()).default({}),
+    metadata: metadataSchema,
     /* The EI writes from a Kafka consumer, where redelivery is ordinary: the
        key is what makes the second pass find the first row instead of adding
        a second one. */

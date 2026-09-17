@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createCommentBodySchema, withDefaultKind } from './schemas.js'
+import { METADATA_MAX_BYTES, createCommentBodySchema, withDefaultKind } from './schemas.js'
 
 const manual = { kind: 'manual', visibility: 'public', body: 'liguei na operadora' }
 const event = {
@@ -34,6 +34,28 @@ describe('the body of POST /tickets/:id/comments', () => {
   it('refuses an event with no type at all', () => {
     const { kind, visibility, body } = event
     expect(createCommentBodySchema.safeParse({ kind, visibility, body }).success).toBe(false)
+  })
+
+  /* The body is capped at 50k characters and metadata was not capped at all,
+     so an event could carry hundreds of KB into a jsonb column that the
+     chronology then hands back verbatim, 200 items at a time. */
+  it('refuses a metadata heavier than the ceiling, naming the field', () => {
+    const parsed = createCommentBodySchema.safeParse({
+      ...event,
+      metadata: { blob: 'a'.repeat(METADATA_MAX_BYTES) },
+    })
+
+    expect(parsed.success).toBe(false)
+    expect(parsed.error?.issues[0]?.path).toEqual(['metadata'])
+  })
+
+  it('takes a metadata the size of what the catalog actually carries', () => {
+    const parsed = createCommentBodySchema.safeParse({
+      ...event,
+      metadata: { userEmail: 'rh@empresa.com.br', documentType: 'termo-adesao' },
+    })
+
+    expect(parsed.success).toBe(true)
   })
 
   it('refuses a key it does not know', () => {

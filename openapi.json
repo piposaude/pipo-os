@@ -150,6 +150,7 @@
           },
           "metadata": {
             "default": {},
+            "description": "Free-form event data, at most 8192 bytes serialised",
             "type": "object",
             "propertyNames": {
               "type": "string"
