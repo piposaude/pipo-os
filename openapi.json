@@ -1166,7 +1166,18 @@
           "eventType": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "hr_platform_reply",
+                  "enrollment_cancellation_requested",
+                  "document_signature_sent",
+                  "contractor_document_failed",
+                  "internal_note",
+                  "assigned",
+                  "priority_changed",
+                  "action_date_changed",
+                  "document_attached"
+                ]
               },
               {
                 "type": "null"
@@ -1181,6 +1192,14 @@
               {
                 "type": "null"
               }
+            ]
+          },
+          "authorType": {
+            "type": "string",
+            "enum": [
+              "user",
+              "service",
+              "system"
             ]
           },
           "body": {
@@ -1205,6 +1224,7 @@
           "visibility",
           "eventType",
           "authorId",
+          "authorType",
           "body",
           "metadata",
           "createdAt"
@@ -2006,13 +2026,17 @@
             "const": "event"
           },
           "eventType": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
+            "type": "string",
+            "enum": [
+              "hr_platform_reply",
+              "enrollment_cancellation_requested",
+              "document_signature_sent",
+              "contractor_document_failed",
+              "internal_note",
+              "assigned",
+              "priority_changed",
+              "action_date_changed",
+              "document_attached"
             ]
           },
           "body": {

@@ -1,5 +1,10 @@
 import { z } from 'zod'
-import { serviceEventTypeSchema } from './event-types.js'
+import { serviceEventTypeSchema, ticketEventTypeSchema } from './event-types.js'
+
+/* The three the CHECK of migration 0030 allows. `system` is wider than
+   `Author['type']` on purpose, for the row no person and no service asked
+   for. */
+const authorTypeSchema = z.enum(['user', 'service', 'system'])
 
 export const commentSchema = z
   .object({
@@ -8,8 +13,9 @@ export const commentSchema = z
     kind: z.enum(['manual', 'automated_event']),
     channel: z.enum(['internal', 'email']),
     visibility: z.enum(['public', 'private']),
-    eventType: z.string().nullable(),
+    eventType: ticketEventTypeSchema.nullable(),
     authorId: z.string().nullable(),
+    authorType: authorTypeSchema,
     body: z.string(),
     metadata: z.record(z.string(), z.unknown()),
     createdAt: z.string(),
@@ -110,10 +116,8 @@ const timelineItemBase = {
   authorId: z.string().nullable(),
   /* On all three variants because the front tells a line someone wrote from a
      line the automation left, and the author id alone does not say which —
-     `svc:` is a prefix, not a type. The three are what the CHECK of migration
-     0030 allows; `system` is wider than `Author['type']` on purpose, for the
-     row no person and no service asked for. */
-  authorType: z.enum(['user', 'service', 'system']),
+     `svc:` is a prefix, not a type. */
+  authorType: authorTypeSchema,
   createdAt: z.string(),
 }
 
@@ -131,7 +135,10 @@ export const timelineEventSchema = z
   .object({
     ...timelineItemBase,
     type: z.literal('event'),
-    eventType: z.string().nullable(),
+    /* The whole catalog, not just the service half: this side also renders the
+       events the API records itself. Never null — an item is only an event
+       because its row carries a type. */
+    eventType: ticketEventTypeSchema,
     body: z.string(),
     metadata: z.record(z.string(), z.unknown()),
   })

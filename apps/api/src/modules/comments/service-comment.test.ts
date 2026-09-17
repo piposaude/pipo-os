@@ -100,13 +100,12 @@ describe('a comment written by a service', () => {
     })
 
     expect(response.statusCode).toBe(201)
-    expect(response.json().authorId).toBe(`svc:${SERVICE_NAME}`)
-    const row = await app.db
-      .selectFrom('ticket_comments')
-      .select('author_type')
-      .where('id', '=', response.json().id)
-      .executeTakeFirstOrThrow()
-    expect(row.author_type).toBe('service')
+    /* Read off the response and not off the column: the type is published now,
+       and what the caller gets back is what the front will separate on. */
+    expect(response.json()).toMatchObject({
+      authorId: `svc:${SERVICE_NAME}`,
+      authorType: 'service',
+    })
   })
 
   /* The EI writes from a Kafka consumer: a redelivery replays the same event,

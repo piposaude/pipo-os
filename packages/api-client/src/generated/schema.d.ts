@@ -2348,8 +2348,10 @@ export interface components {
             channel: "internal" | "email";
             /** @enum {string} */
             visibility: "public" | "private";
-            eventType: string | null;
+            eventType: ("hr_platform_reply" | "enrollment_cancellation_requested" | "document_signature_sent" | "contractor_document_failed" | "internal_note" | "assigned" | "priority_changed" | "action_date_changed" | "document_attached") | null;
             authorId: string | null;
+            /** @enum {string} */
+            authorType: "user" | "service" | "system";
             body: string;
             metadata: {
                 [key: string]: unknown;
@@ -2494,7 +2496,8 @@ export interface components {
             createdAt: string;
             /** @constant */
             type: "event";
-            eventType: string | null;
+            /** @enum {string} */
+            eventType: "hr_platform_reply" | "enrollment_cancellation_requested" | "document_signature_sent" | "contractor_document_failed" | "internal_note" | "assigned" | "priority_changed" | "action_date_changed" | "document_attached";
             body: string;
             metadata: {
                 [key: string]: unknown;

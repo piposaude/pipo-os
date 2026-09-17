@@ -13,8 +13,9 @@ function toComment(row: Selectable<TicketComments>): Comment {
     kind: row.kind as Comment['kind'],
     channel: row.channel as Comment['channel'],
     visibility: row.visibility as Comment['visibility'],
-    eventType: row.event_type,
+    eventType: row.event_type as Comment['eventType'],
     authorId: row.author_id,
+    authorType: row.author_type as Comment['authorType'],
     body: row.body,
     metadata: z.record(z.string(), z.unknown()).parse(row.metadata),
     createdAt: row.created_at.toISOString(),
@@ -162,7 +163,8 @@ function toTimelineItem(row: TimelineRow): TimelineItem {
     return {
       ...base,
       type: 'event',
-      eventType: row.event_type,
+      // Null only on a manual comment, and this branch already read `kind`.
+      eventType: row.event_type as Extract<TimelineItem, { type: 'event' }>['eventType'],
       body: row.body!,
       metadata: z.record(z.string(), z.unknown()).parse(row.metadata),
     }
