@@ -76,23 +76,24 @@ Isso sobe `apps/api` e `apps/web` simultaneamente via `pnpm -r --parallel dev`.
 
 ## Variáveis de ambiente
 
-| Variável                    | Padrão                                                | Descrição                                                                                                                   |
-| --------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `PORT`                      | `3001`                                                | Porta HTTP da API                                                                                                           |
-| `DATABASE_URL`              | `postgresql://pipo_os:pipo_os@localhost:5432/pipo_os` | Connection string do Postgres                                                                                               |
-| `CORS_ORIGIN`               | `http://localhost:5173`                               | Origens permitidas, separadas por vírgula                                                                                   |
-| `LOG_LEVEL`                 | `info` em produção, `debug` nos demais ambientes      | Nível mínimo de log do pino                                                                                                 |
-| `SENTRY_DSN`                | _(vazio, Sentry desabilitado)_                        | DSN do projeto Sentry da api. Sempre desabilitado em dev/test                                                               |
-| `WEB_APP_SENTRY_DSN`        | _(vazio, Sentry desabilitado)_                        | DSN do projeto Sentry do web, injetado em build-time pelo Vite                                                              |
-| `COOKIE_SECRET`             | valor de dev fixo fora de produção                    | Secret de assinatura HMAC dos cookies de sessão (`@fastify/cookie`). Obrigatório em produção — a API falha ao subir sem ele |
-| `AUTH_SERVICE_URL`          | `http://localhost:9090`                               | URL base do auth-service (backend de identidade da Pipo)                                                                    |
-| `AUTH_SERVICE_INTERNAL_URL` | `http://auth-service.platform:4000`                   | URL do listener **interno** do auth-service, o único que responde `/api/verify-token`. Usado só na autenticação de serviço  |
-| `SERVICE_ALLOWED_ACCOUNTS`  | _(vazio, nenhum serviço entra)_                       | Service accounts que podem chamar a API como serviço, no formato `<namespace>/<nome>` e separadas por vírgula               |
-| `GOOGLE_OAUTH_CLIENT_ID`    | _(vazio)_                                             | Client ID OAuth do Google reaproveitado do client "Backoffice" já registrado no GCP (o mesmo usado pelo `tools`)            |
-| `APP_BASE_URL`              | `http://localhost:5173`                               | Origem pública da aplicação, usada para montar o `redirect_uri` do fluxo Google e os redirects de erro                      |
-| `ALLOWED_EMAIL_DOMAINS`     | `piposaude.com.br,pipo.ai`                            | Domínios de e-mail aceitos no login Google, separados por vírgula                                                           |
-| `DEV_LOGIN_ENABLED`         | _(desligado)_                                         | Habilita `POST /api/auth/dev-login`. Só `true` liga; a API **falha no boot** se chegar em ambiente deployado                |
-| `DEV_LOGIN_EMAIL`           | `dev@piposaude.com.br`                                | Identidade usada pelo login local; precisa pertencer a `ALLOWED_EMAIL_DOMAINS`                                              |
+| Variável                    | Padrão                                                              | Descrição                                                                                                                                                                                  |
+| --------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `PORT`                      | `3001`                                                              | Porta HTTP da API                                                                                                                                                                          |
+| `DATABASE_URL`              | `postgresql://pipo_os:pipo_os@localhost:5432/pipo_os`               | Connection string do Postgres                                                                                                                                                              |
+| `CORS_ORIGIN`               | `http://localhost:5173`                                             | Origens permitidas, separadas por vírgula                                                                                                                                                  |
+| `LOG_LEVEL`                 | `info` em produção, `debug` nos demais ambientes                    | Nível mínimo de log do pino                                                                                                                                                                |
+| `SENTRY_DSN`                | _(vazio, Sentry desabilitado)_                                      | DSN do projeto Sentry da api. Sempre desabilitado em dev/test                                                                                                                              |
+| `WEB_APP_SENTRY_DSN`        | _(vazio, Sentry desabilitado)_                                      | DSN do projeto Sentry do web, injetado em build-time pelo Vite                                                                                                                             |
+| `COOKIE_SECRET`             | valor de dev fixo fora de produção                                  | Secret de assinatura HMAC dos cookies de sessão (`@fastify/cookie`). Obrigatório em produção — a API falha ao subir sem ele                                                                |
+| `AUTH_SERVICE_URL`          | `http://localhost:9090`                                             | URL base do auth-service (backend de identidade da Pipo)                                                                                                                                   |
+| `AUTH_SERVICE_INTERNAL_URL` | `http://auth-service.platform:4000`                                 | URL do listener **interno** do auth-service, o único que responde `/api/verify-token`. Usado só na autenticação de serviço                                                                 |
+| `SERVICE_ACCOUNT_TOKEN`     | _(vazio; lê `/var/run/secrets/kubernetes.io/serviceaccount/token`)_ | Token com que a API se identifica **ao chamar** o auth-service. No cluster vem do arquivo montado pelo kubelet; a variável existe para desenvolvimento local, onde esse arquivo não existe |
+| `SERVICE_ALLOWED_ACCOUNTS`  | _(vazio, nenhum serviço entra)_                                     | Service accounts que podem chamar a API como serviço, no formato `<namespace>/<nome>` e separadas por vírgula                                                                              |
+| `GOOGLE_OAUTH_CLIENT_ID`    | _(vazio)_                                                           | Client ID OAuth do Google reaproveitado do client "Backoffice" já registrado no GCP (o mesmo usado pelo `tools`)                                                                           |
+| `APP_BASE_URL`              | `http://localhost:5173`                                             | Origem pública da aplicação, usada para montar o `redirect_uri` do fluxo Google e os redirects de erro                                                                                     |
+| `ALLOWED_EMAIL_DOMAINS`     | `piposaude.com.br,pipo.ai`                                          | Domínios de e-mail aceitos no login Google, separados por vírgula                                                                                                                          |
+| `DEV_LOGIN_ENABLED`         | _(desligado)_                                                       | Habilita `POST /api/auth/dev-login`. Só `true` liga; a API **falha no boot** se chegar em ambiente deployado                                                                               |
+| `DEV_LOGIN_EMAIL`           | `dev@piposaude.com.br`                                              | Identidade usada pelo login local; precisa pertencer a `ALLOWED_EMAIL_DOMAINS`                                                                                                             |
 
 ## Observabilidade
 
@@ -105,22 +106,52 @@ Isso sobe `apps/api` e `apps/web` simultaneamente via `pnpm -r --parallel dev`.
 
 ## API
 
-| Método                 | Rota                                | Descrição                                                            |
-| ---------------------- | ----------------------------------- | -------------------------------------------------------------------- |
-| `GET`                  | `/api/tickets`                      | Lista tickets com filtros e paginação                                |
-| `GET`                  | `/api/tickets/:id`                  | Retorna um ticket pelo ID                                            |
-| `POST`                 | `/api/tickets`                      | Cria um ticket a partir de uma movimentação                          |
-| `PATCH`                | `/api/tickets/:id`                  | Atualiza campos do ticket parcialmente                               |
-| `PATCH`                | `/api/tickets/:id/status`           | Muda o status; um status de fechamento preenche `closedAt`           |
-| `POST`                 | `/api/tickets/:id/claim`            | Atribui o ticket ao usuário da sessão; 422 se ele já estiver fechado |
-| `GET` `POST`           | `/api/tickets/:id/comments`         | Lista e cria comentários do ticket                                   |
-| `GET` `POST`           | `/api/groups`                       | Lista e cria grupos; a leitura traz `parentId`, carteira e membros   |
-| `GET` `PATCH` `DELETE` | `/api/groups/:id`                   | Lê, atualiza e remove um grupo                                       |
-| `POST`                 | `/api/groups/:id/members`           | Adiciona um membro ao grupo, com papel `admin` ou `member`           |
-| `PATCH` `DELETE`       | `/api/groups/:id/members/:memberId` | Atualiza e remove um membro do grupo                                 |
-| `GET` `POST`           | `/api/queues`                       | Lista e cria filas                                                   |
-| `GET` `PATCH` `DELETE` | `/api/queues/:id`                   | Lê, atualiza e remove uma fila                                       |
-| `GET`                  | `/api/queues/:id/tickets`           | Lista os tickets de uma fila                                         |
+As rotas de `/api/auth/*` estão em [Autenticação](#autenticação). Contrato completo em `openapi.json` (19 rotas, 29 operações).
+
+**Chamados**
+
+| Método       | Rota                        | O que faz                                                                                                                                                                                  |
+| ------------ | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET`        | `/api/tickets/rows`         | **A projeção que a fila consome**: uma linha por chamado, sem o `enrollmentSnapshot`, com o `TicketFilter` inteiro na query, janela `awake`/`sleeping`/`all` e `total` por window function |
+| `GET`        | `/api/tickets/:id/timeline` | **A cronologia do chamado**: comentários e mudanças de status numa lista só, paginada por cursor, com corte por `visibility`                                                               |
+| `GET`        | `/api/tickets`              | Listagem antiga, com `status` singular, `search` e `page`/`pageSize`. Duas linguagens de filtro para o mesmo recurso, e `tags` tem operador oposto ao do `/rows` — PD-045                  |
+| `GET`        | `/api/tickets/:id`          | Um chamado pelo id, com o `enrollmentSnapshot` completo                                                                                                                                    |
+| `POST`       | `/api/tickets`              | Cria a partir de uma movimentação. Índice parcial impede dois chamados abertos para a mesma matrícula; a duplicata responde `409` com o `ticketId` do que já está aberto                   |
+| `PATCH`      | `/api/tickets/:id`          | Muda `assigneeId`, `queueId`, `tags`, `forceCompletion` ou `parentTicketId`. Não aceita `status`: era uma segunda porta de reabertura, sem auditoria                                       |
+| `PATCH`      | `/api/tickets/:id/status`   | A única porta de status. Grava a mudança em `ticket_status_history` e preenche `closedAt` num status de fechamento                                                                         |
+| `POST`       | `/api/tickets/:id/claim`    | Atribui a quem está chamando, lendo o `sub` do cookie. `422` se o chamado já estiver fechado — a condição está no `WHERE` do `UPDATE`, então dois cliques simultâneos não furam            |
+| `GET` `POST` | `/api/tickets/:id/comments` | Lê e cria comentário. O `POST` aceita só comentário manual (`visibility` + `body`); evento automático ninguém escreve ainda — ACE-247                                                      |
+
+**Pessoas**
+
+| Método | Rota         | O que faz                                                                                                                                                                                                                                                    |
+| ------ | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET`  | `/api/users` | Todas as pessoas da Pipo como `{email, name}`, **sem paginação** — a fila precisa do mapa inteiro para nomear as linhas. `?search=` filtra nome e e-mail sem acento e sem caixa, no snapshot em memória. Abre com qualquer uma das duas policies do Pipodesk |
+
+**Pods (grupos)**
+
+| Método                 | Rota                                | O que faz                                                                                       |
+| ---------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `GET` `POST`           | `/api/groups`                       | Lista e cria. A leitura traz `parentId`, a carteira de empresas e `members[]` com papel e ativo |
+| `GET` `PATCH` `DELETE` | `/api/groups/:id`                   | Lê, renomeia e remove. O `DELETE` responde `409` dizendo qual dos cinco vínculos barrou         |
+| `POST`                 | `/api/groups/:id/members`           | Adiciona pessoa ao pod, com papel `admin` (coordenação) ou `member` (analista)                  |
+| `PATCH` `DELETE`       | `/api/groups/:id/members/:memberId` | Muda o papel e desativa a filiação (soft delete por `active`)                                   |
+
+**Filas**
+
+| Método                 | Rota                      | O que faz                      |
+| ---------------------- | ------------------------- | ------------------------------ |
+| `GET` `POST`           | `/api/queues`             | Lista e cria filas             |
+| `GET` `PATCH` `DELETE` | `/api/queues/:id`         | Lê, atualiza e remove uma fila |
+| `GET`                  | `/api/queues/:id/tickets` | Os chamados de uma fila        |
+
+#### O que é auditado, e o que não é
+
+Só a mudança de **status** deixa rastro: `PATCH /api/tickets/:id/status` grava uma linha em `ticket_status_history` com autor, estados de origem e destino, motivo e instante. Comentário é o próprio registro.
+
+Os cinco campos do `PATCH /api/tickets/:id` — `assigneeId`, `queueId`, `tags`, `forceCompletion` e `parentTicketId` — e o `POST /api/tickets/:id/claim` fazem `UPDATE` e nada mais. Depois de reatribuir um chamado, o banco não sabe quem atribuiu, quando, nem para quem estava antes; e `forceCompletion`, que é o que permite fechar chamado furando validação, também não tem autor. `ticket_group_members` guarda só o `active` de quem saiu de um pod, sem quem nem quando.
+
+O mecanismo para consertar isso já existe — `ticket_comments` tem `kind`, `event_type` e `metadata`, e o `GET /api/tickets/:id/timeline` já lê evento automático —, mas nada escreve nele. Está em [ACE-247](https://linear.app/piposaudecom/issue/ACE-247) (PD-047).
 
 #### Grupos: a hierarquia e quem está nela
 
@@ -142,8 +173,63 @@ O login é feito via Google, reaproveitando o auth-service da Pipo (`pipoenginee
 | ------ | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET`  | `/api/auth/google`          | Inicia o fluxo OAuth2: redireciona (302) para o Google com um cookie de `state` assinado                                                                      |
 | `GET`  | `/api/auth/google/callback` | Callback do Google: troca o `code` via `POST {auth-service}/v1/google-tools-login`, valida o domínio do e-mail e grava a sessão em cookie httpOnly + assinado |
-| `GET`  | `/api/auth/me`              | Dados da sessão atual (`email`, `policies`) a partir do cookie de sessão                                                                                      |
+| `GET`  | `/api/auth/me`              | Sessão atual: `sub`, `email` e `policies` do cookie, mais o `name` da lista de pessoas do auth-service e os `groups` (pod e papel) deste banco                |
 | `POST` | `/api/auth/logout`          | Limpa o cookie de sessão (o auth-service não expõe revogação — a sessão local é o que existe)                                                                 |
+
+#### O que cada rota faz
+
+**`GET /api/auth/google`** sorteia um `state` (UUID), guarda num cookie assinado de 5 minutos junto do caminho para onde a pessoa queria ir, e responde `302` para o Google. O `state` é contra CSRF: sem ele, alguém induziria o navegador a completar um login que a pessoa não começou. O `redirect` passa por `safeRedirectPath()` — só caminho relativo, senão um link levaria para fora do domínio depois de autenticar.
+
+**`GET /api/auth/google/callback`** recebe o `code` do Google e, em ordem: apaga o cookie de `state` (uso único) e confere que o valor da URL bate com o dele; troca o `code` pelo access-token no auth-service; decodifica `sub`, `email`, `policies` e `exp`; confere o domínio do e-mail contra `ALLOWED_EMAIL_DOMAINS`; grava o token no cookie de sessão com validade igual ao `exp`; e redireciona. **Nenhum erro vira 500 na tela** — cada falha redireciona com o motivo na URL: `access_denied`, `invalid_state`, `invalid_token`, `domain_not_allowed`, `identity_not_found`, `auth_service_unavailable`.
+
+**`GET /api/auth/me`** responde `sub`, `email` e `policies` direto do cookie, sem rede. O `name` e os `groups` saem de fontes diferentes e são buscados em **paralelo** (`Promise.all`), porque não há dado de um para o outro: em série, uma lista de pessoas fria seguraria a query do banco pelo timeout inteiro da listagem. As duas degradam de propósito de formas diferentes — o nome vira `null` se o auth-service falhar; o banco fora derruba a sessão, porque afirmar "esta pessoa não está em pod nenhum" esconderia ações de coordenação sem dizer por quê.
+
+**`POST /api/auth/logout`** apaga o cookie e responde `204`. É tudo o que existe: o auth-service não expõe revogação, então o token segue tecnicamente válido até o `exp`. Sair é local.
+
+**`POST /api/auth/dev-login`** (só fora do cluster) mina uma sessão sem Google e sem auth-service, com as policies que o corpo pedir. Só é registrada com `DEV_LOGIN_ENABLED=true`, loga um `warn` no boot quando é, e a API **se recusa a subir** se a variável aparecer em ambiente deployado — seria bypass completo de autenticação.
+
+#### O fluxo, do login ao claim
+
+```mermaid
+sequenceDiagram
+    actor P as Analista
+    participant W as Navegador
+    participant API as pipo-os/api
+    participant G as Google
+    participant AS as auth-service
+    participant DB as Postgres
+
+    Note over P,DB: 1 · Login — uma vez por sessão (8 h)
+    P->>API: GET /api/auth/google
+    API-->>W: 302 + cookie oauth_state (5 min)
+    W->>G: consentimento
+    G-->>API: GET /api/auth/google/callback?code&state
+    API->>API: state da URL == state do cookie?
+    API->>AS: POST /v1/google-tools-login (code)
+    AS-->>API: access-token (JWT ES256)
+    API->>API: lê sub/email/policies/exp e confere o domínio
+    API-->>W: 302 + cookie de sessão (httpOnly, HMAC)
+
+    Note over P,DB: 2 · Tela inicial — nenhuma chamada ao auth-service pelo navegador
+    W->>API: GET /api/auth/me
+    API->>AS: lista de pessoas (só se o snapshot venceu — TTL 5 min)
+    API->>DB: SELECT ticket_group_members
+    API-->>W: sub, email, name, policies, groups
+    W->>API: GET /api/users
+    API-->>W: data[] do snapshot em memória
+    W->>API: GET /api/tickets/rows?filter=...
+    API->>DB: SELECT com o TicketFilter
+    API-->>W: linhas + total
+
+    Note over P,DB: 3 · Pegar o chamado para si — nenhuma ida à rede externa
+    P->>W: clica em "Pegar para mim"
+    W->>API: POST /api/tickets/{id}/claim
+    API->>API: requireUserId — lê o sub do cookie
+    API->>DB: UPDATE tickets SET assignee_id = sub WHERE status NOT IN (fechados)
+    API-->>W: 200 com o chamado atualizado
+```
+
+Numa sessão de 8 horas isso dá **uma** ida ao auth-service no login, **até 96** para manter a lista de nomes fresca (12 por hora, por réplica) e **nenhuma** nas ações que a pessoa faz na tela. O `@me` não aparece aqui de propósito: ele é token de filtro de fila, resolvido no `SELECT` do `/rows`, e não tem nada a ver com atribuir.
 
 O JWT emitido pelo auth-service (ES256, assinado via AWS KMS) não pode ser validado localmente — não há JWKS público.
 A API confia no cookie assinado (HMAC via `COOKIE_SECRET`) para garantir que o token não foi adulterado pelo cliente, e apenas decodifica o payload para ler `email`/`policies`/`exp`.
@@ -190,6 +276,20 @@ Quem escreve como serviço fica registrado como `svc:<nome>` na coluna de autor,
 
 O `<nome>` da identidade no auth-service é o do ServiceAccount do pod, sem namespace — e no EI ele **não** é `enrollment-integrations`. Quem processa movimentação é o `--handler=enrollment`, que roda no namespace `cronjobs` com o service account `enrollment-integrations-worker`; o `enrollment-integrations` do `default` carrega só o `--handler=server`. A identidade, portanto, é `enrollment-integrations-worker.serviceaccount@piposaude.com.br`, e a entrada correspondente em `SERVICE_ALLOWED_ACCOUNTS` é `cronjobs/enrollment-integrations-worker` — com o namespace, que o auth-service descarta e a allowlist daqui não.
 
+#### A API como chamadora: a lista de pessoas da Pipo
+
+O caminho acima é o de entrada — um serviço provando quem é para a API. O de saída é o inverso, pelo mesmo mecanismo: para listar as pessoas da Pipo (`GET /api/users`), a API chama o `GET /api/users` do listener interno do auth-service apresentando o token do ServiceAccount do próprio pod, que o auth-service traduz na identidade `pipo-os.serviceaccount@piposaude.com.br`.
+
+**Tamanho da lista, medido em produção em 15 set**: `total` = **627** pessoas com e-mail Pipo, ou sete páginas de 100. O teto do drain é 50 páginas (5.000 pessoas) e o aviso de aproximação sai na trigésima (3.000), então há folga de cerca de cinco vezes antes de alguém precisar olhar. É o que sustenta a rota devolver a lista inteira sem paginar: a resposta fica na casa de algumas dezenas de KB. Refazer a medição: `kubectl --context pipo-prod exec -n default deploy/pipo-os-api -- node -e '...fetch(".../api/users?limit=1")...'` e ler o `total`.
+
+Esse token é lido do arquivo **a cada chamada**, porque o kubelet o rotaciona: uma cópia guardada no boot deixa de valer em algumas horas. Note que o pod monta dois tokens — o `aws-iam-token` ao lado dele é do IRSA, com a audience da AWS, e o auth-service não o reconhece. Fora do cluster não há arquivo nenhum, e é para isso que serve o `SERVICE_ACCOUNT_TOKEN`; sem nenhum dos dois a rota responde `503` e a interface cai no nome derivado do e-mail.
+
+**Pré-requisito de infraestrutura**: a identidade `pipo-os.serviceaccount@piposaude.com.br` carrega `admin/allow/administrate/user/*` em stag e em prod (conferido em 14 set com `ppcli user list-policies`), que é a policy que a rota de lá exige. Sem ela a listagem responde `503`.
+
+Essa policy é ampla: no `base.edn` do auth-service ela governa também `POST /api/user`, `PUT /api/user/:id` e `POST /api/user/:id/policy`. O pod do pipo-os passa a carregar, em produção, uma credencial capaz de anexar policy a qualquer identidade — nenhuma rota daqui usa isso, mas é o raio que um SSRF ou um vazamento de header neste serviço passa a ter. O caminho para reduzir é uma policy de leitura no auth-service (`admin/allow/read/user/*`), que hoje não existe.
+
+O JWT da sessão da pessoa **não** é repassado nessa chamada, e não por comodidade: aquela policy abre, no mesmo `base.edn` do auth-service, o `POST /api/user/:id/policy`. Concedê-la a cada analista daria a ela o poder de anexar qualquer policy a qualquer identidade.
+
 #### Autenticação em desenvolvimento
 
 Copie `apps/api/.env.example` para `apps/api/.env` (git-ignored) e ajuste. O `pnpm dev` carrega esse arquivo automaticamente; variáveis exportadas no shell têm precedência sobre ele.
@@ -231,6 +331,7 @@ Autenticar responde quem é a pessoa; a **policy** responde o que ela pode fazer
 | `/api/tickets/**`, `/api/tickets/:id/comments`, `/api/tickets/:id/timeline`, `/api/queues/:id/tickets`          | `admin/allow/administrate/pipodesk/ticket`    |
 | `/api/groups/**` e `/api/queues/**` (estrutura: pods, membros e filas salvas), exceto `/api/queues/:id/tickets` | `admin/allow/administrate/pipodesk/structure` |
 | `/api/auth/**`                                                                                                  | nenhuma (identidade, não recurso)             |
+| `GET /api/users`                                                                                                | `pipodesk/ticket` **ou** `pipodesk/structure` |
 
 **Por que o domínio é `pipodesk` e não `ticket`.** `admin/allow/administrate/ticket/*` já existe e pertence a outro serviço: é o papel de admin do `ticket-service` (squad opex). Reusar a string acoplaria os dois — analista do Pipodesk viraria admin lá, e o admin de lá entraria aqui. O domínio próprio também deixa o específico livre para separar as duas famílias de rota: `ticket` para chamado e `structure` para grupos e filas, com `admin/allow/administrate/pipodesk/*` cobrindo as duas. O `authorize.test.ts` tem um caso que recusa a policy do `ticket-service` com 403, para a colisão não voltar por descuido.
 

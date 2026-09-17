@@ -3,6 +3,8 @@ import type { ErrorDetail } from './errors.js'
 
 export const emailSchema = z.email()
 
+export const isEmail = (value: unknown): value is string => emailSchema.safeParse(value).success
+
 export const errorDetailSchema = z
   .object({
     field: z.string(),

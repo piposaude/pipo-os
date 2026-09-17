@@ -1,4 +1,4 @@
-import { appEnv, isDeployedEnvironment } from '../../shared/environment.js'
+import { assertNotSetInDeployed, isDeployedEnvironment } from '../../shared/environment.js'
 export interface AuthConfig {
   authServiceUrl: string
   authServiceInternalUrl: string
@@ -36,12 +36,7 @@ function resolveDevLoginEnabled(devLoginEmail: string, allowedEmailDomains: stri
     return false
   }
 
-  if (isDeployedEnvironment()) {
-    throw new Error(
-      'DEV_LOGIN_ENABLED must never be set in a deployed environment ' +
-        `(NODE_ENV=${process.env.NODE_ENV}, APP_ENV=${appEnv() || '<unset>'})`,
-    )
-  }
+  assertNotSetInDeployed('DEV_LOGIN_ENABLED')
 
   // Validated here rather than per-request so a dev session can never differ
   // from a real one in the one dimension the real callback enforces.

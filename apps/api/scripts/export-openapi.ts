@@ -49,8 +49,8 @@ function pruneUnusedSchemas(spec: { components?: { schemas?: Record<string, unkn
   }
 }
 
-// Not localeCompare: the CI drift check re-exports this file on another machine,
-// where the locale can order the keys differently.
+// Not localeCompare: the CI drift check re-exports this file on another
+// machine, where a locale-aware order would differ.
 const byName = ([a]: [string, unknown], [b]: [string, unknown]): number =>
   a < b ? -1 : a > b ? 1 : 0
 

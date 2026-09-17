@@ -98,6 +98,8 @@ describe('isAuthorized', () => {
     ).toBe(false)
   })
 
+  // GET /api/users accepts either policy, and the house reads a deny of one of
+  // them as a refusal of the request — not of that alternative alone.
   it('refuses a route of two alternatives when one of them is denied', () => {
     expect(
       isAuthorized(

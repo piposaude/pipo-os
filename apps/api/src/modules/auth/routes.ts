@@ -3,6 +3,7 @@ import type { ZodTypeProvider } from '@fastify/type-provider-zod'
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { errorResponseSchema } from '../../shared/schemas.js'
+import type { GroupMembersRepositoryPort } from '../groups/repository.js'
 import { requireUser } from './authenticate.js'
 import type { AuthConfig } from './config.js'
 import { googleCallbackQuerySchema, googleLoginQuerySchema, meResponseSchema } from './schemas.js'
@@ -57,10 +58,18 @@ function parseStateCookie(value: string | null | undefined): OAuthState | null {
   return null
 }
 
+/** What the rich session needs beyond the token: the name, which lives in the
+ *  auth-service, and the pods, which live in this database. */
+export interface ViewerSources {
+  nameOf(email: string): Promise<string | null>
+  members: Pick<GroupMembersRepositoryPort, 'listByUser'>
+}
+
 export function registerAuthRoutes(
   app: FastifyInstance,
   service: AuthService,
   config: AuthConfig,
+  viewer: ViewerSources,
 ): void {
   const server = app.withTypeProvider<ZodTypeProvider>()
 
@@ -140,7 +149,25 @@ export function registerAuthRoutes(
     },
     async (request) => {
       const principal = requireUser(request)
-      return { email: principal.email, policies: principal.policies }
+      const sub = principal.sub?.trim() || null
+
+      // The name is keyed by e-mail, which is how the pipo list is indexed, and
+      // the pods by sub, which is what the author columns store.
+      const [name, groups] = await Promise.all([
+        viewer.nameOf(principal.email),
+        // `null` is "unknown", never "in no pod": the screen hides actions on
+        // an empty list, and a database outage must not look like one.
+        sub
+          ? viewer.members.listByUser(sub).catch((error: unknown) => {
+              // Broad, unlike nameOf above: a Kysely failure carries nothing
+              // that tells an outage from a bug, so the message claims neither.
+              request.log.warn(error, 'session pods unresolved: reading the pods failed')
+              return null
+            })
+          : [],
+      ])
+
+      return { sub, email: principal.email, name, policies: principal.policies, groups }
     },
   )
 
