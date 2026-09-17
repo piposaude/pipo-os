@@ -97,18 +97,27 @@ export function registerCommentRoutes(app: FastifyInstance, service: CommentsSer
 
       /* A replay is absorbed on purpose, but silently absorbing it leaves no
          way to see a caller reusing one key for two different events — the
-         second would vanish from the chronology with nothing to look at. Both
-         types are logged because that is what tells the two apart. */
+         second would vanish from the chronology with nothing to look at. Type
+         and body are both compared because either one alone lets a reused key
+         pass as a legitimate redelivery. Logged and never thrown: this runs
+         inside the transaction the caller opened, and raising here would abort
+         exactly what the absorption exists to keep alive. */
       if (!created && request.body.kind === 'automated_event') {
-        request.log.info(
+        const bodyMismatch = request.body.body !== comment.body
+        const reusedKey = request.body.eventType !== comment.eventType || bodyMismatch
+
+        request.log[reusedKey ? 'warn' : 'info'](
           {
             ticketId: request.params.id,
             commentId: comment.id,
             idempotencyKey: request.body.idempotencyKey,
             eventType: request.body.eventType,
             storedEventType: comment.eventType,
+            bodyMismatch,
           },
-          'automated event replay absorbed',
+          reusedKey
+            ? 'automated event replay absorbed a key reused for a different event'
+            : 'automated event replay absorbed',
         )
       }
 

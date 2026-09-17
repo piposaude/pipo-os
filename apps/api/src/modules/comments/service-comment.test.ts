@@ -37,12 +37,23 @@ describe('a comment written by a service', () => {
   let sessionCookie: string
   let ticketId: string
   const fetchMock = vi.fn()
+  const warnings: unknown[][] = []
   const token = serviceAccountToken(SERVICE_NAME)
 
   beforeAll(async () => {
     process.env.DEV_LOGIN_ENABLED = 'true'
     process.env.SERVICE_ALLOWED_ACCOUNTS = `default/${SERVICE_NAME}`
     app = buildApp()
+    /* The route logs on the request's child logger, which a spy on `app.log`
+       never sees — the hook is what puts the lines within reach of a test. */
+    app.addHook('onRequest', (request, _reply, done) => {
+      const warn = request.log.warn.bind(request.log)
+      request.log.warn = ((...args: unknown[]) => {
+        warnings.push(args)
+        return warn(...(args as Parameters<typeof warn>))
+      }) as typeof request.log.warn
+      done()
+    })
     await app.ready()
 
     const login = await app.inject({
@@ -88,6 +99,7 @@ describe('a comment written by a service', () => {
 
   afterEach(async () => {
     vi.unstubAllGlobals()
+    warnings.length = 0
     await app.db.deleteFrom('ticket_comments').execute()
   })
 
@@ -135,6 +147,28 @@ describe('a comment written by a service', () => {
       expect(first.statusCode).toBe(201)
       expect(second.statusCode).toBe(200)
       expect(second.json().id).toBe(first.json().id)
+
+      const rows = await app.db.selectFrom('ticket_comments').selectAll().execute()
+      expect(rows).toHaveLength(1)
+    })
+
+    it('warns when the key is reused for a different event, and keeps the first line', async () => {
+      const first = await post(ticketId)
+
+      const reused = await app.inject({
+        method: 'POST',
+        url: `/api/tickets/${ticketId}/comments`,
+        headers: { authorization: `Bearer ${token}` },
+        payload: { ...replayed, body: 'Outro evento, mesma chave' },
+      })
+
+      expect(reused.statusCode).toBe(200)
+      expect(reused.json().id).toBe(first.json().id)
+      expect(reused.json().body).toBe(replayed.body)
+      expect(warnings).toContainEqual([
+        expect.objectContaining({ idempotencyKey: replayed.idempotencyKey, bodyMismatch: true }),
+        expect.stringContaining('reused'),
+      ])
 
       const rows = await app.db.selectFrom('ticket_comments').selectAll().execute()
       expect(rows).toHaveLength(1)
