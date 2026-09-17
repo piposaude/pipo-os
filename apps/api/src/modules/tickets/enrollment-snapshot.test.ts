@@ -152,23 +152,19 @@ describe('alterationTypeOf', () => {
 })
 
 describe('companyFieldsOf', () => {
-  const OWN = '00000000-0000-4000-8000-0000000000ff'
   /** The EI fills `parent_company_*` for a parent company too, so the flag is
    *  what tells a branch from a company that is its own parent. */
   it('brings the parent when the EI says the company is a branch', () => {
     expect(
-      companyFieldsOf(
-        {
-          company: {
-            'company-tax-id': '11.111.111/0001-11',
-            'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
-            'parent-company-name': 'Meridiano Holding',
-            'parent-company-tax-id': '22.222.222/0001-22',
-            'company-subsidiary': true,
-          },
+      companyFieldsOf({
+        company: {
+          'company-tax-id': '11.111.111/0001-11',
+          'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
+          'parent-company-name': 'Meridiano Holding',
+          'parent-company-tax-id': '22.222.222/0001-22',
+          'company-subsidiary': true,
         },
-        OWN,
-      ),
+      }),
     ).toEqual({
       parentCompanyId: '00000000-0000-4000-8000-0000000000a1',
       parentCompanyName: 'Meridiano Holding',
@@ -180,18 +176,15 @@ describe('companyFieldsOf', () => {
    *  reads `Meridiano › Meridiano`. */
   it('drops the parent when the EI says the company is not a branch', () => {
     expect(
-      companyFieldsOf(
-        {
-          company: {
-            'company-tax-id': '11.111.111/0001-11',
-            'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
-            'parent-company-name': 'Meridiano Holding',
-            'parent-company-tax-id': '22.222.222/0001-22',
-            'company-subsidiary': false,
-          },
+      companyFieldsOf({
+        company: {
+          'company-tax-id': '11.111.111/0001-11',
+          'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
+          'parent-company-name': 'Meridiano Holding',
+          'parent-company-tax-id': '22.222.222/0001-22',
+          'company-subsidiary': false,
         },
-        OWN,
-      ),
+      }),
     ).toEqual({
       parentCompanyId: null,
       parentCompanyName: null,
@@ -203,55 +196,46 @@ describe('companyFieldsOf', () => {
    *  fallback is the same one `hasParentCompany` uses: the two tax ids. */
   it('is a branch, with no flag, when the parent tax id is another company', () => {
     expect(
-      companyFieldsOf(
-        {
-          company: {
-            'company-tax-id': '11.111.111/0001-11',
-            'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
-            'parent-company-name': 'Meridiano Holding',
-            'parent-company-tax-id': '22.222.222/0001-22',
-          },
+      companyFieldsOf({
+        company: {
+          'company-tax-id': '11.111.111/0001-11',
+          'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
+          'parent-company-name': 'Meridiano Holding',
+          'parent-company-tax-id': '22.222.222/0001-22',
         },
-        OWN,
-      ).parentCompanyId,
+      }).parentCompanyId,
     ).toBe('00000000-0000-4000-8000-0000000000a1')
   })
 
   it('is not a branch, with no flag, when the parent tax id is its own', () => {
     expect(
-      companyFieldsOf(
-        {
-          company: {
-            'company-tax-id': '11.111.111/0001-11',
-            'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
-            'parent-company-name': 'Meridiano Logistica',
-            'parent-company-tax-id': '11.111.111/0001-11',
-          },
+      companyFieldsOf({
+        company: {
+          'company-tax-id': '11.111.111/0001-11',
+          'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
+          'parent-company-name': 'Meridiano Logistica',
+          'parent-company-tax-id': '11.111.111/0001-11',
         },
-        OWN,
-      ).parentCompanyId,
+      }).parentCompanyId,
     ).toBeNull()
   })
 
   it('is not a branch when there is no parent tax id to compare', () => {
     expect(
-      companyFieldsOf(
-        {
-          company: {
-            'company-tax-id': '11.111.111/0001-11',
-            'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
-            'parent-company-name': 'Meridiano Holding',
-          },
+      companyFieldsOf({
+        company: {
+          'company-tax-id': '11.111.111/0001-11',
+          'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
+          'parent-company-name': 'Meridiano Holding',
         },
-        OWN,
-      ).parentCompanyId,
+      }).parentCompanyId,
     ).toBeNull()
   })
 
   /** The CNPJ tells apart two companies of the same trade name, so it is read
    *  for every ticket — branch or not. */
   it('reads the company tax id even when the company is its own parent', () => {
-    expect(companyFieldsOf({ company: { company_tax_id: '11.111.111/0001-11' } }, OWN)).toEqual({
+    expect(companyFieldsOf({ company: { company_tax_id: '11.111.111/0001-11' } })).toEqual({
       parentCompanyId: null,
       parentCompanyName: null,
       companyTaxId: '11.111.111/0001-11',
@@ -260,17 +244,14 @@ describe('companyFieldsOf', () => {
 
   it('reads the keys without depending on case or separator', () => {
     expect(
-      companyFieldsOf(
-        {
-          company: {
-            companyTaxId: '11.111.111/0001-11',
-            parentCompanyId: '00000000-0000-4000-8000-0000000000a1',
-            parentCompanyName: 'Meridiano Holding',
-            companySubsidiary: true,
-          },
+      companyFieldsOf({
+        company: {
+          companyTaxId: '11.111.111/0001-11',
+          parentCompanyId: '00000000-0000-4000-8000-0000000000a1',
+          parentCompanyName: 'Meridiano Holding',
+          companySubsidiary: true,
         },
-        OWN,
-      ),
+      }),
     ).toEqual({
       parentCompanyId: '00000000-0000-4000-8000-0000000000a1',
       parentCompanyName: 'Meridiano Holding',
@@ -282,18 +263,15 @@ describe('companyFieldsOf', () => {
    *  EI's boolean, and reading it as one would flip a company into a branch. */
   it('falls back to the tax ids when the flag is not a boolean', () => {
     expect(
-      companyFieldsOf(
-        {
-          company: {
-            'company-tax-id': '11.111.111/0001-11',
-            'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
-            'parent-company-name': 'Meridiano Holding',
-            'parent-company-tax-id': '11.111.111/0001-11',
-            'company-subsidiary': 'true',
-          },
+      companyFieldsOf({
+        company: {
+          'company-tax-id': '11.111.111/0001-11',
+          'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
+          'parent-company-name': 'Meridiano Holding',
+          'parent-company-tax-id': '11.111.111/0001-11',
+          'company-subsidiary': 'true',
         },
-        OWN,
-      ).parentCompanyId,
+      }).parentCompanyId,
     ).toBeNull()
   })
 
@@ -302,17 +280,14 @@ describe('companyFieldsOf', () => {
    *  fail to be created — an unreadable parent is no parent. */
   it('drops a parent whose id is not a uuid, and keeps the ticket creatable', () => {
     expect(
-      companyFieldsOf(
-        {
-          company: {
-            'company-tax-id': '11.111.111/0001-11',
-            'parent-company-id': 'parent-1',
-            'parent-company-name': 'Meridiano Holding',
-            'company-subsidiary': true,
-          },
+      companyFieldsOf({
+        company: {
+          'company-tax-id': '11.111.111/0001-11',
+          'parent-company-id': 'parent-1',
+          'parent-company-name': 'Meridiano Holding',
+          'company-subsidiary': true,
         },
-        OWN,
-      ),
+      }),
     ).toEqual({
       parentCompanyId: null,
       parentCompanyName: null,
@@ -325,16 +300,13 @@ describe('companyFieldsOf', () => {
    *  every group with the parent's name. */
   it('drops the parent name when the id does not come with it', () => {
     expect(
-      companyFieldsOf(
-        {
-          company: {
-            'company-tax-id': '11.111.111/0001-11',
-            'parent-company-name': 'Meridiano Holding',
-            'company-subsidiary': true,
-          },
+      companyFieldsOf({
+        company: {
+          'company-tax-id': '11.111.111/0001-11',
+          'parent-company-name': 'Meridiano Holding',
+          'company-subsidiary': true,
         },
-        OWN,
-      ),
+      }),
     ).toEqual({
       parentCompanyId: null,
       parentCompanyName: null,
@@ -347,16 +319,13 @@ describe('companyFieldsOf', () => {
    *  of its own, which is the bug this whole ticket exists to fix. */
   it('keeps a parent that came without a name', () => {
     expect(
-      companyFieldsOf(
-        {
-          company: {
-            'company-tax-id': '11.111.111/0001-11',
-            'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
-            'company-subsidiary': true,
-          },
+      companyFieldsOf({
+        company: {
+          'company-tax-id': '11.111.111/0001-11',
+          'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
+          'company-subsidiary': true,
         },
-        OWN,
-      ),
+      }),
     ).toEqual({
       parentCompanyId: '00000000-0000-4000-8000-0000000000a1',
       parentCompanyName: null,
@@ -364,34 +333,11 @@ describe('companyFieldsOf', () => {
     })
   })
 
-  /** `company_subsidiary` decides alone when it comes, so a snapshot that both
-   *  raises the flag and points the parent at the company itself would write
-   *  the `Meridiano › Meridiano` that `isBranch` exists to prevent. */
-  it('refuses a parent that is the company itself, even under the flag', () => {
-    expect(
-      companyFieldsOf(
-        {
-          company: {
-            'company-tax-id': '11.111.111/0001-11',
-            'parent-company-id': OWN,
-            'parent-company-name': 'Meridiano Logistica',
-            'company-subsidiary': true,
-          },
-        },
-        OWN,
-      ),
-    ).toEqual({
-      parentCompanyId: null,
-      parentCompanyName: null,
-      companyTaxId: '11.111.111/0001-11',
-    })
-  })
-
   it('is all null when there is nothing to read', () => {
     const empty = { parentCompanyId: null, parentCompanyName: null, companyTaxId: null }
-    expect(companyFieldsOf({}, OWN)).toEqual(empty)
-    expect(companyFieldsOf({ company: {} }, OWN)).toEqual(empty)
-    expect(companyFieldsOf(null, OWN)).toEqual(empty)
-    expect(companyFieldsOf('not a snapshot', OWN)).toEqual(empty)
+    expect(companyFieldsOf({})).toEqual(empty)
+    expect(companyFieldsOf({ company: {} })).toEqual(empty)
+    expect(companyFieldsOf(null)).toEqual(empty)
+    expect(companyFieldsOf('not a snapshot')).toEqual(empty)
   })
 })

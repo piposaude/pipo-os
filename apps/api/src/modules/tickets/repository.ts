@@ -281,15 +281,18 @@ export class TicketsRepository implements TicketsRepositoryPort {
   async create(data: CreateTicketData): Promise<Ticket> {
     // The body wins; the snapshot fills what the EI does not send yet (PD-207).
     const derived = movementFieldsOf(data.enrollmentSnapshot)
-    const company = companyFieldsOf(data.enrollmentSnapshot, data.companyId)
+    const company = companyFieldsOf(data.enrollmentSnapshot)
     /* The parent is a pair, and the body wins as a whole — never field by
        field, or an id from the body would carry a name from the snapshot, and
        a body that sends only the name would write a label with nothing to
        group by. */
-    const parent =
+    const named =
       data.parentCompanyId === undefined
         ? { id: company.parentCompanyId, name: company.parentCompanyName }
         : { id: data.parentCompanyId, name: data.parentCompanyName ?? null }
+    /* No company is a branch of itself, whichever source named the parent:
+       the Empresa cell would read `Meridiano › Meridiano`. */
+    const parent = named.id === data.companyId ? { id: null, name: null } : named
 
     try {
       const row = await this.db

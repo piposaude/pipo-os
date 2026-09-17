@@ -172,13 +172,8 @@ const uuidOrNull = (value: string | null): string | null =>
  * column exists to fix. A name without an id is the opposite and never
  * written: the queue would group by the branch and label every one of those
  * groups with the parent's name, while a filter by the parent reached none.
- *
- * `companyId` is the ticket's own company, and it is here for one case:
- * `company_subsidiary` decides alone when it comes, so a snapshot that raises
- * the flag and points the parent at the company itself would write the
- * `Meridiano › Meridiano` that `isBranch` exists to prevent.
  */
-export function companyFieldsOf(snapshot: unknown, companyId: string): CompanyFields {
+export function companyFieldsOf(snapshot: unknown): CompanyFields {
   if (!isRecord(snapshot)) return NO_COMPANY
 
   const company = readPath(snapshot, ['company'])
@@ -188,9 +183,7 @@ export function companyFieldsOf(snapshot: unknown, companyId: string): CompanyFi
   if (!isBranch(company)) return { ...NO_COMPANY, companyTaxId }
 
   const parentCompanyId = uuidOrNull(readString(company, ['parent-company-id']))
-  if (parentCompanyId === null || parentCompanyId === companyId) {
-    return { ...NO_COMPANY, companyTaxId }
-  }
+  if (parentCompanyId === null) return { ...NO_COMPANY, companyTaxId }
 
   return {
     parentCompanyId,

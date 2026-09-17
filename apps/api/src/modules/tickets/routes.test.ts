@@ -1423,6 +1423,40 @@ describe('tickets routes', () => {
       })
     })
 
+    /** Both sources can name a parent, so both have to be refused. */
+    it.each([
+      [
+        'snapshot',
+        {
+          enrollmentSnapshot: {
+            company: {
+              'company-tax-id': '11.111.111/0001-11',
+              'parent-company-id': validTicketBody.companyId,
+              'parent-company-name': 'Meridiano Logistica',
+              'company-subsidiary': true,
+            },
+          },
+        },
+      ],
+      [
+        'corpo',
+        {
+          parentCompanyId: validTicketBody.companyId,
+          parentCompanyName: 'Meridiano Logistica',
+        },
+      ],
+    ])('não grava a empresa como matriz de si mesma, vinda do %s', async (_source, payload) => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, ...payload },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(created.statusCode).toBe(201)
+      expect(created.json()).toMatchObject({ parentCompanyId: null, parentCompanyName: null })
+    })
+
     /** The pair comes from one source or the other, never half from each. */
     it('não grava nome de matriz que o corpo mandou sem id', async () => {
       const created = await app.inject({
