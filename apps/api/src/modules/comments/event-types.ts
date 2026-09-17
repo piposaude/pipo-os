@@ -28,11 +28,10 @@ export const API_EVENT_TYPES = [
 ] as const
 
 /**
- * The whole vocabulary an automated event can name. Closed on purpose: the
- * chronology gives each value its own copy and icon, so a word nobody named
- * would reach the screen raw.
- *
- * Pinned by a test to contract/ticket-event-types.json.
+ * The whole vocabulary an automated event can name, pinned by a test to
+ * contract/ticket-event-types.json. Closed on purpose: the chronology gives
+ * each value its own copy and icon, so a word nobody named reaches the screen
+ * raw.
  */
 export const TICKET_EVENT_TYPES = [...SERVICE_EVENT_TYPES, ...API_EVENT_TYPES] as const
 

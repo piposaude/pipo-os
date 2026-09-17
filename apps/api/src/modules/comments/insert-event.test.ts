@@ -6,12 +6,6 @@ import { insertEvent } from './repository.js'
 
 const ANALYST = { id: 'dev@piposaude.com.br', type: 'user' } as const
 
-/**
- * The event the API itself causes — the assignment (PD-047), the priority
- * (PD-036) — is written through this, inside the transaction that changed the
- * column. What the tests below prove is that pair: the row lands, and it dies
- * with the change that caused it when that change rolls back.
- */
 describe('insertEvent', () => {
   let app: FastifyInstance
   let ticketId: string
@@ -87,9 +81,6 @@ describe('insertEvent', () => {
     expect(comment.visibility).toBe('private')
   })
 
-  /* The collision cannot surface as an error here: inside a transaction a 23505
-     aborts the whole block, so the redelivery the key exists to absorb would
-     undo the assignment the event was written to explain. */
   it('absorbs a redelivery without killing the transaction it was handed', async () => {
     const idempotencyKey = 'ei:enrollment-1:assigned'
     const event = {

@@ -95,13 +95,10 @@ export function registerCommentRoutes(app: FastifyInstance, service: CommentsSer
       const author = requireAuthor(request)
       const { comment, created } = await service.add(request.params.id, request.body, author)
 
-      /* A replay is absorbed on purpose, but silently absorbing it leaves no
-         way to see a caller reusing one key for two different events — the
-         second would vanish from the chronology with nothing to look at. Type
-         and body are both compared because either one alone lets a reused key
-         pass as a legitimate redelivery. Logged and never thrown: this runs
-         inside the transaction the caller opened, and raising here would abort
-         exactly what the absorption exists to keep alive. */
+      /* Absorbing a replay in silence leaves no way to see a key reused for two
+         different events, and the second would vanish from the chronology.
+         Type and body are both compared because either one alone lets a reused
+         key pass as a legitimate redelivery. */
       if (!created && request.body.kind === 'automated_event') {
         const bodyMismatch = request.body.body !== comment.body
         const reusedKey = request.body.eventType !== comment.eventType || bodyMismatch

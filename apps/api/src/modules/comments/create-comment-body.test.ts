@@ -31,9 +31,6 @@ describe('the body of POST /tickets/:id/comments', () => {
     expect(parsed.error?.issues[0]?.path).toEqual(['eventType'])
   })
 
-  /* `assigned` and the three beside it are written by the API itself, inside
-     the transaction that moved the column — over the route they would be a
-     chronology line with no change behind it. */
   it('refuses a type only the API records, naming the field', () => {
     const parsed = createCommentBodySchema.safeParse({ ...event, eventType: 'assigned' })
 
@@ -46,9 +43,6 @@ describe('the body of POST /tickets/:id/comments', () => {
     expect(createCommentBodySchema.safeParse({ kind, visibility, body }).success).toBe(false)
   })
 
-  /* The body is capped at 50k characters and metadata was not capped at all,
-     so an event could carry hundreds of KB into a jsonb column that the
-     chronology then hands back verbatim, 200 items at a time. */
   it('refuses a metadata heavier than the ceiling, naming the field', () => {
     const parsed = createCommentBodySchema.safeParse({
       ...event,
@@ -73,11 +67,6 @@ describe('the body of POST /tickets/:id/comments', () => {
   })
 })
 
-/* The route fills the discriminator before validation, so the body every
-   caller sends today — `visibility` and `body`, no `kind` — keeps working.
-   Zod 4 does not reach the default of a discriminator it cannot read, and a
-   `preprocess` around the union would drop the required keys from the exported
-   contract, the lesson tickets/enrollment-type.ts already paid for. */
 describe('the discriminator the route fills in', () => {
   it('reads a body with no kind as the manual comment it always was', () => {
     expect(

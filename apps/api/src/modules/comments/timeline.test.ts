@@ -152,10 +152,8 @@ describe('GET /api/tickets/:id/timeline', () => {
     expect(item.createdAt).toEqual(expect.any(String))
   })
 
-  /* Written through the production writer, not seeded: a row this suite
-     fabricated would prove the rendering of something the system might not be
-     able to produce. The HTTP half of that path is in service-comment.test.ts,
-     which posts as a service. */
+  /* Written through the production writer, not seeded: a fabricated row would
+     prove the rendering of something the system might not be able to produce. */
   it('carries every field of an automated event item', async () => {
     await insertEvent(
       app.db,
@@ -407,10 +405,6 @@ describe('GET /api/tickets/:id/timeline', () => {
   })
 })
 
-/* The column is `CHECK (author_type IN ('user','service','system'))` in both
-   tables since migration 0030. Published as a bare string, the front would
-   have to switch on it without the compiler ever telling it a case is
-   missing — the opposite of what `eventType` got. */
 describe('the author type the chronology publishes', () => {
   const item = {
     id: '00000000-0000-4000-8000-0000000000ff',

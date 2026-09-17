@@ -64,8 +64,7 @@ export const createAutomatedEventBodySchema = z
   .object({
     ...commentBodyBase,
     kind: z.literal('automated_event'),
-    /* The service half of the catalog only: `assigned` and the other three the
-       API records about its own writes have no legitimate caller out here. */
+    /* The service half of the catalog only — see `API_EVENT_TYPES`. */
     eventType: serviceEventTypeSchema,
     metadata: metadataSchema,
     /* The EI writes from a Kafka consumer, where redelivery is ordinary: the

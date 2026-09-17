@@ -120,9 +120,6 @@ describe('a comment written by a service', () => {
     })
   })
 
-  /* The EI writes from a Kafka consumer: a redelivery replays the same event,
-     and the chronology is the screen the operation reads. The second pass has
-     to find the first line, not add one and not fail. */
   describe('redelivery of the same event', () => {
     const replayed = {
       kind: 'automated_event',
@@ -233,9 +230,6 @@ describe('a comment written by a service', () => {
     expect(response.json().details[0]).toMatchObject({ field: 'eventType' })
   })
 
-  /* The API records the assignment itself, in the transaction of the UPDATE
-     (PD-047). Accepted here it would be a line saying the ticket was assigned
-     with no assignee behind it. */
   it('cannot post the event the API records about its own writes', async () => {
     const response = await app.inject({
       method: 'POST',
@@ -283,8 +277,6 @@ describe('a comment written by a service', () => {
     })
   })
 
-  // A person writing "o RH respondeu" is forgery, and the chronology is what
-  // the operation reads to know what happened.
   it('is the only kind of caller that can write one — a person is refused', async () => {
     const response = await app.inject({
       method: 'POST',

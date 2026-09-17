@@ -47,15 +47,14 @@ export interface TicketEventInput {
 }
 
 /**
- * Writes an automated event, on the executor the caller hands over. This is the
- * seam the rest of the backlog plugs into: PD-047 writes the assignment inside
- * the transaction of the UPDATE, PD-036 the priority — never a column that
- * moved with no line saying so, never a line for a change that rolled back.
+ * Writes an automated event on the executor the caller hands over, so the event
+ * and the change that caused it commit together — PD-047 writes the assignment
+ * inside the transaction of its UPDATE.
  *
- * The redelivery is absorbed here, by the index, and never as a raised error:
- * inside a transaction a 23505 aborts the whole block, so a replay would undo
- * the very change the event was written to explain. `DO NOTHING` returns no
- * row, and that absence is what says the event was already there.
+ * The redelivery is absorbed by the index and never raised: inside a
+ * transaction a 23505 aborts the whole block, so a replay would undo the very
+ * change the event explains. `DO NOTHING` returns no row, and that absence is
+ * what says the event was already there.
  */
 export async function insertEvent(
   executor: CommentExecutor,

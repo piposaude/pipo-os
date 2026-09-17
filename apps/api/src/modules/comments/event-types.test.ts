@@ -23,8 +23,6 @@ describe('the automated event catalog', () => {
   })
 })
 
-/* The split is the rule about who may write what: a caller posting `assigned`
-   would put a line in the chronology with no assignment behind it. */
 describe('the half a service may post', () => {
   it.each(SERVICE_EVENT_TYPES)('accepts %s', (eventType) => {
     expect(serviceEventTypeSchema.parse(eventType)).toBe(eventType)
@@ -39,11 +37,9 @@ describe('the half a service may post', () => {
   })
 })
 
-/** The catalog is a vocabulary the front has to have copy for, so it is
- *  declared in contract/ like the others. It is not in ticket-vocabulary.json:
- *  that file holds apps/web to pt-BR copy for every word, and the web does not
- *  read the chronology from the API yet (PD-103). This file is read by the API
- *  alone until then, and the web joins when it renders the timeline. */
+/** Declared in contract/ but out of ticket-vocabulary.json on purpose: that
+ *  file holds apps/web to pt-BR copy for every word it names, and the web only
+ *  renders the chronology from PD-103 on. */
 const CATALOG_PATH = fileURLToPath(
   new URL('../../../../../contract/ticket-event-types.json', import.meta.url),
 )
