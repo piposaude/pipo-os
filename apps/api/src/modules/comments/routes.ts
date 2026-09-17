@@ -10,6 +10,7 @@ import {
   createCommentBodySchema,
   timelineQuerySchema,
   timelineSchema,
+  withDefaultKind,
 } from './schemas.js'
 import type { CommentsService } from './service.js'
 
@@ -66,6 +67,13 @@ export function registerCommentRoutes(app: FastifyInstance, service: CommentsSer
       // A quarter of the global limit, over 5x the 50k characters the schema
       // accepts as raw UTF-8, so a multibyte body still reaches the field check.
       bodyLimit: 262_144,
+      // Before validation, so a body with no `kind` — which is every caller
+      // today — is still the manual comment it always was. `body` is loose on
+      // purpose: nothing has validated it yet.
+      preValidation: (request: { body: unknown }, _reply, done) => {
+        request.body = withDefaultKind(request.body)
+        done()
+      },
       schema: {
         params: ticketParamsSchema,
         body: createCommentBodySchema,

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { ticketEventTypeSchema } from './event-types.js'
 
 export const commentSchema = z
   .object({
@@ -15,13 +16,60 @@ export const commentSchema = z
   })
   .meta({ id: 'TicketComment' })
 
-export const createCommentBodySchema = z
+const commentBodyBase = {
+  visibility: z.enum(['public', 'private']),
+  body: z.string().trim().min(1).max(50_000),
+}
+
+export const createManualCommentBodySchema = z
   .object({
-    visibility: z.enum(['public', 'private']),
-    body: z.string().trim().min(1).max(50_000),
+    ...commentBodyBase,
+    /* Optional in the contract and filled in by the route: every caller today
+       sends a body with no `kind` at all. */
+    kind: z.literal('manual').default('manual'),
   })
   .strict()
+  .meta({ id: 'CreateManualCommentBody' })
+
+/**
+ * What a service says happened to the ticket. `visibility` is stated and never
+ * inferred: the HR answer belongs to the public cut and the note the EI writes
+ * to itself does not, and reading it off the event type would put one of them
+ * on the wrong side.
+ */
+export const createAutomatedEventBodySchema = z
+  .object({
+    ...commentBodyBase,
+    kind: z.literal('automated_event'),
+    eventType: ticketEventTypeSchema,
+    metadata: z.record(z.string(), z.unknown()).default({}),
+    /* The EI writes from a Kafka consumer, where redelivery is ordinary: the
+       key is what makes the second pass find the first row instead of adding
+       a second one. */
+    idempotencyKey: z.string().trim().min(1).max(255).optional(),
+  })
+  .strict()
+  .meta({ id: 'CreateAutomatedEventBody' })
+
+export const createCommentBodySchema = z
+  .discriminatedUnion('kind', [createManualCommentBodySchema, createAutomatedEventBodySchema])
   .meta({ id: 'CreateCommentBody' })
+
+/**
+ * Fills the discriminator that a body without `kind` is missing. Zod 4 refuses
+ * the union before reaching the `manual` default — with no branch chosen there
+ * is no default to read — and a `preprocess` around the union would drop the
+ * required keys from the exported contract, the lesson
+ * `tickets/enrollment-type.ts` already paid for. So the route does it in
+ * `preValidation`, where the body is still untrusted and anything that is not
+ * a plain object passes through for the schema to refuse.
+ */
+export function withDefaultKind(body: unknown): unknown {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) return body
+  if ('kind' in body) return body
+
+  return { ...body, kind: 'manual' }
+}
 
 export const commentListSchema = z
   .object({
@@ -110,4 +158,6 @@ export type TimelineQuery = z.infer<typeof timelineQuerySchema>
 
 export type Comment = z.infer<typeof commentSchema>
 export type CreateCommentBody = z.infer<typeof createCommentBodySchema>
+export type CreateManualCommentBody = z.infer<typeof createManualCommentBodySchema>
+export type CreateAutomatedEventBody = z.infer<typeof createAutomatedEventBodySchema>
 export type CommentList = z.infer<typeof commentListSchema>
