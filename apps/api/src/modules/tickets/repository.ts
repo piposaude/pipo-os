@@ -3,6 +3,8 @@ import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
 import { ValidationFailedError } from '../../shared/errors.js'
 import { FK_VIOLATION, UNIQUE_VIOLATION } from '../../shared/pg.js'
+import type { Author } from '../auth/authenticate.js'
+import { insertEvent } from '../comments/repository.js'
 import { OpenTicketConflictError } from './errors.js'
 import { movementFieldsOf, relationshipOf, snapshotString } from './enrollment-snapshot.js'
 import { actionDateWindowCondition, ticketFilterConditions } from './filter-resolver.js'
@@ -86,7 +88,7 @@ function toTicket(row: Selectable<Tickets>): Ticket {
 export interface TicketsRepositoryPort {
   findById(id: string): Promise<Ticket | undefined>
   create(data: CreateTicketData): Promise<Ticket>
-  update(id: string, data: UpdateTicketBody): Promise<Ticket | undefined>
+  update(id: string, data: UpdateTicketBody, author: Author): Promise<Ticket | undefined>
   claimOpen(id: string, assigneeId: string): Promise<Ticket | undefined>
   changeStatus(
     id: string,
@@ -377,23 +379,49 @@ export class TicketsRepository implements TicketsRepositoryPort {
     return row ? toTicket(row) : undefined
   }
 
-  async update(id: string, data: UpdateTicketBody): Promise<Ticket | undefined> {
+  async update(id: string, data: UpdateTicketBody, author: Author): Promise<Ticket | undefined> {
     try {
-      const row = await this.db
-        .updateTable('tickets')
-        .set({
-          ...(data.priority !== undefined && { priority: data.priority }),
-          ...(data.queueId !== undefined && { queue_id: data.queueId }),
-          ...(data.assigneeId !== undefined && { assignee_id: data.assigneeId }),
-          ...(data.tags !== undefined && { tags: data.tags }),
-          ...(data.forceCompletion !== undefined && { force_completion: data.forceCompletion }),
-          ...(data.parentTicketId !== undefined && { parent_ticket_id: data.parentTicketId }),
-        })
-        .where('id', '=', id)
-        .returningAll()
-        .executeTakeFirst()
+      return await this.db.transaction().execute(async (trx) => {
+        // The event carries the value it replaced, so the row is read under
+        // lock: two concurrent changes would otherwise report the same before.
+        const current = await trx
+          .selectFrom('tickets')
+          .selectAll()
+          .where('id', '=', id)
+          .forUpdate()
+          .executeTakeFirst()
 
-      return row ? toTicket(row) : undefined
+        if (!current) return undefined
+
+        const row = await trx
+          .updateTable('tickets')
+          .set({
+            ...(data.priority !== undefined && { priority: data.priority }),
+            ...(data.queueId !== undefined && { queue_id: data.queueId }),
+            ...(data.assigneeId !== undefined && { assignee_id: data.assigneeId }),
+            ...(data.tags !== undefined && { tags: data.tags }),
+            ...(data.forceCompletion !== undefined && { force_completion: data.forceCompletion }),
+            ...(data.parentTicketId !== undefined && { parent_ticket_id: data.parentTicketId }),
+          })
+          .where('id', '=', id)
+          .returningAll()
+          .executeTakeFirstOrThrow()
+
+        if (data.priority !== undefined && data.priority !== current.priority) {
+          await insertEvent(
+            trx,
+            {
+              ticketId: id,
+              eventType: 'priority_changed',
+              body: data.priority === null ? 'Prioridade removida' : 'Prioridade alterada',
+              metadata: { priority: data.priority, previous: current.priority },
+            },
+            author,
+          )
+        }
+
+        return toTicket(row)
+      })
     } catch (err) {
       rethrowMissingReference(err)
     }

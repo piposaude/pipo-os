@@ -45,6 +45,7 @@ describe('tickets routes', () => {
   })
 
   afterEach(async () => {
+    await app.db.deleteFrom('ticket_comments').execute()
     await app.db.deleteFrom('ticket_status_history').execute()
     await app.db.deleteFrom('tickets').execute()
     await app.db.deleteFrom('ticket_queues').execute()
@@ -955,6 +956,39 @@ describe('tickets routes', () => {
 
       expect(response.statusCode).toBe(200)
       expect(response.json().priority).toBe('urgent')
+    })
+
+    it('records who changed the priority, and what it was before', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      for (const priority of ['urgent', 'low']) {
+        await app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${id}`,
+          payload: { priority },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+      }
+
+      const timeline = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${id}/timeline`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const events = timeline.json().data.filter((item: { type: string }) => item.type === 'event')
+
+      expect(events).toHaveLength(2)
+      expect(events[1]).toMatchObject({
+        eventType: 'priority_changed',
+        authorId: 'dev@piposaude.com.br',
+        metadata: { priority: 'low', previous: 'urgent' },
+      })
     })
 
     it('accepts null to clear a nullable field', async () => {
