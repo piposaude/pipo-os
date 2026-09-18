@@ -18,6 +18,9 @@ type FixtureTicket = {
   beneficiaryName: string | null
   status: string
   companyId: string
+  parentCompanyId: string | null
+  parentCompanyName: string | null
+  companyTaxId: string | null
   enrollmentType: string
   sourceSystem: string
   groupId: string | null
@@ -60,10 +63,9 @@ const toRow = (seed: FixtureTicket): TicketRow => ({
   beneficiaryName: seed.beneficiaryName,
   taxId: null,
   companyName: null,
-  // GET /tickets/rows has no parent column, so parity on the matriz expansion
-  // cannot be claimed here; whoever adds it decides which side expands.
-  parentCompanyId: null,
-  parentCompanyName: null,
+  parentCompanyId: seed.parentCompanyId,
+  parentCompanyName: seed.parentCompanyName,
+  companyTaxId: seed.companyTaxId,
   companySize: seed.client.companySize,
   carrierId: seed.carrierId,
   carrierName: seed.carrierName,

@@ -20,6 +20,7 @@ const text = z.string().min(1)
 export const ticketRowsQuerySchema = z.object({
   statuses: list(ticketStatusSchema).optional(),
   companyIds: list(z.uuid()).optional(),
+  companyIdsExact: list(z.uuid()).optional(),
   carrierIds: list(text).optional(),
   products: list(text).optional(),
   types: list(text)
@@ -49,6 +50,7 @@ export type TicketRowsQuery = z.infer<typeof ticketRowsQuerySchema>
 export const QUERY_FIELD_PII = {
   statuses: 'closed vocabulary',
   companyIds: 'internal uuid',
+  companyIdsExact: 'internal uuid',
   carrierIds: 'carrier, not a person',
   products: 'closed vocabulary',
   types: 'closed vocabulary',
@@ -86,6 +88,11 @@ export const ticketRowSchema = z
     assigneeId: z.string().min(1).nullable(),
     companyId: z.uuid(),
     companyName: z.string().min(1).nullable(),
+    /** `null` when the company already is the parent. The key the queue
+     *  filters, groups and counts by (DSP-36). */
+    parentCompanyId: z.uuid().nullable(),
+    parentCompanyName: z.string().min(1).nullable(),
+    companyTaxId: z.string().min(1).nullable(),
     beneficiaryName: z.string().min(1).nullable(),
     taxId: z.string().min(1).nullable(),
     carrierId: z.string().nullable(),
@@ -118,6 +125,9 @@ export const ROW_FIELD_PII = {
   assigneeId: 'Pipo user id, not the beneficiary — ACE-196',
   companyId: 'internal uuid',
   companyName: 'legal entity, not a natural person',
+  parentCompanyId: 'internal uuid',
+  parentCompanyName: 'legal entity, not a natural person',
+  companyTaxId: 'CNPJ of a legal entity, unlike the taxId below',
   beneficiaryName: true,
   taxId: true,
   carrierId: 'carrier, not a person',

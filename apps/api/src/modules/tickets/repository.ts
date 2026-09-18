@@ -4,7 +4,12 @@ import type { Tickets } from '../../infrastructure/db-types.js'
 import { ValidationFailedError } from '../../shared/errors.js'
 import { FK_VIOLATION, UNIQUE_VIOLATION } from '../../shared/pg.js'
 import { OpenTicketConflictError } from './errors.js'
-import { movementFieldsOf, relationshipOf, snapshotString } from './enrollment-snapshot.js'
+import {
+  companyFieldsOf,
+  movementFieldsOf,
+  relationshipOf,
+  snapshotString,
+} from './enrollment-snapshot.js'
 import { actionDateWindowCondition, ticketFilterConditions } from './filter-resolver.js'
 import type { TicketRowPayload, TicketRowsQuery } from './rows-schema.js'
 import { toClient } from './vocabulary.js'
@@ -73,6 +78,9 @@ function toTicket(row: Selectable<Tickets>): Ticket {
     product: blankAsNull(toClient('product', row.product)),
     contractType: blankAsNull(toClient('contractType', row.contract_type)),
     companySize: blankAsNull(toClient('companySize', row.company_size)),
+    parentCompanyId: row.parent_company_id,
+    parentCompanyName: blankAsNull(row.parent_company_name),
+    companyTaxId: blankAsNull(row.company_tax_id),
     relationship: relationshipSchema.safeParse(row.relationship).data ?? null,
     sourceSystem: row.source_system,
     origin: blankAsNull(row.origin),
@@ -116,6 +124,8 @@ export class TicketsRepository implements TicketsRepositoryPort {
     return row ? toTicket(row) : undefined
   }
 
+  /** Exact, unlike `companyIds` of `/tickets/rows`: this is the EI's
+   *  idempotency path, where the company asked for is the company. */
   async findMany(query: ListTicketsQuery): Promise<{ data: Ticket[]; total: number }> {
     const offset = (query.page - 1) * query.pageSize
 
@@ -203,6 +213,9 @@ export class TicketsRepository implements TicketsRepositoryPort {
         'group_id',
         'assignee_id',
         'company_id',
+        'parent_company_id',
+        'parent_company_name',
+        'company_tax_id',
         'carrier_id',
         'carrier_name',
         'product',
@@ -239,6 +252,9 @@ export class TicketsRepository implements TicketsRepositoryPort {
       assigneeId: row.assignee_id,
       companyId: row.company_id,
       companyName: row.company_name,
+      parentCompanyId: row.parent_company_id,
+      parentCompanyName: blankAsNull(row.parent_company_name),
+      companyTaxId: blankAsNull(row.company_tax_id),
       beneficiaryName: row.beneficiary_name,
       taxId: row.tax_id,
       carrierId: row.carrier_id,
@@ -262,6 +278,17 @@ export class TicketsRepository implements TicketsRepositoryPort {
   async create(data: CreateTicketData): Promise<Ticket> {
     // The body wins; the snapshot fills what the EI does not send yet (PD-207).
     const derived = movementFieldsOf(data.enrollmentSnapshot)
+    const company = companyFieldsOf(data.enrollmentSnapshot)
+    /* The parent is a pair and one source wins it whole, never field by
+       field: an id from the body would otherwise carry a name from the
+       snapshot. */
+    const named =
+      data.parentCompanyId === undefined
+        ? { id: company.parentCompanyId, name: company.parentCompanyName }
+        : { id: data.parentCompanyId, name: data.parentCompanyName ?? null }
+    /* No company is a branch of itself, whichever source named the parent:
+       the Empresa cell would read `Meridiano › Meridiano`. */
+    const parent = named.id === data.companyId ? { id: null, name: null } : named
 
     try {
       const row = await this.db
@@ -282,6 +309,9 @@ export class TicketsRepository implements TicketsRepositoryPort {
           product: data.product ?? derived.product,
           contract_type: data.contractType ?? derived.contractType,
           company_size: data.companySize ?? derived.companySize,
+          parent_company_id: parent.id,
+          parent_company_name: parent.name,
+          company_tax_id: data.companyTaxId ?? company.companyTaxId,
           relationship: relationshipOf(data.enrollmentSnapshot),
           status: 'broker-processing',
           queue_id: data.queueId,
