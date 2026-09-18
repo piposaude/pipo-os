@@ -380,10 +380,32 @@ export class TicketsRepository implements TicketsRepositoryPort {
   }
 
   async update(id: string, data: UpdateTicketBody, author: Author): Promise<Ticket | undefined> {
+    const columns = {
+      ...(data.priority !== undefined && { priority: data.priority }),
+      ...(data.queueId !== undefined && { queue_id: data.queueId }),
+      ...(data.assigneeId !== undefined && { assignee_id: data.assigneeId }),
+      ...(data.tags !== undefined && { tags: data.tags }),
+      ...(data.forceCompletion !== undefined && { force_completion: data.forceCompletion }),
+      ...(data.parentTicketId !== undefined && { parent_ticket_id: data.parentTicketId }),
+    }
+
     try {
+      // Only the priority writes an event, and only the event needs the value
+      // it replaced: every other field keeps the single statement it had.
+      if (data.priority === undefined) {
+        const row = await this.db
+          .updateTable('tickets')
+          .set(columns)
+          .where('id', '=', id)
+          .returningAll()
+          .executeTakeFirst()
+
+        return row ? toTicket(row) : undefined
+      }
+
       return await this.db.transaction().execute(async (trx) => {
-        // The event carries the value it replaced, so the row is read under
-        // lock: two concurrent changes would otherwise report the same before.
+        // The row is read under lock because the event carries what it
+        // replaced: two concurrent changes would report the same before.
         const current = await trx
           .selectFrom('tickets')
           .selectAll()
@@ -395,19 +417,12 @@ export class TicketsRepository implements TicketsRepositoryPort {
 
         const row = await trx
           .updateTable('tickets')
-          .set({
-            ...(data.priority !== undefined && { priority: data.priority }),
-            ...(data.queueId !== undefined && { queue_id: data.queueId }),
-            ...(data.assigneeId !== undefined && { assignee_id: data.assigneeId }),
-            ...(data.tags !== undefined && { tags: data.tags }),
-            ...(data.forceCompletion !== undefined && { force_completion: data.forceCompletion }),
-            ...(data.parentTicketId !== undefined && { parent_ticket_id: data.parentTicketId }),
-          })
+          .set(columns)
           .where('id', '=', id)
           .returningAll()
           .executeTakeFirstOrThrow()
 
-        if (data.priority !== undefined && data.priority !== current.priority) {
+        if (data.priority !== current.priority) {
           await insertEvent(
             trx,
             {
