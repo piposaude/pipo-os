@@ -991,6 +991,65 @@ describe('tickets routes', () => {
       })
     })
 
+    it('says nothing when the priority sent is the one already there', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      for (let attempt = 0; attempt < 2; attempt++) {
+        await app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${id}`,
+          payload: { priority: 'high' },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+      }
+
+      const timeline = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${id}/timeline`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const events = timeline.json().data.filter((item: { type: string }) => item.type === 'event')
+
+      expect(events).toHaveLength(1)
+    })
+
+    it('records the removal of a priority as a removal', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      for (const priority of ['urgent', null]) {
+        await app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${id}`,
+          payload: { priority },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+      }
+
+      const timeline = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${id}/timeline`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const events = timeline.json().data.filter((item: { type: string }) => item.type === 'event')
+
+      expect(events[1]).toMatchObject({
+        body: 'Prioridade removida',
+        metadata: { priority: null, previous: 'urgent' },
+      })
+    })
+
     it('accepts null to clear a nullable field', async () => {
       const created = await app.inject({
         method: 'POST',
