@@ -8,6 +8,7 @@ import constants from '@/constants/pages/auth/no-access'
 import sidebarConstants from '@/constants/pipodesk/sidebar'
 
 const TICKET = 'admin/allow/administrate/pipodesk/ticket'
+const STRUCTURE = 'admin/allow/administrate/pipodesk/structure'
 
 /** A session as `/api/auth/me` returns it, holding the given policies. */
 function authenticateWith(policies: string[]) {
@@ -74,6 +75,19 @@ describe('acesso ao Pipodesk', () => {
 
     expect(router.state.location.pathname).toBe('/')
     expect(await screen.findByRole('navigation', { name: /pipodesk/i })).toBeInTheDocument()
+  })
+
+  // Structure alone still reaches the desk: the API grants the group and queue
+  // routes to it, and a guard stricter than the API would lock this session out.
+  it('should let a session holding only the structure policy reach the desk', async () => {
+    authenticateWith([STRUCTURE])
+
+    const router = await renderAt('/')
+
+    expect(router.state.location.pathname).toBe('/')
+    expect(
+      await screen.findByRole('navigation', { name: sidebarConstants.nav }),
+    ).toBeInTheDocument()
   })
 
   // The API matches policies by prefix, so a broad admin reaches every Pipodesk route.
