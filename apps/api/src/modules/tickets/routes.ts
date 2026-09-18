@@ -1,6 +1,6 @@
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
 import type { FastifyInstance } from 'fastify'
-import { requireUser, requireUserId } from '../auth/authenticate.js'
+import { requireAuthor, requireUser, requireUserId } from '../auth/authenticate.js'
 import { businessToday } from '../../shared/business-date.js'
 import { errorResponseSchema } from '../../shared/schemas.js'
 import { TICKET_POLICY } from '../auth/policy.js'
@@ -151,7 +151,7 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
       },
     },
     async (request) => {
-      return service.update(request.params.id, request.body)
+      return service.update(request.params.id, request.body, requireAuthor(request))
     },
   )
 

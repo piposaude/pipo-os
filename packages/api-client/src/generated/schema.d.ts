@@ -2533,6 +2533,7 @@ export interface components {
             filters?: components["schemas"]["TicketFilterInput"];
         };
         UpdateTicketBodyInput: {
+            priority?: components["schemas"]["TicketPriorityInput"] | null;
             queueId?: string | null;
             assigneeId?: string | null;
             tags?: string[];
