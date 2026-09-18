@@ -135,9 +135,11 @@ const digitsOf = (taxId: string): string => taxId.replace(/\D/g, '')
 
 /**
  * The EI fills `parent_company_*` for a parent company as well, so the columns
- * alone do not say whether this one is a branch. Same rule as the EI's
- * `hasParentCompany` (zendesk/alteration_template.go): the flag when it is
- * there, the two tax ids when it is not.
+ * alone do not say whether this one is a branch. Same two sources as the EI's
+ * `hasParentCompany` (zendesk/alteration_template.go) — the flag when it is
+ * there, the two tax ids when it is not — but not the same comparison: the EI
+ * compares the raw strings, and its own `formatCompanyTaxId` proves the field
+ * arrives punctuated or bare.
  */
 function isBranch(company: Record<string, unknown>): boolean {
   const flag = readPath(company, ['company-subsidiary'])
