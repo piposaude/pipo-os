@@ -131,6 +131,8 @@ const NO_COMPANY: CompanyFields = {
   companyTaxId: null,
 }
 
+const digitsOf = (taxId: string): string => taxId.replace(/\D/g, '')
+
 /**
  * The EI fills `parent_company_*` for a parent company as well, so the columns
  * alone do not say whether this one is a branch. Same rule as the EI's
@@ -143,7 +145,12 @@ function isBranch(company: Record<string, unknown>): boolean {
   if (typeof flag === 'boolean') return flag
 
   const parentTaxId = readString(company, ['parent-company-tax-id'])
-  return parentTaxId !== null && parentTaxId !== readString(company, ['company-tax-id'])
+  if (parentTaxId === null) return false
+
+  const taxId = readString(company, ['company-tax-id'])
+  /* By the digits, never by the string: the same CNPJ punctuated in one field
+     and bare in the other would make the company a branch of itself. */
+  return taxId === null || digitsOf(parentTaxId) !== digitsOf(taxId)
 }
 
 const UUID = z.uuid()

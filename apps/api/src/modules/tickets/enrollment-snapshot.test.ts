@@ -215,6 +215,19 @@ describe('companyFieldsOf', () => {
     ).toBeNull()
   })
 
+  it('is not a branch when its own tax id arrives in another format', () => {
+    expect(
+      companyFieldsOf({
+        company: {
+          'company-tax-id': '11.111.111/0001-11',
+          'parent-company-id': '00000000-0000-4000-8000-0000000000a1',
+          'parent-company-name': 'Meridiano Logistica',
+          'parent-company-tax-id': '11111111000111',
+        },
+      }).parentCompanyId,
+    ).toBeNull()
+  })
+
   it('is not a branch when there is no parent tax id to compare', () => {
     expect(
       companyFieldsOf({
