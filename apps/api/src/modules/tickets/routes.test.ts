@@ -968,12 +968,13 @@ describe('tickets routes', () => {
       const { id } = created.json()
 
       for (const priority of ['urgent', 'low']) {
-        await app.inject({
+        const patch = await app.inject({
           method: 'PATCH',
           url: `/api/tickets/${id}`,
           payload: { priority },
           cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
         })
+        expect(patch.statusCode).toBe(200)
       }
 
       const timeline = await app.inject({
@@ -1001,12 +1002,13 @@ describe('tickets routes', () => {
       const { id } = created.json()
 
       for (let attempt = 0; attempt < 2; attempt++) {
-        await app.inject({
+        const patch = await app.inject({
           method: 'PATCH',
           url: `/api/tickets/${id}`,
           payload: { priority: 'high' },
           cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
         })
+        expect(patch.json()).toMatchObject({ priority: 'high' })
       }
 
       const timeline = await app.inject({
@@ -1029,12 +1031,13 @@ describe('tickets routes', () => {
       const { id } = created.json()
 
       for (const priority of ['urgent', null]) {
-        await app.inject({
+        const patch = await app.inject({
           method: 'PATCH',
           url: `/api/tickets/${id}`,
           payload: { priority },
           cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
         })
+        expect(patch.json()).toMatchObject({ priority })
       }
 
       const timeline = await app.inject({
