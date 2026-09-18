@@ -2197,6 +2197,16 @@
       "UpdateTicketBodyInput": {
         "type": "object",
         "properties": {
+          "priority": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TicketPriorityInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "queueId": {
             "anyOf": [
               {

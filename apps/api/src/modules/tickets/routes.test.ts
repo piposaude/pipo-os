@@ -938,6 +938,25 @@ describe('tickets routes', () => {
       expect(response.json().tags).toEqual(['pj_mov'])
     })
 
+    it('changes the priority of a ticket', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${created.json().id}`,
+        payload: { priority: 'urgent' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(200)
+      expect(response.json().priority).toBe('urgent')
+    })
+
     it('accepts null to clear a nullable field', async () => {
       const created = await app.inject({
         method: 'POST',

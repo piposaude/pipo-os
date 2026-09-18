@@ -382,6 +382,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
       const row = await this.db
         .updateTable('tickets')
         .set({
+          ...(data.priority !== undefined && { priority: data.priority }),
           ...(data.queueId !== undefined && { queue_id: data.queueId }),
           ...(data.assigneeId !== undefined && { assignee_id: data.assigneeId }),
           ...(data.tags !== undefined && { tags: data.tags }),
