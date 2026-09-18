@@ -115,7 +115,7 @@
         ],
         "additionalProperties": false
       },
-      "CreateCommentBodyInput": {
+      "CreateAutomatedEventBodyInput": {
         "type": "object",
         "properties": {
           "visibility": {
@@ -129,13 +129,53 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 50000
+          },
+          "kind": {
+            "type": "string",
+            "const": "automated_event"
+          },
+          "eventType": {
+            "type": "string",
+            "enum": [
+              "hr_platform_reply",
+              "enrollment_cancellation_requested",
+              "document_signature_sent",
+              "contractor_document_failed",
+              "internal_note"
+            ]
+          },
+          "metadata": {
+            "default": {},
+            "description": "Free-form event data, at most 8192 bytes serialised",
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
           }
         },
         "required": [
           "visibility",
-          "body"
+          "body",
+          "kind",
+          "eventType"
         ],
         "additionalProperties": false
+      },
+      "CreateCommentBodyInput": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/CreateManualCommentBodyInput"
+          },
+          {
+            "$ref": "#/components/schemas/CreateAutomatedEventBodyInput"
+          }
+        ]
       },
       "CreateGroupBodyInput": {
         "type": "object",
@@ -161,6 +201,33 @@
         },
         "required": [
           "name"
+        ],
+        "additionalProperties": false
+      },
+      "CreateManualCommentBodyInput": {
+        "type": "object",
+        "properties": {
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "private"
+            ]
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50000
+          },
+          "kind": {
+            "default": "manual",
+            "type": "string",
+            "const": "manual"
+          }
+        },
+        "required": [
+          "visibility",
+          "body"
         ],
         "additionalProperties": false
       },
@@ -1099,7 +1166,18 @@
           "eventType": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "hr_platform_reply",
+                  "enrollment_cancellation_requested",
+                  "document_signature_sent",
+                  "contractor_document_failed",
+                  "internal_note",
+                  "assigned",
+                  "priority_changed",
+                  "action_date_changed",
+                  "document_attached"
+                ]
               },
               {
                 "type": "null"
@@ -1114,6 +1192,14 @@
               {
                 "type": "null"
               }
+            ]
+          },
+          "authorType": {
+            "type": "string",
+            "enum": [
+              "user",
+              "service",
+              "system"
             ]
           },
           "body": {
@@ -1138,6 +1224,7 @@
           "visibility",
           "eventType",
           "authorId",
+          "authorType",
           "body",
           "metadata",
           "createdAt"
@@ -1854,6 +1941,14 @@
               }
             ]
           },
+          "authorType": {
+            "type": "string",
+            "enum": [
+              "user",
+              "service",
+              "system"
+            ]
+          },
           "createdAt": {
             "type": "string"
           },
@@ -1883,6 +1978,7 @@
           "id",
           "ticketId",
           "authorId",
+          "authorType",
           "createdAt",
           "type",
           "channel",
@@ -1914,6 +2010,14 @@
               }
             ]
           },
+          "authorType": {
+            "type": "string",
+            "enum": [
+              "user",
+              "service",
+              "system"
+            ]
+          },
           "createdAt": {
             "type": "string"
           },
@@ -1922,13 +2026,17 @@
             "const": "event"
           },
           "eventType": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
+            "type": "string",
+            "enum": [
+              "hr_platform_reply",
+              "enrollment_cancellation_requested",
+              "document_signature_sent",
+              "contractor_document_failed",
+              "internal_note",
+              "assigned",
+              "priority_changed",
+              "action_date_changed",
+              "document_attached"
             ]
           },
           "body": {
@@ -1946,6 +2054,7 @@
           "id",
           "ticketId",
           "authorId",
+          "authorType",
           "createdAt",
           "type",
           "eventType",
@@ -1990,6 +2099,14 @@
               }
             ]
           },
+          "authorType": {
+            "type": "string",
+            "enum": [
+              "user",
+              "service",
+              "system"
+            ]
+          },
           "createdAt": {
             "type": "string"
           },
@@ -2012,21 +2129,18 @@
                 "type": "null"
               }
             ]
-          },
-          "authorType": {
-            "type": "string"
           }
         },
         "required": [
           "id",
           "ticketId",
           "authorId",
+          "authorType",
           "createdAt",
           "type",
           "fromStatus",
           "toStatus",
-          "reason",
-          "authorType"
+          "reason"
         ],
         "additionalProperties": false
       },
@@ -4328,6 +4442,16 @@
           }
         ],
         "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketComment"
+                }
+              }
+            }
+          },
           "201": {
             "description": "Default Response",
             "content": {
