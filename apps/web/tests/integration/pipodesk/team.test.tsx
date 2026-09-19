@@ -5,11 +5,7 @@ import { routeTree } from '@/routeTree.gen'
 import constants from '@/constants/pages/pipodesk/team'
 import sidebarConstants from '@/constants/pipodesk/sidebar'
 
-vi.mock('@/lib/auth', () => ({
-  ensureSession: vi.fn().mockResolvedValue(undefined),
-  isAuthenticated: vi.fn().mockReturnValue(true),
-  logout: vi.fn(),
-}))
+vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
 async function renderAt(path: string) {
   const router = createRouter({

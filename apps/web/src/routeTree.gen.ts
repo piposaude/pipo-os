@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as PublicRouteImport } from './routes/_public'
 import { Route as AuthDeskRouteImport } from './routes/_auth/_desk'
+import { Route as AuthNoAccessRouteImport } from './routes/_auth/no-access'
 import { Route as AuthDeskIndexRouteImport } from './routes/_auth/_desk/index'
 import { Route as PublicLoginIndexRouteImport } from './routes/_public/login/index'
 import { Route as AuthDeskTeamsGroupIdRouteImport } from './routes/_auth/_desk/teams/$groupId'
@@ -27,6 +28,11 @@ const PublicRoute = PublicRouteImport.update({
 } as any)
 const AuthDeskRoute = AuthDeskRouteImport.update({
   id: '/_desk',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthNoAccessRoute = AuthNoAccessRouteImport.update({
+  id: '/no-access',
+  path: '/no-access',
   getParentRoute: () => AuthRoute,
 } as any)
 const AuthDeskIndexRoute = AuthDeskIndexRouteImport.update({
@@ -52,12 +58,14 @@ const AuthDeskTicketsIdRoute = AuthDeskTicketsIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthDeskIndexRoute
+  '/no-access': typeof AuthNoAccessRoute
   '/login/': typeof PublicLoginIndexRoute
   '/teams/$groupId': typeof AuthDeskTeamsGroupIdRoute
   '/tickets/$id': typeof AuthDeskTicketsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AuthDeskIndexRoute
+  '/no-access': typeof AuthNoAccessRoute
   '/login': typeof PublicLoginIndexRoute
   '/teams/$groupId': typeof AuthDeskTeamsGroupIdRoute
   '/tickets/$id': typeof AuthDeskTicketsIdRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   '/_auth': typeof AuthRouteWithChildren
   '/_public': typeof PublicRouteWithChildren
   '/_auth/_desk': typeof AuthDeskRouteWithChildren
+  '/_auth/no-access': typeof AuthNoAccessRoute
   '/_auth/_desk/': typeof AuthDeskIndexRoute
   '/_public/login/': typeof PublicLoginIndexRoute
   '/_auth/_desk/teams/$groupId': typeof AuthDeskTeamsGroupIdRoute
@@ -74,14 +83,15 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login/' | '/teams/$groupId' | '/tickets/$id'
+  fullPaths: '/' | '/no-access' | '/login/' | '/teams/$groupId' | '/tickets/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/teams/$groupId' | '/tickets/$id'
+  to: '/' | '/no-access' | '/login' | '/teams/$groupId' | '/tickets/$id'
   id:
     | '__root__'
     | '/_auth'
     | '/_public'
     | '/_auth/_desk'
+    | '/_auth/no-access'
     | '/_auth/_desk/'
     | '/_public/login/'
     | '/_auth/_desk/teams/$groupId'
@@ -114,6 +124,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthDeskRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/no-access': {
+      id: '/_auth/no-access'
+      path: '/no-access'
+      fullPath: '/no-access'
+      preLoaderRoute: typeof AuthNoAccessRouteImport
       parentRoute: typeof AuthRoute
     }
     '/_auth/_desk/': {
@@ -165,10 +182,12 @@ const AuthDeskRouteWithChildren = AuthDeskRoute._addFileChildren(
 
 interface AuthRouteChildren {
   AuthDeskRoute: typeof AuthDeskRouteWithChildren
+  AuthNoAccessRoute: typeof AuthNoAccessRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthDeskRoute: AuthDeskRouteWithChildren,
+  AuthNoAccessRoute: AuthNoAccessRoute,
 }
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
