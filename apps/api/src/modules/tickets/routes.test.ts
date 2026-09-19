@@ -1071,6 +1071,41 @@ describe('tickets routes', () => {
       })
     })
 
+    it('leaves neither the priority nor the event behind when another field fails', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${id}`,
+        payload: { priority: 'urgent', queueId: NONEXISTENT_ID },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(422)
+
+      const ticket = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const timeline = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${id}/timeline`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(ticket.json().priority).toBeNull()
+      expect(
+        timeline.json().data.filter((item: { type: string }) => item.type === 'event'),
+      ).toHaveLength(0)
+    })
+
     it('accepts null to clear a nullable field', async () => {
       const created = await app.inject({
         method: 'POST',
