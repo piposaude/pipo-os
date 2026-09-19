@@ -958,6 +958,24 @@ describe('tickets routes', () => {
       expect(response.json().priority).toBe('urgent')
     })
 
+    it('refuses a priority outside the four the queue knows', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${created.json().id}`,
+        payload: { priority: 'invalid' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+
     it('records who changed the priority, and what it was before', async () => {
       const created = await app.inject({
         method: 'POST',
