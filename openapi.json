@@ -389,6 +389,19 @@
             "type": "string",
             "minLength": 1
           },
+          "parentCompanyId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "parentCompanyName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "companyTaxId": {
+            "type": "string",
+            "minLength": 1
+          },
           "groupId": {
             "type": "string",
             "format": "uuid",
@@ -1036,6 +1049,40 @@
               }
             ]
           },
+          "parentCompanyId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "parentCompanyName": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "companyTaxId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "relationship": {
             "anyOf": [
               {
@@ -1119,6 +1166,9 @@
           "product",
           "contractType",
           "companySize",
+          "parentCompanyId",
+          "parentCompanyName",
+          "companyTaxId",
           "relationship",
           "sourceSystem",
           "origin",
@@ -1710,6 +1760,40 @@
               }
             ]
           },
+          "parentCompanyId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "parentCompanyName": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "companyTaxId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "beneficiaryName": {
             "anyOf": [
               {
@@ -1837,6 +1921,9 @@
           "assigneeId",
           "companyId",
           "companyName",
+          "parentCompanyId",
+          "parentCompanyName",
+          "companyTaxId",
           "beneficiaryName",
           "taxId",
           "carrierId",
@@ -3826,6 +3913,20 @@
             },
             "in": "query",
             "name": "companyIds",
+            "required": false
+          },
+          {
+            "schema": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              }
+            },
+            "in": "query",
+            "name": "companyIdsExact",
             "required": false
           },
           {

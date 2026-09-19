@@ -165,6 +165,7 @@ const row = (id: string, createdAt: string, closedAt: string | null = null): Tic
   companyName: null,
   parentCompanyId: null,
   parentCompanyName: null,
+  companyTaxId: null,
   companySize: null,
   carrierId: 'carrier-1',
   carrierName: 'Amil',

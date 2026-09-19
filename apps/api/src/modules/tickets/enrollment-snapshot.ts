@@ -5,7 +5,7 @@
  */
 
 import { sql, type RawBuilder } from 'kysely'
-import type { z } from 'zod'
+import { z } from 'zod'
 import type { relationshipSchema } from './schemas.js'
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -116,6 +116,73 @@ export function movementFieldsOf(snapshot: unknown): MovementFields {
       ['work-contract-type'],
     ),
     companySize: readString(snapshot, ['company', 'company-size'], ['company', 'porte']),
+  }
+}
+
+export interface CompanyFields {
+  parentCompanyId: string | null
+  parentCompanyName: string | null
+  companyTaxId: string | null
+}
+
+const NO_COMPANY: CompanyFields = {
+  parentCompanyId: null,
+  parentCompanyName: null,
+  companyTaxId: null,
+}
+
+const digitsOf = (taxId: string): string => taxId.replace(/\D/g, '')
+
+/**
+ * The EI fills `parent_company_*` for a parent company as well, so the columns
+ * alone do not say whether this one is a branch. Same two sources as the EI's
+ * `hasParentCompany` (zendesk/alteration_template.go) — the flag when it is
+ * there, the two tax ids when it is not — but not the same comparison: the EI
+ * compares the raw strings, and its own `formatCompanyTaxId` proves the field
+ * arrives punctuated or bare.
+ */
+function isBranch(company: Record<string, unknown>): boolean {
+  const flag = readPath(company, ['company-subsidiary'])
+  // Only a JSON boolean answers: the string "true" is not the EI's flag.
+  if (typeof flag === 'boolean') return flag
+
+  const parentTaxId = readString(company, ['parent-company-tax-id'])
+  if (parentTaxId === null) return false
+
+  const taxId = readString(company, ['company-tax-id'])
+  /* By the digits, never by the string: the same CNPJ punctuated in one field
+     and bare in the other would make the company a branch of itself. */
+  return taxId === null || digitsOf(parentTaxId) !== digitsOf(taxId)
+}
+
+const UUID = z.uuid()
+
+/** The column is `uuid` and the EI types the field as a bare string, so an id
+ *  Postgres cannot parse would cost the whole ticket a 500 on creation. */
+const uuidOrNull = (value: string | null): string | null =>
+  value !== null && UUID.safeParse(value).success ? value : null
+
+/**
+ * **The id is what decides**, because the id is what groups the branches: a
+ * parent with no name is still written, and a name with no id never is — it
+ * would label a group the filter by that parent could not reach.
+ */
+export function companyFieldsOf(snapshot: unknown): CompanyFields {
+  if (!isRecord(snapshot)) return NO_COMPANY
+
+  const company = readPath(snapshot, ['company'])
+  if (!isRecord(company)) return NO_COMPANY
+
+  const companyTaxId = readString(company, ['company-tax-id'])
+  if (!isBranch(company)) return { ...NO_COMPANY, companyTaxId }
+
+  const parentCompanyId = uuidOrNull(readString(company, ['parent-company-id']))
+  if (parentCompanyId === null) return { ...NO_COMPANY, companyTaxId }
+
+  return {
+    parentCompanyId,
+    parentCompanyName: readString(company, ['parent-company-name']),
+    companyTaxId,
   }
 }
 

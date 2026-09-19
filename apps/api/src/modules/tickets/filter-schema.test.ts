@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { ticketFilterSchema } from './filter-schema.js'
+import { ticketRowsQuerySchema } from './rows-schema.js'
+import { ticketFilterSchema, ticketReadFilterSchema } from './filter-schema.js'
 
 describe('ticketFilterSchema', () => {
   it('accepts an empty filter — a queue with no criteria lists everything', () => {
@@ -91,5 +92,19 @@ describe('ticketFilterSchema', () => {
 
   it('rejects a non-uuid company id', () => {
     expect(ticketFilterSchema.safeParse({ companyIds: ['acme'] }).success).toBe(false)
+  })
+})
+
+/** A third hand-kept copy of the filter contract, and the only one TypeScript
+ *  cannot check: `{ window, limit, ...filter }` stays assignable with a field
+ *  missing, so a criterion left out here is unreachable over HTTP in silence. */
+describe('ticketRowsQuerySchema', () => {
+  it('offers every field of the read filter over the query string', () => {
+    const OWN_FIELDS = ['window', 'limit']
+    const offered = Object.keys(ticketRowsQuerySchema.shape)
+      .filter((field) => !OWN_FIELDS.includes(field))
+      .sort()
+
+    expect(offered).toEqual(Object.keys(ticketReadFilterSchema.shape).sort())
   })
 })

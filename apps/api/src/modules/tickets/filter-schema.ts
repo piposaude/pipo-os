@@ -19,6 +19,8 @@ const dateCut = z.iso.date()
 export const ticketFilterSchema = z
   .object({
     statuses: z.array(ticketStatusSchema).min(1).optional(),
+    /** Matches the ticket's own company or the parent it is a branch of, so a
+     *  cut by client covers the whole group (DSP-36). */
     companyIds: z.array(z.uuid()).min(1).optional(),
     carrierIds: z.array(nonEmptyText).min(1).optional(),
     products: z.array(nonEmptyText).min(1).optional(),
@@ -47,5 +49,16 @@ export const ticketFilterSchema = z
   .strict()
   .meta({ id: 'TicketFilter' })
 
+/**
+ * The filter as a READ accepts it: everything a view saves, plus the cuts a
+ * screen derives per render and never stores. `companyIdsExact` stays out of
+ * `ticketFilterSchema` so it cannot be saved into a view, where it would be a
+ * criterion nobody chose.
+ */
+export const ticketReadFilterSchema = ticketFilterSchema.extend({
+  companyIdsExact: z.array(z.uuid()).min(1).optional(),
+})
+
 export type AssigneeFilterValue = z.infer<typeof assigneeFilterValueSchema>
 export type TicketFilter = z.infer<typeof ticketFilterSchema>
+export type TicketReadFilter = z.infer<typeof ticketReadFilterSchema>

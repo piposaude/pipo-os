@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 import type { FastifyInstance } from 'fastify'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
-import type { TicketFilter } from './filter-schema.js'
+import type { TicketReadFilter } from './filter-schema.js'
 import {
   actionDateWindowCondition,
   ticketFilterConditions,
@@ -23,6 +23,9 @@ type FixtureTicket = {
   beneficiaryName: string | null
   status: string
   companyId: string
+  parentCompanyId: string | null
+  parentCompanyName: string | null
+  companyTaxId: string | null
   enrollmentType: string
   sourceSystem: string
   groupId: string | null
@@ -43,7 +46,12 @@ type CaseFile = {
   today: string
   groupA: string
   tickets: FixtureTicket[]
-  cases: { name: string; filter: TicketFilter; window?: ActionDateWindow; expected: string[] }[]
+  cases: {
+    name: string
+    filter: TicketReadFilter
+    window?: ActionDateWindow
+    expected: string[]
+  }[]
 }
 
 const fixture = JSON.parse(readFileSync(CASES_PATH, 'utf8')) as CaseFile
@@ -75,6 +83,9 @@ describe('the shared filter corpus, resolved in SQL', () => {
           enrollment_id: enrollmentIdByCase.get(seed.id)!,
           enrollment_type: seed.enrollmentType,
           company_id: seed.companyId,
+          parent_company_id: seed.parentCompanyId,
+          parent_company_name: seed.parentCompanyName,
+          company_tax_id: seed.companyTaxId,
           source_system: seed.sourceSystem,
           status: seed.status,
           group_id: seed.groupId,
