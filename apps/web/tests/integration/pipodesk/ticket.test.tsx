@@ -35,11 +35,7 @@ async function firstRow(): Promise<{ id: string; ticket: TicketRow; link: HTMLEl
 // dynamic import, and the 1s default is not enough under parallel workers.
 configure({ asyncUtilTimeout: 3000 })
 
-vi.mock('@/lib/auth', () => ({
-  ensureSession: vi.fn().mockResolvedValue(undefined),
-  isAuthenticated: vi.fn().mockReturnValue(true),
-  logout: vi.fn(),
-}))
+vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
 async function renderAt(path: string) {
   const router = createRouter({

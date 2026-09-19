@@ -5,11 +5,7 @@ import { routeTree } from '@/routeTree.gen'
 import constants from '@/constants/pipodesk/error'
 import { isAuthenticated, logout } from '@/lib/auth'
 
-vi.mock('@/lib/auth', () => ({
-  ensureSession: vi.fn().mockResolvedValue(undefined),
-  isAuthenticated: vi.fn().mockReturnValue(true),
-  logout: vi.fn().mockResolvedValue(undefined),
-}))
+vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
 /** The shell blows up, not a screen inside it — `DeskError` stays real. */
 vi.mock('@/components/pipodesk/shell', async (importOriginal) => ({

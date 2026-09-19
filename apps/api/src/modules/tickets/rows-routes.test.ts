@@ -19,6 +19,10 @@ type Seed = {
   contractType?: string | null
   companySize?: string | null
   relationship?: string | null
+  companyId?: string
+  parentCompanyId?: string | null
+  parentCompanyName?: string | null
+  companyTaxId?: string | null
   snapshot?: Record<string, unknown>
 }
 
@@ -65,7 +69,7 @@ describe('GET /api/tickets/rows', () => {
         rows.map((row) => ({
           enrollment_id: randomUUID(),
           enrollment_type: 'inclusion',
-          company_id: COMPANY,
+          company_id: row.companyId ?? COMPANY,
           source_system: 'enrollment-integrations',
           status: row.status ?? 'broker-processing',
           assignee_id: row.assigneeId ?? null,
@@ -80,6 +84,9 @@ describe('GET /api/tickets/rows', () => {
           tags: [],
           title: row.title,
           carrier_name: row.carrierName ?? null,
+          parent_company_id: row.parentCompanyId ?? null,
+          parent_company_name: row.parentCompanyName ?? null,
+          company_tax_id: row.companyTaxId ?? null,
         })),
       )
       .execute()
@@ -126,6 +133,67 @@ describe('GET /api/tickets/rows', () => {
       companyName: 'Caiçara Metalurgia',
       beneficiaryName: 'Renata',
       taxId: '266.348.750-73',
+    })
+  })
+
+  it('carries the parent company and the company tax id of the branch', async () => {
+    await seed([
+      {
+        title: 'a',
+        parentCompanyId: '00000000-0000-4000-8000-0000000000a1',
+        parentCompanyName: 'Meridiano Holding',
+        companyTaxId: '11.111.111/0001-11',
+      },
+    ])
+
+    const { body } = await get()
+
+    expect(body.data[0]).toMatchObject({
+      companyId: COMPANY,
+      parentCompanyId: '00000000-0000-4000-8000-0000000000a1',
+      parentCompanyName: 'Meridiano Holding',
+      companyTaxId: '11.111.111/0001-11',
+    })
+  })
+
+  /** `''` only reaches the column by hand or by a backfill, and when it does
+   *  it must not take the whole page down with it. */
+  it('reads a blank company column as null, instead of failing the page', async () => {
+    await seed([{ title: 'a', parentCompanyName: '', companyTaxId: '' }])
+
+    const { status, body } = await get()
+
+    expect(status).toBe(200)
+    expect(body.data[0]).toMatchObject({ parentCompanyName: null, companyTaxId: null })
+  })
+
+  it('filters by the parent and reaches the branch, over the query string', async () => {
+    const PARENT = '00000000-0000-4000-8000-0000000000a1'
+    await seed([
+      { title: 'da-matriz', companyId: PARENT },
+      { title: 'da-filial', parentCompanyId: PARENT, parentCompanyName: 'Meridiano Holding' },
+      { title: 'outra' },
+    ])
+
+    const byParent = await get(`?companyIds=${PARENT}`)
+    const exactParent = await get(`?companyIdsExact=${PARENT}`)
+    const exactOwn = await get(`?companyIdsExact=${COMPANY}`)
+
+    // Every row carries COMPANY as its own company; da-matriz is PARENT itself.
+    expect(titles(byParent.body)).toEqual(['da-filial', 'da-matriz'])
+    expect(titles(exactParent.body)).toEqual(['da-matriz'])
+    expect(titles(exactOwn.body)).toEqual(['da-filial', 'outra'])
+  })
+
+  it('says null for the parent of a company that is its own', async () => {
+    await seed([{ title: 'a', companyTaxId: '11.111.111/0001-11' }])
+
+    const { body } = await get()
+
+    expect(body.data[0]).toMatchObject({
+      parentCompanyId: null,
+      parentCompanyName: null,
+      companyTaxId: '11.111.111/0001-11',
     })
   })
 

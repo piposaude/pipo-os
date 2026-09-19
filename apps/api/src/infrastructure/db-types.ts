@@ -154,6 +154,7 @@ export interface Tickets {
   collaborators: Generated<Json>;
   company_id: string;
   company_size: string | null;
+  company_tax_id: string | null;
   contract_type: string | null;
   created_at: Generated<Timestamp>;
   display_number: Generated<string>;
@@ -164,6 +165,8 @@ export interface Tickets {
   group_id: string | null;
   id: Generated<string>;
   origin: string | null;
+  parent_company_id: string | null;
+  parent_company_name: string | null;
   parent_ticket_id: string | null;
   pending_documentation: Generated<string[]>;
   priority: string | null;

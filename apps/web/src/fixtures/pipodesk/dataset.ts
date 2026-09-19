@@ -24,6 +24,9 @@ interface RawRow {
   companyName: string | null
   parentCompanyId: string | null
   parentCompanyName: string | null
+  /** Optional because the exporter does not emit it yet. Declared so the day
+   *  it does, the row carries it instead of being flattened to null (PD-102). */
+  companyTaxId?: string | null
   porte: string | null
   carrierId: string | null
   carrierName: string | null
@@ -127,6 +130,7 @@ export function toSeedRows(rows: RawRow[]): TicketRow[] {
       display: display.status,
       reason: display.reason,
       companySize: porte,
+      companyTaxId: row.companyTaxId ?? null,
       relationship: vinculo === null ? null : (RELATIONSHIP_OF[vinculo] ?? null),
       priority: row.priority as Priority | null,
     })

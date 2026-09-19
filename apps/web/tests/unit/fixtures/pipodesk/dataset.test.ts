@@ -84,3 +84,15 @@ describe('toSeedRows', () => {
     expect(row.relationship).toBeNull()
   })
 })
+
+describe('CNPJ da empresa na linha exportada', () => {
+  it('should be null while the exporter does not emit it', () => {
+    expect(toSeedRows([raw()])[0].companyTaxId).toBeNull()
+  })
+
+  it('should carry the CNPJ once the exported row brings one', () => {
+    expect(toSeedRows([raw({ companyTaxId: '11.111.111/0001-11' })])[0].companyTaxId).toBe(
+      '11.111.111/0001-11',
+    )
+  })
+})
