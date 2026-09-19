@@ -3,11 +3,7 @@ import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/rea
 import { routeTree } from '@/routeTree.gen'
 import constants from '@/constants/pipodesk/error'
 
-vi.mock('@/lib/auth', () => ({
-  ensureSession: vi.fn().mockResolvedValue(undefined),
-  isAuthenticated: vi.fn().mockReturnValue(true),
-  logout: vi.fn(),
-}))
+vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
 /** The queue itself blows up on render. */
 vi.mock('@/pages/pipodesk/queue', () => ({

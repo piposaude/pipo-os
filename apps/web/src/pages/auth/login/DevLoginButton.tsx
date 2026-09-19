@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@piposaude/design-system'
-import { DEV_POLICIES, devLogin } from '@/lib/api/dev-login'
+import { devLogin } from '@/lib/api/dev-login'
+import { DESK_POLICIES } from '@/lib/policy'
 import constants from '@/constants/pages/auth/login/dev'
 
 export interface DevLoginButtonProps {
@@ -17,7 +18,7 @@ export function DevLoginButton({ redirect }: DevLoginButtonProps) {
     setPending(true)
     setFailed(false)
     try {
-      await devLogin(DEV_POLICIES)
+      await devLogin(DESK_POLICIES)
       // Full navigation, like the Google flow: the session store rehydrates
       // from /api/auth/me on the fresh page load.
       window.location.assign(redirect ?? '/')

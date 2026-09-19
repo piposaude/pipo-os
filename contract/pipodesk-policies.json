@@ -1,0 +1,89 @@
+{
+  "deskPolicies": {
+    "ticket": "admin/allow/administrate/pipodesk/ticket",
+    "structure": "admin/allow/administrate/pipodesk/structure"
+  },
+  "matchCases": [
+    {
+      "why": "the exact policy the route declares",
+      "held": ["admin/allow/administrate/pipodesk/ticket"],
+      "required": ["ticket"],
+      "authorized": true
+    },
+    {
+      "why": "no policy at all",
+      "held": [],
+      "required": ["ticket"],
+      "authorized": false
+    },
+    {
+      "why": "a policy of another domain never reaches Pipodesk",
+      "held": ["admin/allow/administrate/enrollment/*"],
+      "required": ["ticket"],
+      "authorized": false
+    },
+    {
+      "why": "a held policy matches by prefix, so a broad admin covers Pipodesk without naming it",
+      "held": ["admin/allow/*"],
+      "required": ["ticket"],
+      "authorized": true
+    },
+    {
+      "why": "the same, one level deeper",
+      "held": ["admin/allow/administrate/*"],
+      "required": ["ticket"],
+      "authorized": true
+    },
+    {
+      "why": "a held policy longer than the requirement never matches, even sharing the whole prefix",
+      "held": ["admin/allow/administrate/pipodesk/ticket/*"],
+      "required": ["ticket"],
+      "authorized": false
+    },
+    {
+      "why": "a policy of another action, in the shape the auth-service really issues",
+      "held": ["admin/allow/read/email/hr/company/abc"],
+      "required": ["ticket"],
+      "authorized": false
+    },
+    {
+      "why": "a deny of the required policy beats a broad allow",
+      "held": ["admin/allow/*", "admin/deny/administrate/pipodesk/ticket"],
+      "required": ["ticket"],
+      "authorized": false
+    },
+    {
+      "why": "given alternatives, a deny of one refuses the whole call — not that alternative alone",
+      "held": [
+        "admin/allow/administrate/pipodesk/structure",
+        "admin/deny/administrate/pipodesk/ticket"
+      ],
+      "required": ["ticket", "structure"],
+      "authorized": false
+    },
+    {
+      "why": "a deny of another policy is left alone",
+      "held": ["admin/allow/administrate/pipodesk/*", "admin/deny/administrate/pipodesk/structure"],
+      "required": ["ticket"],
+      "authorized": true
+    },
+    {
+      "why": "a deny is compared as an exact string, so a shorter one does not block by prefix",
+      "held": ["admin/allow/administrate/pipodesk/*", "admin/deny/administrate/pipodesk"],
+      "required": ["ticket"],
+      "authorized": true
+    },
+    {
+      "why": "a wildcard inside a deny does not expand",
+      "held": ["admin/allow/administrate/pipodesk/ticket", "admin/deny/administrate/pipodesk/*"],
+      "required": ["ticket"],
+      "authorized": true
+    },
+    {
+      "why": "neither allow nor deny: a wildcard effect must not stand in for an allow",
+      "held": ["admin/*/administrate/pipodesk/*"],
+      "required": ["ticket"],
+      "authorized": false
+    }
+  ]
+}

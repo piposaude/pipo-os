@@ -23,6 +23,12 @@ export function isAuthenticated(): boolean {
   return useSessionStore.getState().status === 'authenticated'
 }
 
+/** The policies `/api/auth/me` returned for this session. Empty without a
+ *  session, so guards check `isAuthenticated()` first. */
+export function sessionPolicies(): string[] {
+  return useSessionStore.getState().user?.policies ?? []
+}
+
 export function logout(): Promise<void> {
   return useSessionStore.getState().logout()
 }
