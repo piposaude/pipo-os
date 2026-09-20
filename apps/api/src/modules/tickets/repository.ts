@@ -96,8 +96,6 @@ function toTicket(row: Selectable<Tickets>): Ticket {
 export interface TicketsRepositoryPort {
   findById(id: string): Promise<Ticket | undefined>
   create(data: CreateTicketData): Promise<Ticket>
-  /** `author` comes with the priority and only with it: it signs the event the
-   *  priority change writes, and no other field writes one. */
   update(id: string, data: UpdateTicketBody, author?: Author): Promise<Ticket | undefined>
   claimOpen(id: string, assigneeId: string): Promise<Ticket | undefined>
   changeStatus(
