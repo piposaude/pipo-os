@@ -88,16 +88,20 @@ function inclusionFailures(
   members: readonly CompletionMember[],
 ): ErrorDetail[] {
   const { memberTaxIds, admissionDate } = completionContextOf(subject.enrollmentSnapshot)
-  const lives = [...new Set(memberTaxIds.map(digitsOf))]
-  if (lives.length === 0) {
-    return [
-      {
-        field: 'enrollmentSnapshot',
-        message: 'The movement shows no life to answer for, so the completion cannot be checked',
-        code: 'unknown_lives',
-      },
-    ]
+  const digits = memberTaxIds.map(digitsOf)
+  const lives = [...new Set(digits)].filter((taxId) => taxId !== '')
+
+  const failures: ErrorDetail[] = []
+  // A life with no digits cannot be named in a failure, and two of them would
+  // collapse into one — so it is refused here, not asked for a card.
+  if (lives.length === 0 || digits.some((taxId) => taxId === '')) {
+    failures.push({
+      field: 'enrollmentSnapshot',
+      message: 'The movement carries a life this API cannot identify by tax id',
+      code: 'unknown_lives',
+    })
   }
+  if (lives.length === 0) return failures
 
   // Keeps the first answer for a life: a later duplicate must not erase a
   // blank card the gate already refused.
@@ -110,7 +114,6 @@ function inclusionFailures(
   const admission = snapshotDate(admissionDate)
   const floor = admission === null ? null : oneMonthBefore(admission)
 
-  const failures: ErrorDetail[] = []
   for (const taxId of lives) {
     const answer = answered.get(taxId)
     if ((answer?.idCardNumber ?? '').trim() === '') {

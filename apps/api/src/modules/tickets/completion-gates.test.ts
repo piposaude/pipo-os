@@ -370,3 +370,41 @@ describe('completionFailures · the same life answered twice', () => {
     ])
   })
 })
+
+describe('completionFailures · a life whose tax id has no digits', () => {
+  const inclusionOf = (snapshot: unknown) =>
+    subjectOf({ enrollmentType: 'inclusion', enrollmentSnapshot: snapshot })
+
+  it('refuses instead of asking a card of nobody', () => {
+    const subject = inclusionOf({
+      member_type: 'primary',
+      primary: { profile: { tax_id: 'nao informado' } },
+    })
+    expect(named(completionFailures(subject, { members: [] }))).toEqual([
+      'enrollmentSnapshot:unknown_lives',
+    ])
+  })
+
+  it('still answers for the lives it can read, and refuses the one it cannot', () => {
+    const subject = inclusionOf({
+      member_type: 'primary',
+      primary: { profile: { tax_id: '266.348.750-73' } },
+      dependents: [{ profile: { tax_id: '-' } }],
+    })
+    const members = [{ taxId: '26634875073', idCardNumber: 'card', startDate: '2026-04-01' }]
+    expect(named(completionFailures(subject, { members }))).toEqual([
+      'enrollmentSnapshot:unknown_lives',
+    ])
+  })
+
+  it('does not let two unreadable lives collapse into one', () => {
+    const subject = inclusionOf({
+      member_type: 'primary',
+      primary: { profile: { tax_id: 'sem cpf' } },
+      dependents: [{ profile: { tax_id: 'tambem sem' } }],
+    })
+    expect(named(completionFailures(subject, { members: [] }))).toEqual([
+      'enrollmentSnapshot:unknown_lives',
+    ])
+  })
+})
