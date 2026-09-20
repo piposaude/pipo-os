@@ -152,7 +152,11 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
       },
     },
     async (request) => {
-      return service.update(request.params.id, request.body, requireAuthor(request))
+      // Only the priority writes an event, and only the event needs an author:
+      // demanding a `sub` from every PATCH would refuse a session without one a
+      // write it has always had.
+      const author = request.body.priority === undefined ? undefined : requireAuthor(request)
+      return service.update(request.params.id, request.body, author)
     },
   )
 

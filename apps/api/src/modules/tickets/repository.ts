@@ -96,7 +96,9 @@ function toTicket(row: Selectable<Tickets>): Ticket {
 export interface TicketsRepositoryPort {
   findById(id: string): Promise<Ticket | undefined>
   create(data: CreateTicketData): Promise<Ticket>
-  update(id: string, data: UpdateTicketBody, author: Author): Promise<Ticket | undefined>
+  /** `author` comes with the priority and only with it: it signs the event the
+   *  priority change writes, and no other field writes one. */
+  update(id: string, data: UpdateTicketBody, author?: Author): Promise<Ticket | undefined>
   claimOpen(id: string, assigneeId: string): Promise<Ticket | undefined>
   changeStatus(
     id: string,
@@ -409,7 +411,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
     return row ? toTicket(row) : undefined
   }
 
-  async update(id: string, data: UpdateTicketBody, author: Author): Promise<Ticket | undefined> {
+  async update(id: string, data: UpdateTicketBody, author?: Author): Promise<Ticket | undefined> {
     const columns = {
       ...(data.priority !== undefined && { priority: data.priority }),
       ...(data.queueId !== undefined && { queue_id: data.queueId }),
@@ -453,6 +455,10 @@ export class TicketsRepository implements TicketsRepositoryPort {
           .executeTakeFirstOrThrow()
 
         if (data.priority !== current.priority) {
+          // Loud and not `author &&`: skipping the line quietly would lose the
+          // record of who changed it, which is the whole point of writing one.
+          if (!author) throw new Error('Priority changed with no author to sign it')
+
           await insertEvent(
             trx,
             {

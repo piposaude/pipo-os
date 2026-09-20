@@ -58,7 +58,7 @@ export class TicketsService {
     return this.repository.create({ ...data, enrollmentType })
   }
 
-  async update(id: string, data: UpdateTicketBody, author: Author): Promise<Ticket> {
+  async update(id: string, data: UpdateTicketBody, author?: Author): Promise<Ticket> {
     const ticket = await this.repository.update(id, data, author)
     if (!ticket) throw new NotFoundError(`Ticket ${id} not found`)
     return ticket

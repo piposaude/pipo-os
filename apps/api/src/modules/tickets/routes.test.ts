@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
+import { sessionWithoutSub } from '../auth/session.test-helpers.js'
 import { CLOSED_STATUSES } from './schemas.js'
 
 function cookieValue(
@@ -13,6 +14,7 @@ function cookieValue(
 
 const DEV_LOGIN_USER_ID = 'dev@piposaude.com.br'
 const NONEXISTENT_ID = '00000000-0000-4000-8000-000000000099'
+const TICKET_POLICIES = ['admin/allow/administrate/pipodesk/ticket']
 
 const validTicketBody = {
   enrollmentId: '00000000-0000-4000-8000-000000000001',
@@ -34,7 +36,7 @@ describe('tickets routes', () => {
     const loginResponse = await app.inject({
       method: 'POST',
       url: '/api/auth/dev-login',
-      payload: { policies: ['admin/allow/administrate/pipodesk/ticket'] },
+      payload: { policies: TICKET_POLICIES },
     })
     sessionCookie = cookieValue(loginResponse, SESSION_COOKIE_NAME)!
   })
@@ -1069,6 +1071,43 @@ describe('tickets routes', () => {
         body: 'Prioridade removida',
         metadata: { priority: null, previous: 'urgent' },
       })
+    })
+
+    it('still takes a PATCH that names no priority from a session with no sub', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${created.json().id}`,
+        payload: { tags: ['pj_mov'] },
+        cookies: { [SESSION_COOKIE_NAME]: sessionWithoutSub(app, TICKET_POLICIES) },
+      })
+
+      expect(response.statusCode).toBe(200)
+      expect(response.json().tags).toEqual(['pj_mov'])
+    })
+
+    it('refuses to change the priority from a session with no sub to sign it', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${created.json().id}`,
+        payload: { priority: 'urgent' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionWithoutSub(app, TICKET_POLICIES) },
+      })
+
+      expect(response.statusCode).toBe(401)
     })
 
     it('leaves neither the priority nor the event behind when another field fails', async () => {
