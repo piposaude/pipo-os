@@ -553,6 +553,176 @@ describe('queues routes', () => {
     })
   })
 
+  // ---------------------------------------------------------------------------
+  describe('the saved view the Queue carries', () => {
+    /** The tree admits a single root, so everything but the first group hangs
+     *  off one. */
+    const group = async (name: string, parentId?: string): Promise<string> => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { name, ...(parentId !== undefined && { parentId }) },
+      })
+      return response.json().id
+    }
+
+    it('creates a view with its group, owner, sort and grouping and reads them back', async () => {
+      const groupId = await group('POD 5')
+
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: {
+          name: 'Minhas urgentes',
+          groupId,
+          ownerId: DEV_LOGIN_USER_ID,
+          sort: { by: 'createdAt', direction: 'desc' },
+          groupBy: 'company',
+        },
+      })
+
+      expect(created.statusCode).toBe(201)
+      expect(created.json()).toMatchObject({
+        groupId,
+        ownerId: DEV_LOGIN_USER_ID,
+        sort: { by: 'createdAt', direction: 'desc' },
+        groupBy: 'company',
+      })
+
+      const read = await app.inject({
+        method: 'GET',
+        url: `/api/queues/${created.json().id}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(read.json()).toMatchObject({
+        groupId,
+        ownerId: DEV_LOGIN_USER_ID,
+        sort: { by: 'createdAt', direction: 'desc' },
+        groupBy: 'company',
+      })
+    })
+
+    it('starts a team view on the default sort, with no grouping imposed', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { name: 'Livres' },
+      })
+
+      expect(response.json()).toMatchObject({
+        ownerId: null,
+        groupId: null,
+        sort: { by: 'actionDate', direction: 'asc' },
+        groupBy: null,
+      })
+    })
+
+    it('tells a view that imposes a flat list from one that imposes no grouping', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { name: 'Lista plana', groupBy: 'none' },
+      })
+
+      expect(response.json().groupBy).toBe('none')
+    })
+
+    it('returns 400 for a sort field outside the contract', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { name: 'Fila', sort: { by: 'beneficiary', direction: 'asc' } },
+      })
+
+      expect(response.statusCode).toBe(400)
+      expect(response.json().details[0].field).toBe('sort.by')
+    })
+
+    it('returns 400 for a grouping outside the contract', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { name: 'Fila', groupBy: 'carrier' },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+
+    it('returns 422 for a group that does not exist', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { name: 'Fila', groupId: NONEXISTENT_ID },
+      })
+
+      expect(response.statusCode).toBe(422)
+      expect(response.json().details[0].field).toBe('groupId')
+    })
+
+    it('refuses a personal view owned by someone else', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { name: 'A fila da Ana', ownerId: 'ana@pipo.health' },
+      })
+
+      expect(response.statusCode).toBe(403)
+      expect(response.json().error).toBe('ForbiddenError')
+    })
+
+    it('moves a view to another group and changes its sort', async () => {
+      const first = await group('GEBEN')
+      const second = await group('POD 2', first)
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { name: 'Livres', groupId: first },
+      })
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/queues/${created.json().id}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { groupId: second, sort: { by: 'status', direction: 'desc' }, groupBy: 'status' },
+      })
+
+      expect(response.statusCode).toBe(200)
+      expect(response.json()).toMatchObject({
+        groupId: second,
+        sort: { by: 'status', direction: 'desc' },
+        groupBy: 'status',
+      })
+    })
+
+    it('clears the grouping a view imposed', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { name: 'Livres', groupBy: 'status' },
+      })
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/queues/${created.json().id}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { groupBy: null },
+      })
+
+      expect(response.json().groupBy).toBeNull()
+    })
+  })
+
   describe('the structure policy', () => {
     let withoutPolicy: string
     let withWholeProduct: string

@@ -1,4 +1,4 @@
-import { NotFoundError } from '../../shared/errors.js'
+import { ForbiddenError, NotFoundError } from '../../shared/errors.js'
 import type { TicketsRepositoryPort } from '../tickets/repository.js'
 import type { TicketList } from '../tickets/schemas.js'
 import type { QueuesRepositoryPort } from './repository.js'
@@ -11,6 +11,14 @@ import type {
   UpdateQueueBody,
 } from './schemas.js'
 
+/** A personal view belongs to whoever is holding it: naming another owner would
+ *  put a view in someone else's sidebar, which nobody asked for. */
+function assertOwnsIt(ownerId: string | null | undefined, viewerId: string): void {
+  if (ownerId !== undefined && ownerId !== null && ownerId !== viewerId) {
+    throw new ForbiddenError('A personal view belongs to the person creating it')
+  }
+}
+
 export class QueuesService {
   constructor(
     private readonly repository: QueuesRepositoryPort,
@@ -18,6 +26,7 @@ export class QueuesService {
   ) {}
 
   create(data: CreateQueueBody, createdBy: string): Promise<Queue> {
+    assertOwnsIt(data.ownerId, createdBy)
     return this.repository.create(data, createdBy)
   }
 
@@ -33,6 +42,7 @@ export class QueuesService {
   }
 
   async update(id: string, data: UpdateQueueBody, updatedBy: string): Promise<Queue> {
+    assertOwnsIt(data.ownerId, updatedBy)
     const queue = await this.repository.update(id, data, updatedBy)
     if (!queue) throw new NotFoundError(`Queue ${id} not found`)
     return queue
