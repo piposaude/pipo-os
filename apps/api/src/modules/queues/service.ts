@@ -1,6 +1,8 @@
 import { ForbiddenError, NotFoundError } from '../../shared/errors.js'
+import type { GroupMembersRepositoryPort, GroupsRepositoryPort } from '../groups/repository.js'
 import type { TicketsRepositoryPort } from '../tickets/repository.js'
 import type { TicketList } from '../tickets/schemas.js'
+import { editRefusal, type Viewer, type ViewOwnership } from './permissions.js'
 import type { QueuesRepositoryPort } from './repository.js'
 import type {
   CreateQueueBody,
@@ -23,11 +25,17 @@ export class QueuesService {
   constructor(
     private readonly repository: QueuesRepositoryPort,
     private readonly ticketsRepository: TicketsRepositoryPort,
+    private readonly groupsRepository: GroupsRepositoryPort,
+    private readonly membersRepository: GroupMembersRepositoryPort,
   ) {}
 
-  create(data: CreateQueueBody, createdBy: string): Promise<Queue> {
-    assertOwnsIt(data.ownerId, createdBy)
-    return this.repository.create(data, createdBy)
+  async create(data: CreateQueueBody, viewer: Viewer): Promise<Queue> {
+    assertOwnsIt(data.ownerId, viewer.id)
+    await this.assertMayEdit(
+      { ownerId: data.ownerId ?? null, groupId: data.groupId ?? null },
+      viewer,
+    )
+    return this.repository.create(data, viewer.id)
   }
 
   async get(id: string): Promise<Queue> {
@@ -41,16 +49,48 @@ export class QueuesService {
     return { data, total, page: query.page, pageSize: query.pageSize }
   }
 
-  async update(id: string, data: UpdateQueueBody, updatedBy: string): Promise<Queue> {
-    assertOwnsIt(data.ownerId, updatedBy)
-    const queue = await this.repository.update(id, data, updatedBy)
+  async update(id: string, data: UpdateQueueBody, viewer: Viewer): Promise<Queue> {
+    assertOwnsIt(data.ownerId, viewer.id)
+    const current = await this.get(id)
+    await this.assertMayEdit(current, viewer)
+
+    // The view it becomes is checked too, or handing a personal view to the
+    // team would be a way around the rule the team view answers to.
+    const moved = {
+      ownerId: data.ownerId !== undefined ? data.ownerId : current.ownerId,
+      groupId: data.groupId !== undefined ? data.groupId : current.groupId,
+    }
+    if (moved.ownerId !== current.ownerId || moved.groupId !== current.groupId) {
+      await this.assertMayEdit(moved, viewer)
+    }
+
+    const queue = await this.repository.update(id, data, viewer.id)
     if (!queue) throw new NotFoundError(`Queue ${id} not found`)
     return queue
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, viewer: Viewer): Promise<void> {
+    await this.assertMayEdit(await this.get(id), viewer)
     const deleted = await this.repository.delete(id)
     if (!deleted) throw new NotFoundError(`Queue ${id} not found`)
+  }
+
+  private async assertMayEdit(view: ViewOwnership, viewer: Viewer): Promise<void> {
+    // Neither read is needed when the structure policy already answers, and the
+    // personal view answers by its owner alone.
+    if (viewer.structureAdmin || view.ownerId !== null) {
+      const refusal = editRefusal(view, viewer, [], [])
+      if (refusal) throw new ForbiddenError(refusal)
+      return
+    }
+
+    const [nodes, memberships] = await Promise.all([
+      this.groupsRepository.findNodes(),
+      this.membersRepository.listByUser(viewer.id),
+    ])
+
+    const refusal = editRefusal(view, viewer, nodes, memberships)
+    if (refusal) throw new ForbiddenError(refusal)
   }
 
   async listTickets(queueId: string, query: ListQueueTicketsQuery): Promise<TicketList> {

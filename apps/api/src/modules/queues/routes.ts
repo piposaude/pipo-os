@@ -1,9 +1,9 @@
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { z } from 'zod'
-import { requireUserId } from '../auth/authenticate.js'
+import { requireUser, requireUserId } from '../auth/authenticate.js'
 import { errorResponseSchema } from '../../shared/schemas.js'
-import { STRUCTURE_POLICY, TICKET_POLICY } from '../auth/policy.js'
+import { isAuthorized, STRUCTURE_POLICY, TICKET_POLICY } from '../auth/policy.js'
 import { ticketListSchema } from '../tickets/schemas.js'
 import {
   createQueueBodySchema,
@@ -14,7 +14,19 @@ import {
   queueSchema,
   updateQueueBodySchema,
 } from './schemas.js'
+import type { Viewer } from './permissions.js'
 import type { QueuesService } from './service.js'
+
+/** Creating a personal view is an analyst's action, so the ticket policy opens
+ *  these routes too; who may touch which view is the service's rule. */
+const CRUD_POLICY = [TICKET_POLICY, STRUCTURE_POLICY]
+
+/** The structure policy is the key to the whole tree; the role inside a group
+ *  is what the service reads for everyone else. */
+const viewerOf = (request: FastifyRequest): Viewer => ({
+  id: requireUserId(request),
+  structureAdmin: isAuthorized(requireUser(request).policies, [STRUCTURE_POLICY]),
+})
 
 export function registerQueueRoutes(app: FastifyInstance, service: QueuesService): void {
   const server = app.withTypeProvider<ZodTypeProvider>()
@@ -22,7 +34,7 @@ export function registerQueueRoutes(app: FastifyInstance, service: QueuesService
   server.post(
     '/api/queues',
     {
-      config: { policy: STRUCTURE_POLICY },
+      config: { policy: CRUD_POLICY },
       schema: {
         body: createQueueBodySchema,
         response: {
@@ -36,8 +48,7 @@ export function registerQueueRoutes(app: FastifyInstance, service: QueuesService
       },
     },
     async (request, reply) => {
-      const createdBy = requireUserId(request)
-      const queue = await service.create(request.body, createdBy)
+      const queue = await service.create(request.body, viewerOf(request))
       reply.status(201)
       return queue
     },
@@ -46,7 +57,7 @@ export function registerQueueRoutes(app: FastifyInstance, service: QueuesService
   server.get(
     '/api/queues',
     {
-      config: { policy: STRUCTURE_POLICY },
+      config: { policy: CRUD_POLICY },
       schema: {
         querystring: listQueuesQuerySchema,
         response: {
@@ -65,7 +76,7 @@ export function registerQueueRoutes(app: FastifyInstance, service: QueuesService
   server.get(
     '/api/queues/:id',
     {
-      config: { policy: STRUCTURE_POLICY },
+      config: { policy: CRUD_POLICY },
       schema: {
         params: queueParamsSchema,
         response: {
@@ -85,7 +96,7 @@ export function registerQueueRoutes(app: FastifyInstance, service: QueuesService
   server.patch(
     '/api/queues/:id',
     {
-      config: { policy: STRUCTURE_POLICY },
+      config: { policy: CRUD_POLICY },
       schema: {
         params: queueParamsSchema,
         body: updateQueueBodySchema,
@@ -101,15 +112,14 @@ export function registerQueueRoutes(app: FastifyInstance, service: QueuesService
       },
     },
     async (request) => {
-      const updatedBy = requireUserId(request)
-      return service.update(request.params.id, request.body, updatedBy)
+      return service.update(request.params.id, request.body, viewerOf(request))
     },
   )
 
   server.delete(
     '/api/queues/:id',
     {
-      config: { policy: STRUCTURE_POLICY },
+      config: { policy: CRUD_POLICY },
       schema: {
         params: queueParamsSchema,
         response: {
@@ -122,7 +132,7 @@ export function registerQueueRoutes(app: FastifyInstance, service: QueuesService
       },
     },
     async (request, reply) => {
-      await service.delete(request.params.id)
+      await service.delete(request.params.id, viewerOf(request))
       reply.status(204)
       return null
     },

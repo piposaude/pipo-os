@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify'
+import { GroupMembersRepository, GroupsRepository } from '../groups/repository.js'
 import { TicketsRepository } from '../tickets/repository.js'
 import { QueuesRepository } from './repository.js'
 import { registerQueueRoutes } from './routes.js'
@@ -7,6 +8,11 @@ import { QueuesService } from './service.js'
 export default async function queuesModule(app: FastifyInstance): Promise<void> {
   const repository = new QueuesRepository(app.db)
   const ticketsRepository = new TicketsRepository(app.db)
-  const service = new QueuesService(repository, ticketsRepository)
+  const service = new QueuesService(
+    repository,
+    ticketsRepository,
+    new GroupsRepository(app.db),
+    new GroupMembersRepository(app.db),
+  )
   registerQueueRoutes(app, service)
 }

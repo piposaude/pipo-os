@@ -1,7 +1,8 @@
 import type { FastifyInstance } from 'fastify'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
+import { sessionCookieFor } from '../auth/session.test-helpers.js'
 
 const DEV_LOGIN_USER_ID = 'dev@piposaude.com.br'
 const NONEXISTENT_ID = '00000000-0000-4000-8000-000000000099'
@@ -723,6 +724,210 @@ describe('queues routes', () => {
     })
   })
 
+  // ---------------------------------------------------------------------------
+  describe('who may edit a saved view', () => {
+    const ANALYST = 'ana@pipo.health'
+    const POD_LEAD = 'carla@pipo.health'
+    const GEBEN_LEAD = 'bruna@pipo.health'
+
+    let analyst: string
+    let podLead: string
+    let gebenLead: string
+    let geben: string
+    let pod: string
+
+    const login = (email: string): string =>
+      sessionCookieFor(app, email, ['admin/allow/administrate/pipodesk/ticket'])
+
+    const member = async (groupId: string, userId: string, role: string): Promise<void> => {
+      await app.inject({
+        method: 'POST',
+        url: `/api/groups/${groupId}/members`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { userId, role },
+      })
+    }
+
+    const queue = async (
+      payload: Record<string, unknown>,
+      cookie = sessionCookie,
+    ): Promise<string> => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: cookie },
+        payload,
+      })
+      return response.json().id
+    }
+
+    beforeAll(() => {
+      analyst = login(ANALYST)
+      podLead = login(POD_LEAD)
+      gebenLead = login(GEBEN_LEAD)
+    })
+
+    beforeEach(async () => {
+      const root = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { name: 'GEBEN' },
+      })
+      geben = root.json().id
+      const child = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { name: 'POD 5', parentId: geben },
+      })
+      pod = child.json().id
+
+      await member(pod, ANALYST, 'member')
+      await member(pod, POD_LEAD, 'admin')
+      await member(geben, GEBEN_LEAD, 'admin')
+    })
+
+    it('lets an analyst create a personal view with the ticket policy alone', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: analyst },
+        payload: { name: 'Minhas', groupId: pod, ownerId: ANALYST },
+      })
+
+      expect(response.statusCode).toBe(201)
+      expect(response.json().ownerId).toBe(ANALYST)
+    })
+
+    it('refuses an analyst creating a team view in their pod', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: analyst },
+        payload: { name: 'Livres', groupId: pod },
+      })
+
+      expect(response.statusCode).toBe(403)
+      expect(response.json().error).toBe('ForbiddenError')
+    })
+
+    it('refuses an analyst editing the team view of their pod', async () => {
+      const id = await queue({ name: 'Livres', groupId: pod })
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/queues/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: analyst },
+        payload: { name: 'Livres (minha versão)' },
+      })
+
+      expect(response.statusCode).toBe(403)
+    })
+
+    it('lets an analyst edit their own personal view', async () => {
+      const id = await queue({ name: 'Minhas', groupId: pod, ownerId: ANALYST }, analyst)
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/queues/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: analyst },
+        payload: { name: 'Minhas urgentes' },
+      })
+
+      expect(response.statusCode).toBe(200)
+    })
+
+    it('refuses an analyst editing the personal view of someone else', async () => {
+      const id = await queue({ name: 'Da Carla', groupId: pod, ownerId: POD_LEAD }, podLead)
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/queues/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: analyst },
+        payload: { name: 'Minha agora' },
+      })
+
+      expect(response.statusCode).toBe(403)
+    })
+
+    it('lets the coordination of the pod edit its team view', async () => {
+      const id = await queue({ name: 'Livres', groupId: pod })
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/queues/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: podLead },
+        payload: { sort: { by: 'updatedAt', direction: 'desc' } },
+      })
+
+      expect(response.statusCode).toBe(200)
+    })
+
+    it('lets the coordination of an ancestor edit the view of a child pod', async () => {
+      const id = await queue({ name: 'Livres', groupId: pod })
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/queues/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: gebenLead },
+        payload: { name: 'Livres do POD 5' },
+      })
+
+      expect(response.statusCode).toBe(200)
+    })
+
+    it('refuses the coordination of a pod editing the view of its parent', async () => {
+      const id = await queue({ name: 'Todos', groupId: geben })
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/queues/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: podLead },
+        payload: { name: 'Todos os meus' },
+      })
+
+      expect(response.statusCode).toBe(403)
+    })
+
+    it('refuses an analyst deleting the team view of their pod', async () => {
+      const id = await queue({ name: 'Livres', groupId: pod })
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/queues/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: analyst },
+      })
+
+      expect(response.statusCode).toBe(403)
+    })
+
+    it('lets the owner delete their personal view', async () => {
+      const id = await queue({ name: 'Minhas', groupId: pod, ownerId: ANALYST }, analyst)
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/queues/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: analyst },
+      })
+
+      expect(response.statusCode).toBe(204)
+    })
+
+    it('refuses an analyst handing their personal view to the team', async () => {
+      const id = await queue({ name: 'Minhas', groupId: pod, ownerId: ANALYST }, analyst)
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/queues/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: analyst },
+        payload: { ownerId: null },
+      })
+
+      expect(response.statusCode).toBe(403)
+    })
+  })
+
   describe('the structure policy', () => {
     let withoutPolicy: string
     let withWholeProduct: string
@@ -796,14 +1001,14 @@ describe('queues routes', () => {
       expect(response.json().error).toBe('ForbiddenError')
     })
 
-    it('answers 403 for a session holding only the ticket policy', async () => {
+    it('opens the CRUD routes for the ticket policy, which is what an analyst holds', async () => {
       const response = await app.inject({
         method: 'GET',
         url: '/api/queues',
         cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
       })
 
-      expect(response.statusCode).toBe(403)
+      expect(response.statusCode).toBe(200)
     })
   })
 })
