@@ -790,6 +790,7 @@ export interface paths {
             parameters: {
                 query?: {
                     name?: string;
+                    favorite?: string;
                     page?: number;
                     pageSize?: number;
                 };
@@ -907,6 +908,70 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/queues/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    ids?: string[];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["QueueCounts"];
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1118,6 +1183,132 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/api/queues/{id}/favorite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/queues/{id}/tickets": {
@@ -2161,7 +2352,12 @@ export interface components {
         };
         CreateQueueBodyInput: {
             name: string;
+            ownerId?: string;
+            /** Format: uuid */
+            groupId?: string;
             filters?: components["schemas"]["TicketFilterInput"];
+            sort?: components["schemas"]["QueueSortInput"];
+            groupBy?: components["schemas"]["QueueGroupByInput"];
         };
         CreateTicketBodyInput: {
             /** Format: uuid */
@@ -2294,7 +2490,12 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: string;
+            ownerId: string | null;
+            groupId: string | null;
             filters: components["schemas"]["TicketFilter"] | null;
+            sort: components["schemas"]["QueueSort"];
+            groupBy: components["schemas"]["QueueGroupBy"] | null;
+            favorite: boolean;
             createdBy: string;
             updatedBy: string | null;
             /** Format: date-time */
@@ -2302,11 +2503,34 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        QueueCounts: {
+            data: {
+                /** Format: uuid */
+                queueId: string;
+                total: number;
+            }[];
+        };
+        /** @enum {string} */
+        QueueGroupBy: "status" | "company" | "product" | "assignee" | "none";
+        /** @enum {string} */
+        QueueGroupByInput: "status" | "company" | "product" | "assignee" | "none";
         QueueList: {
             data: components["schemas"]["Queue"][];
             total: number;
             page: number;
             pageSize: number;
+        };
+        QueueSort: {
+            /** @enum {string} */
+            by: "actionDate" | "createdAt" | "updatedAt" | "company" | "status";
+            /** @enum {string} */
+            direction: "asc" | "desc";
+        };
+        QueueSortInput: {
+            /** @enum {string} */
+            by: "actionDate" | "createdAt" | "updatedAt" | "company" | "status";
+            /** @enum {string} */
+            direction: "asc" | "desc";
         };
         /** @enum {string} */
         Relationship: "holder" | "dependent" | "family-group";
@@ -2550,7 +2774,11 @@ export interface components {
         };
         UpdateQueueBodyInput: {
             name?: string;
+            ownerId?: string | null;
+            groupId?: string | null;
             filters?: components["schemas"]["TicketFilterInput"];
+            sort?: components["schemas"]["QueueSortInput"];
+            groupBy?: components["schemas"]["QueueGroupByInput"] | null;
         };
         UpdateTicketBodyInput: {
             priority?: components["schemas"]["TicketPriorityInput"] | null;

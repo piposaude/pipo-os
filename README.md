@@ -139,11 +139,13 @@ As rotas de `/api/auth/*` estão em [Autenticação](#autenticação). Contrato 
 
 **Filas**
 
-| Método                 | Rota                      | O que faz                      |
-| ---------------------- | ------------------------- | ------------------------------ |
-| `GET` `POST`           | `/api/queues`             | Lista e cria filas             |
-| `GET` `PATCH` `DELETE` | `/api/queues/:id`         | Lê, atualiza e remove uma fila |
-| `GET`                  | `/api/queues/:id/tickets` | Os chamados de uma fila        |
+| Método                 | Rota                       | O que faz                                                                         |
+| ---------------------- | -------------------------- | --------------------------------------------------------------------------------- |
+| `GET` `POST`           | `/api/queues`              | Lista e cria visões salvas. `?favorite=true` devolve só as que o viewer favoritou |
+| `GET` `PATCH` `DELETE` | `/api/queues/:id`          | Lê, atualiza e remove uma visão                                                   |
+| `POST` `DELETE`        | `/api/queues/:id/favorite` | Favorita e desfavorita, idempotentes, para quem chamou                            |
+| `GET`                  | `/api/queues/counts`       | `?ids=` repetido, até 50: quantos chamados cada visão seleciona                   |
+| `GET`                  | `/api/queues/:id/tickets`  | Os chamados que o filtro da visão seleciona                                       |
 
 #### O que é auditado, e o que não é
 
@@ -152,6 +154,16 @@ Só a mudança de **status** deixa rastro: `PATCH /api/tickets/:id/status` grava
 Os cinco campos do `PATCH /api/tickets/:id` — `assigneeId`, `queueId`, `tags`, `forceCompletion` e `parentTicketId` — e o `POST /api/tickets/:id/claim` fazem `UPDATE` e nada mais. Depois de reatribuir um chamado, o banco não sabe quem atribuiu, quando, nem para quem estava antes; e `forceCompletion`, que é o que permite fechar chamado furando validação, também não tem autor. `ticket_group_members` guarda só o `active` de quem saiu de um pod, sem quem nem quando.
 
 O mecanismo para consertar isso já existe — `ticket_comments` tem `kind`, `event_type` e `metadata`, e o `GET /api/tickets/:id/timeline` já lê evento automático —, mas nada escreve nele. Está em [ACE-247](https://linear.app/piposaudecom/issue/ACE-247) (PD-047).
+
+#### Filas: a visão salva, não a caixa
+
+Fila no Pipodesk é um **filtro salvo**, não um lugar onde o chamado entra. A linha em `ticket_queues` guarda o `TicketFilter` inteiro, o grupo onde a visão mora (`groupId`), quem é o dono (`ownerId`), a ordenação (`sort`) e o agrupamento (`groupBy`). `ownerId` vazio é a visão do time; preenchido, é pessoal — e é o único jeito de dizer isso, porque uma coluna `visibility` ao lado permitiria as duas se contradizerem. `groupBy` nulo é "a visão não impõe agrupamento", que não é `'none'`, "a visão impõe lista plana".
+
+`GET /api/queues/:id/tickets` resolve esse filtro em SQL com o `@me` apontando para quem chamou, então uma visão compartilhada mostra a cada pessoa os chamados dela. A coluna `tickets.queue_id` continua existindo, com FK `ON DELETE SET NULL`, mas **não** é mais o que a rota lê: era o modelo antigo, fila como caixa, em que um chamado fora do filtro aparecia só por ter a coluna preenchida.
+
+O vocabulário de `sort` e `groupBy` vive em `contract/ticket-queue-view.json` e prende os dois lados — `view-vocabulary.ts` na API e o `queue-view-contract.test.ts` no web —, além dos `CHECK`s da migration `0027`. A ordenação por `status` usa a ordem de triagem que a tela mostra (de quem é a bola), não a alfabética da coluna; nulos afundam em qualquer direção, como no web.
+
+**Quem edita o quê.** Visão pessoal, só o dono. Visão do time, quem é `admin` do grupo dela ou de um ancestral — a mesma regra do `canEditQueue` do frontend, agora também no servidor. Criar visão com `ownerId` de outra pessoa responde `403`, e passar a própria visão pessoal para o time exige poder editar a visão do time resultante. Uma visão do time **sem grupo** responde à policy de estrutura sozinha: não há árvore em que procurar coordenação.
 
 #### Grupos: a hierarquia e quem está nela
 
@@ -326,12 +338,13 @@ Essas garantias são cobertas por testes em `apps/api/src/modules/auth/dev-login
 
 Autenticar responde quem é a pessoa; a **policy** responde o que ela pode fazer. As policies vêm dentro do JWT do auth-service e são declaradas por rota, em `config.policy`, no formato da Pipo — `{context}/{effect}/{action}/{domain}/{specific}`, com `admin`, `allow`, `administrate` e `*` como padrões das partes omitidas.
 
-| Rotas                                                                                                           | Policy exigida                                |
-| --------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| `/api/tickets/**`, `/api/tickets/:id/comments`, `/api/tickets/:id/timeline`, `/api/queues/:id/tickets`          | `admin/allow/administrate/pipodesk/ticket`    |
-| `/api/groups/**` e `/api/queues/**` (estrutura: pods, membros e filas salvas), exceto `/api/queues/:id/tickets` | `admin/allow/administrate/pipodesk/structure` |
-| `/api/auth/**`                                                                                                  | nenhuma (identidade, não recurso)             |
-| `GET /api/users`                                                                                                | `pipodesk/ticket` **ou** `pipodesk/structure` |
+| Rotas                                                                                                  | Policy exigida                                |
+| ------------------------------------------------------------------------------------------------------ | --------------------------------------------- |
+| `/api/tickets/**`, `/api/tickets/:id/comments`, `/api/tickets/:id/timeline`, `/api/queues/:id/tickets` | `admin/allow/administrate/pipodesk/ticket`    |
+| `/api/groups/**` (estrutura: pods e membros)                                                           | `admin/allow/administrate/pipodesk/structure` |
+| `/api/queues/**`, exceto `/api/queues/:id/tickets`                                                     | `pipodesk/ticket` **ou** `pipodesk/structure` |
+| `/api/auth/**`                                                                                         | nenhuma (identidade, não recurso)             |
+| `GET /api/users`                                                                                       | `pipodesk/ticket` **ou** `pipodesk/structure` |
 
 **Por que o domínio é `pipodesk` e não `ticket`.** `admin/allow/administrate/ticket/*` já existe e pertence a outro serviço: é o papel de admin do `ticket-service` (squad opex). Reusar a string acoplaria os dois — analista do Pipodesk viraria admin lá, e o admin de lá entraria aqui. O domínio próprio também deixa o específico livre para separar as duas famílias de rota: `ticket` para chamado e `structure` para grupos e filas, com `admin/allow/administrate/pipodesk/*` cobrindo as duas. O `authorize.test.ts` tem um caso que recusa a policy do `ticket-service` com 403, para a colisão não voltar por descuido.
 
@@ -377,7 +390,9 @@ Conceder **não** basta: a pessoa precisa refazer o login no Pipodesk. Diferente
 
 `GET /api/auth/me` devolve as policies da sessão, que é a forma mais rápida de conferir depois do relogin — e, se ele não foi feito, a forma mais rápida de descobrir que a sessão está com a lista antiga.
 
-**Por que uma policy só para grupos e filas.** Pod, membro de pod e fila salva são a mesma superfície de administração — quem redesenha a hierarquia mexe nas duas —, então separar em `group` e `queue` custaria duas concessões por pessoa para distinguir papéis que a V0 não tem. A leitura da estrutura exige a mesma policy da escrita pelo mesmo motivo: a árvore de pods diz quem atende o quê, e isso não é público dentro da Pipo. O papel do membro (`admin` ou `member`) já viaja no contrato, mas a API não filtra por ele: `canEditStructure` é uma segunda camada, no frontend, sobre esta. A exceção é `GET /api/queues/:id/tickets`: mora no módulo de filas mas devolve `ticketListSchema`, então continua exigindo a policy de chamado — sem isso, ela seria a porta lateral para a mesma lista.
+**Por que uma policy só para grupos.** Pod e membro de pod são a mesma superfície de administração — quem redesenha a hierarquia mexe nas duas —, então separar em `group` e `member` custaria duas concessões por pessoa para distinguir papéis que a V0 não tem. A leitura da estrutura exige a mesma policy da escrita pelo mesmo motivo: a árvore de pods diz quem atende o quê, e isso não é público dentro da Pipo.
+
+**Por que as filas aceitam as duas.** Criar uma visão pessoal é ação de analista, e analista carrega a policy de chamado. A porta ficou aberta para as duas, e quem pode mexer em qual visão passou a ser decidido pela regra de dono e coordenação acima — não pela policy. Quem tem só `pipodesk/ticket` entra nas rotas e fica limitado às próprias visões pessoais. O papel do membro (`admin` ou `member`) já viajava no contrato e agora é lido também no servidor; `canEditQueue` no frontend é a segunda camada, sobre esta. `GET /api/queues/:id/tickets` segue exigindo a policy de chamado sozinha: mora no módulo de filas mas devolve `ticketListSchema`, e sem isso seria a porta lateral para a mesma lista.
 
 **A policy é fronteira, a carteira é filtro.** Ter a policy de chamado diz que a identidade opera chamados — não _quais_. Restringir por empresa (a carteira do analista) é filtro de dados e ainda não existe: as rotas de listagem carregam o `TODO` correspondente e o trabalho está no ACE-147, que depende do módulo de usuários.
 
