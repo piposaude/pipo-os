@@ -212,3 +212,41 @@ export function snapshotString(parent: string[], keys: string[]): RawBuilder<str
   })
   return sql<string | null>`coalesce(${sql.join(candidates, sql`, `)})`
 }
+
+export interface CompletionContext {
+  memberTaxIds: string[]
+  admissionDate: string | null
+}
+
+const taxIdOf = (member: unknown): string | null =>
+  isRecord(member) ? readString(member, ['profile', 'tax-id']) : null
+
+/** Which lives the completion answers for, in the EI's published order
+ *  (`allMemberTaxIDs`, processor/helpers.go) — the order the screen draws. */
+export function completionContextOf(snapshot: unknown): CompletionContext {
+  if (!isRecord(snapshot)) return { memberTaxIds: [], admissionDate: null }
+
+  const primary = readPath(snapshot, ['primary'])
+  const admissionDate = isRecord(primary)
+    ? readString(primary, ['employment', 'admission-date'])
+    : null
+
+  const dependents = readPath(snapshot, ['dependents'])
+  const list = Array.isArray(dependents) ? dependents : []
+
+  const memberType = readString(snapshot, ['member-type'], ['primary', 'member-type'])
+  // An empty list falls through to the holder, as in the EI: a dependent
+  // movement with nothing to point at still owes a card for someone.
+  if (memberType?.toLowerCase() === 'dependent' && list.length > 0) {
+    const memberId = readString(snapshot, ['member-id'])
+    const pointed =
+      memberId === null
+        ? undefined
+        : list.find((member) => isRecord(member) && readString(member, ['member-id']) === memberId)
+    const taxId = taxIdOf(pointed ?? list[0])
+    return { memberTaxIds: taxId === null ? [] : [taxId], admissionDate }
+  }
+
+  const taxIds = [primary, ...list].map(taxIdOf)
+  return { memberTaxIds: taxIds.filter((taxId) => taxId !== null), admissionDate }
+}
