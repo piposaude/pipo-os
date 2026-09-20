@@ -1,6 +1,3 @@
-/** Pure by contract: the block and the movement arrive as arguments, so
- *  nothing here may read the database or the request. */
-
 import type { ErrorDetail } from '../../shared/errors.js'
 import { completionContextOf } from './enrollment-snapshot.js'
 import type { CanonicalEnrollmentType } from './enrollment-type.js'
@@ -41,20 +38,14 @@ const EXEMPT: ReadonlySet<CanonicalEnrollmentType> = new Set([
   'combined_change',
 ])
 
-/** The round trip is what refuses `2026-02-31`: the shape alone accepts any
- *  two digits, and a rolled-over date would close the ticket on a lie. */
 function isCompletionDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
   const parsed = new Date(`${value}T00:00:00Z`)
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(value)
 }
 
-/** The join key of this module: the snapshot writes the CPF punctuated and the
- *  body writes it bare, so only the digits can decide that it is the same life. */
 const digitsOf = (taxId: string): string => taxId.replace(/\D/g, '')
 
-/** The EI writes the admission as a timestamp as often as a date
- *  (`formatDateDMY`), and one we cannot read must not refuse a completion. */
 function snapshotDate(written: string | null): string | null {
   const value = written?.trim().slice(0, 10) ?? ''
   return isCompletionDate(value) ? value : null
@@ -75,8 +66,6 @@ function dateFailure(
   return null
 }
 
-/** The overflow is not clamped, as in the EI's `AddDate(0, -1, 0)`: one month
- *  before 31/03 is 03/03, not 28/02. */
 function oneMonthBefore(date: string): string {
   const floor = new Date(`${date}T00:00:00Z`)
   floor.setUTCMonth(floor.getUTCMonth() - 1)
@@ -92,8 +81,6 @@ function inclusionFailures(
   const lives = [...new Set(digits)].filter((taxId) => taxId !== '')
 
   const failures: ErrorDetail[] = []
-  // A life with no digits cannot be named in a failure, and two of them would
-  // collapse into one — so it is refused here, not asked for a card.
   if (lives.length === 0 || digits.some((taxId) => taxId === '')) {
     failures.push({
       field: 'enrollmentSnapshot',
@@ -103,8 +90,6 @@ function inclusionFailures(
   }
   if (lives.length === 0) return failures
 
-  // Keeps the first answer for a life: a later duplicate must not erase a
-  // blank card the gate already refused.
   const answered = new Map<string, CompletionMember>()
   for (const member of members) {
     const taxId = digitsOf(member.taxId)
@@ -161,7 +146,6 @@ export function completionFailures(
 
   const failures: ErrorDetail[] = []
 
-  // Never returns early: every failure travels in the same answer.
   if (!COMPLETABLE_FROM.has(subject.status)) {
     failures.push({
       field: 'status',

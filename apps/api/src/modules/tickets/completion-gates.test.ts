@@ -257,8 +257,6 @@ describe('completionFailures · gate 3, inclusion', () => {
     ])
   })
 
-  /** Deliberately more permissive than the EI, and only here: the MecSAS rule
-   *  is the PD-031d, and this breaks the day it lands. */
   it('completes a PJ inclusion at sulamerica without the carrier company code', () => {
     const subject = subjectOf({
       enrollmentType: 'inclusion',
@@ -326,8 +324,6 @@ describe('completionFailures · the tax id is a join key between two producers',
     ).toEqual(['members[111].startDate:before_admission'])
   })
 
-  /** Chosen, not overlooked: an admission we cannot read must not refuse a
-   *  completion the analyst answered correctly. */
   it('drops the admission rule when the snapshot date is unreadable', () => {
     const members = [{ taxId: '111', idCardNumber: 'card', startDate: '2020-01-01' }]
     expect(completionFailures(inclusionOf('111', 'ontem'), { members })).toEqual([])
