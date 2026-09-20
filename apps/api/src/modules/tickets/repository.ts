@@ -453,8 +453,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
           .executeTakeFirstOrThrow()
 
         if (data.priority !== current.priority) {
-          // Loud and not `author &&`: skipping the line quietly would lose the
-          // record of who changed it, which is the whole point of writing one.
+          // Loud and not `author &&`: a line skipped quietly loses who changed it.
           if (!author) throw new Error('Priority changed with no author to sign it')
 
           await insertEvent(
