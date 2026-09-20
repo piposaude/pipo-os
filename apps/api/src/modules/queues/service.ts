@@ -122,8 +122,14 @@ export class QueuesService {
     const filters = new Map(queues.map((queue) => [queue.id, queue.filters ?? {}]))
     const totals = await this.ticketsRepository.countByFilters(filters, viewerId, window, today)
 
+    // In the order asked for, which the sidebar renders in: a SELECT without
+    // ORDER BY answers in whatever order the heap happens to hold.
+    const byId = new Map(queues.map((queue) => [queue.id, queue]))
+
     return {
-      data: queues.map((queue) => ({ queueId: queue.id, total: totals.get(queue.id) ?? 0 })),
+      data: ids
+        .filter((id) => byId.has(id))
+        .map((id) => ({ queueId: id, total: totals.get(id) ?? 0 })),
     }
   }
 

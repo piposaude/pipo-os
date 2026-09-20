@@ -226,7 +226,6 @@ export class TicketsRepository implements TicketsRepositoryPort {
     return { data: [], total: Number(count) }
   }
 
-  /** Three values have no column yet, so they are dug out of the jsonb here. */
   async findByFilter(
     { filter, sort, window, today, page, pageSize }: SavedViewQuery,
     viewerId: string,
@@ -245,7 +244,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
 
     if (rows.length > 0) {
       return {
-        data: rows.map((row) => toTicket(row as unknown as Selectable<Tickets>)),
+        data: rows.map((row) => toTicket(row)),
         total: Number(rows[0].total_count),
       }
     }
@@ -293,6 +292,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
     )
   }
 
+  /** Three values have no column yet, so they are dug out of the jsonb here. */
   async findRows(
     query: TicketRowsQuery,
     viewerId: string,

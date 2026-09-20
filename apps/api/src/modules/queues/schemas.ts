@@ -80,10 +80,11 @@ export const queueWindowSchema = z.enum(['awake', 'sleeping', 'all']).default('a
  *  is the sidebar's, which never shows fifty views at once. */
 export const queueCountsQuerySchema = z.object({
   window: queueWindowSchema,
-  ids: z.preprocess(
-    (raw) => (raw === undefined ? undefined : Array.isArray(raw) ? raw : [raw]),
-    z.array(z.uuid()).min(1).max(50),
-  ),
+  /** A union and not a preprocess: the exporter describes this one, so `ids`
+   *  lands in the published contract as the required parameter it is. */
+  ids: z
+    .union([z.array(z.uuid()).min(1).max(50), z.uuid().transform((id) => [id])])
+    .describe('Repetido: ?ids=a&ids=b'),
 })
 
 export const queueCountsSchema = z

@@ -1261,6 +1261,18 @@ describe('queues routes', () => {
       expect(await counts([id])).toEqual({ data: [{ queueId: id, total: listed.json().total }] })
     })
 
+    it('answers in the order the ids were asked for', async () => {
+      const first = await view('Primeira')
+      const second = await view('Segunda')
+
+      const asked = await counts([second, first])
+
+      expect((asked as { data: { queueId: string }[] }).data.map((row) => row.queueId)).toEqual([
+        second,
+        first,
+      ])
+    })
+
     it('counts the same window the queue shows', async () => {
       const id = await view('Todos')
       await ticket('00000000-0000-4000-8000-000000000061')

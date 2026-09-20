@@ -923,9 +923,10 @@ export interface paths {
         };
         get: {
             parameters: {
-                query?: {
+                query: {
                     window?: "awake" | "sleeping" | "all";
-                    ids?: string[];
+                    /** @description Repetido: ?ids=a&ids=b */
+                    ids: string[] | string;
                 };
                 header?: never;
                 path?: never;
