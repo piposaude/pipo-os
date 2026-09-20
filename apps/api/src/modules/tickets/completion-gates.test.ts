@@ -98,6 +98,9 @@ describe('completionFailures · gate 3, plan change', () => {
 
   it('demands the new effective date', () => {
     expect(named(completionFailures(planChange, undefined))).toEqual(['effectiveDate:required'])
+  })
+
+  it('refuses a new effective date written as DD/MM/YYYY', () => {
     expect(named(completionFailures(planChange, { effectiveDate: '01/05/2026' }))).toEqual([
       'effectiveDate:invalid',
     ])
@@ -285,6 +288,85 @@ describe('completionFailures · gate 3, inclusion', () => {
       'status:invalid_status',
       'members[111].idCardNumber:required',
       'members[222].idCardNumber:required',
+    ])
+  })
+})
+
+describe('completionFailures · the tax id is a join key between two producers', () => {
+  const snapshotOf = (taxId: string, admissionDate?: string) => ({
+    member_type: 'primary',
+    primary: {
+      profile: { tax_id: taxId },
+      ...(admissionDate ? { employment: { admission_date: admissionDate } } : {}),
+    },
+  })
+
+  const inclusionOf = (taxId: string, admissionDate?: string) =>
+    subjectOf({
+      enrollmentType: 'inclusion',
+      enrollmentSnapshot: snapshotOf(taxId, admissionDate),
+    })
+
+  it('matches the punctuated tax id of the snapshot with the bare one of the body', () => {
+    const members = [{ taxId: '26634875073', idCardNumber: 'card', startDate: '2026-04-01' }]
+    expect(completionFailures(inclusionOf('266.348.750-73'), { members })).toEqual([])
+  })
+
+  it('names the life by its digits, whatever the snapshot punctuation was', () => {
+    const members = [{ taxId: '26634875073', idCardNumber: '', startDate: '2026-04-01' }]
+    expect(named(completionFailures(inclusionOf(' 266.348.750-73 '), { members }))).toEqual([
+      'members[26634875073].idCardNumber:required',
+    ])
+  })
+
+  it('reads the admission date the EI writes as a timestamp', () => {
+    const members = [{ taxId: '111', idCardNumber: 'card', startDate: '2020-01-01' }]
+    expect(
+      named(completionFailures(inclusionOf('111', '2026-06-01T00:00:00Z'), { members })),
+    ).toEqual(['members[111].startDate:before_admission'])
+  })
+
+  /** Chosen, not overlooked: an admission we cannot read must not refuse a
+   *  completion the analyst answered correctly. */
+  it('drops the admission rule when the snapshot date is unreadable', () => {
+    const members = [{ taxId: '111', idCardNumber: 'card', startDate: '2020-01-01' }]
+    expect(completionFailures(inclusionOf('111', 'ontem'), { members })).toEqual([])
+  })
+
+  it('counts the month back from the admission day, not from a whole month of days', () => {
+    const passes = [{ taxId: '111', idCardNumber: 'card', startDate: '2026-03-31' }]
+    expect(completionFailures(inclusionOf('111', '2026-04-30'), { members: passes })).toEqual([])
+    const refused = [{ taxId: '111', idCardNumber: 'card', startDate: '2026-03-29' }]
+    expect(
+      named(completionFailures(inclusionOf('111', '2026-04-30'), { members: refused })),
+    ).toEqual(['members[111].startDate:before_admission'])
+  })
+})
+
+describe('completionFailures · the same life answered twice', () => {
+  const twoLives = subjectOf({
+    enrollmentType: 'inclusion',
+    enrollmentSnapshot: {
+      member_type: 'primary',
+      primary: { profile: { tax_id: '111' } },
+      dependents: [{ profile: { tax_id: '111' } }],
+    },
+  })
+
+  it('asks once for a life the snapshot lists twice', () => {
+    expect(named(completionFailures(twoLives, { members: [] }))).toEqual([
+      'members[111].idCardNumber:required',
+      'members[111].startDate:required',
+    ])
+  })
+
+  it('keeps the first answer, so a later duplicate cannot erase a blank card', () => {
+    const members = [
+      { taxId: '111', idCardNumber: '', startDate: '2026-04-01' },
+      { taxId: '111', idCardNumber: 'card', startDate: '2026-04-01' },
+    ]
+    expect(named(completionFailures(twoLives, { members }))).toEqual([
+      'members[111].idCardNumber:required',
     ])
   })
 })
