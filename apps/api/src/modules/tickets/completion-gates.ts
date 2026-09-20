@@ -2,6 +2,7 @@
  *  nothing here may read the database or the request. */
 
 import type { ErrorDetail } from '../../shared/errors.js'
+import { completionContextOf } from './enrollment-snapshot.js'
 import type { CanonicalEnrollmentType } from './enrollment-type.js'
 import type { TicketStatus } from './schemas.js'
 
@@ -63,6 +64,67 @@ function dateFailure(
   return null
 }
 
+/** The overflow is not clamped, as in the EI's `AddDate(0, -1, 0)`: one month
+ *  before 31/03 is 03/03, not 28/02. */
+function oneMonthBefore(date: string): string {
+  const floor = new Date(`${date}T00:00:00Z`)
+  floor.setUTCMonth(floor.getUTCMonth() - 1)
+  return floor.toISOString().slice(0, 10)
+}
+
+function inclusionFailures(subject: CompletionSubject, members: CompletionMember[]): ErrorDetail[] {
+  const { memberTaxIds, admissionDate } = completionContextOf(subject.enrollmentSnapshot)
+  if (memberTaxIds.length === 0) {
+    return [
+      {
+        field: 'enrollmentSnapshot',
+        message: 'The movement shows no life to answer for, so the completion cannot be checked',
+        code: 'unknown_lives',
+      },
+    ]
+  }
+
+  const answered = new Map(members.map((member) => [member.taxId, member]))
+  const floor =
+    admissionDate !== null && isCompletionDate(admissionDate) ? oneMonthBefore(admissionDate) : null
+
+  const failures: ErrorDetail[] = []
+  for (const taxId of memberTaxIds) {
+    const answer = answered.get(taxId)
+    if ((answer?.idCardNumber ?? '').trim() === '') {
+      failures.push({
+        field: `members[${taxId}].idCardNumber`,
+        message: 'The card number is required to complete an inclusion',
+        code: 'required',
+      })
+    }
+
+    const field = `members[${taxId}].startDate`
+    const invalid = dateFailure(field, 'The start date', answer?.startDate)
+    if (invalid) {
+      failures.push(invalid)
+    } else if (floor !== null && (answer?.startDate.trim() ?? '') < floor) {
+      failures.push({
+        field,
+        message: 'The start date cannot be earlier than one month before the admission',
+        code: 'before_admission',
+      })
+    }
+  }
+
+  for (const member of members) {
+    if (!memberTaxIds.includes(member.taxId)) {
+      failures.push({
+        field: `members[${member.taxId}]`,
+        message: 'This tax id is not one of the lives the movement carries',
+        code: 'unknown_member',
+      })
+    }
+  }
+
+  return failures
+}
+
 export function completionFailures(
   subject: CompletionSubject,
   completion: CompletionData | undefined,
@@ -83,6 +145,10 @@ export function completionFailures(
   if (subject.enrollmentType === 'exclusion') {
     const failure = dateFailure('endDate', 'The end date', completion?.endDate)
     if (failure) failures.push(failure)
+  }
+
+  if (subject.enrollmentType === 'inclusion') {
+    failures.push(...inclusionFailures(subject, completion?.members ?? []))
   }
 
   if (subject.enrollmentType === 'plan_change') {

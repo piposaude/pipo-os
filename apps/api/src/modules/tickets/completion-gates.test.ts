@@ -115,3 +115,176 @@ describe('completionFailures · the failure a person reads', () => {
     expect(failure?.message).toMatch(/end date/i)
   })
 })
+
+describe('completionFailures · gate 3, inclusion', () => {
+  const snapshotOf = (taxIds: string[], admissionDate?: string) => ({
+    member_type: 'primary',
+    primary: {
+      profile: { tax_id: taxIds[0] },
+      ...(admissionDate ? { employment: { admission_date: admissionDate } } : {}),
+    },
+    dependents: taxIds.slice(1).map((tax_id) => ({ profile: { tax_id } })),
+  })
+
+  const inclusionOf = (taxIds: string[], admissionDate?: string) =>
+    subjectOf({
+      enrollmentType: 'inclusion',
+      enrollmentSnapshot: snapshotOf(taxIds, admissionDate),
+    })
+
+  const filled = (taxId: string, startDate = '2026-04-01') => ({
+    taxId,
+    idCardNumber: `card-${taxId}`,
+    startDate,
+  })
+
+  it('passes when the single life has a card and a start date', () => {
+    expect(completionFailures(inclusionOf(['111']), { members: [filled('111')] })).toEqual([])
+  })
+
+  it('demands the card of the life that came without one', () => {
+    const members = [{ taxId: '111', idCardNumber: '  ', startDate: '2026-04-01' }]
+    expect(named(completionFailures(inclusionOf(['111']), { members }))).toEqual([
+      'members[111].idCardNumber:required',
+    ])
+  })
+
+  it('demands the start date, and refuses one that is not YYYY-MM-DD', () => {
+    const missing = [{ taxId: '111', idCardNumber: 'card', startDate: '' }]
+    expect(named(completionFailures(inclusionOf(['111']), { members: missing }))).toEqual([
+      'members[111].startDate:required',
+    ])
+    const written = [{ taxId: '111', idCardNumber: 'card', startDate: '31/03/2026' }]
+    expect(named(completionFailures(inclusionOf(['111']), { members: written }))).toEqual([
+      'members[111].startDate:invalid',
+    ])
+  })
+
+  it('passes with three lives answered', () => {
+    const members = [filled('111'), filled('222'), filled('333')]
+    expect(completionFailures(inclusionOf(['111', '222', '333']), { members })).toEqual([])
+  })
+
+  it('names the life that is missing, not its position', () => {
+    const members = [
+      filled('111'),
+      { taxId: '222', idCardNumber: '', startDate: '2026-04-01' },
+      filled('333'),
+    ]
+    expect(named(completionFailures(inclusionOf(['111', '222', '333']), { members }))).toEqual([
+      'members[222].idCardNumber:required',
+    ])
+  })
+
+  it('answers for every life at once, in the order the snapshot lists them', () => {
+    expect(named(completionFailures(inclusionOf(['111', '222', '333']), { members: [] }))).toEqual([
+      'members[111].idCardNumber:required',
+      'members[111].startDate:required',
+      'members[222].idCardNumber:required',
+      'members[222].startDate:required',
+      'members[333].idCardNumber:required',
+      'members[333].startDate:required',
+    ])
+  })
+
+  it('refuses a tax id the movement does not carry', () => {
+    const members = [filled('111'), filled('999')]
+    expect(named(completionFailures(inclusionOf(['111']), { members }))).toEqual([
+      'members[999]:unknown_member',
+    ])
+  })
+
+  it('asks only for the dependent when the movement is of one dependent', () => {
+    const subject = subjectOf({
+      enrollmentType: 'inclusion',
+      enrollmentSnapshot: {
+        member_type: 'dependent',
+        member_id: 'm1',
+        primary: { profile: { tax_id: '111' } },
+        dependents: [{ member_id: 'm1', profile: { tax_id: '222' } }],
+      },
+    })
+    expect(named(completionFailures(subject, { members: [] }))).toEqual([
+      'members[222].idCardNumber:required',
+      'members[222].startDate:required',
+    ])
+  })
+
+  it('refuses an inclusion whose snapshot shows no life to answer for', () => {
+    const subject = subjectOf({ enrollmentType: 'inclusion', enrollmentSnapshot: {} })
+    expect(named(completionFailures(subject, { members: [filled('111')] }))).toEqual([
+      'enrollmentSnapshot:unknown_lives',
+    ])
+  })
+
+  it('accepts a start date exactly one month before the admission', () => {
+    const members = [filled('111', '2026-05-01')]
+    expect(completionFailures(inclusionOf(['111'], '2026-06-01'), { members })).toEqual([])
+  })
+
+  it('refuses a start date earlier than one month before the admission', () => {
+    const members = [filled('111', '2026-04-30')]
+    expect(named(completionFailures(inclusionOf(['111'], '2026-06-01'), { members }))).toEqual([
+      'members[111].startDate:before_admission',
+    ])
+  })
+
+  it('lets the month subtraction overflow instead of clamping it', () => {
+    expect(
+      completionFailures(inclusionOf(['111'], '2026-03-31'), {
+        members: [filled('111', '2026-03-03')],
+      }),
+    ).toEqual([])
+    expect(
+      named(
+        completionFailures(inclusionOf(['111'], '2026-03-31'), {
+          members: [filled('111', '2026-03-02')],
+        }),
+      ),
+    ).toEqual(['members[111].startDate:before_admission'])
+  })
+
+  it('still demands card and start date when the snapshot has no admission', () => {
+    expect(
+      completionFailures(inclusionOf(['111']), { members: [filled('111', '2020-01-01')] }),
+    ).toEqual([])
+    expect(named(completionFailures(inclusionOf(['111']), { members: [] }))).toEqual([
+      'members[111].idCardNumber:required',
+      'members[111].startDate:required',
+    ])
+  })
+
+  /** Deliberately more permissive than the EI, and only here: the MecSAS rule
+   *  is the PD-031d, and this breaks the day it lands. */
+  it('completes a PJ inclusion at sulamerica without the carrier company code', () => {
+    const subject = subjectOf({
+      enrollmentType: 'inclusion',
+      enrollmentSnapshot: {
+        ...snapshotOf(['111']),
+        'carrier-system-alias': 'sulamerica',
+        primary: {
+          profile: { tax_id: '111' },
+          employment: { contract_type: 'services-contract' },
+        },
+      },
+    })
+    expect(completionFailures(subject, { members: [filled('111')] })).toEqual([])
+  })
+
+  it('answers the wrong status and two unanswered lives in a single call', () => {
+    const subject = subjectOf({
+      enrollmentType: 'inclusion',
+      status: 'broker-processing',
+      enrollmentSnapshot: snapshotOf(['111', '222']),
+    })
+    const members = [
+      { taxId: '111', idCardNumber: '', startDate: '2026-04-01' },
+      { taxId: '222', idCardNumber: '', startDate: '2026-04-01' },
+    ]
+    expect(named(completionFailures(subject, { members }))).toEqual([
+      'status:invalid_status',
+      'members[111].idCardNumber:required',
+      'members[222].idCardNumber:required',
+    ])
+  })
+})
