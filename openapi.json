@@ -240,9 +240,16 @@
             "maxLength": 255
           },
           "ownerId": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 255
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "groupId": {
             "type": "string",

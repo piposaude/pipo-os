@@ -31,8 +31,8 @@ export const createQueueBodySchema = z
   .object({
     name: z.string().min(1).max(255),
     /** Only the caller's own id: a view owned by someone else is refused with
-     *  403, and the team view is the one that names no owner. */
-    ownerId: z.string().min(1).max(255).optional(),
+     *  403, and `null` is the team view, same as leaving it out. */
+    ownerId: z.string().min(1).max(255).nullable().optional(),
     groupId: z.uuid().optional(),
     filters: ticketFilterSchema.optional(),
     sort: queueSortSchema.optional(),

@@ -2352,7 +2352,7 @@ export interface components {
         };
         CreateQueueBodyInput: {
             name: string;
-            ownerId?: string;
+            ownerId?: string | null;
             /** Format: uuid */
             groupId?: string;
             filters?: components["schemas"]["TicketFilterInput"];

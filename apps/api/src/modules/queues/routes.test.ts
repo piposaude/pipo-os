@@ -757,6 +757,18 @@ describe('queues routes', () => {
       })
     })
 
+    it('reads ownerId null as the team view the read returns', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { name: 'Livres', ownerId: null },
+      })
+
+      expect(response.statusCode).toBe(201)
+      expect(response.json().ownerId).toBeNull()
+    })
+
     it('starts a team view on the default sort, with no grouping imposed', async () => {
       const response = await app.inject({
         method: 'POST',
@@ -939,6 +951,33 @@ describe('queues routes', () => {
       await member(geben, GEBEN_LEAD, 'admin')
     })
 
+    it('keeps the personal view of someone else out of the listing', async () => {
+      await queue({ name: 'Livres', groupId: pod })
+      await queue({ name: 'Da Carla', groupId: pod, ownerId: POD_LEAD }, podLead)
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: analyst },
+      })
+
+      expect(response.json().data.map((view: { name: string }) => view.name)).toEqual(['Livres'])
+      expect(response.json().total).toBe(1)
+    })
+
+    it('keeps the personal view of someone else out of the counts', async () => {
+      const team = await queue({ name: 'Livres', groupId: pod })
+      const hers = await queue({ name: 'Da Carla', groupId: pod, ownerId: POD_LEAD }, podLead)
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/queues/counts?ids=${team}&ids=${hers}`,
+        cookies: { [SESSION_COOKIE_NAME]: analyst },
+      })
+
+      expect(response.json().data.map((row: { queueId: string }) => row.queueId)).toEqual([team])
+    })
+
     it('lets an analyst create a personal view with the ticket policy alone', async () => {
       const response = await app.inject({
         method: 'POST',
@@ -1063,6 +1102,19 @@ describe('queues routes', () => {
       })
 
       expect(response.statusCode).toBe(204)
+    })
+
+    it('refuses the coordination taking the team view for themselves', async () => {
+      const id = await queue({ name: 'Livres', groupId: pod })
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/queues/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: podLead },
+        payload: { ownerId: POD_LEAD },
+      })
+
+      expect(response.statusCode).toBe(403)
     })
 
     it('refuses an analyst handing their personal view to the team', async () => {
@@ -1274,6 +1326,24 @@ describe('queues routes', () => {
       })
 
       expect((await read(id, sessionCookie)).favorite).toBe(false)
+    })
+
+    it('lists what the viewer did not star when asked for the opposite', async () => {
+      const starred = await queue('Favorita')
+      await queue('Outra')
+      await app.inject({
+        method: 'POST',
+        url: `/api/queues/${starred}/favorite`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/queues?favorite=false',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.json().data.map((view: { name: string }) => view.name)).toEqual(['Outra'])
     })
 
     it('returns 404 when starring a view that does not exist', async () => {

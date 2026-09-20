@@ -29,6 +29,11 @@ const starredBy = (eb: ExpressionBuilder<Database, 'ticket_queues'>, viewerId: s
       .where('f.user_id', '=', viewerId),
   )
 
+/** A personal view belongs to one sidebar. Listings carry this; reading one by
+ *  id does not, so editing someone else's answers 403 and not 404. */
+const visibleTo = (eb: ExpressionBuilder<Database, 'ticket_queues'>, viewerId: string) =>
+  eb.or([eb('owner_id', 'is', null), eb('owner_id', '=', viewerId)])
+
 function toQueue(row: Selectable<TicketQueues>, favorite: boolean): Queue {
   const filters = ticketFilterSchema.safeParse(row.filters)
   return {
@@ -105,6 +110,7 @@ export class QueuesRepository implements QueuesRepositoryPort {
       .selectAll()
       .select((eb) => starredBy(eb, viewerId).as('favorite'))
       .where('id', 'in', ids)
+      .where((eb) => visibleTo(eb, viewerId))
       .execute()
 
     return rows.map((row) => toQueue(row, Boolean(row.favorite)))
@@ -122,7 +128,13 @@ export class QueuesRepository implements QueuesRepositoryPort {
         const pattern = `%${query.name!.replace(/[\\%_]/g, '\\$&')}%`
         return q.where('name', 'ilike', pattern)
       })
-      .$if(query.favorite === true, (q) => q.where((eb) => starredBy(eb, viewerId)))
+      .where((eb) => visibleTo(eb, viewerId))
+      .$if(query.favorite !== undefined, (q) =>
+        q.where((eb) => {
+          const starred = starredBy(eb, viewerId)
+          return query.favorite === true ? starred : eb.not(starred)
+        }),
+      )
 
     const rows = await base
       .selectAll()

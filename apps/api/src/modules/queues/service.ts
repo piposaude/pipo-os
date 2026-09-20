@@ -72,6 +72,11 @@ export class QueuesService {
       ownerId: data.ownerId !== undefined ? data.ownerId : current.ownerId,
       groupId: data.groupId !== undefined ? data.groupId : current.groupId,
     }
+    // Taking a team view for oneself is not an edit, it is a removal: the pod
+    // loses a shared view and only the new owner could give it back.
+    if (current.ownerId === null && moved.ownerId !== null) {
+      throw new ForbiddenError("A team view cannot become someone's personal view")
+    }
     if (moved.ownerId !== current.ownerId || moved.groupId !== current.groupId) {
       await this.assertMayEdit(moved, viewer)
     }
