@@ -72,9 +72,14 @@ export const queueListSchema = z
   })
   .meta({ id: 'QueueList' })
 
+/** Same default the projection uses: a view shows the awake tickets, so a badge
+ *  counting the closed ones would never match the list under it. */
+export const queueWindowSchema = z.enum(['awake', 'sleeping', 'all']).default('awake')
+
 /** Repeated parameter, as the rows query does it: `?ids=a&ids=b`. The ceiling
  *  is the sidebar's, which never shows fifty views at once. */
 export const queueCountsQuerySchema = z.object({
+  window: queueWindowSchema,
   ids: z.preprocess(
     (raw) => (raw === undefined ? undefined : Array.isArray(raw) ? raw : [raw]),
     z.array(z.uuid()).min(1).max(50),
@@ -88,6 +93,7 @@ export const queueCountsSchema = z
   .meta({ id: 'QueueCounts' })
 
 export const listQueueTicketsQuerySchema = z.object({
+  window: queueWindowSchema,
   page: z.coerce.number().int().min(1).max(10_000).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 })

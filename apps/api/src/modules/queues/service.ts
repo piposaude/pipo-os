@@ -10,6 +10,7 @@ import type {
   ListQueuesQuery,
   Queue,
   QueueCounts,
+  QueueCountsQuery,
   QueueList,
   UpdateQueueBody,
 } from './schemas.js'
@@ -112,10 +113,14 @@ export class QueuesService {
 
   /** A view that is not there is left out, not counted as zero: it was deleted,
    *  and the sidebar drops the row instead of showing an empty badge. */
-  async counts(ids: readonly string[], viewerId: string): Promise<QueueCounts> {
+  async counts(
+    { ids, window }: QueueCountsQuery,
+    viewerId: string,
+    today: string,
+  ): Promise<QueueCounts> {
     const queues = await this.repository.findByIds(ids, viewerId)
     const filters = new Map(queues.map((queue) => [queue.id, queue.filters ?? {}]))
-    const totals = await this.ticketsRepository.countByFilters(filters, viewerId)
+    const totals = await this.ticketsRepository.countByFilters(filters, viewerId, window, today)
 
     return {
       data: queues.map((queue) => ({ queueId: queue.id, total: totals.get(queue.id) ?? 0 })),
@@ -128,10 +133,11 @@ export class QueuesService {
     queueId: string,
     query: ListQueueTicketsQuery,
     viewerId: string,
+    today: string,
   ): Promise<TicketList> {
     const queue = await this.get(queueId, viewerId)
     const { data, total } = await this.ticketsRepository.findByFilter(
-      { filter: queue.filters ?? {}, sort: queue.sort, ...query },
+      { filter: queue.filters ?? {}, sort: queue.sort, today, ...query },
       viewerId,
     )
     return { data, total, page: query.page, pageSize: query.pageSize }

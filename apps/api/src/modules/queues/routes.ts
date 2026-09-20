@@ -1,6 +1,7 @@
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { z } from 'zod'
+import { businessToday } from '../../shared/business-date.js'
 import { requireUser, requireUserId } from '../auth/authenticate.js'
 import { errorResponseSchema } from '../../shared/schemas.js'
 import { isAuthorized, STRUCTURE_POLICY, TICKET_POLICY } from '../auth/policy.js'
@@ -90,7 +91,7 @@ export function registerQueueRoutes(app: FastifyInstance, service: QueuesService
       },
     },
     async (request) => {
-      return service.counts(request.query.ids, requireUserId(request))
+      return service.counts(request.query, requireUserId(request), businessToday())
     },
   )
 
@@ -207,7 +208,12 @@ export function registerQueueRoutes(app: FastifyInstance, service: QueuesService
       },
     },
     async (request) => {
-      return service.listTickets(request.params.id, request.query, requireUserId(request))
+      return service.listTickets(
+        request.params.id,
+        request.query,
+        requireUserId(request),
+        businessToday(),
+      )
     },
   )
 }

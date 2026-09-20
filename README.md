@@ -147,6 +147,8 @@ As rotas de `/api/auth/*` estão em [Autenticação](#autenticação). Contrato 
 | `GET`                  | `/api/queues/counts`       | `?ids=` repetido, até 50: quantos chamados cada visão seleciona                   |
 | `GET`                  | `/api/queues/:id/tickets`  | Os chamados que o filtro da visão seleciona                                       |
 
+As duas últimas leem a mesma janela do `/api/tickets/rows` — `?window=` com `awake` por padrão —, senão o badge da sidebar somaria chamado fechado e adormecido que a lista embaixo dele não mostra.
+
 #### O que é auditado, e o que não é
 
 Só a mudança de **status** deixa rastro: `PATCH /api/tickets/:id/status` grava uma linha em `ticket_status_history` com autor, estados de origem e destino, motivo e instante. Comentário é o próprio registro.

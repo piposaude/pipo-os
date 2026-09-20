@@ -62,6 +62,7 @@ describe('queues routes', () => {
   const clean = async (): Promise<void> => {
     await app.db.deleteFrom('ticket_queue_favorites').execute()
     await app.db.deleteFrom('ticket_group_members').execute()
+    await app.db.deleteFrom('ticket_status_history').execute()
     await app.db.deleteFrom('tickets').execute()
     await app.db.deleteFrom('ticket_queues').execute()
     await app.db.deleteFrom('ticket_groups').execute()
@@ -589,10 +590,12 @@ describe('queues routes', () => {
         })
         return response.json().id
       }
+      // `window=all`: both dates are far enough ahead to be asleep, and the
+      // order is what this test is about.
       const ids = async (queueId: string): Promise<string[]> => {
         const response = await app.inject({
           method: 'GET',
-          url: `/api/queues/${queueId}/tickets`,
+          url: `/api/queues/${queueId}/tickets?window=all`,
           cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
         })
         return response.json().data.map((ticket: { id: string }) => ticket.id)
@@ -625,7 +628,7 @@ describe('queues routes', () => {
         })
         const response = await app.inject({
           method: 'GET',
-          url: `/api/queues/${created.json().id}/tickets`,
+          url: `/api/queues/${created.json().id}/tickets?window=all`,
           cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
         })
 
@@ -672,6 +675,60 @@ describe('queues routes', () => {
         client,
         carrier,
       ])
+    })
+
+    it('leaves out what is closed or still asleep, as the queue does', async () => {
+      const open = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+        payload: validTicketBody,
+      })
+      const closed = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+        payload: { ...validTicketBody, enrollmentId: '00000000-0000-4000-8000-000000000051' },
+      })
+      await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${closed.json().id}/status`,
+        cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+        payload: { status: 'completed' },
+      })
+      const asleep = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+        payload: {
+          ...validTicketBody,
+          enrollmentId: '00000000-0000-4000-8000-000000000052',
+          actionDate: '2099-01-01T00:00:00.000Z',
+        },
+      })
+
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { name: 'Todos' },
+      })
+      const { id: queueId } = created.json()
+
+      const ids = async (query = ''): Promise<string[]> => {
+        const response = await app.inject({
+          method: 'GET',
+          url: `/api/queues/${queueId}/tickets${query}`,
+          cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+        })
+        return response.json().data.map((ticket: { id: string }) => ticket.id)
+      }
+
+      expect(await ids()).toEqual([open.json().id])
+      expect(await ids('?window=sleeping')).toEqual([asleep.json().id])
+      expect((await ids('?window=all')).sort()).toEqual(
+        [open.json().id, closed.json().id, asleep.json().id].sort(),
+      )
     })
 
     it('paginates what the filter selects', async () => {
@@ -1191,6 +1248,32 @@ describe('queues routes', () => {
       })
 
       expect(await counts([id])).toEqual({ data: [{ queueId: id, total: listed.json().total }] })
+    })
+
+    it('counts the same window the queue shows', async () => {
+      const id = await view('Todos')
+      await ticket('00000000-0000-4000-8000-000000000061')
+      const closed = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+        payload: { ...validTicketBody, enrollmentId: '00000000-0000-4000-8000-000000000062' },
+      })
+      await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${closed.json().id}/status`,
+        cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+        payload: { status: 'completed' },
+      })
+
+      expect(await counts([id])).toEqual({ data: [{ queueId: id, total: 1 }] })
+
+      const all = await app.inject({
+        method: 'GET',
+        url: `/api/queues/counts?ids=${id}&window=all`,
+        cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+      })
+      expect(all.json()).toEqual({ data: [{ queueId: id, total: 2 }] })
     })
 
     it('leaves out a view that does not exist', async () => {

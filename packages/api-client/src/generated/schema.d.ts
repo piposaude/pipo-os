@@ -924,6 +924,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    window?: "awake" | "sleeping" | "all";
                     ids?: string[];
                 };
                 header?: never;
@@ -1321,6 +1322,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    window?: "awake" | "sleeping" | "all";
                     page?: number;
                     pageSize?: number;
                 };

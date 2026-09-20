@@ -14,7 +14,11 @@ import {
 } from './enrollment-snapshot.js'
 import type { QueueSort } from '../queues/view-vocabulary.js'
 import type { TicketReadFilter } from './filter-schema.js'
-import { actionDateWindowCondition, ticketFilterConditions } from './filter-resolver.js'
+import {
+  actionDateWindowCondition,
+  ticketFilterConditions,
+  type ActionDateWindow,
+} from './filter-resolver.js'
 import { queueOrderBy } from './sort.js'
 import type { TicketRowPayload, TicketRowsQuery } from './rows-schema.js'
 import { toClient } from './vocabulary.js'
@@ -96,10 +100,26 @@ function toTicket(row: Selectable<Tickets>): Ticket {
   }
 }
 
+/** The saved filter plus the window the screen is showing — the two together
+ *  are what a view selects. */
+function viewConditions(
+  eb: Parameters<typeof ticketFilterConditions>[0],
+  filter: TicketReadFilter,
+  viewerId: string,
+  window: ActionDateWindow,
+  today: string,
+) {
+  const parts = ticketFilterConditions(eb, filter, viewerId)
+  const slice = actionDateWindowCondition(window, today)
+  return slice ? [...parts, slice] : parts
+}
+
 /** What a saved view asks of the tickets: its own filter and its own sort. */
 export interface SavedViewQuery {
   filter: TicketReadFilter
   sort: QueueSort
+  window: ActionDateWindow
+  today: string
   page: number
   pageSize: number
 }
@@ -121,6 +141,8 @@ export interface TicketsRepositoryPort {
   countByFilters(
     filters: ReadonlyMap<string, TicketReadFilter>,
     viewerId: string,
+    window: ActionDateWindow,
+    today: string,
   ): Promise<Map<string, number>>
   findRows(
     query: TicketRowsQuery,
@@ -206,12 +228,12 @@ export class TicketsRepository implements TicketsRepositoryPort {
 
   /** Three values have no column yet, so they are dug out of the jsonb here. */
   async findByFilter(
-    { filter, sort, page, pageSize }: SavedViewQuery,
+    { filter, sort, window, today, page, pageSize }: SavedViewQuery,
     viewerId: string,
   ): Promise<{ data: Ticket[]; total: number }> {
     const base = this.db
       .selectFrom('tickets')
-      .where((eb) => eb.and(ticketFilterConditions(eb, filter, viewerId)))
+      .where((eb) => eb.and(viewConditions(eb, filter, viewerId, window, today)))
 
     const rows = await base
       .selectAll()
@@ -240,12 +262,19 @@ export class TicketsRepository implements TicketsRepositoryPort {
   async countByFilters(
     filters: ReadonlyMap<string, TicketReadFilter>,
     viewerId: string,
+    window: ActionDateWindow,
+    today: string,
   ): Promise<Map<string, number>> {
     const entries = [...filters]
     if (entries.length === 0) return new Map()
 
+    const slice = actionDateWindowCondition(window, today)
+
     const row = await this.db
       .selectFrom('tickets')
+      // The window is the one WHERE every view shares, so the scan narrows once
+      // instead of inside each of the fifty counters.
+      .$if(slice !== null, (q) => q.where(slice!))
       .select((eb) =>
         entries.map(([, filter], index) =>
           eb.fn

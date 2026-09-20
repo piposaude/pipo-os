@@ -3557,6 +3557,20 @@
         "parameters": [
           {
             "schema": {
+              "default": "awake",
+              "type": "string",
+              "enum": [
+                "awake",
+                "sleeping",
+                "all"
+              ]
+            },
+            "in": "query",
+            "name": "window",
+            "required": false
+          },
+          {
+            "schema": {
               "minItems": 1,
               "maxItems": 50,
               "type": "array",
@@ -3961,6 +3975,20 @@
     "/api/queues/{id}/tickets": {
       "get": {
         "parameters": [
+          {
+            "schema": {
+              "default": "awake",
+              "type": "string",
+              "enum": [
+                "awake",
+                "sleeping",
+                "all"
+              ]
+            },
+            "in": "query",
+            "name": "window",
+            "required": false
+          },
           {
             "schema": {
               "default": 1,
