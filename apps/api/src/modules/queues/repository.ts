@@ -52,6 +52,7 @@ export interface QueuesRepositoryPort {
   create(data: CreateQueueBody, createdBy: string): Promise<Queue>
   findById(id: string, viewerId: string): Promise<Queue | undefined>
   findMany(query: ListQueuesQuery, viewerId: string): Promise<{ data: Queue[]; total: number }>
+  findByIds(ids: readonly string[], viewerId: string): Promise<Queue[]>
   update(id: string, data: UpdateQueueBody, updatedBy: string): Promise<Queue | undefined>
   delete(id: string): Promise<boolean>
   favorite(queueId: string, userId: string): Promise<void>
@@ -96,6 +97,17 @@ export class QueuesRepository implements QueuesRepositoryPort {
       .executeTakeFirst()
 
     return row ? toQueue(row, Boolean(row.favorite)) : undefined
+  }
+
+  async findByIds(ids: readonly string[], viewerId: string): Promise<Queue[]> {
+    const rows = await this.db
+      .selectFrom('ticket_queues')
+      .selectAll()
+      .select((eb) => starredBy(eb, viewerId).as('favorite'))
+      .where('id', 'in', ids)
+      .execute()
+
+    return rows.map((row) => toQueue(row, Boolean(row.favorite)))
   }
 
   async findMany(

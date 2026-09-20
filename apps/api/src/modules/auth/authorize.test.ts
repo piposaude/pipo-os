@@ -278,6 +278,7 @@ describe('the policy each route requires', () => {
     ['GET /api/queues', [TICKET, STRUCTURE]],
     ['GET /api/queues/:id', [TICKET, STRUCTURE]],
     ['GET /api/queues/:id/tickets', TICKET],
+    ['GET /api/queues/counts', [TICKET, STRUCTURE]],
     ['GET /api/tickets', TICKET],
     ['GET /api/tickets/:id', TICKET],
     ['GET /api/tickets/:id/comments', TICKET],

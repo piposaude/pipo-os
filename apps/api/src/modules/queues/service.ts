@@ -9,6 +9,7 @@ import type {
   ListQueueTicketsQuery,
   ListQueuesQuery,
   Queue,
+  QueueCounts,
   QueueList,
   UpdateQueueBody,
 } from './schemas.js'
@@ -102,6 +103,18 @@ export class QueuesService {
 
     const refusal = editRefusal(view, viewer, nodes, memberships)
     if (refusal) throw new ForbiddenError(refusal)
+  }
+
+  /** A view that is not there is left out, not counted as zero: it was deleted,
+   *  and the sidebar drops the row instead of showing an empty badge. */
+  async counts(ids: readonly string[], viewerId: string): Promise<QueueCounts> {
+    const queues = await this.repository.findByIds(ids, viewerId)
+    const filters = new Map(queues.map((queue) => [queue.id, queue.filters ?? {}]))
+    const totals = await this.ticketsRepository.countByFilters(filters, viewerId)
+
+    return {
+      data: queues.map((queue) => ({ queueId: queue.id, total: totals.get(queue.id) ?? 0 })),
+    }
   }
 
   /** The view selects by its saved filter, resolved for whoever is asking —

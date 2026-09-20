@@ -8,6 +8,8 @@ import { ticketListSchema } from '../tickets/schemas.js'
 import {
   createQueueBodySchema,
   listQueueTicketsQuerySchema,
+  queueCountsQuerySchema,
+  queueCountsSchema,
   listQueuesQuerySchema,
   queueListSchema,
   queueParamsSchema,
@@ -70,6 +72,25 @@ export function registerQueueRoutes(app: FastifyInstance, service: QueuesService
     },
     async (request) => {
       return service.list(request.query, requireUserId(request))
+    },
+  )
+
+  server.get(
+    '/api/queues/counts',
+    {
+      config: { policy: CRUD_POLICY },
+      schema: {
+        querystring: queueCountsQuerySchema,
+        response: {
+          200: queueCountsSchema,
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      return service.counts(request.query.ids, requireUserId(request))
     },
   )
 

@@ -1080,6 +1080,99 @@ describe('queues routes', () => {
   })
 
   // ---------------------------------------------------------------------------
+  describe('GET /api/queues/counts', () => {
+    const view = async (name: string, filters?: Record<string, unknown>): Promise<string> => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { name, ...(filters !== undefined && { filters }) },
+      })
+      return response.json().id
+    }
+
+    const ticket = async (enrollmentId: string, assigneeId?: string): Promise<void> => {
+      await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+        payload: {
+          ...validTicketBody,
+          enrollmentId,
+          ...(assigneeId !== undefined && { assigneeId }),
+        },
+      })
+    }
+
+    const counts = async (ids: string[], cookie = ticketSessionCookie): Promise<unknown> => {
+      const query = ids.map((id) => `ids=${id}`).join('&')
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/queues/counts?${query}`,
+        cookies: { [SESSION_COOKIE_NAME]: cookie },
+      })
+      return response.json()
+    }
+
+    it('counts each view by its own filter', async () => {
+      const mine = await view('Meus', { assigneeIds: ['@me'] })
+      const all = await view('Todos')
+      await ticket('00000000-0000-4000-8000-000000000041', DEV_LOGIN_USER_ID)
+      await ticket('00000000-0000-4000-8000-000000000042', 'ana@pipo.health')
+
+      expect(await counts([mine, all])).toEqual({
+        data: [
+          { queueId: mine, total: 1 },
+          { queueId: all, total: 2 },
+        ],
+      })
+    })
+
+    it('counts what the same view lists', async () => {
+      const id = await view('Meus', { assigneeIds: ['@me'] })
+      await ticket('00000000-0000-4000-8000-000000000043', DEV_LOGIN_USER_ID)
+
+      const listed = await app.inject({
+        method: 'GET',
+        url: `/api/queues/${id}/tickets`,
+        cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+      })
+
+      expect(await counts([id])).toEqual({ data: [{ queueId: id, total: listed.json().total }] })
+    })
+
+    it('leaves out a view that does not exist', async () => {
+      const id = await view('Todos')
+
+      expect(await counts([id, NONEXISTENT_ID])).toEqual({ data: [{ queueId: id, total: 0 }] })
+    })
+
+    it('refuses more ids than one sidebar could ever ask for', async () => {
+      const ids = Array.from(
+        { length: 51 },
+        (_, index) => `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+      )
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/queues/counts?${ids.map((id) => `ids=${id}`).join('&')}`,
+        cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+
+    it('refuses a call with no id at all', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/queues/counts',
+        cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+  })
+
+  // ---------------------------------------------------------------------------
   describe('favouriting a view', () => {
     const OTHER = 'ana@pipo.health'
     let other: string

@@ -118,6 +118,10 @@ export interface TicketsRepositoryPort {
   ): Promise<ChangeStatusResult>
   findMany(query: ListTicketsQuery): Promise<{ data: Ticket[]; total: number }>
   findByFilter(params: SavedViewQuery, viewerId: string): Promise<{ data: Ticket[]; total: number }>
+  countByFilters(
+    filters: ReadonlyMap<string, TicketReadFilter>,
+    viewerId: string,
+  ): Promise<Map<string, number>>
   findRows(
     query: TicketRowsQuery,
     viewerId: string,
@@ -229,6 +233,35 @@ export class TicketsRepository implements TicketsRepositoryPort {
       .executeTakeFirstOrThrow()
 
     return { data: [], total: Number(count) }
+  }
+
+  /** Every view in one pass: a COUNT FILTER per view over a single scan, so the
+   *  sidebar costs one query instead of one per badge. */
+  async countByFilters(
+    filters: ReadonlyMap<string, TicketReadFilter>,
+    viewerId: string,
+  ): Promise<Map<string, number>> {
+    const entries = [...filters]
+    if (entries.length === 0) return new Map()
+
+    const row = await this.db
+      .selectFrom('tickets')
+      .select((eb) =>
+        entries.map(([, filter], index) =>
+          eb.fn
+            .countAll<string>()
+            .filterWhere(eb.and(ticketFilterConditions(eb, filter, viewerId)))
+            .as(`c${index}`),
+        ),
+      )
+      .executeTakeFirstOrThrow()
+
+    return new Map(
+      entries.map(([queueId], index) => [
+        queueId,
+        Number((row as Record<string, string>)[`c${index}`]),
+      ]),
+    )
   }
 
   async findRows(

@@ -72,6 +72,21 @@ export const queueListSchema = z
   })
   .meta({ id: 'QueueList' })
 
+/** Repeated parameter, as the rows query does it: `?ids=a&ids=b`. The ceiling
+ *  is the sidebar's, which never shows fifty views at once. */
+export const queueCountsQuerySchema = z.object({
+  ids: z.preprocess(
+    (raw) => (raw === undefined ? undefined : Array.isArray(raw) ? raw : [raw]),
+    z.array(z.uuid()).min(1).max(50),
+  ),
+})
+
+export const queueCountsSchema = z
+  .object({
+    data: z.array(z.object({ queueId: z.uuid(), total: z.number().int() })),
+  })
+  .meta({ id: 'QueueCounts' })
+
 export const listQueueTicketsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).max(10_000).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
@@ -84,3 +99,5 @@ export type UpdateQueueBody = z.infer<typeof updateQueueBodySchema>
 export type ListQueuesQuery = z.infer<typeof listQueuesQuerySchema>
 export type QueueList = z.infer<typeof queueListSchema>
 export type ListQueueTicketsQuery = z.infer<typeof listQueueTicketsQuerySchema>
+export type QueueCountsQuery = z.infer<typeof queueCountsQuerySchema>
+export type QueueCounts = z.infer<typeof queueCountsSchema>

@@ -82,6 +82,7 @@ describe('the set of public routes', () => {
 │       └── /members (POST)
 │           └── /:memberId (DELETE, PATCH)
 ├── /api/queues (POST, GET, HEAD)
+│   ├── /counts (GET, HEAD)
 │   └── /:id (GET, HEAD, PATCH, DELETE)
 │       ├── /favorite (POST, DELETE)
 │       └── /tickets (GET, HEAD)
