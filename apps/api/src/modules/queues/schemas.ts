@@ -13,6 +13,9 @@ export const queueSchema = z
     filters: ticketFilterSchema.nullable(),
     sort: queueSortSchema,
     groupBy: groupBySchema.nullable(),
+    /** The viewer's own star, not who else starred it: the Favorites section
+     *  is always "mine", and publishing the list is nobody's business. */
+    favorite: z.boolean(),
     createdBy: z.string(),
     updatedBy: z.string().min(1).nullable(),
     createdAt: z.iso.datetime(),
@@ -55,6 +58,7 @@ export const updateQueueBodySchema = z
 
 export const listQueuesQuerySchema = z.object({
   name: z.string().optional(),
+  favorite: z.stringbool().optional(),
   page: z.coerce.number().int().min(1).max(10_000).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 })

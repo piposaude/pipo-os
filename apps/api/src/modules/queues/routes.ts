@@ -69,7 +69,7 @@ export function registerQueueRoutes(app: FastifyInstance, service: QueuesService
       },
     },
     async (request) => {
-      return service.list(request.query)
+      return service.list(request.query, requireUserId(request))
     },
   )
 
@@ -89,7 +89,7 @@ export function registerQueueRoutes(app: FastifyInstance, service: QueuesService
       },
     },
     async (request) => {
-      return service.get(request.params.id)
+      return service.get(request.params.id, requireUserId(request))
     },
   )
 
@@ -138,6 +138,37 @@ export function registerQueueRoutes(app: FastifyInstance, service: QueuesService
     },
   )
 
+  const favoriteSchema = {
+    params: queueParamsSchema,
+    response: {
+      204: z.null(),
+      400: errorResponseSchema,
+      401: errorResponseSchema,
+      403: errorResponseSchema,
+      404: errorResponseSchema,
+    },
+  }
+
+  server.post(
+    '/api/queues/:id/favorite',
+    { config: { policy: CRUD_POLICY }, schema: favoriteSchema },
+    async (request, reply) => {
+      await service.favorite(request.params.id, requireUserId(request))
+      reply.status(204)
+      return null
+    },
+  )
+
+  server.delete(
+    '/api/queues/:id/favorite',
+    { config: { policy: CRUD_POLICY }, schema: favoriteSchema },
+    async (request, reply) => {
+      await service.unfavorite(request.params.id, requireUserId(request))
+      reply.status(204)
+      return null
+    },
+  )
+
   server.get(
     '/api/queues/:id/tickets',
     {
@@ -155,7 +186,7 @@ export function registerQueueRoutes(app: FastifyInstance, service: QueuesService
       },
     },
     async (request) => {
-      return service.listTickets(request.params.id, request.query)
+      return service.listTickets(request.params.id, request.query, requireUserId(request))
     },
   )
 }

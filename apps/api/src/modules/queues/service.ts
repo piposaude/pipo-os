@@ -38,20 +38,31 @@ export class QueuesService {
     return this.repository.create(data, viewer.id)
   }
 
-  async get(id: string): Promise<Queue> {
-    const queue = await this.repository.findById(id)
+  async get(id: string, viewerId: string): Promise<Queue> {
+    const queue = await this.repository.findById(id, viewerId)
     if (!queue) throw new NotFoundError(`Queue ${id} not found`)
     return queue
   }
 
-  async list(query: ListQueuesQuery): Promise<QueueList> {
-    const { data, total } = await this.repository.findMany(query)
+  async list(query: ListQueuesQuery, viewerId: string): Promise<QueueList> {
+    const { data, total } = await this.repository.findMany(query, viewerId)
     return { data, total, page: query.page, pageSize: query.pageSize }
+  }
+
+  /** Idempotent on both sides: the sidebar star is a state, not a counter. */
+  async favorite(id: string, viewerId: string): Promise<void> {
+    await this.get(id, viewerId)
+    await this.repository.favorite(id, viewerId)
+  }
+
+  async unfavorite(id: string, viewerId: string): Promise<void> {
+    await this.get(id, viewerId)
+    await this.repository.unfavorite(id, viewerId)
   }
 
   async update(id: string, data: UpdateQueueBody, viewer: Viewer): Promise<Queue> {
     assertOwnsIt(data.ownerId, viewer.id)
-    const current = await this.get(id)
+    const current = await this.get(id, viewer.id)
     await this.assertMayEdit(current, viewer)
 
     // The view it becomes is checked too, or handing a personal view to the
@@ -70,7 +81,7 @@ export class QueuesService {
   }
 
   async delete(id: string, viewer: Viewer): Promise<void> {
-    await this.assertMayEdit(await this.get(id), viewer)
+    await this.assertMayEdit(await this.get(id, viewer.id), viewer)
     const deleted = await this.repository.delete(id)
     if (!deleted) throw new NotFoundError(`Queue ${id} not found`)
   }
@@ -93,8 +104,12 @@ export class QueuesService {
     if (refusal) throw new ForbiddenError(refusal)
   }
 
-  async listTickets(queueId: string, query: ListQueueTicketsQuery): Promise<TicketList> {
-    await this.get(queueId)
+  async listTickets(
+    queueId: string,
+    query: ListQueueTicketsQuery,
+    viewerId: string,
+  ): Promise<TicketList> {
+    await this.get(queueId, viewerId)
     const { data, total } = await this.ticketsRepository.findMany({ queueId, ...query })
     return { data, total, page: query.page, pageSize: query.pageSize }
   }

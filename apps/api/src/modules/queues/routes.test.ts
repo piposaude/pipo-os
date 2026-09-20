@@ -60,6 +60,7 @@ describe('queues routes', () => {
      ON DELETE RESTRICT, so the reverse order fails as an FK violation in the
      next test, not this one. */
   afterEach(async () => {
+    await app.db.deleteFrom('ticket_queue_favorites').execute()
     await app.db.deleteFrom('ticket_group_members').execute()
     await app.db.deleteFrom('tickets').execute()
     await app.db.deleteFrom('ticket_queues').execute()
@@ -925,6 +926,146 @@ describe('queues routes', () => {
       })
 
       expect(response.statusCode).toBe(403)
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  describe('favouriting a view', () => {
+    const OTHER = 'ana@pipo.health'
+    let other: string
+
+    const queue = async (name: string): Promise<string> => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { name },
+      })
+      return response.json().id
+    }
+
+    const read = async (id: string, cookie: string): Promise<Record<string, unknown>> => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/queues/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: cookie },
+      })
+      return response.json()
+    }
+
+    beforeAll(() => {
+      other = sessionCookieFor(app, OTHER, ['admin/allow/administrate/pipodesk/ticket'])
+    })
+
+    it('reads a view nobody starred as not favourite', async () => {
+      const id = await queue('Livres')
+
+      expect((await read(id, sessionCookie)).favorite).toBe(false)
+    })
+
+    it('stars a view for the viewer who asked', async () => {
+      const id = await queue('Livres')
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/queues/${id}/favorite`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(204)
+      expect((await read(id, sessionCookie)).favorite).toBe(true)
+    })
+
+    it('keeps the star personal: nobody else sees it', async () => {
+      const id = await queue('Livres')
+      await app.inject({
+        method: 'POST',
+        url: `/api/queues/${id}/favorite`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect((await read(id, other)).favorite).toBe(false)
+    })
+
+    it('stars twice without duplicating the row or failing', async () => {
+      const id = await queue('Livres')
+
+      for (let i = 0; i < 2; i += 1) {
+        const response = await app.inject({
+          method: 'POST',
+          url: `/api/queues/${id}/favorite`,
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        expect(response.statusCode).toBe(204)
+      }
+
+      const rows = await app.db.selectFrom('ticket_queue_favorites').selectAll().execute()
+      expect(rows).toHaveLength(1)
+    })
+
+    it('unstars what was never starred', async () => {
+      const id = await queue('Livres')
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/api/queues/${id}/favorite`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(204)
+      expect((await read(id, sessionCookie)).favorite).toBe(false)
+    })
+
+    it('unstars a view that was starred', async () => {
+      const id = await queue('Livres')
+      await app.inject({
+        method: 'POST',
+        url: `/api/queues/${id}/favorite`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      await app.inject({
+        method: 'DELETE',
+        url: `/api/queues/${id}/favorite`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect((await read(id, sessionCookie)).favorite).toBe(false)
+    })
+
+    it('returns 404 when starring a view that does not exist', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/queues/${NONEXISTENT_ID}/favorite`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(404)
+    })
+
+    it('lists only the views the viewer starred', async () => {
+      const starred = await queue('Favorita')
+      await queue('Outra')
+      await app.inject({
+        method: 'POST',
+        url: `/api/queues/${starred}/favorite`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const mine = await app.inject({
+        method: 'GET',
+        url: '/api/queues?favorite=true',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const theirs = await app.inject({
+        method: 'GET',
+        url: '/api/queues?favorite=true',
+        cookies: { [SESSION_COOKIE_NAME]: other },
+      })
+
+      expect(mine.json().data.map((queue: { name: string }) => queue.name)).toEqual(['Favorita'])
+      expect(mine.json().total).toBe(1)
+      expect(theirs.json().data).toEqual([])
     })
   })
 
