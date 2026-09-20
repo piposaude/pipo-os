@@ -59,13 +59,18 @@ describe('queues routes', () => {
   /* `ticket_queues` before `ticket_groups`: the saved view holds the group with
      ON DELETE RESTRICT, so the reverse order fails as an FK violation in the
      next test, not this one. */
-  afterEach(async () => {
+  const clean = async (): Promise<void> => {
     await app.db.deleteFrom('ticket_queue_favorites').execute()
     await app.db.deleteFrom('ticket_group_members').execute()
     await app.db.deleteFrom('tickets').execute()
     await app.db.deleteFrom('ticket_queues').execute()
     await app.db.deleteFrom('ticket_groups').execute()
-  })
+  }
+
+  // Before as well as after: a group left behind by another file would take the
+  // single root this file's tree needs.
+  beforeEach(clean)
+  afterEach(clean)
 
   // ---------------------------------------------------------------------------
   describe('POST /api/queues', () => {
@@ -477,27 +482,65 @@ describe('queues routes', () => {
       expect(response.json()).toEqual({ data: [], total: 0, page: 1, pageSize: 20 })
     })
 
-    it('returns only tickets of this queue', async () => {
-      const queueA = await app.inject({
+    it('lists what the saved filter selects, not what points at the queue', async () => {
+      const created = await app.inject({
         method: 'POST',
         url: '/api/queues',
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload: { name: 'Fila A' },
+        payload: { name: 'Urgentes', filters: { priorities: ['urgent'] } },
       })
-      const queueB = await app.inject({
-        method: 'POST',
-        url: '/api/queues',
-        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload: { name: 'Fila B' },
-      })
-      const queueAId = queueA.json().id
-      const queueBId = queueB.json().id
+      const { id: queueId } = created.json()
 
+      const inside = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+        payload: validTicketBody,
+      })
+      // Points at the view and is outside its filter: the old model listed it.
       await app.inject({
         method: 'POST',
         url: '/api/tickets',
         cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
-        payload: { ...validTicketBody, queueId: queueAId },
+        payload: {
+          ...validTicketBody,
+          enrollmentId: '00000000-0000-4000-8000-000000000011',
+          queueId,
+        },
+      })
+      // Priority has no door in the create body, so the column is written here.
+      await app.db
+        .updateTable('tickets')
+        .set({ priority: 'urgent' })
+        .where('id', '=', inside.json().id)
+        .execute()
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/queues/${queueId}/tickets`,
+        cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+      })
+      const body = response.json()
+
+      expect(response.statusCode).toBe(200)
+      expect(body.total).toBe(1)
+      expect(body.data.map((ticket: { id: string }) => ticket.id)).toEqual([inside.json().id])
+    })
+
+    it('resolves @me against the viewer, so a shared view shows each their own', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { name: 'Meus', filters: { assigneeIds: ['@me'] } },
+      })
+      const { id: queueId } = created.json()
+
+      const mine = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+        payload: { ...validTicketBody, assigneeId: DEV_LOGIN_USER_ID },
       })
       await app.inject({
         method: 'POST',
@@ -506,24 +549,132 @@ describe('queues routes', () => {
         payload: {
           ...validTicketBody,
           enrollmentId: '00000000-0000-4000-8000-000000000011',
-          queueId: queueBId,
+          assigneeId: 'ana@pipo.health',
         },
       })
 
       const response = await app.inject({
         method: 'GET',
-        url: `/api/queues/${queueAId}/tickets`,
+        url: `/api/queues/${queueId}/tickets`,
         cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
       })
-      const body = response.json()
 
-      expect(response.statusCode).toBe(200)
-      expect(body.total).toBe(1)
-      expect(body.data).toHaveLength(1)
-      expect(body.data[0].queueId).toBe(queueAId)
+      expect(response.json().data.map((ticket: { id: string }) => ticket.id)).toEqual([
+        mine.json().id,
+      ])
     })
 
-    it('paginates tickets within the queue', async () => {
+    it('orders by the sort the view saved', async () => {
+      const ticket = async (enrollmentId: string, actionDate: string): Promise<string> => {
+        const response = await app.inject({
+          method: 'POST',
+          url: '/api/tickets',
+          cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+          payload: { ...validTicketBody, enrollmentId, actionDate },
+        })
+        return response.json().id
+      }
+      const later = await ticket('00000000-0000-4000-8000-000000000021', '2026-10-10T00:00:00.000Z')
+      const sooner = await ticket(
+        '00000000-0000-4000-8000-000000000022',
+        '2026-09-01T00:00:00.000Z',
+      )
+
+      const view = async (name: string, direction: string): Promise<string> => {
+        const response = await app.inject({
+          method: 'POST',
+          url: '/api/queues',
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+          payload: { name, sort: { by: 'actionDate', direction } },
+        })
+        return response.json().id
+      }
+      const ids = async (queueId: string): Promise<string[]> => {
+        const response = await app.inject({
+          method: 'GET',
+          url: `/api/queues/${queueId}/tickets`,
+          cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+        })
+        return response.json().data.map((ticket: { id: string }) => ticket.id)
+      }
+
+      expect(await ids(await view('Prazo', 'asc'))).toEqual([sooner, later])
+      expect(await ids(await view('Prazo invertido', 'desc'))).toEqual([later, sooner])
+    })
+
+    it('sinks a ticket with no action date to the end, whichever the direction', async () => {
+      const dated = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+        payload: { ...validTicketBody, actionDate: '2026-10-10T00:00:00.000Z' },
+      })
+      const undated = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+        payload: { ...validTicketBody, enrollmentId: '00000000-0000-4000-8000-000000000023' },
+      })
+
+      for (const direction of ['asc', 'desc'] as const) {
+        const created = await app.inject({
+          method: 'POST',
+          url: '/api/queues',
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+          payload: { name: `Prazo ${direction}`, sort: { by: 'actionDate', direction } },
+        })
+        const response = await app.inject({
+          method: 'GET',
+          url: `/api/queues/${created.json().id}/tickets`,
+          cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+        })
+
+        expect(response.json().data.map((ticket: { id: string }) => ticket.id)).toEqual([
+          dated.json().id,
+          undated.json().id,
+        ])
+      }
+    })
+
+    it('orders by status in the triage order the queue shows, not alphabetically', async () => {
+      const ticket = async (enrollmentId: string, status: string): Promise<string> => {
+        const created = await app.inject({
+          method: 'POST',
+          url: '/api/tickets',
+          cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+          payload: { ...validTicketBody, enrollmentId },
+        })
+        await app.db
+          .updateTable('tickets')
+          .set({ status })
+          .where('id', '=', created.json().id)
+          .execute()
+        return created.json().id
+      }
+      const carrier = await ticket('00000000-0000-4000-8000-000000000031', 'carrier-processing')
+      const broker = await ticket('00000000-0000-4000-8000-000000000032', 'broker-open-issue')
+      const client = await ticket('00000000-0000-4000-8000-000000000033', 'missing-documents')
+
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/queues',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { name: 'Por situação', sort: { by: 'status', direction: 'asc' } },
+      })
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/queues/${created.json().id}/tickets`,
+        cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+      })
+
+      expect(response.json().data.map((ticket: { id: string }) => ticket.id)).toEqual([
+        broker,
+        client,
+        carrier,
+      ])
+    })
+
+    it('paginates what the filter selects', async () => {
       const created = await app.inject({
         method: 'POST',
         url: '/api/queues',
@@ -540,7 +691,6 @@ describe('queues routes', () => {
           payload: {
             ...validTicketBody,
             enrollmentId: `00000000-0000-4000-8000-00000000001${i}`,
-            queueId,
           },
         })
       }

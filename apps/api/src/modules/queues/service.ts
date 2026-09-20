@@ -104,13 +104,18 @@ export class QueuesService {
     if (refusal) throw new ForbiddenError(refusal)
   }
 
+  /** The view selects by its saved filter, resolved for whoever is asking —
+   *  `tickets.queue_id` is the old model, a box tickets fall into. */
   async listTickets(
     queueId: string,
     query: ListQueueTicketsQuery,
     viewerId: string,
   ): Promise<TicketList> {
-    await this.get(queueId, viewerId)
-    const { data, total } = await this.ticketsRepository.findMany({ queueId, ...query })
+    const queue = await this.get(queueId, viewerId)
+    const { data, total } = await this.ticketsRepository.findByFilter(
+      { filter: queue.filters ?? {}, sort: queue.sort, ...query },
+      viewerId,
+    )
     return { data, total, page: query.page, pageSize: query.pageSize }
   }
 }

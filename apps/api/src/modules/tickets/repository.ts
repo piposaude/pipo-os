@@ -12,7 +12,10 @@ import {
   relationshipOf,
   snapshotString,
 } from './enrollment-snapshot.js'
+import type { QueueSort } from '../queues/view-vocabulary.js'
+import type { TicketReadFilter } from './filter-schema.js'
 import { actionDateWindowCondition, ticketFilterConditions } from './filter-resolver.js'
+import { queueOrderBy } from './sort.js'
 import type { TicketRowPayload, TicketRowsQuery } from './rows-schema.js'
 import { toClient } from './vocabulary.js'
 import {
@@ -93,6 +96,14 @@ function toTicket(row: Selectable<Tickets>): Ticket {
   }
 }
 
+/** What a saved view asks of the tickets: its own filter and its own sort. */
+export interface SavedViewQuery {
+  filter: TicketReadFilter
+  sort: QueueSort
+  page: number
+  pageSize: number
+}
+
 export interface TicketsRepositoryPort {
   findById(id: string): Promise<Ticket | undefined>
   create(data: CreateTicketData): Promise<Ticket>
@@ -106,6 +117,7 @@ export interface TicketsRepositoryPort {
     reason?: string,
   ): Promise<ChangeStatusResult>
   findMany(query: ListTicketsQuery): Promise<{ data: Ticket[]; total: number }>
+  findByFilter(params: SavedViewQuery, viewerId: string): Promise<{ data: Ticket[]; total: number }>
   findRows(
     query: TicketRowsQuery,
     viewerId: string,
@@ -189,6 +201,36 @@ export class TicketsRepository implements TicketsRepositoryPort {
   }
 
   /** Three values have no column yet, so they are dug out of the jsonb here. */
+  async findByFilter(
+    { filter, sort, page, pageSize }: SavedViewQuery,
+    viewerId: string,
+  ): Promise<{ data: Ticket[]; total: number }> {
+    const base = this.db
+      .selectFrom('tickets')
+      .where((eb) => eb.and(ticketFilterConditions(eb, filter, viewerId)))
+
+    const rows = await base
+      .selectAll()
+      .select(sql<string>`count(*) over ()`.as('total_count'))
+      .orderBy(queueOrderBy(sort))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+      .execute()
+
+    if (rows.length > 0) {
+      return {
+        data: rows.map((row) => toTicket(row as unknown as Selectable<Tickets>)),
+        total: Number(rows[0].total_count),
+      }
+    }
+
+    const { count } = await base
+      .select((eb) => eb.fn.countAll<string>().as('count'))
+      .executeTakeFirstOrThrow()
+
+    return { data: [], total: Number(count) }
+  }
+
   async findRows(
     query: TicketRowsQuery,
     viewerId: string,
