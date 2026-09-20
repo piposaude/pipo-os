@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 /** Pinned to contract/ticket-queue-view.json by the contract test beside this
- *  file, and to the CHECKs of migration 0027. */
+ *  file; schema.test.ts holds the CHECKs of migration 0027 to the same list. */
 export const SORT_FIELDS = ['actionDate', 'createdAt', 'updatedAt', 'company', 'status'] as const
 export const SORT_DIRECTIONS = ['asc', 'desc'] as const
 export const GROUP_BY_VALUES = ['status', 'company', 'product', 'assignee', 'none'] as const
@@ -21,5 +21,3 @@ export type SortField = z.infer<typeof sortFieldSchema>
 export type SortDirection = z.infer<typeof sortDirectionSchema>
 export type QueueSort = z.infer<typeof queueSortSchema>
 export type QueueGroupBy = z.infer<typeof groupBySchema>
-
-export const DEFAULT_SORT: QueueSort = { by: 'actionDate', direction: 'asc' }

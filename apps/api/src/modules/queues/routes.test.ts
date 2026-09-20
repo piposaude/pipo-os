@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import type { FastifyInstance } from 'fastify'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
@@ -5,6 +7,13 @@ import { SESSION_COOKIE_NAME } from '../auth/session.js'
 import { sessionCookieFor } from '../auth/session.test-helpers.js'
 
 const DEV_LOGIN_USER_ID = 'dev@piposaude.com.br'
+
+const { defaultSort } = JSON.parse(
+  readFileSync(
+    fileURLToPath(new URL('../../../../../contract/ticket-queue-view.json', import.meta.url)),
+    'utf-8',
+  ),
+) as { defaultSort: { by: string; direction: string } }
 const NONEXISTENT_ID = '00000000-0000-4000-8000-000000000099'
 
 const validTicketBody = {
@@ -826,7 +835,9 @@ describe('queues routes', () => {
       expect(response.json().ownerId).toBeNull()
     })
 
-    it('starts a team view on the default sort, with no grouping imposed', async () => {
+    // Against the contract, not against a literal: the default that decides is
+    // the DEFAULT of the column, and this is what holds the two together.
+    it('starts a team view on the default sort of the contract, with no grouping imposed', async () => {
       const response = await app.inject({
         method: 'POST',
         url: '/api/queues',
@@ -837,7 +848,7 @@ describe('queues routes', () => {
       expect(response.json()).toMatchObject({
         ownerId: null,
         groupId: null,
-        sort: { by: 'actionDate', direction: 'asc' },
+        sort: defaultSort,
         groupBy: null,
       })
     })
