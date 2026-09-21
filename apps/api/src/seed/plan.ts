@@ -74,6 +74,7 @@ export interface SeedPlan {
   actions: SeedAction[]
   existing: { groups: number; queues: number; members: number }
   divergences: SeedDivergence[]
+  groupIds: Record<string, string>
 }
 
 /** Array order is left alone on purpose: it is the order that was written,
@@ -144,5 +145,5 @@ export function planSeed(desired: SeedStructure, current: CurrentStructure): See
     }
   }
 
-  return { actions, existing, divergences }
+  return { actions, existing, divergences, groupIds: Object.fromEntries(idByKey) }
 }

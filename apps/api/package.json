@@ -13,6 +13,7 @@
     "db:migrate": "kysely migrate:latest",
     "db:rollback": "kysely migrate:down",
     "openapi:export": "tsx scripts/export-openapi.ts",
+    "seed:structure": "tsx scripts/seed-structure.ts",
     "boot:check": "node scripts/boot-check.mjs",
     "db:codegen": "kysely-codegen --out-file src/infrastructure/db-types.ts --url \"${DATABASE_URL:-postgresql://pipo_os:pipo_os@localhost:5432/pipo_os}\""
   },

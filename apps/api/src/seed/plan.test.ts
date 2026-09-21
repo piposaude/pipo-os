@@ -104,6 +104,11 @@ describe('planSeed', () => {
     expect(planSeed(TINY, current).divergences).toEqual([])
   })
 
+  it('hands back the id of every group it found, so the queues can point at them', () => {
+    expect(planSeed(TINY, applied()).groupIds).toEqual({ root: 'g1', 'pod-1': 'g2' })
+    expect(planSeed(TINY, EMPTY).groupIds).toEqual({})
+  })
+
   it('finds no group of the same name under a parent that is still to be created', () => {
     const elsewhere: CurrentStructure = {
       groups: [{ id: 'other', name: 'POD 1', parentId: null }],
