@@ -38,11 +38,16 @@ const family = () =>
     ],
   })
 
-const namesakes = () =>
+const namesakes = (depName = 'Daniel Jardim Hoffmann') =>
   recordsWith({
     beneficiaries: [
-      person('holder', { name: 'Daniel Guedes Hoffmann' }),
-      person('dep', { name: 'Daniel Jardim Hoffmann', role: 'dependent', holderId: 'holder' }),
+      person('holder', { name: 'Daniel Guedes Hoffmann', cpf: '951.244.843-80' }),
+      person('dep', {
+        name: depName,
+        cpf: '217.267.240-33',
+        role: 'dependent',
+        holderId: 'holder',
+      }),
     ],
     tickets: [
       {
@@ -98,6 +103,17 @@ describe('closingFields', () => {
       'Início da vigência · Daniel Guedes Hoffmann',
       'Carteirinha · Daniel Jardim Hoffmann',
       'Início da vigência · Daniel Jardim Hoffmann',
+    ])
+  })
+
+  it('should fall to the tail of the CPF when the whole name repeats too', () => {
+    expect(
+      closingFields(ticket('inclusion'), namesakes('Daniel Guedes Hoffmann')).map(fieldLabel),
+    ).toEqual([
+      'Carteirinha · Daniel Guedes Hoffmann (CPF 843-80)',
+      'Início da vigência · Daniel Guedes Hoffmann (CPF 843-80)',
+      'Carteirinha · Daniel Guedes Hoffmann (CPF 240-33)',
+      'Início da vigência · Daniel Guedes Hoffmann (CPF 240-33)',
     ])
   })
 

@@ -19,8 +19,8 @@ export interface ClosingField {
   kind: 'text' | 'date'
   /** The life the field belongs to — only on an inclusion. */
   person?: Person
-  /** How the life is named in a message: the first name, or the whole name
-   *  when another life of the movement answers to the same first name. */
+  /** How the life is named in a message: the shortest form no other life of
+   *  the movement answers to. */
   personName?: string
   /** Admission minus one month; a start below it is refused. */
   floor?: string
@@ -62,15 +62,21 @@ export function livesOf(ticket: TicketRow, records: TicketRecords): Person[] {
 
 const firstNameOf = (person: Person): string => displayNameOf(person).split(/\s+/)[0]
 
+const cpfTailOf = (cpf: string): string => {
+  const digits = cpf.replace(/\D/g, '')
+  return `${digits.slice(-5, -2)}-${digits.slice(-2)}`
+}
+
 function nameOfEachLife(lives: Person[]): Map<string, string> {
-  const shared = new Set(
-    lives.map(firstNameOf).filter((first, index, firsts) => firsts.indexOf(first) !== index),
-  )
+  const alone = (life: Person, nameOf: (life: Person) => string): boolean =>
+    lives.filter((other) => nameOf(other) === nameOf(life)).length === 1
+
   return new Map(
-    lives.map((life) => [
-      life.id,
-      shared.has(firstNameOf(life)) ? displayNameOf(life) : firstNameOf(life),
-    ]),
+    lives.map((life): [string, string] => {
+      if (alone(life, firstNameOf)) return [life.id, firstNameOf(life)]
+      if (alone(life, displayNameOf)) return [life.id, displayNameOf(life)]
+      return [life.id, `${displayNameOf(life)} (CPF ${cpfTailOf(life.cpf)})`]
+    }),
   )
 }
 
