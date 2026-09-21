@@ -478,9 +478,11 @@ PIPO_OS_SESSION='<valor do cookie pipo_os_session>' \
   pnpm --filter pipo-os-backend seed:structure
 ```
 
-Ele é idempotente: casa grupo por nome e pai, visão por nome e grupo, vínculo por grupo e pessoa, e cria só o que falta. Rodar duas vezes imprime `nada a criar`. Uma visão que já existe com outro filtro aparece no relatório como divergência e **não** é editada — o seed cria, não corrige.
+Ele é idempotente: casa grupo por nome e pai, visão de time por nome e grupo, vínculo por grupo e pessoa, e cria só o que falta. Rodar duas vezes imprime `nada a criar`. A visão é casada só quando é do time (sem dono): uma visão **pessoal** de mesmo nome pertence a quem a salvou e não ocupa o lugar da visão do pod.
 
-**A sessão é a de uma pessoa, não a de um serviço.** As rotas de estrutura recusam `Authorization: Bearer` antes de olhar a policy (nenhuma declara `serviceAllowed`), e `POST /api/groups` exige o `sub` da sessão. Em staging o cookie sai do DevTools do navegador já logado, em Application › Cookies, e vale 8h; se expirar no meio, o relatório diz onde parou e rodar de novo retoma.
+O seed cria, não corrige. O que já está lá com outro conteúdo sai no relatório como divergência e fica intocado: visão com outro filtro ou outra ordenação, e vínculo desativado ou com papel diferente do declarado. O vínculo desativado merece atenção — a sessão só enxerga os ativos, então a pessoa continua sem o pod no `/api/auth/me` até alguém reativar pela API.
+
+**A sessão é a de uma pessoa, não a de um serviço.** As rotas de estrutura recusam `Authorization: Bearer` antes de olhar a policy (nenhuma declara `serviceAllowed`), e `POST /api/groups` exige o `sub` da sessão. Em staging o cookie sai do DevTools do navegador já logado, em Application › Cookies, e vale 8h; se expirar no meio, o relatório sai como `interrompido: criados …` e rodar de novo retoma de onde parou.
 
 **Para acrescentar alguém a um pod**, ponha o e-mail Pipo em `SEED_MEMBERS` e rode de novo — só os vínculos dele são criados. O identificador é o e-mail porque é isso que o `sub` do login Google carrega para `ticket_group_members.user_id`. A pessoa ainda precisa da policy do Pipodesk (ver _Autorização_), senão o vínculo existe e ela não entra.
 

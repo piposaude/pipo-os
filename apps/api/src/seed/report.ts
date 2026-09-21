@@ -10,6 +10,7 @@ export interface ReportInput {
   created: Tally
   existing: Tally
   divergences: SeedDivergence[]
+  interrupted?: boolean
 }
 
 const countOf = (tally: Tally): string =>
@@ -18,10 +19,17 @@ const countOf = (tally: Tally): string =>
 const isEmpty = (tally: Tally): boolean =>
   tally.groups === 0 && tally.queues === 0 && tally.members === 0
 
-export function formatReport({ created, existing, divergences }: ReportInput): string[] {
-  const lines = isEmpty(created)
-    ? ['nada a criar: o ambiente já está com a árvore declarada']
-    : [`criados: ${countOf(created)}`]
+export function formatReport({
+  created,
+  existing,
+  divergences,
+  interrupted,
+}: ReportInput): string[] {
+  const lines = interrupted
+    ? [`interrompido: criados ${countOf(created)}`]
+    : isEmpty(created)
+      ? ['nada a criar: o ambiente já está com a árvore declarada']
+      : [`criados: ${countOf(created)}`]
 
   lines.push(`já existiam: ${countOf(existing)}`)
 
