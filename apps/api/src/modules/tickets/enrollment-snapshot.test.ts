@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   alterationTypeOf,
   companyFieldsOf,
+  completionContextOf,
   movementFieldsOf,
   relationshipOf,
 } from './enrollment-snapshot.js'
@@ -334,5 +335,127 @@ describe('companyFieldsOf', () => {
     expect(companyFieldsOf({ company: {} })).toEqual(empty)
     expect(companyFieldsOf(null)).toEqual(empty)
     expect(companyFieldsOf('not a snapshot')).toEqual(empty)
+  })
+})
+
+describe('completionContextOf', () => {
+  const primary = (taxId: string, admissionDate?: string) => ({
+    profile: { tax_id: taxId },
+    ...(admissionDate ? { employment: { admission_date: admissionDate } } : {}),
+  })
+
+  it('is the holder alone when the movement has no dependents', () => {
+    expect(completionContextOf({ member_type: 'primary', primary: primary('111') })).toEqual({
+      memberTaxIds: ['111'],
+      admissionDate: null,
+    })
+  })
+
+  it('is the holder first and then the dependents, in the order they arrive', () => {
+    expect(
+      completionContextOf({
+        member_type: 'primary',
+        primary: primary('111'),
+        dependents: [{ profile: { tax_id: '222' } }, { profile: { tax_id: '333' } }],
+      }),
+    ).toEqual({ memberTaxIds: ['111', '222', '333'], admissionDate: null })
+  })
+
+  it('is the single dependent the movement points at', () => {
+    expect(
+      completionContextOf({
+        member_type: 'dependent',
+        member_id: 'm2',
+        primary: primary('111'),
+        dependents: [
+          { member_id: 'm1', profile: { tax_id: '222' } },
+          { member_id: 'm2', profile: { tax_id: '333' } },
+        ],
+      }),
+    ).toEqual({ memberTaxIds: ['333'], admissionDate: null })
+  })
+
+  it('falls back to the only dependent when no member_id matches', () => {
+    expect(
+      completionContextOf({
+        member_type: 'dependent',
+        member_id: 'absent',
+        primary: primary('111'),
+        dependents: [{ member_id: 'm1', profile: { tax_id: '222' } }],
+      }),
+    ).toEqual({ memberTaxIds: ['222'], admissionDate: null })
+  })
+
+  it('names no life when no member_id matches one of several dependents', () => {
+    expect(
+      completionContextOf({
+        member_type: 'dependent',
+        member_id: 'absent',
+        primary: primary('111'),
+        dependents: [
+          { member_id: 'm1', profile: { tax_id: '222' } },
+          { member_id: 'm2', profile: { tax_id: '333' } },
+        ],
+      }),
+    ).toEqual({ memberTaxIds: [], admissionDate: null })
+  })
+
+  it('names no life when the movement of a dependent says which one nowhere', () => {
+    expect(
+      completionContextOf({
+        member_type: 'dependent',
+        primary: primary('111'),
+        dependents: [{ profile: { tax_id: '222' } }, { profile: { tax_id: '333' } }],
+      }),
+    ).toEqual({ memberTaxIds: [], admissionDate: null })
+  })
+
+  it('falls back to the holder when a dependent movement brings no dependents', () => {
+    expect(
+      completionContextOf({ member_type: 'dependent', member_id: 'm1', primary: primary('111') }),
+    ).toEqual({ memberTaxIds: ['111'], admissionDate: null })
+  })
+
+  it('reads member_type without depending on case or separator', () => {
+    const dependents = [{ profile: { tax_id: '222' } }]
+    expect(
+      completionContextOf({ member_type: 'Dependent', primary: primary('111'), dependents }),
+    ).toEqual({ memberTaxIds: ['222'], admissionDate: null })
+    expect(
+      completionContextOf({ memberType: 'dependent', primary: primary('111'), dependents }),
+    ).toEqual({ memberTaxIds: ['222'], admissionDate: null })
+  })
+
+  it('reads the tax ids in camel case as well as in snake case', () => {
+    expect(
+      completionContextOf({
+        memberType: 'primary',
+        primary: { profile: { taxId: '111' } },
+        dependents: [{ profile: { taxId: '222' } }],
+      }),
+    ).toEqual({ memberTaxIds: ['111', '222'], admissionDate: null })
+  })
+
+  it('does not turn a blank tax id into a life', () => {
+    expect(
+      completionContextOf({
+        member_type: 'primary',
+        primary: primary('111'),
+        dependents: [{ profile: { tax_id: '  ' } }, { profile: {} }, 'not a dependent'],
+      }),
+    ).toEqual({ memberTaxIds: ['111'], admissionDate: null })
+  })
+
+  it('reads the admission date from the holder employment', () => {
+    expect(
+      completionContextOf({ member_type: 'primary', primary: primary('111', '2026-04-01') }),
+    ).toEqual({ memberTaxIds: ['111'], admissionDate: '2026-04-01' })
+  })
+
+  it('has no life and no admission when there is nothing to read', () => {
+    const empty = { memberTaxIds: [], admissionDate: null }
+    expect(completionContextOf({})).toEqual(empty)
+    expect(completionContextOf(null)).toEqual(empty)
+    expect(completionContextOf('not a snapshot')).toEqual(empty)
   })
 })

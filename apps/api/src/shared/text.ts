@@ -5,3 +5,5 @@ export const foldText = (text: string): string =>
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
+
+export const digitsOf = (value: string): string => value.replace(/\D/g, '')
