@@ -34,4 +34,16 @@ describe('formatReport', () => {
 
     expect(lines).toContain('não casou: visão MOV PJ em pod-3 diverge em filters')
   })
+
+  it('names a membership that diverges by what it is, not as if it were a view', () => {
+    const lines = formatReport({
+      created: NOTHING,
+      existing: { groups: 7, queues: 24, members: 7 },
+      divergences: [
+        { kind: 'member', groupKey: 'pod-2', name: 'ana@piposaude.com.br', fields: ['active'] },
+      ],
+    })
+
+    expect(lines).toContain('não casou: vínculo de ana@piposaude.com.br em pod-2 diverge em active')
+  })
 })

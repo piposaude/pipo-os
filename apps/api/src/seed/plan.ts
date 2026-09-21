@@ -51,6 +51,8 @@ export interface CurrentQueue {
 export interface CurrentMember {
   groupId: string
   userId: string
+  role: MemberRole
+  active: boolean
 }
 
 export interface CurrentStructure {
@@ -65,7 +67,7 @@ export type SeedAction =
   | { kind: 'add-member'; groupKey: string; userId: string; role: MemberRole }
 
 export interface SeedDivergence {
-  kind: 'queue'
+  kind: 'queue' | 'member'
   groupKey: string
   name: string
   fields: string[]
@@ -143,6 +145,18 @@ export function planSeed(desired: SeedStructure, current: CurrentStructure): See
 
     if (found) {
       existing.members += 1
+      const fields = [
+        ...(found.active ? [] : ['active']),
+        ...(found.role === member.role ? [] : ['role']),
+      ]
+      if (fields.length > 0) {
+        divergences.push({
+          kind: 'member',
+          groupKey: member.groupKey,
+          name: member.userId,
+          fields,
+        })
+      }
     } else {
       actions.push({ kind: 'add-member', ...member })
     }

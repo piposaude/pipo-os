@@ -49,7 +49,12 @@ export async function readCurrent(reader: SeedReader, pageSize = 100): Promise<C
       sort: queue.sort,
     })),
     members: groups.flatMap((group) =>
-      group.members.map((member) => ({ groupId: group.id, userId: member.userId })),
+      group.members.map((member) => ({
+        groupId: group.id,
+        userId: member.userId,
+        role: member.role,
+        active: member.active,
+      })),
     ),
   }
 }

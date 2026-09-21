@@ -31,7 +31,7 @@ const applied = (overrides: Partial<CurrentStructure> = {}): CurrentStructure =>
       sort: CLT_SORT,
     },
   ],
-  members: [{ groupId: 'g1', userId: 'ana@piposaude.com.br' }],
+  members: [{ groupId: 'g1', userId: 'ana@piposaude.com.br', role: 'admin', active: true }],
   ...overrides,
 })
 
@@ -113,6 +113,29 @@ describe('planSeed', () => {
     })
 
     expect(planSeed(TINY, current).divergences).toEqual([])
+  })
+
+  it('reports a membership that was deactivated, which the session no longer sees', () => {
+    const current = applied({
+      members: [{ groupId: 'g1', userId: 'ana@piposaude.com.br', role: 'admin', active: false }],
+    })
+
+    const plan = planSeed(TINY, current)
+
+    expect(plan.actions).toEqual([])
+    expect(plan.divergences).toEqual([
+      { kind: 'member', groupKey: 'root', name: 'ana@piposaude.com.br', fields: ['active'] },
+    ])
+  })
+
+  it('reports a membership that carries another role than the declared one', () => {
+    const current = applied({
+      members: [{ groupId: 'g1', userId: 'ana@piposaude.com.br', role: 'member', active: true }],
+    })
+
+    expect(planSeed(TINY, current).divergences).toEqual([
+      { kind: 'member', groupKey: 'root', name: 'ana@piposaude.com.br', fields: ['role'] },
+    ])
   })
 
   it('ignores a personal view of the same name: the pod would be left without the team one', () => {

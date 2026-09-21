@@ -26,8 +26,10 @@ export function formatReport({ created, existing, divergences }: ReportInput): s
   lines.push(`já existiam: ${countOf(existing)}`)
 
   for (const divergence of divergences) {
+    const what =
+      divergence.kind === 'queue' ? `visão ${divergence.name}` : `vínculo de ${divergence.name}`
     lines.push(
-      `não casou: visão ${divergence.name} em ${divergence.groupKey} diverge em ${divergence.fields.join(', ')}`,
+      `não casou: ${what} em ${divergence.groupKey} diverge em ${divergence.fields.join(', ')}`,
     )
   }
 

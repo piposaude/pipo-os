@@ -48,8 +48,8 @@ describe('readCurrent', () => {
     const current = await readCurrent(reader, 20)
 
     expect(current.members).toEqual([
-      { groupId: 'g1', userId: 'ana@piposaude.com.br' },
-      { groupId: 'g1', userId: 'bruno@piposaude.com.br' },
+      { groupId: 'g1', userId: 'ana@piposaude.com.br', role: 'admin', active: true },
+      { groupId: 'g1', userId: 'bruno@piposaude.com.br', role: 'member', active: true },
     ])
   })
 
