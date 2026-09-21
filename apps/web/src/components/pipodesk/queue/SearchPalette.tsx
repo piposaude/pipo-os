@@ -7,11 +7,21 @@ import {
   hitCountLabel,
   searchQueue,
   type CompanyRecord,
+  type SearchCategory,
   type SearchHit,
 } from '@/lib/pipodesk/search'
 import type { TreeSection } from '@/lib/pipodesk/tree'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
+import { DeskIcon } from '@/components/pipodesk/icons'
+import searchCopy from '@/constants/pipodesk/search'
 import styles from './SearchPalette.module.css'
+
+const CATEGORY_GLYPH: Record<SearchCategory, string> = {
+  chamado: 'ticket',
+  beneficiario: 'beneficiary',
+  empresa: 'company',
+  visao: 'inbox',
+}
 
 /** Tabbable descendants. Results are `tabIndex={-1}` on purpose: in a listbox
  *  the field keeps the focus and the arrows move the selection. */
@@ -105,6 +115,7 @@ export function SearchPalette({
       onMouseEnter={() => setActive(index)}
       onClick={() => pick(hit)}
     >
+      <DeskIcon name={CATEGORY_GLYPH[hit.category]} size={16} className={styles.hitIcon} />
       <span className={styles.hitText}>
         <span className={styles.hitLabel}>{hit.label}</span>
         <span className={styles.hitDetail}>{hit.detail}</span>
@@ -124,40 +135,50 @@ export function SearchPalette({
         ref={modal}
         role="dialog"
         aria-modal="true"
-        aria-label="Busca global"
+        aria-label={searchCopy.title}
         className={styles.modal}
       >
-        <input
-          ref={field}
-          role="combobox"
-          aria-expanded="true"
-          aria-controls="search-palette-results"
-          // Without it the arrows move a highlight only sighted people see.
-          aria-activedescendant={flat.length > 0 ? optionId(active) : undefined}
-          aria-label="Buscar chamados, beneficiários, empresas e visões"
-          className={styles.input}
-          placeholder="Buscar…"
-          value={query}
-          onChange={(event) => {
-            setQuery(event.target.value)
-            setActive(0)
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'ArrowDown') {
-              event.preventDefault()
-              setActive((current) => Math.min(current + 1, flat.length - 1))
-            } else if (event.key === 'ArrowUp') {
-              event.preventDefault()
-              setActive((current) => Math.max(current - 1, 0))
-            } else if (event.key === 'Enter' && flat[active]) {
-              pick(flat[active])
-            }
-          }}
-        />
+        <div className={styles.field}>
+          <input
+            ref={field}
+            role="combobox"
+            aria-expanded="true"
+            aria-controls="search-palette-results"
+            // Without it the arrows move a highlight only sighted people see.
+            aria-activedescendant={flat.length > 0 ? optionId(active) : undefined}
+            aria-label={searchCopy.field}
+            className={styles.input}
+            placeholder={searchCopy.placeholder}
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value)
+              setActive(0)
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowDown') {
+                event.preventDefault()
+                setActive((current) => Math.min(current + 1, flat.length - 1))
+              } else if (event.key === 'ArrowUp') {
+                event.preventDefault()
+                setActive((current) => Math.max(current - 1, 0))
+              } else if (event.key === 'Enter' && flat[active]) {
+                pick(flat[active])
+              }
+            }}
+          />
+          <button
+            type="button"
+            className={styles.close}
+            aria-label={searchCopy.close}
+            onClick={onClose}
+          >
+            ×
+          </button>
+        </div>
         <div
           id="search-palette-results"
           role="listbox"
-          aria-label="Resultados"
+          aria-label={searchCopy.results}
           className={styles.results}
         >
           {query.trim() === '' ? (
@@ -166,7 +187,7 @@ export function SearchPalette({
               {empty.map((hit, index) => renderHit(hit, index))}
             </>
           ) : groups.length === 0 ? (
-            <p className={styles.nothing}>Nada encontrado.</p>
+            <p className={styles.nothing}>{searchCopy.nothing}</p>
           ) : (
             groups.map((group, groupIndex) => {
               // Global index of the group's first item — previous groups consumed theirs.
@@ -178,7 +199,7 @@ export function SearchPalette({
                   <p className={styles.groupLabel}>
                     {CATEGORY_COPY[group.category]}
                     {group.total > group.hits.length && (
-                      <span className={styles.groupMore}> · {group.total} no total</span>
+                      <span className={styles.groupMore}>{searchCopy.total(group.total)}</span>
                     )}
                   </p>
                   {group.hits.map((hit, index) => renderHit(hit, offset + index))}
@@ -186,6 +207,13 @@ export function SearchPalette({
               )
             })
           )}
+        </div>
+        <div className={styles.footer}>
+          {searchCopy.shortcuts.map((shortcut) => (
+            <span key={shortcut.label}>
+              {shortcut.label} <kbd className={styles.key}>{shortcut.key}</kbd>
+            </span>
+          ))}
         </div>
       </div>
     </div>,

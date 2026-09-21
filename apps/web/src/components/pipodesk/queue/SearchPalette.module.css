@@ -9,24 +9,52 @@
   background: rgb(0 0 0 / 24%);
 }
 
+/* Literal radius: the DS scale jumps 8 → 16 and the measured value is 10. */
 .modal {
   display: flex;
-  width: min(560px, calc(100vw - 32px));
+  width: min(672px, calc(100vw - 32px));
   max-height: 60vh;
   flex-direction: column;
-  border-radius: var(--pipo-radius-medium);
+  border-radius: 10px;
   background: var(--pipo-surface);
   box-shadow: var(--desk-shadow-panel);
   overflow: hidden;
 }
 
+.field {
+  display: flex;
+  align-items: center;
+  padding-right: var(--pipo-space-small);
+}
+
 .input {
+  min-width: 0;
+  flex: 1;
   padding: var(--pipo-space-small);
   border: none;
-  border-bottom: var(--pipo-border-width-small) solid var(--pipo-border);
+  background: transparent;
   font-family: var(--pipo-font-ui);
   font-size: var(--pipo-fs-medium);
   outline: none;
+}
+
+.close {
+  display: flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--pipo-radius-small);
+  background: transparent;
+  color: var(--pipo-text-secondary);
+  font-size: var(--pipo-fs-medium);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.close:hover {
+  background: var(--pipo-neutral-lightest);
 }
 
 /* The only `outline: none` of the queue without a replacement — coming back to
@@ -40,51 +68,56 @@
   padding: var(--pipo-space-xxsmall);
 }
 
+/* The total rides beside the name: the right edge belongs to the row. */
 .groupLabel {
   margin: var(--pipo-space-xxsmall) 0 2px;
   padding: 0 var(--pipo-space-xsmall);
   color: var(--pipo-text-secondary);
   font-family: var(--pipo-font-ui);
-  font-size: var(--pipo-fs-xxsmall, 10px);
-  font-weight: var(--pipo-fw-semibold);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: var(--pipo-fs-xsmall);
 }
 
 .groupMore {
   font-weight: var(--pipo-fw-regular);
-  text-transform: none;
-  letter-spacing: 0;
 }
 
 .hit {
   display: flex;
   width: 100%;
+  height: 36px;
   align-items: center;
   gap: var(--pipo-space-xsmall);
-  padding: var(--pipo-space-xxsmall) var(--pipo-space-xsmall);
+  padding: 0 var(--pipo-space-xsmall);
   border: none;
-  border-radius: var(--pipo-radius-xsmall);
+  border-radius: var(--pipo-radius-small);
   background: transparent;
   font-family: var(--pipo-font-ui);
   text-align: left;
   cursor: pointer;
 }
 
+.hitIcon {
+  flex-shrink: 0;
+  color: var(--pipo-text-secondary);
+  stroke-width: 1.5;
+}
+
 .hit[data-active='true'] {
   background: var(--pipo-neutral-lightest);
 }
 
+/* One line: two stacked would not fit the 36px row. */
 .hitText {
   display: flex;
   min-width: 0;
-  flex-direction: column;
+  align-items: baseline;
+  gap: var(--pipo-space-xsmall);
 }
 
 .hitLabel {
   overflow: hidden;
   color: var(--pipo-neutral-darkest);
-  font-size: var(--pipo-fs-xsmall);
+  font-size: var(--pipo-fs-small);
   font-weight: var(--pipo-fw-medium);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -93,7 +126,7 @@
 .hitDetail {
   overflow: hidden;
   color: var(--pipo-text-secondary);
-  font-size: var(--pipo-fs-xxsmall, 11px);
+  font-size: var(--pipo-fs-xsmall);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -103,6 +136,26 @@
   color: var(--pipo-text-secondary);
   font-size: var(--pipo-fs-xsmall);
   font-variant-numeric: tabular-nums;
+}
+
+.footer {
+  display: flex;
+  height: 40px;
+  align-items: center;
+  gap: var(--pipo-space-medium);
+  padding: 0 var(--pipo-space-small);
+  border-top: var(--pipo-border-width-small) solid var(--pipo-border);
+  color: var(--pipo-text-secondary);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-xsmall);
+}
+
+.key {
+  padding: 1px var(--pipo-space-xxsmall);
+  border: var(--pipo-border-width-small) solid var(--pipo-border);
+  border-radius: var(--pipo-radius-xsmall);
+  font-family: inherit;
+  font-size: inherit;
 }
 
 .nothing {
