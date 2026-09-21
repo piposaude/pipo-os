@@ -1,6 +1,6 @@
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
 import type { FastifyInstance } from 'fastify'
-import { requireUser, requireUserId } from '../auth/authenticate.js'
+import { requireAuthor, requireUser, requireUserId } from '../auth/authenticate.js'
 import { businessToday } from '../../shared/business-date.js'
 import { errorResponseSchema } from '../../shared/schemas.js'
 import { TICKET_POLICY } from '../auth/policy.js'
@@ -147,11 +147,14 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
           404: errorResponseSchema,
           413: errorResponseSchema,
           415: errorResponseSchema,
+          422: errorResponseSchema,
         },
       },
     },
     async (request) => {
-      return service.update(request.params.id, request.body)
+      // Conditional, or a session with no `sub` loses a PATCH it always had.
+      const author = request.body.priority === undefined ? undefined : requireAuthor(request)
+      return service.update(request.params.id, request.body, author)
     },
   )
 

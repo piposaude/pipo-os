@@ -138,6 +138,7 @@ export const createTicketBodySchema = z
 // a closed ticket. Accepting it here was a second, unaudited door (DSP-19).
 export const updateTicketBodySchema = z
   .object({
+    priority: ticketPrioritySchema.nullable().optional(),
     queueId: z.uuid().nullable().optional(),
     assigneeId: z.string().min(1).nullable().optional(),
     tags: z.array(tagSchema).optional(),
