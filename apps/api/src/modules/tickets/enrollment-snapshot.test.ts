@@ -375,7 +375,7 @@ describe('completionContextOf', () => {
     ).toEqual({ memberTaxIds: ['333'], admissionDate: null })
   })
 
-  it('falls back to the first dependent when no member_id matches', () => {
+  it('falls back to the only dependent when no member_id matches', () => {
     expect(
       completionContextOf({
         member_type: 'dependent',
@@ -384,6 +384,30 @@ describe('completionContextOf', () => {
         dependents: [{ member_id: 'm1', profile: { tax_id: '222' } }],
       }),
     ).toEqual({ memberTaxIds: ['222'], admissionDate: null })
+  })
+
+  it('names no life when no member_id matches one of several dependents', () => {
+    expect(
+      completionContextOf({
+        member_type: 'dependent',
+        member_id: 'absent',
+        primary: primary('111'),
+        dependents: [
+          { member_id: 'm1', profile: { tax_id: '222' } },
+          { member_id: 'm2', profile: { tax_id: '333' } },
+        ],
+      }),
+    ).toEqual({ memberTaxIds: [], admissionDate: null })
+  })
+
+  it('names no life when the movement of a dependent says which one nowhere', () => {
+    expect(
+      completionContextOf({
+        member_type: 'dependent',
+        primary: primary('111'),
+        dependents: [{ profile: { tax_id: '222' } }, { profile: { tax_id: '333' } }],
+      }),
+    ).toEqual({ memberTaxIds: [], admissionDate: null })
   })
 
   it('falls back to the holder when a dependent movement brings no dependents', () => {
