@@ -74,7 +74,7 @@ export class QueuesService {
 
   async update(id: string, data: UpdateQueueBody, viewer: Viewer): Promise<Queue> {
     assertOwnsIt(data.ownerId, viewer.id)
-    const current = await this.get(id, viewer.id)
+    const current = await this.ownershipOf(id)
     await this.assertMayEdit(current, viewer)
 
     // The view it becomes is checked too, or handing a personal view to the
@@ -101,10 +101,16 @@ export class QueuesService {
    *  key that reaches the personal view of somebody else a pod stays undeletable
    *  forever. Reading and editing it stay closed. */
   async delete(id: string, viewer: Viewer): Promise<void> {
-    const queue = await this.get(id, viewer.id)
-    if (!viewer.structureAdmin) await this.assertMayEdit(queue, viewer)
+    const view = await this.ownershipOf(id)
+    if (!viewer.structureAdmin) await this.assertMayEdit(view, viewer)
     const deleted = await this.repository.delete(id)
     if (!deleted) throw new NotFoundError(`Queue ${id} not found`)
+  }
+
+  private async ownershipOf(id: string): Promise<ViewOwnership> {
+    const view = await this.repository.findOwnership(id)
+    if (!view) throw new NotFoundError(`Queue ${id} not found`)
+    return view
   }
 
   private async assertMayEdit(view: ViewOwnership, viewer: Viewer): Promise<void> {

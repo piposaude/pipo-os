@@ -4,6 +4,7 @@ import type { TicketQueues } from '../../infrastructure/db-types.js'
 import { ValidationFailedError } from '../../shared/errors.js'
 import { FK_VIOLATION } from '../../shared/pg.js'
 import { ticketFilterSchema } from '../tickets/filter-schema.js'
+import type { ViewOwnership } from './permissions.js'
 import type { CreateQueueBody, Queue, ListQueuesQuery, UpdateQueueBody } from './schemas.js'
 import type { QueueGroupBy, SortDirection, SortField } from './view-vocabulary.js'
 
@@ -29,8 +30,6 @@ const starredBy = (eb: ExpressionBuilder<Database, 'ticket_queues'>, viewerId: s
       .where('f.user_id', '=', viewerId),
   )
 
-/** A personal view belongs to one sidebar. Listings carry this; reading one by
- *  id does not, so editing someone else's answers 403 and not 404. */
 const visibleTo = (eb: ExpressionBuilder<Database, 'ticket_queues'>, viewerId: string) =>
   eb.or([eb('owner_id', 'is', null), eb('owner_id', '=', viewerId)])
 
@@ -56,6 +55,7 @@ function toQueue(row: Selectable<TicketQueues>, favorite: boolean): Queue {
 export interface QueuesRepositoryPort {
   create(data: CreateQueueBody, createdBy: string): Promise<Queue>
   findById(id: string, viewerId: string): Promise<Queue | undefined>
+  findOwnership(id: string): Promise<ViewOwnership | undefined>
   findMany(query: ListQueuesQuery, viewerId: string): Promise<{ data: Queue[]; total: number }>
   findByIds(ids: readonly string[], viewerId: string): Promise<Queue[]>
   update(id: string, data: UpdateQueueBody, updatedBy: string): Promise<Queue | undefined>
@@ -99,9 +99,22 @@ export class QueuesRepository implements QueuesRepositoryPort {
       .selectAll()
       .select((eb) => starredBy(eb, viewerId).as('favorite'))
       .where('id', '=', id)
+      .where((eb) => visibleTo(eb, viewerId))
       .executeTakeFirst()
 
     return row ? toQueue(row, Boolean(row.favorite)) : undefined
+  }
+
+  // Deliberately without visibleTo: adding it here turns every 403 on someone
+  // else's personal view into a 404.
+  async findOwnership(id: string): Promise<ViewOwnership | undefined> {
+    const row = await this.db
+      .selectFrom('ticket_queues')
+      .select(['owner_id', 'group_id'])
+      .where('id', '=', id)
+      .executeTakeFirst()
+
+    return row ? { ownerId: row.owner_id, groupId: row.group_id } : undefined
   }
 
   async findByIds(ids: readonly string[], viewerId: string): Promise<Queue[]> {

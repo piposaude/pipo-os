@@ -1074,6 +1074,42 @@ describe('queues routes', () => {
       expect(response.json().data.map((row: { queueId: string }) => row.queueId)).toEqual([team])
     })
 
+    it('answers 404 reading the personal view of someone else by id', async () => {
+      const hers = await queue({ name: 'Da Carla', groupId: pod, ownerId: POD_LEAD }, podLead)
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/queues/${hers}`,
+        cookies: { [SESSION_COOKIE_NAME]: analyst },
+      })
+
+      expect(response.statusCode).toBe(404)
+    })
+
+    it('answers 404 listing the tickets of the personal view of someone else', async () => {
+      const hers = await queue({ name: 'Da Carla', groupId: pod, ownerId: POD_LEAD }, podLead)
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/queues/${hers}/tickets`,
+        cookies: { [SESSION_COOKIE_NAME]: analyst },
+      })
+
+      expect(response.statusCode).toBe(404)
+    })
+
+    it('answers 404 starring the personal view of someone else', async () => {
+      const hers = await queue({ name: 'Da Carla', groupId: pod, ownerId: POD_LEAD }, podLead)
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/queues/${hers}/favorite`,
+        cookies: { [SESSION_COOKIE_NAME]: analyst },
+      })
+
+      expect(response.statusCode).toBe(404)
+    })
+
     it('lets an analyst create a personal view with the ticket policy alone', async () => {
       const response = await app.inject({
         method: 'POST',
