@@ -115,6 +115,15 @@ telas foram sincronizadas pela última vez. Para re-sincronizar, ao menos uma ve
 por semana: `git log 7279ccf..origin/main -- pipodesk/src` no repositório do
 protótipo lista o que mudou; regerar as fixtures e atualizar este commit.
 
+**O pino está travado aqui pela DSP-127**, e não por falta de rodada. Exportar
+em qualquer commit a partir de `6552857` quebra o exportador com
+`ticket 700005: client-answered com motivo incorrect-data não tem par na API`:
+o passe de enriquecimento move 282 chamados para um sétimo estado que só existe
+na variante A daquela peça, e a API tem oito estados sem par para ele. O pino
+volta a andar quando o Gregory decidir entre estado novo e tag, e a decisão for
+portada. Enquanto isso, a rodada porta o que não depende de dado novo e deixa a
+fixture onde está — ver ACE-251.
+
 **O commit-base diz de onde partir, não o que já foi portado.** Ele marca a
 última rodada, e uma rodada pode ter deixado ponto para trás — na rodada de 14
 set o `returnTo` da fila, que existe no protótipo desde `aaad394`, muito antes
