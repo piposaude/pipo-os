@@ -124,15 +124,21 @@ function inclusionFailures(
   }
 
   const carried = new Set(lives)
+  const reported = new Set<string>()
   for (const member of members) {
     const taxId = digitsOf(member.taxId)
-    if (!carried.has(taxId)) {
-      failures.push({
-        field: `members[${taxId}]`,
-        message: 'This tax id is not one of the lives the movement carries',
-        code: 'unknown_member',
-      })
-    }
+    if (carried.has(taxId)) continue
+    /* By the digits when the body wrote any, so two spellings of one CPF are
+       one failure; by the value as written when it has none, because
+       `members[]` names no entry the caller could find in what it sent. */
+    const label = taxId === '' ? member.taxId.trim() : taxId
+    if (reported.has(label)) continue
+    reported.add(label)
+    failures.push({
+      field: label === '' ? 'members' : `members[${label}]`,
+      message: 'This tax id is not one of the lives the movement carries',
+      code: 'unknown_member',
+    })
   }
 
   return failures

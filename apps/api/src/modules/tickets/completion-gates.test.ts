@@ -197,6 +197,44 @@ describe('completionFailures · gate 3, inclusion', () => {
     ])
   })
 
+  it('names the entry the body sent when its tax id has no digits', () => {
+    const members = [filled('111'), filled('nao informado')]
+    expect(named(completionFailures(inclusionOf(['111']), { members }))).toEqual([
+      'members[nao informado]:unknown_member',
+    ])
+  })
+
+  it('points at the list itself when the entry carries no tax id at all', () => {
+    const members = [filled('111'), filled('  ')]
+    expect(named(completionFailures(inclusionOf(['111']), { members }))).toEqual([
+      'members:unknown_member',
+    ])
+  })
+
+  it('refuses the same unknown tax id once, whatever the punctuation', () => {
+    const members = [filled('999'), filled('999'), filled('9-9-9')]
+    expect(named(completionFailures(inclusionOf(['111']), { members }))).toEqual([
+      'members[111].idCardNumber:required',
+      'members[111].startDate:required',
+      'members[999]:unknown_member',
+    ])
+  })
+
+  it('refuses the movement of a dependent that does not say which of several', () => {
+    const subject = subjectOf({
+      enrollmentType: 'inclusion',
+      enrollmentSnapshot: {
+        member_type: 'dependent',
+        member_id: 'absent',
+        primary: { profile: { tax_id: '111' } },
+        dependents: [{ profile: { tax_id: '222' } }, { profile: { tax_id: '333' } }],
+      },
+    })
+    expect(named(completionFailures(subject, { members: [filled('222')] }))).toEqual([
+      'enrollmentSnapshot:unknown_lives',
+    ])
+  })
+
   it('asks only for the dependent when the movement is of one dependent', () => {
     const subject = subjectOf({
       enrollmentType: 'inclusion',
