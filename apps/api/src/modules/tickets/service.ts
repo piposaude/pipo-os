@@ -3,6 +3,7 @@ import {
   UnprocessableEntityError,
   ValidationFailedError,
 } from '../../shared/errors.js'
+import type { Author } from '../auth/authenticate.js'
 import { alterationTypeOf } from './enrollment-snapshot.js'
 import { canonicalEnrollmentType, parseAlterationType } from './enrollment-type.js'
 import type { TicketRowsQuery } from './rows-schema.js'
@@ -57,8 +58,8 @@ export class TicketsService {
     return this.repository.create({ ...data, enrollmentType })
   }
 
-  async update(id: string, data: UpdateTicketBody): Promise<Ticket> {
-    const ticket = await this.repository.update(id, data)
+  async update(id: string, data: UpdateTicketBody, author?: Author): Promise<Ticket> {
+    const ticket = await this.repository.update(id, data, author)
     if (!ticket) throw new NotFoundError(`Ticket ${id} not found`)
     return ticket
   }

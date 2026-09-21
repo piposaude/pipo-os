@@ -1591,6 +1591,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Default Response */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         trace?: never;
@@ -2544,6 +2553,7 @@ export interface components {
             filters?: components["schemas"]["TicketFilterInput"];
         };
         UpdateTicketBodyInput: {
+            priority?: components["schemas"]["TicketPriorityInput"] | null;
             queueId?: string | null;
             assigneeId?: string | null;
             tags?: string[];

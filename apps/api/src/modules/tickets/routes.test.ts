@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
+import { sessionWithoutSub } from '../auth/session.test-helpers.js'
 import { CLOSED_STATUSES } from './schemas.js'
 
 function cookieValue(
@@ -13,6 +14,7 @@ function cookieValue(
 
 const DEV_LOGIN_USER_ID = 'dev@piposaude.com.br'
 const NONEXISTENT_ID = '00000000-0000-4000-8000-000000000099'
+const TICKET_POLICIES = ['admin/allow/administrate/pipodesk/ticket']
 
 const validTicketBody = {
   enrollmentId: '00000000-0000-4000-8000-000000000001',
@@ -34,7 +36,7 @@ describe('tickets routes', () => {
     const loginResponse = await app.inject({
       method: 'POST',
       url: '/api/auth/dev-login',
-      payload: { policies: ['admin/allow/administrate/pipodesk/ticket'] },
+      payload: { policies: TICKET_POLICIES },
     })
     sessionCookie = cookieValue(loginResponse, SESSION_COOKIE_NAME)!
   })
@@ -45,6 +47,7 @@ describe('tickets routes', () => {
   })
 
   afterEach(async () => {
+    await app.db.deleteFrom('ticket_comments').execute()
     await app.db.deleteFrom('ticket_status_history').execute()
     await app.db.deleteFrom('tickets').execute()
     await app.db.deleteFrom('ticket_queues').execute()
@@ -936,6 +939,210 @@ describe('tickets routes', () => {
 
       expect(response.statusCode).toBe(200)
       expect(response.json().tags).toEqual(['pj_mov'])
+    })
+
+    it('changes the priority of a ticket', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${created.json().id}`,
+        payload: { priority: 'urgent' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(200)
+      expect(response.json().priority).toBe('urgent')
+    })
+
+    it('refuses a priority outside the four the queue knows', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${created.json().id}`,
+        payload: { priority: 'invalid' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+
+    it('records who changed the priority, and what it was before', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      for (const priority of ['urgent', 'low']) {
+        const patch = await app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${id}`,
+          payload: { priority },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        expect(patch.statusCode).toBe(200)
+      }
+
+      const timeline = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${id}/timeline`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const events = timeline.json().data.filter((item: { type: string }) => item.type === 'event')
+
+      expect(events).toHaveLength(2)
+      expect(events[1]).toMatchObject({
+        eventType: 'priority_changed',
+        authorId: 'dev@piposaude.com.br',
+        metadata: { priority: 'low', previous: 'urgent' },
+      })
+    })
+
+    it('says nothing when the priority sent is the one already there', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const patch = await app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${id}`,
+          payload: { priority: 'high' },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        expect(patch.json()).toMatchObject({ priority: 'high' })
+      }
+
+      const timeline = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${id}/timeline`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const events = timeline.json().data.filter((item: { type: string }) => item.type === 'event')
+
+      expect(events).toHaveLength(1)
+    })
+
+    it('records the removal of a priority as a removal', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      for (const priority of ['urgent', null]) {
+        const patch = await app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${id}`,
+          payload: { priority },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        expect(patch.json()).toMatchObject({ priority })
+      }
+
+      const timeline = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${id}/timeline`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const events = timeline.json().data.filter((item: { type: string }) => item.type === 'event')
+
+      expect(events[1]).toMatchObject({
+        body: 'Prioridade removida',
+        metadata: { priority: null, previous: 'urgent' },
+      })
+    })
+
+    it('still takes a PATCH that names no priority from a session with no sub', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${created.json().id}`,
+        payload: { tags: ['pj_mov'] },
+        cookies: { [SESSION_COOKIE_NAME]: sessionWithoutSub(app, TICKET_POLICIES) },
+      })
+
+      expect(response.statusCode).toBe(200)
+      expect(response.json().tags).toEqual(['pj_mov'])
+    })
+
+    it('refuses to change the priority from a session with no sub to sign it', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${created.json().id}`,
+        payload: { priority: 'urgent' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionWithoutSub(app, TICKET_POLICIES) },
+      })
+
+      expect(response.statusCode).toBe(401)
+    })
+
+    it('leaves neither the priority nor the event behind when another field fails', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${id}`,
+        payload: { priority: 'urgent', queueId: NONEXISTENT_ID },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(422)
+
+      const ticket = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const timeline = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${id}/timeline`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(ticket.json().priority).toBeNull()
+      expect(
+        timeline.json().data.filter((item: { type: string }) => item.type === 'event'),
+      ).toHaveLength(0)
     })
 
     it('accepts null to clear a nullable field', async () => {

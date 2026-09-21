@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
 import { requirePrincipal, requireUser, requireUserId } from './authenticate.js'
 import { SESSION_COOKIE_NAME } from './session.js'
+import { sessionWithoutSub } from './session.test-helpers.js'
 
 function cookieValue(
   response: { cookies: Array<{ name: string; value: string }> },
@@ -13,20 +14,6 @@ function cookieValue(
 
 const DEV_LOGIN_USER_ID = 'dev@piposaude.com.br'
 const POLICIES = ['admin/allow/administrate/pipodesk/ticket']
-
-// The auth-service's access-token may carry no `sub`. Dev login always sets one,
-// so reaching requireUserId's refusal means minting the token by hand — the
-// cookie signature is what the API trusts, not the JWT's.
-function sessionWithoutSub(app: FastifyInstance): string {
-  const encode = (value: object): string => Buffer.from(JSON.stringify(value)).toString('base64url')
-  const claims = {
-    email: DEV_LOGIN_USER_ID,
-    policies: POLICIES,
-    exp: Math.floor(Date.now() / 1000) + 3600,
-  }
-  const token = `${encode({ alg: 'none', typ: 'JWT' })}.${encode(claims)}.not-a-signature`
-  return app.signCookie(token)
-}
 
 describe('authenticate hook', () => {
   let app: FastifyInstance
@@ -152,7 +139,7 @@ describe('authenticate hook', () => {
     const response = await app.inject({
       method: 'GET',
       url: '/__test/needs-user-id',
-      cookies: { [SESSION_COOKIE_NAME]: sessionWithoutSub(app) },
+      cookies: { [SESSION_COOKIE_NAME]: sessionWithoutSub(app, POLICIES) },
     })
 
     expect(response.statusCode).toBe(401)
@@ -166,7 +153,7 @@ describe('authenticate hook', () => {
     const response = await app.inject({
       method: 'GET',
       url: '/__test/protected',
-      cookies: { [SESSION_COOKIE_NAME]: sessionWithoutSub(app) },
+      cookies: { [SESSION_COOKIE_NAME]: sessionWithoutSub(app, POLICIES) },
     })
 
     expect(response.statusCode).toBe(200)
