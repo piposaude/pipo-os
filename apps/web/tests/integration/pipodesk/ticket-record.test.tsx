@@ -172,12 +172,17 @@ describe('aba Sobre a empresa', () => {
   /** Caiçara Metalurgia (705639): a parent with branches, two contracts — one
    *  expired with a pending file, one active — two plans and the two company
    *  files the Backoffice generates. */
-  it('should show the company data, its branches, the contracts with a derived badge and the vault', async () => {
+  it('should show the company data, the contract of the ticket with a derived badge and the vault', async () => {
     const { panel, user } = await openTab('/tickets/705639', 'Sobre a empresa')
     const company = records.companyById.get(rowOf('705639').companyId)!
 
     // Straight under the page's h1: the tab has no card of its own to carry an h2.
-    for (const title of Object.values(companyCopy.sections)) {
+    for (const title of [
+      companyCopy.sections.data,
+      companyCopy.sections.ticketContract,
+      companyCopy.sections.plans,
+      companyCopy.sections.files,
+    ]) {
       expect(within(panel).getByRole('heading', { level: 2, name: title })).toBeInTheDocument()
     }
     expect(fieldValue(panel, companyCopy.fields.legalName)).toHaveTextContent(company.legalName)
@@ -187,10 +192,6 @@ describe('aba Sobre a empresa', () => {
       companyCopy.structure.parent,
     )
 
-    const [firstBranch] = records.branchesOf(company.id)
-    expect(within(panel).getByText(firstBranch.legalName)).toBeInTheDocument()
-    expect(within(panel).getByText(firstBranch.cnpj)).toBeInTheDocument()
-
     // The badge is derived from the term, never stored: 957445 ended in 2025.
     const expired = within(panel).getByText('957445').closest('li')!
     expect(within(expired).getByText(companyCopy.contract.expired)).toBeInTheDocument()
@@ -199,10 +200,8 @@ describe('aba Sobre a empresa', () => {
     expect(
       within(expired).getByRole('button', { name: companyCopy.contract.copyNumber('957445') }),
     ).toBeInTheDocument()
-    const active = within(panel).getByText('124588').closest('li')!
-    expect(within(active).getByText(companyCopy.contract.active)).toBeInTheDocument()
-    expect(within(active).getByText('1 arquivo anexado')).toBeInTheDocument()
-    expect(within(active).getByText('Petlove')).toBeInTheDocument()
+    // 124588 is the Petlove contract of the same company — another carrier.
+    expect(within(panel).queryByText('124588')).not.toBeInTheDocument()
 
     // The vault: portal and login copyable, the password masked until the eye.
     expect(within(expired).getByText('portal.unimedmineira.com.br/rh')).toBeInTheDocument()
@@ -237,12 +236,19 @@ describe('aba Sobre a empresa', () => {
       companyCopy.structure.branchOf(parent.tradeName),
     )
     expect(
-      within(panel).getByText(companyCopy.contract.branchNote(parent.tradeName)[1]),
+      within(panel).getByText(companyCopy.contract.branchNote(parent.tradeName, true)[1]),
     ).toBeInTheDocument()
   })
 
+  it('should not list the sister branches of the company', async () => {
+    const { panel } = await openTab('/tickets/705639', 'Sobre a empresa')
+    const [firstBranch] = records.branchesOf(rowOf('705639').companyId)
+
+    expect(within(panel).queryByText(firstBranch.legalName)).not.toBeInTheDocument()
+  })
+
   it('should say a contract has no vault instead of showing empty lines', async () => {
-    const { panel } = await openTab('/tickets/700000', 'Sobre a empresa')
+    const { panel } = await openTab('/tickets/700002', 'Sobre a empresa')
 
     expect(within(panel).getAllByText(companyCopy.contract.noAccess).length).toBeGreaterThan(0)
   })
