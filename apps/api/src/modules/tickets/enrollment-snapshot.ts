@@ -6,6 +6,7 @@
 
 import { sql, type RawBuilder } from 'kysely'
 import { z } from 'zod'
+import { digitsOf } from '../../shared/text.js'
 import type { relationshipSchema } from './schemas.js'
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -131,8 +132,6 @@ const NO_COMPANY: CompanyFields = {
   companyTaxId: null,
 }
 
-const digitsOf = (taxId: string): string => taxId.replace(/\D/g, '')
-
 /**
  * The EI fills `parent_company_*` for a parent company as well, so the columns
  * alone do not say whether this one is a branch. Same two sources as the EI's
@@ -211,4 +210,39 @@ export function snapshotString(parent: string[], keys: string[]): RawBuilder<str
                                  then enrollment_snapshot #>> ${path} end), '')`
   })
   return sql<string | null>`coalesce(${sql.join(candidates, sql`, `)})`
+}
+
+export interface CompletionContext {
+  memberTaxIds: string[]
+  admissionDate: string | null
+}
+
+const taxIdOf = (member: unknown): string | null =>
+  isRecord(member) ? readString(member, ['profile', 'tax-id']) : null
+
+export function completionContextOf(snapshot: unknown): CompletionContext {
+  if (!isRecord(snapshot)) return { memberTaxIds: [], admissionDate: null }
+
+  const primary = readPath(snapshot, ['primary'])
+  const admissionDate = isRecord(primary)
+    ? readString(primary, ['employment', 'admission-date'])
+    : null
+
+  const dependents = readPath(snapshot, ['dependents'])
+  const list = Array.isArray(dependents) ? dependents : []
+
+  const memberType = readString(snapshot, ['member-type'], ['primary', 'member-type'])
+  if (memberType?.toLowerCase() === 'dependent' && list.length > 0) {
+    const memberId = readString(snapshot, ['member-id'])
+    const pointed =
+      memberId === null
+        ? undefined
+        : list.find((member) => isRecord(member) && readString(member, ['member-id']) === memberId)
+    const soleDependent = list.length === 1 ? list[0] : undefined
+    const taxId = taxIdOf(pointed ?? soleDependent)
+    return { memberTaxIds: taxId === null ? [] : [taxId], admissionDate }
+  }
+
+  const taxIds = [primary, ...list].map(taxIdOf)
+  return { memberTaxIds: taxIds.filter((taxId) => taxId !== null), admissionDate }
 }
