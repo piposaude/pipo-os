@@ -62,6 +62,7 @@ describe('readCurrent', () => {
             id: 'q1',
             name: 'MOV CLT',
             groupId: 'g2',
+            ownerId: null,
             filters: { archived: false },
             sort: QUEUE_SORT,
           },
@@ -72,7 +73,14 @@ describe('readCurrent', () => {
     const current = await readCurrent(reader, 20)
 
     expect(current.queues).toEqual([
-      { id: 'q1', name: 'MOV CLT', groupId: 'g2', filters: { archived: false }, sort: QUEUE_SORT },
+      {
+        id: 'q1',
+        name: 'MOV CLT',
+        groupId: 'g2',
+        ownerId: null,
+        filters: { archived: false },
+        sort: QUEUE_SORT,
+      },
     ])
   })
 })

@@ -44,6 +44,7 @@ export async function readCurrent(reader: SeedReader, pageSize = 100): Promise<C
       id: queue.id,
       name: queue.name,
       groupId: queue.groupId,
+      ownerId: queue.ownerId,
       filters: queue.filters,
       sort: queue.sort,
     })),

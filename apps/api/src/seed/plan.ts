@@ -43,6 +43,7 @@ export interface CurrentQueue {
   id: string
   name: string
   groupId: string | null
+  ownerId: string | null
   filters: TicketFilter | null
   sort: SeedSort
 }
@@ -115,7 +116,9 @@ export function planSeed(desired: SeedStructure, current: CurrentStructure): See
     const found =
       groupId === undefined
         ? undefined
-        : current.queues.find((row) => row.name === queue.name && row.groupId === groupId)
+        : current.queues.find(
+            (row) => row.ownerId === null && row.name === queue.name && row.groupId === groupId,
+          )
 
     if (found) {
       existing.queues += 1

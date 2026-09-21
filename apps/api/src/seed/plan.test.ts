@@ -21,7 +21,16 @@ const applied = (overrides: Partial<CurrentStructure> = {}): CurrentStructure =>
     { id: 'g1', name: 'Gestão de Benefícios', parentId: null },
     { id: 'g2', name: 'POD 1', parentId: 'g1' },
   ],
-  queues: [{ id: 'q1', name: 'MOV CLT', groupId: 'g2', filters: CLT_FILTER, sort: CLT_SORT }],
+  queues: [
+    {
+      id: 'q1',
+      name: 'MOV CLT',
+      groupId: 'g2',
+      ownerId: null,
+      filters: CLT_FILTER,
+      sort: CLT_SORT,
+    },
+  ],
   members: [{ groupId: 'g1', userId: 'ana@piposaude.com.br' }],
   ...overrides,
 })
@@ -74,6 +83,7 @@ describe('planSeed', () => {
           id: 'q1',
           name: 'MOV CLT',
           groupId: 'g2',
+          ownerId: null,
           filters: { contractTypes: ['pj'], archived: false },
           sort: CLT_SORT,
         },
@@ -95,6 +105,7 @@ describe('planSeed', () => {
           id: 'q1',
           name: 'MOV CLT',
           groupId: 'g2',
+          ownerId: null,
           filters: { archived: false, contractTypes: ['clt'] },
           sort: { direction: 'asc', by: 'actionDate' },
         },
@@ -102,6 +113,32 @@ describe('planSeed', () => {
     })
 
     expect(planSeed(TINY, current).divergences).toEqual([])
+  })
+
+  it('ignores a personal view of the same name: the pod would be left without the team one', () => {
+    const current = applied({
+      queues: [
+        {
+          id: 'q1',
+          name: 'MOV CLT',
+          groupId: 'g2',
+          ownerId: 'ana@piposaude.com.br',
+          filters: CLT_FILTER,
+          sort: CLT_SORT,
+        },
+      ],
+    })
+
+    const plan = planSeed(TINY, current)
+
+    expect(plan.actions).toContainEqual({
+      kind: 'create-queue',
+      groupKey: 'pod-1',
+      name: 'MOV CLT',
+      filters: CLT_FILTER,
+      sort: CLT_SORT,
+    })
+    expect(plan.existing.queues).toBe(0)
   })
 
   it('hands back the id of every group it found, so the queues can point at them', () => {
