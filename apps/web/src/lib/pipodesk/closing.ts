@@ -36,15 +36,15 @@ const LABEL = {
   effective: 'Nova data de vigência',
 }
 
-/** One calendar month back, clamped: raw `setUTCMonth` turns 31 March into 3
- *  March — a floor later than the date it sits below, refusing a valid start. */
+/**
+ * The engine's floor, overshoot and all: Go's `AddDate(0, -1, 0)` normalizes
+ * 31 February into 2 March, so a 31 March admission floors at 2 March — later
+ * than the date it sits below. Clamping it here would accept a start the API
+ * refuses, which is the one thing this pre-check exists to prevent.
+ */
 export function oneMonthBefore(iso: string): string {
   const date = new Date(`${iso.slice(0, 10)}T00:00:00Z`)
-  const day = date.getUTCDate()
-  date.setUTCDate(1)
   date.setUTCMonth(date.getUTCMonth() - 1)
-  const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate()
-  date.setUTCDate(Math.min(day, lastDay))
   return date.toISOString().slice(0, 10)
 }
 

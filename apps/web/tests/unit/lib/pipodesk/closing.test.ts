@@ -42,9 +42,11 @@ describe('oneMonthBefore', () => {
     expect(oneMonthBefore('2023-11-22')).toBe('2023-10-22')
   })
 
-  it('should not overshoot when the month before is shorter', () => {
-    expect(oneMonthBefore('2024-03-31') <= '2024-03-31').toBe(true)
-    expect(oneMonthBefore('2024-03-31')).toBe('2024-02-29')
+  /** The engine floors a 31 March admission at 2 March, and a front that
+   *  clamped to 29 February would greenlight a start the API refuses. */
+  it('should overshoot a short month exactly as the engine does', () => {
+    expect(oneMonthBefore('2024-03-31')).toBe('2024-03-02')
+    expect(oneMonthBefore('2023-10-31')).toBe('2023-10-01')
   })
 })
 
