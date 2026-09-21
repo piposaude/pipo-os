@@ -128,9 +128,6 @@ function inclusionFailures(
   for (const member of members) {
     const taxId = digitsOf(member.taxId)
     if (carried.has(taxId)) continue
-    /* By the digits when the body wrote any, so two spellings of one CPF are
-       one failure; by the value as written when it has none, because
-       `members[]` names no entry the caller could find in what it sent. */
     const label = taxId === '' ? member.taxId.trim() : taxId
     if (reported.has(label)) continue
     reported.add(label)

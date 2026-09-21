@@ -239,13 +239,8 @@ export function completionContextOf(snapshot: unknown): CompletionContext {
       memberId === null
         ? undefined
         : list.find((member) => isRecord(member) && readString(member, ['member-id']) === memberId)
-    /* By `member_id`, and a list of one is the only fallback — the EI's own
-       rule for which dependent a movement is about (`targetDependent` in
-       zendesk/member_target.go). Its `allMemberTaxIDs` takes `dependents[0]`
-       from any list, but there it only labels an event; here the answer is
-       whose card the completion gate demands. */
-    const alone = list.length === 1 ? list[0] : undefined
-    const taxId = taxIdOf(pointed ?? alone)
+    const soleDependent = list.length === 1 ? list[0] : undefined
+    const taxId = taxIdOf(pointed ?? soleDependent)
     return { memberTaxIds: taxId === null ? [] : [taxId], admissionDate }
   }
 
