@@ -13,3 +13,25 @@ export function sessionWithoutSub(app: FastifyInstance, policies: string[]): str
   const token = `${encode({ alg: 'none', typ: 'JWT' })}.${encode(claims)}.not-a-signature`
   return app.signCookie(token)
 }
+
+/** The dev-login route mints one identity, the one in DEV_LOGIN_EMAIL, so a
+ *  test that needs two people signs the session itself — same shape, same cookie. */
+export function sessionCookieFor(app: FastifyInstance, email: string, policies: string[]): string {
+  const now = Math.floor(Date.now() / 1000)
+  const part = (value: unknown): string => Buffer.from(JSON.stringify(value)).toString('base64url')
+  const token = [
+    part({ alg: 'none', typ: 'JWT' }),
+    part({
+      iss: 'pipo-os-test',
+      sub: email,
+      email,
+      iat: now,
+      exp: now + 3600,
+      policies,
+      'token-type': 'access_token',
+    }),
+    'test-not-a-real-signature',
+  ].join('.')
+
+  return app.signCookie(token)
+}
