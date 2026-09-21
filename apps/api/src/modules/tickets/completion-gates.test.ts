@@ -431,6 +431,21 @@ describe('completionFailures · a life whose tax id has no digits', () => {
     ])
   })
 
+  it('does not accuse a submitted tax id while a life is unreadable', () => {
+    const subject = inclusionOf({
+      member_type: 'primary',
+      primary: { profile: { tax_id: '111' } },
+      dependents: [{ profile: { tax_id: '-' } }],
+    })
+    const members = [
+      { taxId: '111', idCardNumber: 'card', startDate: '2026-04-01' },
+      { taxId: '', idCardNumber: 'x', startDate: '2026-04-01' },
+    ]
+    expect(named(completionFailures(subject, { members }))).toEqual([
+      'enrollmentSnapshot:unknown_lives',
+    ])
+  })
+
   it('does not let two unreadable lives collapse into one', () => {
     const subject = inclusionOf({
       member_type: 'primary',

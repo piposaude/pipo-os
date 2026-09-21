@@ -78,9 +78,10 @@ function inclusionFailures(
   const { memberTaxIds, admissionDate } = completionContextOf(subject.enrollmentSnapshot)
   const digits = memberTaxIds.map(digitsOf)
   const lives = [...new Set(digits)].filter((taxId) => taxId !== '')
+  const unreadable = digits.some((taxId) => taxId === '')
 
   const failures: ErrorDetail[] = []
-  if (lives.length === 0 || digits.some((taxId) => taxId === '')) {
+  if (lives.length === 0 || unreadable) {
     failures.push({
       field: 'enrollmentSnapshot',
       message: 'The movement carries a life this API cannot identify by tax id',
@@ -121,6 +122,8 @@ function inclusionFailures(
       })
     }
   }
+
+  if (unreadable) return failures
 
   const carried = new Set(lives)
   const reported = new Set<string>()
