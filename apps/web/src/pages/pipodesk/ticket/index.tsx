@@ -122,7 +122,7 @@ export default function TicketPage() {
            would read as an alert where there is none. */
         <Banner variant="important" icon={false} className={styles.branchNotice}>
           {constants.facts.branchNotice(ticket.enrollmentType)}{' '}
-          <strong>{company?.tradeName ?? ticket.companyName}</strong>
+          <strong>{company?.tradeName ?? ticket.companyName ?? '—'}</strong>
         </Banner>
       )}
       <dl className={styles.facts}>
