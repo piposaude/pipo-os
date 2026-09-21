@@ -11,6 +11,7 @@ import {
 import { daysOverdue, formatLongDate } from '@/lib/pipodesk/format'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 import { analystsOf } from '@/lib/pipodesk/permissions'
+import { records } from '@/fixtures/pipodesk/records'
 import constants from '@/constants/pages/pipodesk/ticket'
 import copyButton from '@/constants/pipodesk/copy-button'
 
@@ -49,6 +50,10 @@ async function renderAt(path: string) {
 
 const byId = (id: string) => queueSeed.find((row) => row.id === id)!
 
+/** `dt` → its `dd`: the fact's value as the tab prints it. */
+const fact = (panel: HTMLElement, label: string) =>
+  within(panel).getByText(label).nextElementSibling
+
 describe('detalhe do chamado', () => {
   it('should open from a queue row click, with the person in the title and a copy button for the id', async () => {
     const router = await renderAt('/')
@@ -72,6 +77,38 @@ describe('detalhe do chamado', () => {
   /** The prototype's banner is two parts: the fact in bold, the filed date
    *  after it in plain weight and spelled out (`13 de Julho`) — one sentence,
    *  no period between them. */
+  it('should say the benefit enters the branch, naming matriz and filial with their CNPJs', async () => {
+    const ticket = byId('700007')
+    await renderAt('/tickets/700007')
+    const panel = await screen.findByRole('tabpanel')
+    const company = records.companyById.get(ticket.companyId)!
+    const parent = records.companyById.get(ticket.parentCompanyId!)!
+
+    expect(
+      within(panel).getByText(constants.facts.branchNotice(ticket.enrollmentType)),
+    ).toHaveTextContent(company.tradeName)
+
+    expect(fact(panel, constants.facts.parentCompany)).toHaveTextContent(parent.tradeName)
+    expect(fact(panel, constants.facts.branchCompany)).toHaveTextContent(company.tradeName)
+    expect(
+      within(panel)
+        .getAllByText(constants.facts.cnpj)
+        .map((label) => label.nextElementSibling?.textContent),
+    ).toEqual([parent.cnpj, company.cnpj])
+  })
+
+  it('should keep one company and no branch notice on a ticket of the parent', async () => {
+    const ticket = byId('705639')
+    await renderAt('/tickets/705639')
+    const panel = await screen.findByRole('tabpanel')
+
+    expect(
+      within(panel).queryByText(constants.facts.branchNotice(ticket.enrollmentType)),
+    ).not.toBeInTheDocument()
+    expect(fact(panel, constants.facts.company)).toHaveTextContent(ticket.companyName!)
+    expect(fact(panel, constants.facts.structure)).toHaveTextContent(constants.facts.isParent)
+  })
+
   it('should announce the overdue action date in two parts, the fact in bold and the date spelled out', async () => {
     await renderAt('/tickets/705639')
     const ticket = byId('705639')
