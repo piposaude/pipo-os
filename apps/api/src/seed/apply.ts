@@ -12,8 +12,24 @@ export interface SeedClient {
   addMember(groupId: string, body: { userId: string; role: MemberRole }): Promise<void>
 }
 
+export interface Tally {
+  groups: number
+  queues: number
+  members: number
+}
+
 export interface ApplyOutcome {
-  created: { groups: number; queues: number; members: number }
+  created: Tally
+}
+
+export class SeedRunError extends Error {
+  constructor(
+    readonly created: Tally,
+    cause: unknown,
+  ) {
+    super(cause instanceof Error ? cause.message : String(cause), { cause })
+    this.name = 'SeedRunError'
+  }
 }
 
 export async function applyPlan(plan: SeedPlan, client: SeedClient): Promise<ApplyOutcome> {
@@ -28,29 +44,37 @@ export async function applyPlan(plan: SeedPlan, client: SeedClient): Promise<App
     return id
   }
 
-  for (const action of plan.actions) {
-    if (action.kind === 'create-group') {
-      const parentId = action.parentKey === null ? null : idOf(action.parentKey)
-      const group = await client.createGroup({ name: action.name, parentId })
-      idByKey.set(action.key, group.id)
-      created.groups += 1
-      continue
-    }
-
-    if (action.kind === 'create-queue') {
-      await client.createQueue({
-        name: action.name,
-        groupId: idOf(action.groupKey),
-        filters: action.filters,
-        sort: action.sort,
-      })
-      created.queues += 1
-      continue
-    }
-
-    await client.addMember(idOf(action.groupKey), { userId: action.userId, role: action.role })
-    created.members += 1
+  try {
+    await run()
+  } catch (error) {
+    throw new SeedRunError(created, error)
   }
 
   return { created }
+
+  async function run(): Promise<void> {
+    for (const action of plan.actions) {
+      if (action.kind === 'create-group') {
+        const parentId = action.parentKey === null ? null : idOf(action.parentKey)
+        const group = await client.createGroup({ name: action.name, parentId })
+        idByKey.set(action.key, group.id)
+        created.groups += 1
+        continue
+      }
+
+      if (action.kind === 'create-queue') {
+        await client.createQueue({
+          name: action.name,
+          groupId: idOf(action.groupKey),
+          filters: action.filters,
+          sort: action.sort,
+        })
+        created.queues += 1
+        continue
+      }
+
+      await client.addMember(idOf(action.groupKey), { userId: action.userId, role: action.role })
+      created.members += 1
+    }
+  }
 }

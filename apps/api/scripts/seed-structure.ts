@@ -1,4 +1,4 @@
-import { applyPlan, type SeedClient } from '../src/seed/apply.js'
+import { applyPlan, SeedRunError, type SeedClient } from '../src/seed/apply.js'
 import { planSeed } from '../src/seed/plan.js'
 import { readCurrent, type SeedReader } from '../src/seed/read.js'
 import { formatReport } from '../src/seed/report.js'
@@ -74,16 +74,25 @@ async function main(): Promise<void> {
 
   const current = await readCurrent(reader)
   const plan = planSeed(PIPODESK_STRUCTURE, current)
-  const outcome = await applyPlan(plan, client)
 
-  console.log(`seed da estrutura do Pipodesk em ${BASE_URL}`)
-  const report = formatReport({
-    created: outcome.created,
-    existing: plan.existing,
-    divergences: plan.divergences,
-  })
-  for (const line of report) {
-    console.log(`  ${line}`)
+  const print = (created: { groups: number; queues: number; members: number }): void => {
+    console.log(`seed da estrutura do Pipodesk em ${BASE_URL}`)
+    for (const line of formatReport({
+      created,
+      existing: plan.existing,
+      divergences: plan.divergences,
+    })) {
+      console.log(`  ${line}`)
+    }
+  }
+
+  try {
+    print((await applyPlan(plan, client)).created)
+  } catch (error) {
+    if (error instanceof SeedRunError) {
+      print(error.created)
+    }
+    throw error
   }
 }
 

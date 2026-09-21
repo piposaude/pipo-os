@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyPlan } from './apply.js'
+import { applyPlan, SeedRunError } from './apply.js'
 import type { SeedClient } from './apply.js'
 import { planSeed } from './plan.js'
 import type { CurrentStructure, SeedStructure } from './plan.js'
@@ -69,6 +69,22 @@ describe('applyPlan', () => {
       ['createQueue', { name: 'MOV CLT', groupId: 'id-1', filters: CLT_FILTER, sort: CLT_SORT }],
       ['addMember', 'g1', { userId: 'ana@piposaude.com.br', role: 'admin' }],
     ])
+  })
+
+  it('carries what it had created when the API refuses in the middle', async () => {
+    const { client } = recordingClient()
+    const refusing: SeedClient = {
+      ...client,
+      createQueue: () => Promise.reject(new Error('POST /api/queues respondeu 401')),
+    }
+
+    const failure = await applyPlan(planSeed(TINY, EMPTY), refusing).catch(
+      (error: unknown) => error,
+    )
+
+    expect(failure).toBeInstanceOf(SeedRunError)
+    expect((failure as SeedRunError).created).toEqual({ groups: 2, queues: 0, members: 0 })
+    expect((failure as SeedRunError).cause).toEqual(new Error('POST /api/queues respondeu 401'))
   })
 
   it('counts what it created, for the report', async () => {
