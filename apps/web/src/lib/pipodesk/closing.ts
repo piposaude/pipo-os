@@ -19,6 +19,9 @@ export interface ClosingField {
   kind: 'text' | 'date'
   /** The life the field belongs to — only on an inclusion. */
   person?: Person
+  /** How the life is named in a message: the first name, or the whole name
+   *  when another life of the movement answers to the same first name. */
+  personName?: string
   /** Admission minus one month; a start below it is refused. */
   floor?: string
 }
@@ -57,19 +60,43 @@ export function livesOf(ticket: TicketRow, records: TicketRecords): Person[] {
     .filter((person): person is Person => person !== undefined)
 }
 
+const firstNameOf = (person: Person): string => displayNameOf(person).split(/\s+/)[0]
+
+function nameOfEachLife(lives: Person[]): Map<string, string> {
+  const shared = new Set(
+    lives.map(firstNameOf).filter((first, index, firsts) => firsts.indexOf(first) !== index),
+  )
+  return new Map(
+    lives.map((life) => [
+      life.id,
+      shared.has(firstNameOf(life)) ? displayNameOf(life) : firstNameOf(life),
+    ]),
+  )
+}
+
 export function closingFields(ticket: TicketRow, records: TicketRecords): ClosingField[] {
   switch (ticket.enrollmentType) {
-    case 'inclusion':
-      return livesOf(ticket, records).flatMap((person) => [
-        { key: cardKey(person.id), label: LABEL.card, kind: 'text' as const, person },
+    case 'inclusion': {
+      const lives = livesOf(ticket, records)
+      const names = nameOfEachLife(lives)
+      return lives.flatMap((person) => [
+        {
+          key: cardKey(person.id),
+          label: LABEL.card,
+          kind: 'text' as const,
+          person,
+          personName: names.get(person.id),
+        },
         {
           key: startKey(person.id),
           label: LABEL.start,
           kind: 'date' as const,
           person,
+          personName: names.get(person.id),
           floor: oneMonthBefore(person.link.admissionDate),
         },
       ])
+    }
     case 'exclusion':
       return [{ key: END_KEY, label: LABEL.end, kind: 'date' }]
     case 'plan_change':
@@ -82,9 +109,8 @@ export function closingFields(ticket: TicketRow, records: TicketRecords): Closin
 }
 
 export function fieldLabel(field: ClosingField): string {
-  if (!field.person) return field.label
-  const [first] = displayNameOf(field.person).split(/\s+/)
-  return `${field.label} · ${first}`
+  if (field.personName === undefined) return field.label
+  return `${field.label} · ${field.personName}`
 }
 
 export function missingClosing(fields: ClosingField[], values: ClosingValues): MissingField[] {

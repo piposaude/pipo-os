@@ -4,6 +4,7 @@ import {
   cardKey,
   closingFields,
   describeMissing,
+  fieldLabel,
   livesOf,
   missingClosing,
   oneMonthBefore,
@@ -26,6 +27,23 @@ const family = () =>
       person('out', { role: 'dependent', holderId: 'holder' }),
     ],
     // `Movement.id` is the ticket id: the record indexes movements by it.
+    tickets: [
+      {
+        id: 'T-1',
+        beneficiaryId: 'holder',
+        dependentIds: ['dep'],
+        policyId: 'policy-1',
+        pendingDocumentation: null,
+      },
+    ],
+  })
+
+const namesakes = () =>
+  recordsWith({
+    beneficiaries: [
+      person('holder', { name: 'Daniel Guedes Hoffmann' }),
+      person('dep', { name: 'Daniel Jardim Hoffmann', role: 'dependent', holderId: 'holder' }),
+    ],
     tickets: [
       {
         id: 'T-1',
@@ -72,6 +90,15 @@ describe('closingFields', () => {
     ])
     expect(fields[1].floor).toBe('2023-10-22')
     expect(fields[0].floor).toBeUndefined()
+  })
+
+  it('should name a life in full when another life of the movement answers to the same first name', () => {
+    expect(closingFields(ticket('inclusion'), namesakes()).map(fieldLabel)).toEqual([
+      'Carteirinha · Daniel Guedes Hoffmann',
+      'Início da vigência · Daniel Guedes Hoffmann',
+      'Carteirinha · Daniel Jardim Hoffmann',
+      'Início da vigência · Daniel Jardim Hoffmann',
+    ])
   })
 
   it('should ask only the end date on an exclusion', () => {
