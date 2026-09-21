@@ -492,6 +492,34 @@ describe('queues routes', () => {
       expect(response.json()).toEqual({ data: [], total: 0, page: 1, pageSize: 20 })
     })
 
+    it('refuses a view whose saved filter this version cannot read', async () => {
+      const [{ id: queueId }] = await app.db
+        .insertInto('ticket_queues')
+        .values({
+          name: 'Fila legada',
+          filters: JSON.stringify({ status: 'active', tags: ['vip'] }),
+          created_by: DEV_LOGIN_USER_ID,
+        })
+        .returning('id')
+        .execute()
+
+      await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+        payload: validTicketBody,
+      })
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/queues/${queueId}/tickets`,
+        cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
+      })
+
+      expect(response.statusCode).toBe(409)
+      expect(response.json().message).toContain('cannot read')
+    })
+
     it('lists what the saved filter selects, not what points at the queue', async () => {
       const created = await app.inject({
         method: 'POST',
@@ -1197,6 +1225,54 @@ describe('queues routes', () => {
 
       expect(response.statusCode).toBe(403)
     })
+
+    it('refuses the coordination editing the personal view of an analyst', async () => {
+      const id = await queue({ name: 'Minhas', groupId: pod, ownerId: ANALYST }, analyst)
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/queues/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { name: 'Renomeada' },
+      })
+
+      expect(response.statusCode).toBe(403)
+    })
+
+    /* A fresh pod with no members, so the saved view is the only FK left to
+       block the delete. */
+    it('lets the structure policy delete the personal view of someone else, unblocking the pod', async () => {
+      const spare = await app.inject({
+        method: 'POST',
+        url: '/api/groups',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { name: 'POD 6', parentId: geben },
+      })
+      const spareId = spare.json().id
+      const id = await queue({ name: 'Minhas', groupId: spareId, ownerId: ANALYST }, analyst)
+
+      const blocked = await app.inject({
+        method: 'DELETE',
+        url: `/api/groups/${spareId}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(blocked.statusCode).toBe(409)
+      expect(blocked.json().message).toContain('saved views')
+
+      const removed = await app.inject({
+        method: 'DELETE',
+        url: `/api/queues/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(removed.statusCode).toBe(204)
+
+      const unblocked = await app.inject({
+        method: 'DELETE',
+        url: `/api/groups/${spareId}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(unblocked.statusCode).toBe(204)
+    })
   })
 
   // ---------------------------------------------------------------------------
@@ -1303,6 +1379,22 @@ describe('queues routes', () => {
       const id = await view('Todos')
 
       expect(await counts([id, NONEXISTENT_ID])).toEqual({ data: [{ queueId: id, total: 0 }] })
+    })
+
+    it('leaves out a view whose saved filter this version cannot read', async () => {
+      const id = await view('Todos')
+      const [{ id: legacy }] = await app.db
+        .insertInto('ticket_queues')
+        .values({
+          name: 'Fila legada',
+          filters: JSON.stringify({ status: 'active', tags: ['vip'] }),
+          created_by: DEV_LOGIN_USER_ID,
+        })
+        .returning('id')
+        .execute()
+      await ticket('00000000-0000-4000-8000-000000000051')
+
+      expect(await counts([legacy, id])).toEqual({ data: [{ queueId: id, total: 1 }] })
     })
 
     it('refuses more ids than one sidebar could ever ask for', async () => {

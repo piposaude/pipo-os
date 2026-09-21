@@ -1,10 +1,11 @@
 import { sql, type RawBuilder } from 'kysely'
 import type { QueueSort, SortField } from '../queues/view-vocabulary.js'
 import { snapshotString } from './enrollment-snapshot.js'
+import type { TicketStatus } from './schemas.js'
 
 /** Twin of TRIAGE_ORDER in web/src/lib/pipodesk/sort.ts: the eight stored
  *  statuses fold into the six the screen ranks. Change one, change both. */
-const TRIAGE_RANK: Record<string, number> = {
+const TRIAGE_RANK: Record<TicketStatus, number> = {
   'broker-processing': 0,
   'broker-open-issue': 0,
   'missing-documents': 1,

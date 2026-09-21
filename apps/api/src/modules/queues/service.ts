@@ -1,5 +1,6 @@
-import { ForbiddenError, NotFoundError } from '../../shared/errors.js'
+import { ConflictError, ForbiddenError, NotFoundError } from '../../shared/errors.js'
 import type { GroupMembersRepositoryPort, GroupsRepositoryPort } from '../groups/repository.js'
+import type { TicketFilter } from '../tickets/filter-schema.js'
 import type { TicketsRepositoryPort } from '../tickets/repository.js'
 import type { TicketList } from '../tickets/schemas.js'
 import { editRefusal, type Viewer, type ViewOwnership } from './permissions.js'
@@ -14,6 +15,15 @@ import type {
   QueueList,
   UpdateQueueBody,
 } from './schemas.js'
+
+/** `{}` is the filter that selects the whole window, so an unreadable one
+ *  cannot fall back to it. */
+function readableFilter(queue: Queue): TicketFilter {
+  if (queue.filters === null) {
+    throw new ConflictError(`Queue ${queue.id} has a saved filter this version cannot read`)
+  }
+  return queue.filters
+}
 
 /** A personal view belongs to whoever is holding it: naming another owner would
  *  put a view in someone else's sidebar, which nobody asked for. */
@@ -87,8 +97,12 @@ export class QueuesService {
     return queue
   }
 
+  /** Removing is not editing: `group_id` is `ON DELETE RESTRICT`, so without a
+   *  key that reaches the personal view of somebody else a pod stays undeletable
+   *  forever. Reading and editing it stay closed. */
   async delete(id: string, viewer: Viewer): Promise<void> {
-    await this.assertMayEdit(await this.get(id, viewer.id), viewer)
+    const queue = await this.get(id, viewer.id)
+    if (!viewer.structureAdmin) await this.assertMayEdit(queue, viewer)
     const deleted = await this.repository.delete(id)
     if (!deleted) throw new NotFoundError(`Queue ${id} not found`)
   }
@@ -119,16 +133,17 @@ export class QueuesService {
     today: string,
   ): Promise<QueueCounts> {
     const queues = await this.repository.findByIds(ids, viewerId)
-    const filters = new Map(queues.map((queue) => [queue.id, queue.filters ?? {}]))
+    const filters = new Map<string, TicketFilter>()
+    for (const queue of queues) {
+      if (queue.filters !== null) filters.set(queue.id, queue.filters)
+    }
     const totals = await this.ticketsRepository.countByFilters(filters, viewerId, window, today)
 
     // In the order asked for, which the sidebar renders in: a SELECT without
     // ORDER BY answers in whatever order the heap happens to hold.
-    const byId = new Map(queues.map((queue) => [queue.id, queue]))
-
     return {
       data: ids
-        .filter((id) => byId.has(id))
+        .filter((id) => filters.has(id))
         .map((id) => ({ queueId: id, total: totals.get(id) ?? 0 })),
     }
   }
@@ -142,8 +157,9 @@ export class QueuesService {
     today: string,
   ): Promise<TicketList> {
     const queue = await this.get(queueId, viewerId)
+    const filter = readableFilter(queue)
     const { data, total } = await this.ticketsRepository.findByFilter(
-      { filter: queue.filters ?? {}, sort: queue.sort, today, ...query },
+      { filter, sort: queue.sort, today, ...query },
       viewerId,
     )
     return { data, total, page: query.page, pageSize: query.pageSize }

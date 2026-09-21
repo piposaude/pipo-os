@@ -167,6 +167,10 @@ O vocabulário de `sort` e `groupBy` vive em `contract/ticket-queue-view.json` e
 
 **Quem edita o quê.** Visão pessoal, só o dono. Visão do time, quem é `admin` do grupo dela ou de um ancestral — a mesma regra do `canEditQueue` do frontend, agora também no servidor. Criar visão com `ownerId` de outra pessoa responde `403`, e passar a própria visão pessoal para o time exige poder editar a visão do time resultante. Uma visão do time **sem grupo** responde à policy de estrutura sozinha: não há árvore em que procurar coordenação.
 
+**Apagar não é editar.** A policy de estrutura remove qualquer visão, inclusive a pessoal de outra pessoa — ler e editar essa continuam fechados, porque o filtro salvo é dela. O motivo é o `group_id` com FK `ON DELETE RESTRICT`: sem essa saída, a visão pessoal de quem saiu da empresa travaria o `DELETE` do pod para sempre (`409`, `still owns saved views`) e só o dono poderia desbloquear.
+
+**Um filtro que a versão não lê é recusado, não tratado como vazio.** A coluna `filters` é `NOT NULL DEFAULT '{}'`, então o `filters: null` que o `Queue` devolve significa uma coisa só: o jsonb gravado não casa com o `TicketFilter` de hoje. Como `{}` é justamente o filtro que seleciona tudo dentro da janela, `GET /api/queues/:id/tickets` responde `409` nesse caso, e `/api/queues/counts` deixa a visão de fora — do mesmo jeito que deixa a que não existe.
+
 #### Grupos: a hierarquia e quem está nela
 
 O grupo é o pod, e os pods formam uma árvore de no máximo **três níveis** — GEBEN → pod → subtime. `parentId` diz onde cada um está; a raiz é o único grupo sem pai. A API recusa com `422`, e `details` apontando `parentId`, quatro coisas que o banco não consegue barrar sozinho: uma segunda raiz, um pai que não existe, um pai que é o próprio grupo ou um descendente dele (o ciclo), e um quarto nível — inclusive quando ele apareceria por mover um grupo que já tem filhos.
