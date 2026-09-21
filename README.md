@@ -464,6 +464,30 @@ pnpm --filter @pipo-os/api-client generate
 Regenera os tipos em `packages/api-client/src/generated/schema.d.ts` a partir do `openapi.json` da raiz.
 Rode sempre depois de `openapi:export`, quando o contrato mudar.
 
+### Seed da estrutura
+
+A sidebar do Pipodesk é desenhada sobre pods (`ticket_groups`) e visões salvas (`ticket_queues`). Um ambiente novo nasce sem nenhum dos dois, e uma fila vazia por falta de estrutura é indistinguível de uma fila vazia por consulta errada. O script cria a árvore declarada em `apps/api/src/seed/structure.ts` — a raiz "Gestão de Benefícios", os seis pods, as quatro visões de cada pod e os vínculos de quem opera.
+
+```bash
+# local: o script tira a sessão sozinho pelo dev-login
+pnpm --filter pipo-os-backend seed:structure
+
+# staging
+PIPO_OS_URL=https://os.pipo.health \
+PIPO_OS_SESSION='<valor do cookie pipo_os_session>' \
+  pnpm --filter pipo-os-backend seed:structure
+```
+
+Ele é idempotente: casa grupo por nome e pai, visão por nome e grupo, vínculo por grupo e pessoa, e cria só o que falta. Rodar duas vezes imprime `nada a criar`. Uma visão que já existe com outro filtro aparece no relatório como divergência e **não** é editada — o seed cria, não corrige.
+
+**A sessão é a de uma pessoa, não a de um serviço.** As rotas de estrutura recusam `Authorization: Bearer` antes de olhar a policy (nenhuma declara `serviceAllowed`), e `POST /api/groups` exige o `sub` da sessão. Em staging o cookie sai do DevTools do navegador já logado, em Application › Cookies, e vale 8h; se expirar no meio, o relatório diz onde parou e rodar de novo retoma.
+
+**Para acrescentar alguém a um pod**, ponha o e-mail Pipo em `SEED_MEMBERS` e rode de novo — só os vínculos dele são criados. O identificador é o e-mail porque é isso que o `sub` do login Google carrega para `ticket_group_members.user_id`. A pessoa ainda precisa da policy do Pipodesk (ver _Autorização_), senão o vínculo existe e ela não entra.
+
+Localmente o `sub` da sessão é o `DEV_LOGIN_EMAIL`, então para ver `/api/auth/me` devolvendo os pods, suba a API com o mesmo e-mail que está em `SEED_MEMBERS`.
+
+A carteira de empresas (`ticket_group_companies`) fica de fora: não há rota de escrita para ela.
+
 ## Infraestrutura
 
 A infraestrutura AWS é gerenciada via Terraform em `.tf/`:
