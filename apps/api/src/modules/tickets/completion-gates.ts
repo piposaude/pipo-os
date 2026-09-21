@@ -1,4 +1,5 @@
 import type { ErrorDetail } from '../../shared/errors.js'
+import { digitsOf } from '../../shared/text.js'
 import { completionContextOf } from './enrollment-snapshot.js'
 import type { CanonicalEnrollmentType } from './enrollment-type.js'
 import type { TicketStatus } from './schemas.js'
@@ -43,8 +44,6 @@ function isCompletionDate(value: string): boolean {
   const parsed = new Date(`${value}T00:00:00Z`)
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(value)
 }
-
-const digitsOf = (taxId: string): string => taxId.replace(/\D/g, '')
 
 function snapshotDate(written: string | null): string | null {
   const value = written?.trim().slice(0, 10) ?? ''

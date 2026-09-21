@@ -6,6 +6,7 @@
 
 import { sql, type RawBuilder } from 'kysely'
 import { z } from 'zod'
+import { digitsOf } from '../../shared/text.js'
 import type { relationshipSchema } from './schemas.js'
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -130,8 +131,6 @@ const NO_COMPANY: CompanyFields = {
   parentCompanyName: null,
   companyTaxId: null,
 }
-
-const digitsOf = (taxId: string): string => taxId.replace(/\D/g, '')
 
 /**
  * The EI fills `parent_company_*` for a parent company as well, so the columns
