@@ -25,11 +25,15 @@ export function formatReport({
   divergences,
   interrupted,
 }: ReportInput): string[] {
-  const lines = interrupted
-    ? [`interrompido: criados ${countOf(created)}`]
-    : isEmpty(created)
-      ? ['nada a criar: o ambiente já está com a árvore declarada']
-      : [`criados: ${countOf(created)}`]
+  const headline = (): string => {
+    if (interrupted) return `interrompido: criados ${countOf(created)}`
+    if (!isEmpty(created)) return `criados: ${countOf(created)}`
+    return divergences.length === 0
+      ? 'nada a criar: o ambiente já está com a árvore declarada'
+      : 'nada a criar, mas o ambiente diverge do que está declarado'
+  }
+
+  const lines = [headline()]
 
   lines.push(`já existiam: ${countOf(existing)}`)
 

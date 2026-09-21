@@ -35,6 +35,19 @@ describe('formatReport', () => {
     expect(lines).toContain('não casou: visão MOV PJ em pod-3 diverge em filters')
   })
 
+  it('does not claim the tree is in place while listing what diverges from it', () => {
+    const lines = formatReport({
+      created: NOTHING,
+      existing: { groups: 7, queues: 24, members: 7 },
+      divergences: [
+        { kind: 'member', groupKey: 'pod-2', name: 'ana@piposaude.com.br', fields: ['active'] },
+      ],
+    })
+
+    expect(lines).not.toContain('nada a criar: o ambiente já está com a árvore declarada')
+    expect(lines).toContain('nada a criar, mas o ambiente diverge do que está declarado')
+  })
+
   it('does not read as success when the run stopped before creating anything', () => {
     const lines = formatReport({
       created: NOTHING,
