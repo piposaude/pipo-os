@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { PersonTab } from '@/components/pipodesk/ticket/PersonTab'
 import copy from '@/constants/pages/pipodesk/ticket/person'
 import recordCopy from '@/constants/pages/pipodesk/ticket/record'
+import { formatNumericDate } from '@/lib/pipodesk/format'
 import { company, person, recordsWith } from '../../../helpers/records'
 
 describe('PersonTab', () => {
@@ -223,5 +224,88 @@ describe('PersonTab', () => {
     await user.click(screen.getByRole('button', { name: 'Pessoa holder' }))
 
     expect(screen.getByRole('heading', { level: 2, name: 'Pessoa outra' })).not.toHaveFocus()
+  })
+
+  it('should list the dependents as a table with a title per column', () => {
+    const records = recordsWith({
+      beneficiaries: [person('holder'), person('dep', { role: 'dependent', holderId: 'holder' })],
+    })
+    render(
+      <PersonTab
+        personId="holder"
+        records={records}
+        capturedAt="2026-08-01T12:00:00.000Z"
+        onSelectPerson={() => {}}
+      />,
+    )
+
+    const section = screen
+      .getByRole('heading', { level: 3, name: copy.sections.dependents })
+      .closest('section')!
+    const table = within(section).getByRole('table')
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent),
+    ).toEqual([
+      copy.dependents.columns.name,
+      copy.dependents.columns.relationship,
+      copy.dependents.columns.birthDate,
+      copy.dependents.columns.cpf,
+      copy.dependents.columns.benefits,
+    ])
+  })
+
+  it('should open the dependent from anywhere on their row', async () => {
+    const selected: string[] = []
+    const records = recordsWith({
+      beneficiaries: [person('holder'), person('dep', { role: 'dependent', holderId: 'holder' })],
+    })
+    render(
+      <PersonTab
+        personId="holder"
+        records={records}
+        capturedAt="2026-08-01T12:00:00.000Z"
+        onSelectPerson={(id) => selected.push(id)}
+      />,
+    )
+
+    const row = screen.getByRole('cell', { name: copy.role.dependent }).closest('tr')!
+    await userEvent.setup().click(within(row).getAllByRole('cell')[2])
+
+    expect(selected).toEqual(['dep'])
+  })
+
+  it('should print the birth date and the card start as dd/mm/aa', () => {
+    const records = recordsWith({
+      beneficiaries: [
+        person('holder', {
+          birthDate: '1978-09-10',
+          cards: [
+            {
+              id: 'card-1',
+              carrierId: 'carrier-1',
+              product: 'health',
+              number: '123',
+              validFrom: '2024-03-01',
+            },
+          ],
+        }),
+      ],
+    })
+    render(
+      <PersonTab
+        personId="holder"
+        records={records}
+        capturedAt="2026-08-01T12:00:00.000Z"
+        onSelectPerson={() => {}}
+      />,
+    )
+
+    expect(screen.getByText(copy.fields.birthDate).nextElementSibling).toHaveTextContent('10/09/78')
+    const card = records.personById.get('holder')!.cards[0]
+    expect(
+      screen.getByRole('cell', { name: formatNumericDate(card.validFrom) }),
+    ).toBeInTheDocument()
   })
 })

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import type { PopoverAlign } from '@/components/pipodesk/primitives'
+import { SortHeader, type PopoverAlign } from '@/components/pipodesk/primitives'
 import { FILTER_BY_COLUMN, SORTABLE, type QueueColumn } from '@/lib/pipodesk/columns'
 import type { FilterField } from '@/lib/pipodesk/filter'
 import type { TicketGroup } from '@/lib/pipodesk/group'
@@ -7,6 +7,7 @@ import type { TicketSort } from '@/lib/pipodesk/sort'
 import { computeWindow, flattenGroups, ROW_HEIGHT } from '@/lib/pipodesk/virtual'
 import constants from '@/constants/pages/pipodesk/queue'
 import { QueueRow } from './QueueRow'
+import sortHeader from '@/components/pipodesk/primitives/SortHeader.module.css'
 import styles from './Queue.module.css'
 
 /**
@@ -110,7 +111,7 @@ export function QueueTable({
         </div>
       )}
       {rows.length > 0 && (
-        <table className={styles.table}>
+        <table className={`${styles.table} ${sortHeader.table}`}>
           <colgroup>
             {columns.map((column) => (
               <col key={column.key} style={{ width: column.width }} />
@@ -147,21 +148,12 @@ export function QueueTable({
                           span is a mouse tooltip and nothing else, while on a button
                           it is also the accessible description. */}
                       {SORTABLE[column.key] ? (
-                        <button
-                          type="button"
-                          className={styles.headerButton}
+                        <SortHeader
+                          label={column.label}
+                          state={sortOf(column.key) ?? 'none'}
                           title={column.title}
-                          onClick={() => toggleSort(column.key)}
-                        >
-                          {column.label}
-                          <span aria-hidden="true" className={styles.sortGlyph}>
-                            {sortOf(column.key) === 'ascending'
-                              ? '↑'
-                              : sortOf(column.key) === 'descending'
-                                ? '↓'
-                                : '↕'}
-                          </span>
-                        </button>
+                          onSort={() => toggleSort(column.key)}
+                        />
                       ) : (
                         <span title={column.title}>{column.label}</span>
                       )}

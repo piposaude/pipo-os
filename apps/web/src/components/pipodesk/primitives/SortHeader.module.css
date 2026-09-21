@@ -1,0 +1,39 @@
+/* The sortable column title, one shape for the queue and the detail tables.
+   Ported from the prototype's `.cabecalho-fila` (queue.css). */
+
+/* Vertical zero: `height` is the content box, and the DS padding would take
+   the cell to 56. */
+.table thead th {
+  height: 40px;
+  padding-top: 0;
+  padding-bottom: 0;
+  font-weight: var(--pipo-fw-semibold);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pipo-space-xxsmall);
+  padding: var(--pipo-space-xxsmall);
+  margin: calc(-1 * var(--pipo-space-xxsmall));
+  border: none;
+  border-radius: var(--pipo-radius-pill);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: var(--pipo-neutral-lightest);
+}
+
+/* Dimmed while unsorted: it announces sortability without competing with the
+   sorted column. */
+[aria-sort='none'] .glyph {
+  opacity: 0.4;
+}
+
+[aria-sort='none']:hover .glyph {
+  opacity: 1;
+}

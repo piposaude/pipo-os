@@ -16,12 +16,14 @@ import {
   formatCpf,
   formatHeight,
   formatLongDateWithYear,
+  formatNumericDate,
   formatSalary,
   formatWeight,
   formatZip,
 } from '@/lib/pipodesk/format'
 import { displayNameOf, type Person, type TicketRecords } from '@/lib/pipodesk/record'
 import { OutageNotice } from './OutageNotice'
+import detail from './DetailTable.module.css'
 import {
   Emphasis,
   RecordBlock,
@@ -119,8 +121,10 @@ export function PersonTab({ personId, records, capturedAt, onSelectPerson }: Per
             <RecordField label={copy.fields.socialName}>{person.socialName}</RecordField>
           )}
           <RecordField label={copy.fields.name}>{person.name}</RecordField>
+          {/* The admission below stays long on purpose: only the birth date
+              takes the short form. */}
           <RecordField label={copy.fields.birthDate}>
-            {formatLongDateWithYear(person.birthDate)}
+            {formatNumericDate(person.birthDate)}
           </RecordField>
           <RecordField label={copy.fields.cpf}>{formatCpf(person.cpf)}</RecordField>
           {/* The `??` looks dead against the union, but the fixture enters by cast:
@@ -208,23 +212,47 @@ export function PersonTab({ personId, records, capturedAt, onSelectPerson }: Per
 
       {dependents.length > 0 && (
         <RecordSection title={copy.sections.dependents}>
-          <ul className={styles.dependents}>
-            {dependents.map((dependent) => (
-              <li key={dependent.id}>
-                <button
-                  type="button"
-                  className={styles.dependentButton}
-                  onClick={() => selectPerson(dependent.id)}
+          <Table className={`${detail.table} ${styles.dependents}`}>
+            <TableHead>
+              <TableRow>
+                <TableHeaderCell>{copy.dependents.columns.name}</TableHeaderCell>
+                <TableHeaderCell>{copy.dependents.columns.relationship}</TableHeaderCell>
+                <TableHeaderCell>{copy.dependents.columns.birthDate}</TableHeaderCell>
+                <TableHeaderCell>{copy.dependents.columns.cpf}</TableHeaderCell>
+                <TableHeaderCell>{copy.dependents.columns.benefits}</TableHeaderCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {dependents.map((dependent) => (
+                <TableRow
+                  key={dependent.id}
+                  data-row-target={dependent.id}
+                  onClick={(event) => {
+                    // The name is a button so the keyboard reaches the person;
+                    // without this guard the row fires a second time on it.
+                    if ((event.target as HTMLElement).closest('button')) return
+                    selectPerson(dependent.id)
+                  }}
                 >
-                  <span>{displayNameOf(dependent)}</span>
-                  <span className={styles.dependentMeta}>{formatCpf(dependent.cpf)}</span>
-                  <span className={styles.dependentMeta}>
-                    {productsOf(dependent) || copy.dependents.noBenefit}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
+                  <TableCell>
+                    <button
+                      type="button"
+                      className={styles.dependentButton}
+                      onClick={() => selectPerson(dependent.id)}
+                    >
+                      {displayNameOf(dependent)}
+                    </button>
+                  </TableCell>
+                  <TableCell>{copy.role.dependent}</TableCell>
+                  <TableCell className={styles.numeric}>
+                    {formatNumericDate(dependent.birthDate)}
+                  </TableCell>
+                  <TableCell className={styles.numeric}>{formatCpf(dependent.cpf)}</TableCell>
+                  <TableCell>{productsOf(dependent) || copy.dependents.noBenefit}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
           <RecordNote>
             <Emphasis text={copy.dependents.note} />
           </RecordNote>
@@ -235,7 +263,7 @@ export function PersonTab({ personId, records, capturedAt, onSelectPerson }: Per
         {person.cards.length === 0 ? (
           <RecordEmpty>{copy.cards.empty}</RecordEmpty>
         ) : (
-          <Table>
+          <Table className={detail.table}>
             <TableHead>
               <TableRow>
                 <TableHeaderCell>{copy.cards.carrier}</TableHeaderCell>
@@ -252,7 +280,7 @@ export function PersonTab({ personId, records, capturedAt, onSelectPerson }: Per
                   </TableCell>
                   <TableCell>{PRODUCT_COPY[card.product] ?? card.product}</TableCell>
                   <TableCell className={styles.cardNumber}>{card.number}</TableCell>
-                  <TableCell>{formatLongDateWithYear(card.validFrom)}</TableCell>
+                  <TableCell>{formatNumericDate(card.validFrom)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

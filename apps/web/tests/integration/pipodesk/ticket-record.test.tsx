@@ -5,6 +5,7 @@ import { routeTree } from '@/routeTree.gen'
 import { queueSeed } from '@/fixtures/pipodesk/dataset'
 import { records } from '@/fixtures/pipodesk/records'
 import { displayNameOf, historyOf } from '@/lib/pipodesk/record'
+import { sortTickets } from '@/lib/pipodesk/sort'
 import { formatCpf, formatLongDate, formatNumericDate } from '@/lib/pipodesk/format'
 import { documentLabel } from '@/lib/pipodesk/document'
 import companyCopy from '@/constants/pages/pipodesk/ticket/company'
@@ -62,7 +63,7 @@ describe('aba Dados pessoais', () => {
     }
 
     expect(fieldValue(panel, personCopy.fields.cpf)).toHaveTextContent(formatCpf(renata.cpf))
-    expect(fieldValue(panel, personCopy.fields.birthDate)).toHaveTextContent('17 de Agosto de 1981')
+    expect(fieldValue(panel, personCopy.fields.birthDate)).toHaveTextContent('17/08/81')
     expect(fieldValue(panel, personCopy.fields.maritalStatus)).toHaveTextContent('União estável')
     expect(fieldValue(panel, personCopy.fields.weight)).toHaveTextContent('57 kg')
     expect(fieldValue(panel, personCopy.fields.height)).toHaveTextContent('1,57 m')
@@ -79,7 +80,7 @@ describe('aba Dados pessoais', () => {
     expect(within(cards).getByText('Unimed Mineira')).toBeInTheDocument()
     expect(within(cards).getByText('Vida')).toBeInTheDocument()
     expect(within(cards).getByText('2509597491')).toBeInTheDocument()
-    expect(within(cards).getByText('17 de Janeiro de 2025')).toBeInTheDocument()
+    expect(within(cards).getByText('17/01/25')).toBeInTheDocument()
   })
 
   /** 700062 moves a dependent: contact is the holder's and stays out, the
@@ -446,6 +447,42 @@ describe('aba Histórico', () => {
     expect(closedRow).toHaveTextContent(historyCopy.closedAt(formatNumericDate(closed.closedAt)))
     const openRow = within(table).getByText('705639').closest('tr')!
     expect(openRow).not.toHaveTextContent(/^.*em \d\d\/\d\d\/\d\d$/)
+  })
+
+  it('should reorder by Situação when its title is clicked, and flip on the second click', async () => {
+    const { panel, user } = await openTab('/tickets/705639', 'Histórico')
+    const expected = historyOf(queueSeed, records, '705639')
+    const idsOf = () =>
+      within(within(panel).getByRole('table'))
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => within(row).getAllByRole('cell')[0].textContent)
+
+    await user.click(within(panel).getByRole('button', { name: historyCopy.columns.situation }))
+    expect(idsOf()).toEqual(
+      sortTickets(expected, { by: 'status', direction: 'asc' }).map((row) => row.id),
+    )
+
+    await user.click(within(panel).getByRole('button', { name: historyCopy.columns.situation }))
+    expect(idsOf()).toEqual(
+      sortTickets(expected, { by: 'status', direction: 'desc' }).map((row) => row.id),
+    )
+  })
+
+  it('should open another ticket from anywhere on its row, and leave the current one inert', async () => {
+    const { panel, user, router } = await openTab('/tickets/705639', 'Histórico')
+    const other = historyOf(queueSeed, records, '705639').find((row) => row.id !== '705639')!
+    const table = within(panel).getByRole('table')
+
+    await user.click(
+      within(within(table).getByText('705639').closest('tr')!).getAllByRole('cell')[1],
+    )
+    expect(router.state.location.pathname).toBe('/tickets/705639')
+
+    await user.click(
+      within(within(table).getByText(other.id).closest('tr')!).getAllByRole('cell')[1],
+    )
+    expect(router.state.location.pathname).toBe(`/tickets/${other.id}`)
   })
 
   it('should open another ticket of the person from its id', async () => {
