@@ -106,6 +106,10 @@ export default function TicketPage() {
     : DISPLAY_STATUS_COPY[ticket.display]
 
   const company = records.companyById.get(ticket.companyId)
+  /* The row's own column decides it, not whether the record resolved: rows and
+     records are separate snapshots, and a missing one would make a branch
+     ticket claim the movement is the parent's. */
+  const isBranch = ticket.parentCompanyId !== null
   const parentCompany = ticket.parentCompanyId
     ? records.companyById.get(ticket.parentCompanyId)
     : undefined
@@ -113,20 +117,27 @@ export default function TicketPage() {
   const movimentacao = (
     <section className={styles.block}>
       <h2 className={styles.blockTitle}>{constants.facts.heading}</h2>
-      {parentCompany && company && (
+      {isBranch && (
         /* `important` is the DS beige for an informative notice; `warning`
            would read as an alert where there is none. */
         <Banner variant="important" icon={false} className={styles.branchNotice}>
-          {constants.facts.branchNotice(ticket.enrollmentType)} <strong>{company.tradeName}</strong>
+          {constants.facts.branchNotice(ticket.enrollmentType)}{' '}
+          <strong>{company?.tradeName ?? ticket.companyName}</strong>
         </Banner>
       )}
       <dl className={styles.facts}>
-        {parentCompany && company ? (
+        {isBranch ? (
           <>
-            <Fact label={constants.facts.parentCompany} value={parentCompany.tradeName} />
-            <Fact label={constants.facts.cnpj} value={parentCompany.cnpj} />
-            <Fact label={constants.facts.branchCompany} value={company.tradeName} />
-            <Fact label={constants.facts.cnpj} value={company.cnpj} />
+            <Fact
+              label={constants.facts.parentCompany}
+              value={parentCompany?.tradeName ?? ticket.parentCompanyName ?? '—'}
+            />
+            <Fact label={constants.facts.cnpj} value={parentCompany?.cnpj ?? '—'} />
+            <Fact
+              label={constants.facts.branchCompany}
+              value={company?.tradeName ?? ticket.companyName ?? '—'}
+            />
+            <Fact label={constants.facts.cnpj} value={company?.cnpj ?? '—'} />
           </>
         ) : (
           <>
