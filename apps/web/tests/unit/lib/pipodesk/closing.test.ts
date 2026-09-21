@@ -1,0 +1,156 @@
+import {
+  EFFECTIVE_KEY,
+  END_KEY,
+  cardKey,
+  closingFields,
+  describeMissing,
+  livesOf,
+  missingClosing,
+  oneMonthBefore,
+  startKey,
+} from '@/lib/pipodesk/closing'
+import type { TicketRow } from '@/lib/pipodesk/ticket-row'
+import { person, recordsWith } from '../../../helpers/records'
+
+const ticket = (enrollmentType: string): TicketRow =>
+  ({ id: 'T-1', enrollmentType }) as unknown as TicketRow
+
+const family = () =>
+  recordsWith({
+    beneficiaries: [
+      person('holder', {
+        name: 'Ana Souza',
+        link: { ...person('holder').link, admissionDate: '2023-11-22' },
+      }),
+      person('dep', { role: 'dependent', holderId: 'holder' }),
+      person('out', { role: 'dependent', holderId: 'holder' }),
+    ],
+    // `Movement.id` is the ticket id: the record indexes movements by it.
+    tickets: [
+      {
+        id: 'T-1',
+        beneficiaryId: 'holder',
+        dependentIds: ['dep'],
+        policyId: 'policy-1',
+        pendingDocumentation: null,
+      },
+    ],
+  })
+
+describe('oneMonthBefore', () => {
+  it('should walk back one calendar month', () => {
+    expect(oneMonthBefore('2023-11-22')).toBe('2023-10-22')
+  })
+
+  it('should not overshoot when the month before is shorter', () => {
+    expect(oneMonthBefore('2024-03-31') <= '2024-03-31').toBe(true)
+    expect(oneMonthBefore('2024-03-31')).toBe('2024-02-29')
+  })
+})
+
+describe('livesOf', () => {
+  it('should take the holder first and only the dependents of this movement', () => {
+    expect(livesOf(ticket('inclusion'), family()).map((life) => life.id)).toEqual(['holder', 'dep'])
+  })
+
+  it('should take no life when the movement is not an inclusion', () => {
+    expect(livesOf(ticket('exclusion'), family())).toEqual([])
+  })
+})
+
+describe('closingFields', () => {
+  it('should ask a card and a start per life on an inclusion', () => {
+    const fields = closingFields(ticket('inclusion'), family())
+
+    expect(fields.map((field) => field.key)).toEqual([
+      cardKey('holder'),
+      startKey('holder'),
+      cardKey('dep'),
+      startKey('dep'),
+    ])
+    expect(fields[1].floor).toBe('2023-10-22')
+    expect(fields[0].floor).toBeUndefined()
+  })
+
+  it('should ask only the end date on an exclusion', () => {
+    expect(closingFields(ticket('exclusion'), family()).map((field) => field.key)).toEqual([
+      END_KEY,
+    ])
+  })
+
+  it('should ask only the new effective date on a plan change', () => {
+    expect(closingFields(ticket('plan_change'), family()).map((field) => field.key)).toEqual([
+      EFFECTIVE_KEY,
+    ])
+  })
+
+  it('should ask nothing for a type the rule does not cover', () => {
+    expect(closingFields(ticket('registration_data_change'), family())).toEqual([])
+    expect(closingFields(ticket('combined_change'), family())).toEqual([])
+  })
+})
+
+describe('missingClosing', () => {
+  it('should report every empty field at once, not only the first', () => {
+    const fields = closingFields(ticket('inclusion'), family())
+    const missing = missingClosing(fields, { [cardKey('holder')]: '  ' })
+
+    expect(missing.map((item) => item.key)).toEqual([
+      cardKey('holder'),
+      startKey('holder'),
+      cardKey('dep'),
+      startKey('dep'),
+    ])
+    expect(missing.every((item) => item.reason === 'empty')).toBe(true)
+  })
+
+  it('should refuse a start earlier than a month before the admission', () => {
+    const fields = closingFields(ticket('inclusion'), family())
+    const missing = missingClosing(fields, {
+      [cardKey('holder')]: '9912',
+      [startKey('holder')]: '2023-10-21',
+      [cardKey('dep')]: '9913',
+      [startKey('dep')]: '2024-01-01',
+    })
+
+    expect(missing).toEqual([
+      { key: startKey('holder'), label: 'Início da vigência · Ana', reason: 'early' },
+    ])
+  })
+
+  it('should accept the floor itself', () => {
+    const fields = closingFields(ticket('inclusion'), family())
+    const missing = missingClosing(fields, {
+      [cardKey('holder')]: '9912',
+      [startKey('holder')]: '2023-10-22',
+      [cardKey('dep')]: '9913',
+      [startKey('dep')]: '2024-01-01',
+    })
+
+    expect(missing).toEqual([])
+  })
+})
+
+describe('describeMissing', () => {
+  it('should say nothing when nothing is missing', () => {
+    expect(describeMissing([])).toBe('')
+  })
+
+  it('should agree the verb with a single empty field', () => {
+    expect(describeMissing([{ key: 'k', label: 'Carteirinha', reason: 'empty' }])).toBe(
+      'Falta Carteirinha',
+    )
+  })
+
+  it('should join the empty ones and the early ones in one sentence', () => {
+    expect(
+      describeMissing([
+        { key: 'a', label: 'Carteirinha · Ana', reason: 'empty' },
+        { key: 'b', label: 'Carteirinha · Léo', reason: 'empty' },
+        { key: 'c', label: 'Início da vigência · Ana', reason: 'early' },
+      ]),
+    ).toBe(
+      'Faltam Carteirinha · Ana, Carteirinha · Léo. Início da vigência · Ana antes de um mês da admissão',
+    )
+  })
+})
