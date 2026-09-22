@@ -14,8 +14,3 @@ apps/web/public/
 # fixtures geradas do protótipo (apps/web/scripts/export-fixture.mts) — como os demais gerados
 apps/web/src/fixtures/pipodesk/dataset.json
 apps/web/src/fixtures/pipodesk/records.json
-
-# 12 MB exported from the prototype: formatting them buries a review under
-# 650k lines of noise, and the exporter decides their shape.
-apps/web/src/fixtures/pipodesk/dataset.json
-apps/web/src/fixtures/pipodesk/records.json

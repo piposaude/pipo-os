@@ -273,6 +273,7 @@ export function buildTree(tickets: TicketRow[], options: BuildTreeOptions): Tree
       byAssignee: new Map(),
     }
     const analysts = analystsOf(structure, pod.id).map((membership) => membership.userId)
+    const podQueues = queuesOf(structure, pod.id)
 
     /** The pod's analysts inside a cut. The cut's filter rides along
      *  (`...movFilter`) or the screen would list ALL of the analyst's tickets
@@ -294,7 +295,7 @@ export function buildTree(tickets: TicketRow[], options: BuildTreeOptions): Tree
      *  there are no subscribers and MOV CLT could not be favorited.
      *  `undefined` when deleted — the pod shrinks instead of breaking. */
     const movQueue = (suffix: 'clt' | 'pj' | 'mb') =>
-      queuesOf(structure, pod.id).find((queue) => queue.name === MOV_LABELS[suffix])
+      podQueues.find((queue) => queue.name === MOV_LABELS[suffix])
 
     /** CLT and PJ partition the pod. Count comes from the tally (one sweep) —
      *  same number, kept for performance; the Queue's filter goes on screen. */
@@ -333,7 +334,7 @@ export function buildTree(tickets: TicketRow[], options: BuildTreeOptions): Tree
 
     // The three MOVs already became nodes above — keep them out to avoid duplicates.
     const movIds = new Set([clt?.id, pj?.id, mb?.id].filter((id) => id !== undefined))
-    const queues = queuesOf(structure, pod.id)
+    const queues = podQueues
       .filter((queue) => !movIds.has(queue.id))
       .map((queue) =>
         node({
