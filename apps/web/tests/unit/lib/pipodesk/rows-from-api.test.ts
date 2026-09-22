@@ -53,6 +53,10 @@ describe('rowsFromApi', () => {
     expect(rowsFromApi([apiRow({ actionDate: null })])[0].actionDate).toBeNull()
   })
 
+  it('should deixar o chamado sem pod com groupId nulo, que é o que a contagem dos pods ignora', () => {
+    expect(rowsFromApi([apiRow({ groupId: null })])[0].groupId).toBeNull()
+  })
+
   it('should montar o assunto quando o chamado não tem título escrito', () => {
     const [row] = rowsFromApi([apiRow({ title: null })])
 

@@ -59,7 +59,6 @@ export function rowsFromApi(rows: ApiTicketRow[]): TicketRow[] {
         product: row.product,
         beneficiaryName: row.beneficiaryName,
       }),
-      groupId: row.groupId ?? '',
       /* The projection sends an instant; the queue compares days as strings,
          and the business timezone decides which day an instant belongs to. */
       actionDate: row.actionDate === null ? null : businessDay(row.actionDate),
