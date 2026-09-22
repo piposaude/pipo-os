@@ -44,8 +44,12 @@ const statusLabel = (status: ApiStatus): string => {
  * Batch bar: the compact pill (count · Ações · ×) pinned to the bottom, shown
  * only while something is selected. "Select all N matching" sits on top,
  * separated: it changes the selection's scope, not the selection — and the
- * number is literal. Comment/complete are absent (PD-040/PD-031), not
- * disabled: a grayed menu item with no visible reason only frustrates.
+ * number is literal.
+ *
+ * Absent, not disabled — a grayed item with no visible reason only frustrates:
+ * comment and complete (PD-040/PD-031), and move-to-pod and schedule, whose
+ * routes do not exist yet (PD-052 and the `actionDate` the PATCH does not
+ * accept). The screens below stay: they come back with the route.
  */
 export function BatchBar({
   selectedCount,
@@ -126,9 +130,7 @@ export function BatchBar({
                     </>
                   )}
                   {item('Reatribuir', () => setScreen('assign'))}
-                  {pods.length > 0 && item('Mover para carteira', () => setScreen('move'))}
                   {item('Mudar status', () => setScreen('status'))}
-                  {item('Agendar', () => setScreen('schedule'))}
                 </>
               )}
 

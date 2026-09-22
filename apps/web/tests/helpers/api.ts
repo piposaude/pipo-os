@@ -19,6 +19,7 @@ export function mockApi(
 ): ApiMock {
   const original = globalThis.fetch
   const calls: ApiCall[] = []
+  const applied = new Map<string, Record<string, unknown>>()
 
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
@@ -27,14 +28,33 @@ export function mockApi(
 
     if (method !== 'GET') {
       const raw = init?.body ?? (input instanceof Request ? await input.clone().text() : null)
-      calls.push({
-        method,
-        path: pathname,
-        body: typeof raw === 'string' && raw !== '' ? JSON.parse(raw) : null,
-      })
+      const body = typeof raw === 'string' && raw !== '' ? JSON.parse(raw) : null
+      calls.push({ method, path: pathname, body })
+
       const status = writes[`${method} ${pathname}`] ?? writes[method] ?? 204
+      // A write the server accepted has to show up on the next read, or the
+      // screen would be tested against a server that forgets.
+      if (status === 204) {
+        const id = pathname.replace(/^\/api\/tickets\//, '').replace(/\/status$/, '')
+        applied.set(id, { ...applied.get(id), ...(body as Record<string, unknown>) })
+      }
       return new Response(status === 204 ? null : JSON.stringify({ message: 'recusado' }), {
         status,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+
+    if (pathname === '/api/tickets/rows' && applied.size > 0) {
+      const rows = JSON.parse(
+        typeof routes[pathname] === 'string'
+          ? (routes[pathname] as string)
+          : JSON.stringify(routes[pathname]),
+      ) as { data: { id: string }[] }
+      rows.data = rows.data.map((row) =>
+        applied.has(row.id) ? { ...row, ...applied.get(row.id) } : row,
+      )
+      return new Response(JSON.stringify(rows), {
+        status: 200,
         headers: { 'content-type': 'application/json' },
       })
     }
@@ -116,6 +136,9 @@ export function fixtureRowsRoute(): string {
       ...row,
       title: row.subject,
       displayNumber: row.displayNumber ?? row.id,
+      // The projection sends an instant, never a day: noon in São Paulo, so the
+      // conversion back lands on the same date the fixture spells out.
+      actionDate: row.actionDate === null ? null : `${row.actionDate}T12:00:00-03:00`,
     })),
     total: queueSeed.length,
   })

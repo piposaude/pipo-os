@@ -39,7 +39,7 @@ const view = (id: string, name: string, filters: unknown) => ({
   updatedAt: '2026-09-21T00:00:00.000Z',
 })
 
-async function renderDesk() {
+async function renderDesk(entry = '/') {
   useSessionStore.setState({
     status: 'authenticated',
     user: {
@@ -52,10 +52,11 @@ async function renderDesk() {
   })
   const router = createRouter({
     routeTree,
-    history: createMemoryHistory({ initialEntries: ['/'] }),
+    history: createMemoryHistory({ initialEntries: [entry] }),
   })
   render(<RouterProvider router={router} />)
   await screen.findByRole('navigation', { name: /pipodesk/i })
+  return router
 }
 
 const sidebar = () => screen.getByRole('navigation', { name: /pipodesk/i })
@@ -183,6 +184,16 @@ describe('a árvore da sidebar vem do banco', () => {
     await user.click(screen.getByRole('button', { name: 'Reatribuir' }))
 
     expect(await screen.findByRole('button', { name: 'Ana Souza' })).toBeInTheDocument()
+  })
+
+  it('should abrir no nó de pod que o link nomeia, mesmo ele vindo da API', async () => {
+    const router = await renderDesk(`/?node=node-${POD_ID}`)
+
+    await within(sidebar()).findByRole('button', { name: /^POD 9/ })
+
+    await expect
+      .poll(() => (router.state.location.search as { node?: string }).node)
+      .toBe(`node-${POD_ID}`)
   })
 
   it('should desenhar as visões salvas que o banco carrega', async () => {

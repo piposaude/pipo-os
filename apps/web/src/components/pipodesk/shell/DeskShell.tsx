@@ -173,13 +173,14 @@ export function DeskShell() {
       })
 
       void persistBatch(ids, patch).then((refused) => {
-        if (refused.length === 0) return
+        /* Every patch is dropped, saved or refused: kept after a save it would
+           be reapplied over each refetch, hiding what someone else changed. */
         setPatches((current) => {
           const next = { ...current }
-          for (const id of refused) delete next[id]
+          for (const id of ids) delete next[id]
           return next
         })
-        setWriteFailed(true)
+        if (refused.length > 0) setWriteFailed(true)
         void refetchRows()
       })
     },
@@ -246,10 +247,18 @@ export function DeskShell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, sections, today, onQueue])
 
+  /* The link may name a node the tree does not have yet — a pod, a MOV, an
+     analyst all arrive with the structure. Writing over it before that would
+     erase the link, and `replace` leaves nothing to go back to. */
+  const nodePending =
+    search.node !== undefined &&
+    findNode(sections, search.node) === null &&
+    (groupsQuery.isPending || queuesQuery.isPending)
+
   useEffect(() => {
-    if (!onQueue || JSON.stringify(search) === asLink) return
+    if (!onQueue || nodePending || JSON.stringify(search) === asLink) return
     void navigate({ to: '/', search: JSON.parse(asLink) as QueueSearch, replace: true })
-  }, [asLink, search, navigate, onQueue])
+  }, [asLink, search, navigate, onQueue, nodePending])
 
   /* Survives reloads. `localStorage` may throw (private window); a layout
        preference must not keep the queue from opening. */

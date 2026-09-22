@@ -40,6 +40,19 @@ async function reassignAll(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('o que a tela muda, a API grava', () => {
+  it('should não oferecer em lote a ação que a API ainda não sabe gravar', async () => {
+    await renderQueue()
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('checkbox', { name: /selecionar todos/i }))
+    const barra = await screen.findByRole('group', { name: 'Ações em lote' })
+    await user.click(within(barra).getByRole('button', { name: 'Ações' }))
+
+    expect(screen.getByRole('button', { name: 'Reatribuir' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Agendar' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Mover para carteira' })).not.toBeInTheDocument()
+  })
+
   it('should mandar o novo responsável para a API, um PATCH por chamado', async () => {
     await renderQueue()
     await reassignAll(userEvent.setup())

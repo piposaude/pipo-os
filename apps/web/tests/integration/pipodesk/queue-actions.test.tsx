@@ -191,7 +191,7 @@ describe('barra de lote', () => {
     await user.click(selectAll)
     const barra = await screen.findByRole('group', { name: 'Ações em lote' })
     await user.click(within(barra).getByRole('button', { name: 'Ações' }))
-    await user.click(screen.getByRole('button', { name: 'Agendar' }))
+    await user.click(screen.getByRole('button', { name: 'Mudar status' }))
     expect(screen.getByRole('dialog', { name: 'Ações em lote' })).toBeInTheDocument()
 
     // By keyboard, so no pointer lands outside the panel — a mouse click would
