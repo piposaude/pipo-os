@@ -62,6 +62,11 @@ function rethrowMissingReference(err: unknown): never {
 const blankAsNull = (value: string | null): string | null =>
   value === null || value.trim() === '' ? null : value
 
+function assignmentEventBody(assigneeId: string | null, previous: string | null): string {
+  if (assigneeId === null) return 'Responsável removido'
+  return previous === null ? 'Responsável definido' : 'Responsável alterado'
+}
+
 function scheduleEventBody(actionDate: string | null, previous: string | null): string {
   if (actionDate === null) return 'Data de ação removida'
   return previous === null ? 'Data de ação definida' : 'Data de ação alterada'
@@ -530,9 +535,14 @@ export class TicketsRepository implements TicketsRepositoryPort {
     }
 
     try {
-      // Only the priority and the action date write events, and only an event
-      // needs the value it replaced: every other field keeps a single statement.
-      if (data.priority === undefined && data.actionDate === undefined) {
+      // Only the priority, the action date and the assignee write events, and
+      // only an event needs the value it replaced: every other field keeps a
+      // single statement.
+      if (
+        data.priority === undefined &&
+        data.actionDate === undefined &&
+        data.assigneeId === undefined
+      ) {
         const row = await this.db
           .updateTable('tickets')
           .set(columns)
@@ -581,6 +591,15 @@ export class TicketsRepository implements TicketsRepositoryPort {
             eventType: 'action_date_changed',
             body: scheduleEventBody(actionDate, previousActionDate),
             metadata: { actionDate, previous: previousActionDate },
+          })
+        }
+
+        if (data.assigneeId !== undefined && data.assigneeId !== current.assignee_id) {
+          events.push({
+            ticketId: id,
+            eventType: 'assigned',
+            body: assignmentEventBody(data.assigneeId, current.assignee_id),
+            metadata: { assigneeId: data.assigneeId, previous: current.assignee_id },
           })
         }
 
