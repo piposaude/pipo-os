@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
+import { businessToday } from '../../shared/business-date.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
 import { sessionWithoutSub } from '../auth/session.test-helpers.js'
 import { CLOSED_STATUSES } from './schemas.js'
@@ -1346,6 +1347,43 @@ describe('tickets routes', () => {
       expect(
         timeline.json().data.filter((item: { type: string }) => item.type === 'event'),
       ).toHaveLength(0)
+    })
+
+    it('takes a ticket scheduled past the window out of the queue, and brings it back', async () => {
+      const inDays = (days: number): string =>
+        new Date(Date.parse(`${businessToday()}T15:00:00.000Z`) + days * 86_400_000).toISOString()
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, title: 'agendado' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+      const reschedule = async (actionDate: string) => {
+        const patch = await app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${id}`,
+          payload: { actionDate },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        expect(patch.statusCode).toBe(200)
+      }
+      const idsIn = async (window: string): Promise<string[]> => {
+        const rows = await app.inject({
+          method: 'GET',
+          url: `/api/tickets/rows?window=${window}`,
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        return rows.json().data.map((row: { id: string }) => row.id)
+      }
+
+      await reschedule(inDays(10))
+      expect(await idsIn('awake')).not.toContain(id)
+      expect(await idsIn('sleeping')).toContain(id)
+
+      await reschedule(inDays(-1))
+      expect(await idsIn('awake')).toContain(id)
+      expect(await idsIn('sleeping')).not.toContain(id)
     })
 
     it('refuses a new action date without a timezone, naming the field', async () => {
