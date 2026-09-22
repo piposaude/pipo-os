@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
-import { Outlet, useNavigate } from '@tanstack/react-router'
+import { Outlet, useNavigate, useRouterState, useSearch } from '@tanstack/react-router'
 import { SidebarMainLayout } from '@piposaude/design-system'
 import { QueueSidebar } from '@/components/pipodesk/sidebar/QueueSidebar'
 import { HOME_NODE_ID, buildTree, type TreeNode, type TreeSection } from '@/lib/pipodesk/tree'
-import { INITIAL_VIEW, queueViewReducer } from '@/lib/pipodesk/queue-view'
+import {
+  INITIAL_VIEW,
+  fromSearch,
+  queueViewReducer,
+  toSearch,
+  type QueueSearch,
+} from '@/lib/pipodesk/queue-view'
 import { applyPatches, type TicketPatch } from '@/lib/pipodesk/patches'
 import { SearchPalette } from '@/components/pipodesk/queue/SearchPalette'
 import type { CommentChannel, TicketComment } from '@/lib/pipodesk/timeline'
@@ -167,6 +173,30 @@ export function DeskShell() {
       : queueViewReducer(INITIAL_VIEW, { type: 'select-node', node: toQueueNode(start) })
   })
 
+  /* The link IS the view. One comparison drives both directions, so neither
+     effect can chase the other: whoever is behind catches up, and stops. */
+  const search = useSearch({ strict: false }) as QueueSearch
+  const asLink = useMemo(() => JSON.stringify(toSearch(view)), [view])
+  const onQueue = useRouterState({ select: (state) => state.location.pathname === '/' })
+
+  useEffect(() => {
+    if (!onQueue || JSON.stringify(search) === asLink) return
+    const node = search.node === undefined ? null : findNode(sections, search.node)
+    if (node === null) return
+    dispatch({
+      type: 'restore',
+      view: fromSearch(search, { ...toQueueNode(node), nodeId: node.id, today }),
+    })
+    // `asLink` is the guard, not an input: reacting to it would restore the
+    // view from the link it just produced.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, sections, today, onQueue])
+
+  useEffect(() => {
+    if (!onQueue || JSON.stringify(search) === asLink) return
+    void navigate({ to: '/', search: JSON.parse(asLink) as QueueSearch, replace: true })
+  }, [asLink, search, navigate, onQueue])
+
   /* Survives reloads. `localStorage` may throw (private window); a layout
        preference must not keep the queue from opening. */
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
@@ -214,7 +244,7 @@ export function DeskShell() {
   const selectNode = useCallback(
     (node: TreeNode) => {
       dispatch({ type: 'select-node', node: toQueueNode(node) })
-      navigate({ to: '/' })
+      void navigate({ to: '/' })
     },
     [dispatch, navigate],
   )
