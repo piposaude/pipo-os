@@ -7,6 +7,16 @@ import type { TicketRow } from './ticket-row'
  * forgotten first). Only real-date comparisons invert.
  */
 
+/** A Record, not an array: it forces the compiler to ask for a new field here
+ *  when `SortField` grows, so the URL parser never silently drops one. */
+export const SORT_FIELDS: Record<SortField, true> = {
+  actionDate: true,
+  createdAt: true,
+  updatedAt: true,
+  company: true,
+  status: true,
+}
+
 export type SortField = 'actionDate' | 'createdAt' | 'updatedAt' | 'company' | 'status'
 
 export interface TicketSort {

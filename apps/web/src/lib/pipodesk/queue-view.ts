@@ -6,7 +6,8 @@ import {
   type WindowMode,
 } from './filter'
 import type { GroupBy } from './group'
-import { DEFAULT_SORT, type SortField, type TicketSort } from './sort'
+import { GROUP_BY_COPY } from './filter-copy'
+import { DEFAULT_SORT, SORT_FIELDS, type SortField, type TicketSort } from './sort'
 import type { Priority } from './ticket-row'
 import { isSearchNode } from './tree'
 
@@ -92,6 +93,7 @@ export const INITIAL_VIEW: QueueView = {
 
 export type QueueAction =
   | { type: 'select-node'; node: QueueNode }
+  | { type: 'restore'; view: QueueView }
   | { type: 'add-filter'; field: FilterField; values: string[] }
   | { type: 'remove-filter'; field: FilterField }
   | { type: 'clear-filters' }
@@ -132,6 +134,9 @@ const withoutField = (filter: TicketFilter, field: FilterField): TicketFilter =>
 
 export function queueViewReducer(view: QueueView, action: QueueAction): QueueView {
   switch (action.type) {
+    case 'restore':
+      return action.view
+
     case 'select-node': {
       const { node } = action
       return {
@@ -349,3 +354,25 @@ export function fromSearch(search: QueueSearch, context: RestoreContext): QueueV
 }
 
 export type { Priority }
+
+const asText = (value: unknown): string | undefined =>
+  typeof value === 'string' && value !== '' ? value : undefined
+
+export function parseQueueSearch(raw: Record<string, unknown>): QueueSearch {
+  const search: QueueSearch = {}
+  const node = asText(raw.node)
+  const filters = asText(raw.f)
+  const sort = asText(raw.sort)
+  const direction = asText(raw.dir)
+  const groupBy = asText(raw.group)
+  const window = Number(raw.win)
+
+  if (node) search.node = node
+  if (filters) search.f = filters
+  if (sort && sort in SORT_FIELDS) search.sort = sort as SortField
+  if (direction === 'asc' || direction === 'desc') search.dir = direction
+  if (groupBy && groupBy in GROUP_BY_COPY) search.group = groupBy as GroupBy
+  if (Number.isInteger(window) && window >= 0) search.win = window
+
+  return search
+}

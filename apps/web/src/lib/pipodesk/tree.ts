@@ -26,6 +26,10 @@ import {
 import { tallyPods, type PodTally } from './tally'
 import type { TicketRow } from './ticket-row'
 
+/** The tie between a saved view and its place in the pod: renaming one of the
+ *  three here detaches it, and the pod silently loses the cut. */
+const MOV_LABELS = { clt: 'MOV CLT', pj: 'MOV PJ', mb: 'MOV MB' } as const
+
 export const FUTURE_NODE_ID = 'node-futuras'
 
 /** The triage node — tickets of companies with no portfolio. Exported so the
@@ -290,7 +294,7 @@ export function buildTree(tickets: TicketRow[], options: BuildTreeOptions): Tree
      *  there are no subscribers and MOV CLT could not be favorited.
      *  `undefined` when deleted — the pod shrinks instead of breaking. */
     const movQueue = (suffix: 'clt' | 'pj' | 'mb') =>
-      structure.queues.find((queue) => queue.id === `queue-${pod.id}-${suffix}`)
+      queuesOf(structure, pod.id).find((queue) => queue.name === MOV_LABELS[suffix])
 
     /** CLT and PJ partition the pod. Count comes from the tally (one sweep) —
      *  same number, kept for performance; the Queue's filter goes on screen. */
@@ -328,7 +332,7 @@ export function buildTree(tickets: TicketRow[], options: BuildTreeOptions): Tree
     const pj = byContract('pj')
 
     // The three MOVs already became nodes above — keep them out to avoid duplicates.
-    const movIds = new Set((['clt', 'pj', 'mb'] as const).map((mov) => `queue-${pod.id}-${mov}`))
+    const movIds = new Set([clt?.id, pj?.id, mb?.id].filter((id) => id !== undefined))
     const queues = queuesOf(structure, pod.id)
       .filter((queue) => !movIds.has(queue.id))
       .map((queue) =>

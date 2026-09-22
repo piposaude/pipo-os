@@ -35,3 +35,7 @@ export function businessDay(isoDate: string): string {
   const date = new Date(isoDate)
   return Number.isNaN(date.getTime()) ? isoDate.slice(0, 10) : isoDayOf(date)
 }
+
+export function businessToday(): string {
+  return businessDay(new Date().toISOString())
+}
