@@ -163,6 +163,22 @@ describe('missingClosing', () => {
     ])
   })
 
+  it('should take a date that is not a zero-padded ISO day as no value, instead of comparing it with the floor as a string', () => {
+    const fields = closingFields(ticket('inclusion'), family())
+    const missing = missingClosing(fields, {
+      [cardKey('holder')]: '9912',
+      // Lexicographically above the floor `2023-10-22` — `'9' > '1'` — and
+      // months earlier than it.
+      [startKey('holder')]: '2023-9-5',
+      [cardKey('dep')]: '9913',
+      [startKey('dep')]: '2024-01-01',
+    })
+
+    expect(missing).toEqual([
+      { key: startKey('holder'), label: 'Início da vigência · Ana', reason: 'empty' },
+    ])
+  })
+
   it('should accept the floor itself', () => {
     const fields = closingFields(ticket('inclusion'), family())
     const missing = missingClosing(fields, {

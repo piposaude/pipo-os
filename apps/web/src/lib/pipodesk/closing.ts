@@ -119,10 +119,13 @@ export function fieldLabel(field: ClosingField): string {
   return `${field.label} · ${field.personName}`
 }
 
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
+
 export function missingClosing(fields: ClosingField[], values: ClosingValues): MissingField[] {
   return fields.flatMap((field): MissingField[] => {
     const value = (values[field.key] ?? '').trim()
-    if (value === '') return [{ key: field.key, label: fieldLabel(field), reason: 'empty' }]
+    const noValue = value === '' || (field.kind === 'date' && !ISO_DAY.test(value))
+    if (noValue) return [{ key: field.key, label: fieldLabel(field), reason: 'empty' }]
     if (field.floor !== undefined && value < field.floor) {
       return [{ key: field.key, label: fieldLabel(field), reason: 'early' }]
     }
