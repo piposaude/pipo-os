@@ -516,6 +516,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
   async update(id: string, data: UpdateTicketBody, author?: Author): Promise<Ticket | undefined> {
     const columns = {
       ...(data.priority !== undefined && { priority: data.priority }),
+      ...(data.actionDate !== undefined && { action_date: data.actionDate }),
       ...(data.queueId !== undefined && { queue_id: data.queueId }),
       ...(data.assigneeId !== undefined && { assignee_id: data.assigneeId }),
       ...(data.tags !== undefined && { tags: data.tags }),

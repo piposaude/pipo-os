@@ -1145,6 +1145,46 @@ describe('tickets routes', () => {
       ).toHaveLength(0)
     })
 
+    it('reschedules a ticket, and unschedules it with null', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, actionDate: '2026-10-01T03:00:00.000Z' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      for (const actionDate of ['2026-10-08T03:00:00.000Z', null]) {
+        const patch = await app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${id}`,
+          payload: { actionDate },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        expect(patch.statusCode).toBe(200)
+        expect(patch.json().actionDate).toBe(actionDate)
+      }
+    })
+
+    it('refuses a new action date without a timezone, naming the field', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${created.json().id}`,
+        payload: { actionDate: '2026-10-01' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(400)
+      expect(response.json().details[0].field).toBe('actionDate')
+    })
+
     it('accepts null to clear a nullable field', async () => {
       const created = await app.inject({
         method: 'POST',
