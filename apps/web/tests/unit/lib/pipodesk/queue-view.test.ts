@@ -3,6 +3,7 @@ import { NULL_TOKEN } from '@/lib/pipodesk/filter'
 import {
   INITIAL_VIEW,
   fromSearch,
+  parseQueueSearch,
   queueViewReducer,
   toSearch,
   type QueueNode,
@@ -487,5 +488,19 @@ describe('URL round trip', () => {
     )
 
     expect(restored.filter).toEqual({ assigneeIds: ['@me'] })
+  })
+})
+
+describe('parseQueueSearch', () => {
+  it('should keep the sort and grouping the queue knows', () => {
+    expect(parseQueueSearch({ sort: 'company', dir: 'desc', group: 'status' })).toEqual({
+      sort: 'company',
+      dir: 'desc',
+      group: 'status',
+    })
+  })
+
+  it('should drop a sort or grouping inherited from the object prototype', () => {
+    expect(parseQueueSearch({ sort: 'toString', group: 'constructor' })).toEqual({})
   })
 })

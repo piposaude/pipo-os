@@ -358,6 +358,9 @@ export type { Priority }
 const asText = (value: unknown): string | undefined =>
   typeof value === 'string' && value !== '' ? value : undefined
 
+const isKeyOf = (record: object, key: string): boolean =>
+  Object.prototype.hasOwnProperty.call(record, key)
+
 export function parseQueueSearch(raw: Record<string, unknown>): QueueSearch {
   const search: QueueSearch = {}
   const node = asText(raw.node)
@@ -369,9 +372,9 @@ export function parseQueueSearch(raw: Record<string, unknown>): QueueSearch {
 
   if (node) search.node = node
   if (filters) search.f = filters
-  if (sort && sort in SORT_FIELDS) search.sort = sort as SortField
+  if (sort && isKeyOf(SORT_FIELDS, sort)) search.sort = sort as SortField
   if (direction === 'asc' || direction === 'desc') search.dir = direction
-  if (groupBy && groupBy in GROUP_BY_COPY) search.group = groupBy as GroupBy
+  if (groupBy && isKeyOf(GROUP_BY_COPY, groupBy)) search.group = groupBy as GroupBy
   if (Number.isInteger(window) && window >= 0) search.win = window
 
   return search
