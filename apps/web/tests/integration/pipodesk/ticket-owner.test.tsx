@@ -6,18 +6,14 @@ import constants from '@/constants/pages/pipodesk/ticket'
 
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
-let restoreApi: () => void
+let unmountDesk: () => void
 
 beforeEach(async () => {
-  const { signInAsFixtureViewer } = await import('../../helpers/auth')
-  const { mockApi, fixtureStructureRoutes } = await import('../../helpers/api')
-  const { VIEWER_ID } = await import('@/fixtures/pipodesk/dataset')
-  signInAsFixtureViewer()
-  restoreApi = mockApi(fixtureStructureRoutes(VIEWER_ID))
+  unmountDesk = (await import('../../helpers/desk')).mountDeskFixture()
 })
 
 afterEach(() => {
-  restoreApi()
+  unmountDesk()
 })
 
 /**

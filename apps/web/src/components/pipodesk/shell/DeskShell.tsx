@@ -14,13 +14,9 @@ import { logout } from '@/lib/auth'
 import { useSessionStore } from '@/stores/session'
 import { api } from '@/lib/api'
 import { structureFromApi } from '@/lib/pipodesk/structure-from-api'
-import {
-  COMPANY_REGISTRY,
-  DATASET_TODAY,
-  FIXTURE_USER_NAMES,
-  INBOX_TICKET_IDS,
-  queueSeed,
-} from '@/fixtures/pipodesk/dataset'
+import { rowsFromApi } from '@/lib/pipodesk/rows-from-api'
+import { businessToday } from '@/lib/date'
+import { COMPANY_REGISTRY, INBOX_TICKET_IDS } from '@/fixtures/pipodesk/dataset'
 import '@/styles/pipodesk-tokens.css'
 
 /**
@@ -57,6 +53,8 @@ const iniciaisDe = (name: string): string =>
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('')
 
+const STRUCTURE_STALE_MS = 5 * 60 * 1000
+
 export function DeskShell() {
   const navigate = useNavigate()
   const user = useSessionStore((state) => state.user)
@@ -74,15 +72,33 @@ export function DeskShell() {
     [user],
   )
 
+  /* The whole window, awake and sleeping: the tree splits them itself, and
+     asking for one would zero "Movimentações futuras". */
+  const rowsQuery = api.useQuery(
+    'get',
+    '/api/tickets/rows',
+    { params: { query: { window: 'all' as const, limit: 5000 } } },
+    { staleTime: 30_000 },
+  )
+  const usersQuery = api.useQuery('get', '/api/users', {}, { staleTime: STRUCTURE_STALE_MS })
+
+  const namesByEmail = useMemo(
+    () => new Map((usersQuery.data?.data ?? []).map((person) => [person.email, person.name])),
+    [usersQuery.data],
+  )
   const resolveName = useMemo(
-    () => (userId: string) => FIXTURE_USER_NAMES[userId] ?? displayNameFromEmail(userId),
-    [],
+    () => (userId: string) => namesByEmail.get(userId) || displayNameFromEmail(userId),
+    [namesByEmail],
   )
 
   /* Prototype model: the base never changes; actions become patches applied
        on read. When the backend lands, the patch becomes the PATCH body. */
   const [patches, setPatches] = useState<Record<string, TicketPatch>>({})
-  const rows = useMemo(() => applyPatches(queueSeed, patches, DATASET_TODAY), [patches])
+  const today = businessToday()
+  const rows = useMemo(
+    () => applyPatches(rowsFromApi(rowsQuery.data?.data ?? []), patches, today),
+    [rowsQuery.data, patches, today],
+  )
 
   const [comments, setComments] = useState<TicketComment[]>([])
   const addComment = useCallback(
@@ -110,7 +126,6 @@ export function DeskShell() {
     })
   }, [])
 
-  const STRUCTURE_STALE_MS = 5 * 60 * 1000
   const groupsQuery = api.useQuery(
     'get',
     '/api/groups',
@@ -135,11 +150,11 @@ export function DeskShell() {
         viewerId,
         viewerGroupId,
         structure,
-        today: DATASET_TODAY,
+        today,
         inboxTicketIds: INBOX_TICKET_IDS,
         resolveName,
       }),
-    [rows, viewerId, viewerGroupId, structure, resolveName],
+    [rows, viewerId, viewerGroupId, structure, today, resolveName],
   )
 
   /* Open on the "Meus tickets" NODE, not a raw INITIAL_VIEW: filter, scope
@@ -229,7 +244,7 @@ export function DeskShell() {
       view,
       dispatch,
       rows,
-      today: DATASET_TODAY,
+      today,
       applyPatch,
       comments,
       addComment,
@@ -247,6 +262,7 @@ export function DeskShell() {
       comments,
       addComment,
       viewerId,
+      today,
       resolveName,
       sidebarCollapsed,
       toggleSidebar,

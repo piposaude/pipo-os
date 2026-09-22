@@ -1,4 +1,4 @@
-import { structureFixture } from '@/fixtures/pipodesk/dataset'
+import { FIXTURE_USER_NAMES, queueSeed, structureFixture } from '@/fixtures/pipodesk/dataset'
 
 /** Restores by assignment, never `unstubAllGlobals()`: the setup file stubs
  *  `Request`, and unstubbing here would take it down with it. */
@@ -19,7 +19,7 @@ export function mockApi(routes: Record<string, unknown>): () => void {
       )
     }
     return Promise.resolve(
-      new Response(JSON.stringify(body), {
+      new Response(typeof body === 'string' ? body : JSON.stringify(body), {
         status: 200,
         headers: { 'content-type': 'application/json' },
       }),
@@ -42,6 +42,8 @@ const STAMPS = {
 
 export function fixtureStructureRoutes(viewerId?: string): Record<string, unknown> {
   return {
+    '/api/tickets/rows': fixtureRowsRoute(),
+    '/api/users': fixtureUsersRoute(),
     '/api/groups': page(
       structureFixture.groups.map((group) => ({
         ...STAMPS,
@@ -72,5 +74,30 @@ export function fixtureStructureRoutes(viewerId?: string): Record<string, unknow
         favorite: viewerId ? queue.subscriberIds.includes(viewerId) : false,
       })),
     ),
+  }
+}
+
+/** Serialized once: the dataset carries some 6.700 rows, and stringifying it
+ *  per request would dominate the run. */
+let rowsBody: string | null = null
+
+export function fixtureRowsRoute(): string {
+  rowsBody ??= JSON.stringify({
+    data: queueSeed.map((row) => ({
+      ...row,
+      title: row.subject,
+      displayNumber: row.displayNumber ?? row.id,
+    })),
+    total: queueSeed.length,
+  })
+  return rowsBody
+}
+
+export function fixtureUsersRoute(): unknown {
+  return {
+    data: Object.entries(FIXTURE_USER_NAMES).map(([userId, name]) => ({
+      email: userId,
+      name,
+    })),
   }
 }

@@ -69,6 +69,42 @@ describe('a árvore da sidebar vem do banco', () => {
         group(ROOT_ID, 'Gestão de Benefícios', null),
         group(POD_ID, 'POD 9', ROOT_ID),
       ]),
+      '/api/tickets/rows': {
+        data: [
+          {
+            id: 'a0000000-0000-4000-8000-000000000001',
+            displayNumber: '7',
+            enrollmentId: 'enr-7',
+            companyId: 'c-1',
+            status: 'carrier-processing',
+            title: 'Inclusão de titular',
+            beneficiaryName: 'Marcos Dias',
+            taxId: null,
+            companyName: 'Empresa A',
+            parentCompanyId: null,
+            parentCompanyName: null,
+            companyTaxId: null,
+            companySize: null,
+            carrierId: 'amil',
+            carrierName: 'Amil',
+            product: 'health',
+            enrollmentType: 'inclusion',
+            contractType: 'clt',
+            relationship: 'holder',
+            assigneeId: VIEWER,
+            groupId: POD_ID,
+            priority: null,
+            actionDate: null,
+            tags: [],
+            sourceSystem: 'enrollment-integrations',
+            createdAt: '2026-09-20T10:00:00.000Z',
+            updatedAt: '2026-09-20T10:00:00.000Z',
+            closedAt: null,
+          },
+        ],
+        total: 1,
+      },
+      '/api/users': { data: [{ email: VIEWER, name: 'Ana Souza' }] },
       '/api/queues': page([
         view('8f2c9a10-0000-4000-8000-00000000c001', 'MOV CLT', { contractTypes: ['clt'] }),
         view('8f2c9a10-0000-4000-8000-00000000c002', 'MOV PJ', { contractTypes: ['pj'] }),
@@ -86,6 +122,24 @@ describe('a árvore da sidebar vem do banco', () => {
 
     expect(await within(sidebar()).findByRole('button', { name: /^POD 9/ })).toBeInTheDocument()
     expect(within(sidebar()).queryByRole('button', { name: /^POD 1\b/ })).not.toBeInTheDocument()
+  })
+
+  it('should listar o chamado que está no banco', async () => {
+    await renderDesk()
+
+    const table = await screen.findByRole('table')
+
+    expect(await within(table).findByText('Marcos Dias')).toBeInTheDocument()
+    expect(within(table).getByText('Empresa A')).toBeInTheDocument()
+  })
+
+  it('should nomear a analista pela lista de pessoas da API, não pela fixture', async () => {
+    await renderDesk()
+    await within(sidebar()).findByRole('button', { name: /^POD 9/ })
+    await userEvent.click(within(sidebar()).getByRole('button', { name: /Expandir POD 9/i }))
+    await userEvent.click(within(sidebar()).getByRole('button', { name: /Expandir MOV CLT/i }))
+
+    expect(await within(sidebar()).findByRole('button', { name: /^Ana Souza/ })).toBeInTheDocument()
   })
 
   it('should desenhar as visões salvas que o banco carrega', async () => {
