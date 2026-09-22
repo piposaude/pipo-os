@@ -5,6 +5,11 @@ import constants from '@/constants/pipodesk/error'
 
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
+beforeEach(async () => {
+  const { signInAsFixtureViewer } = await import('../../helpers/auth')
+  signInAsFixtureViewer()
+})
+
 /** The queue itself blows up on render. */
 vi.mock('@/pages/pipodesk/queue', () => ({
   default: () => {

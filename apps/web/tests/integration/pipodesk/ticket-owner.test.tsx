@@ -6,6 +6,11 @@ import constants from '@/constants/pages/pipodesk/ticket'
 
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
+beforeEach(async () => {
+  const { signInAsFixtureViewer } = await import('../../helpers/auth')
+  signInAsFixtureViewer()
+})
+
 /**
  * A pod with coordination but no analyst — a new pod, or one whose analysts
  * moved out. The roster comes from the structure, so it is empty here, and an

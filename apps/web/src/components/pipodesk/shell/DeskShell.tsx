@@ -20,7 +20,6 @@ import {
   queueSeed,
   structureFixture,
   VIEWER_GROUP_ID,
-  VIEWER_ID,
 } from '@/fixtures/pipodesk/dataset'
 import '@/styles/pipodesk-tokens.css'
 
@@ -60,12 +59,20 @@ const iniciaisDe = (name: string): string =>
 
 export function DeskShell() {
   const navigate = useNavigate()
-  const email = useSessionStore((state) => state.user?.email) ?? ''
-  const viewerName = email ? displayNameFromEmail(email) : 'Você'
+  const user = useSessionStore((state) => state.user)
+  const email = user?.email ?? ''
+  const viewerName = user?.name || (email ? displayNameFromEmail(email) : 'Você')
 
-  /* Dataset viewer, not the session e-mail: pointing `@me` at an e-mail that
-       appears in no row would zero "Meus tickets". Leaves with PD-101. */
-  const viewerId = VIEWER_ID
+  /* The `sub`, not the e-mail: it is the value the API writes into assigneeId,
+     so `@me` resolves against what the rows actually carry. */
+  const viewerId = user?.sub ?? email
+
+  /* The pod the person works in, not every group they answer for: coordination
+     is admin in the root and in all six, and the first one would be the root. */
+  const viewerGroupId = useMemo(
+    () => user?.groups?.find((group) => group.role === 'member')?.groupId ?? VIEWER_GROUP_ID,
+    [user],
+  )
 
   const resolveName = useMemo(
     () => (userId: string) => FIXTURE_USER_NAMES[userId] ?? displayNameFromEmail(userId),
@@ -107,13 +114,13 @@ export function DeskShell() {
     () =>
       buildTree(rows, {
         viewerId,
-        viewerGroupId: VIEWER_GROUP_ID,
+        viewerGroupId,
         structure: structureFixture,
         today: DATASET_TODAY,
         inboxTicketIds: INBOX_TICKET_IDS,
         resolveName,
       }),
-    [rows, viewerId, resolveName],
+    [rows, viewerId, viewerGroupId, resolveName],
   )
 
   /* Open on the "Meus tickets" NODE, not a raw INITIAL_VIEW: filter, scope
@@ -241,8 +248,8 @@ export function DeskShell() {
               activeId={view.nodeId}
               onSelect={selectNode}
               structure={structureFixture}
-              viewerInitials={iniciaisDe(FIXTURE_USER_NAMES[viewerId] ?? viewerName)}
-              viewerName={FIXTURE_USER_NAMES[viewerId] ?? viewerName}
+              viewerInitials={iniciaisDe(viewerName)}
+              viewerName={viewerName}
               viewerEmail={email}
               onLogout={handleLogout}
               onOpenSearch={() => setSearchOpen(true)}

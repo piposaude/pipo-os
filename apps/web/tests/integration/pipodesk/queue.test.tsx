@@ -6,6 +6,11 @@ import queueConstants from '@/constants/pages/pipodesk/queue'
 
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
+beforeEach(async () => {
+  const { signInAsFixtureViewer } = await import('../../helpers/auth')
+  signInAsFixtureViewer()
+})
+
 async function renderQueue() {
   const router = createRouter({
     routeTree,

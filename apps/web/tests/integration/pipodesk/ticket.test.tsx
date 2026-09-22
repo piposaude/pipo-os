@@ -38,6 +38,11 @@ configure({ asyncUtilTimeout: 3000 })
 
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
+beforeEach(async () => {
+  const { signInAsFixtureViewer } = await import('../../helpers/auth')
+  signInAsFixtureViewer()
+})
+
 async function renderAt(path: string) {
   const router = createRouter({
     routeTree,
