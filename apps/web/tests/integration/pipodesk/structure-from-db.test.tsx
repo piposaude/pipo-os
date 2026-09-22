@@ -62,9 +62,10 @@ const sidebar = () => screen.getByRole('navigation', { name: /pipodesk/i })
 
 describe('a árvore da sidebar vem do banco', () => {
   let restore: () => void
+  let routes: Record<string, unknown>
 
   beforeEach(() => {
-    restore = mockApi({
+    routes = {
       '/api/groups': page([
         group(ROOT_ID, 'Gestão de Benefícios', null),
         group(POD_ID, 'POD 9', ROOT_ID),
@@ -109,7 +110,8 @@ describe('a árvore da sidebar vem do banco', () => {
         view('8f2c9a10-0000-4000-8000-00000000c001', 'MOV CLT', { contractTypes: ['clt'] }),
         view('8f2c9a10-0000-4000-8000-00000000c002', 'MOV PJ', { contractTypes: ['pj'] }),
       ]),
-    })
+    }
+    restore = mockApi(routes)
   })
 
   afterEach(() => {
@@ -140,6 +142,34 @@ describe('a árvore da sidebar vem do banco', () => {
     await userEvent.click(within(sidebar()).getByRole('button', { name: /Expandir MOV CLT/i }))
 
     expect(await within(sidebar()).findByRole('button', { name: /^Ana Souza/ })).toBeInTheDocument()
+  })
+
+  it('should avisar que a fila é um recorte quando o banco tem mais do que coube', async () => {
+    restore()
+    restore = mockApi({
+      ...routes,
+      '/api/tickets/rows': { ...(routes['/api/tickets/rows'] as object), total: 9999 },
+    })
+    await renderDesk()
+
+    await screen.findByRole('table')
+
+    const aviso = await screen.findByText(/Mostrando um recorte/)
+
+    expect(aviso).toHaveTextContent('999')
+    expect(aviso).toHaveTextContent('contagens da árvore valem só para o que está aqui')
+  })
+
+  it('should pôr o pod de quem logou na frente dos outros', async () => {
+    await renderDesk()
+    const geben = await within(sidebar()).findByRole('button', { name: /^GEBEN/ })
+    const pods = within(sidebar())
+      .getAllByRole('button')
+      .map((button) => button.textContent ?? '')
+      .filter((label) => label.startsWith('POD '))
+
+    expect(geben).toBeInTheDocument()
+    expect(pods[0]).toMatch(/^POD 9/)
   })
 
   it('should desenhar as visões salvas que o banco carrega', async () => {

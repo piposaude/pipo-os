@@ -36,7 +36,8 @@ const COLUMN_PREFS_KEY = 'pipodesk:columns'
  */
 export default function QueuePage() {
   const navigate = useNavigate()
-  const { sections, view, dispatch, rows, today, viewerId, resolveName, applyPatch } = useDesk()
+  const { sections, view, dispatch, rows, rowsTotal, today, viewerId, resolveName, applyPatch } =
+    useDesk()
 
   /* Node base: scope + window, before the filter — what the panel counts
        per option against. */
@@ -208,6 +209,12 @@ export default function QueuePage() {
       <p className={styles.live} role="status" aria-label={constants.liveCountLabel}>
         {constants.liveCount(total, view.label)}
       </p>
+
+      {rowsTotal > rows.length && (
+        <p className={styles.truncated} role="status">
+          {constants.truncated(rows.length, rowsTotal)}
+        </p>
+      )}
 
       <QueueTable
         groups={groups}

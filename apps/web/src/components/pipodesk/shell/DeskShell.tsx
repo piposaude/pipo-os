@@ -27,9 +27,9 @@ import '@/styles/pipodesk-tokens.css'
 
 /**
  * The Pipodesk shell: tree left, content right. `.desk-root` scopes the
- * operation tokens (login carries none). The base is still a fixture —
- * swapping in the API (PD-043/PD-050) changes the source of `rows`, not the
- * shape.
+ * operation tokens (login carries none). Rows, structure and names come from
+ * the API; the inbox ids and the company registry are the last two fixtures,
+ * and they leave with PD-080b and PD-054.
  */
 /** Node by id, at any depth of the three sections. */
 function findNode(sections: TreeSection[], id: string): TreeNode | null {
@@ -268,6 +268,8 @@ export function DeskShell() {
 
   /* Memoized: the shell sits above every screen of the desk, so a new object
      here rerenders all of them on any state change. */
+  const rowsTotal = rowsQuery.data?.total ?? 0
+
   const context = useMemo(
     () => ({
       sections,
@@ -276,6 +278,7 @@ export function DeskShell() {
       rows,
       today,
       applyPatch,
+      rowsTotal,
       comments,
       addComment,
       viewerId,
@@ -289,6 +292,7 @@ export function DeskShell() {
       dispatch,
       rows,
       applyPatch,
+      rowsTotal,
       comments,
       addComment,
       viewerId,

@@ -17,6 +17,9 @@ export interface DeskContextValue {
   dispatch: Dispatch<QueueAction>
   /** The whole base, before scope, window and filter. */
   rows: TicketRow[]
+  /** What the projection says exists, which is more than `rows` when it
+   *  capped the answer — every count on screen is over the slice, not this. */
+  rowsTotal: number
   /** Queue reference date — never the clock, for reproducibility. */
   today: string
   viewerId: string
