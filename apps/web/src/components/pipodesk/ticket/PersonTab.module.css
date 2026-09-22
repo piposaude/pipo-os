@@ -38,33 +38,20 @@
   text-decoration: underline;
 }
 
-.dependents {
-  display: flex;
-  flex-direction: column;
-  gap: var(--pipo-space-xsmall);
-  margin: 0;
-  padding: 0;
-  list-style: none;
+/* Five columns in a column narrower than the page: 8px, not the DS 16. */
+.dependents th,
+.dependents td {
+  padding-right: var(--pipo-space-xsmall);
+  padding-left: var(--pipo-space-xsmall);
 }
 
 .dependentButton {
-  display: grid;
-  width: 100%;
-  grid-template-columns: 1fr auto auto;
-  gap: var(--pipo-space-medium);
   text-align: left;
   text-decoration: none;
 }
 
-.dependentButton:hover span:first-child {
-  text-decoration: underline;
-}
-
-.dependentMeta {
-  color: var(--pipo-text-secondary);
-  font-size: 13px;
-}
-
+.numeric,
 .cardNumber {
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }

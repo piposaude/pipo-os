@@ -323,3 +323,9 @@
   display: flex;
   justify-content: flex-end;
 }
+
+/* The page radius, not the DS one, so the notice lines up with the blocks. */
+.branchNotice.branchNotice {
+  margin-bottom: var(--pipo-space-small);
+  border-radius: var(--pipo-radius-small);
+}

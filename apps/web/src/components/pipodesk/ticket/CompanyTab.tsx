@@ -38,14 +38,18 @@ function ContractCard({
 
   return (
     <li className={styles.contract}>
+      {/* The carrier is the title: it is what tells two contracts of the same
+          company apart, and the product repeats the Benefício line below. */}
       <div className={styles.contractHead}>
-        <CarrierLogo carrier={carrierSlug(carrierName)} size="xs" />
-        <strong>{PRODUCT_COPY[contract.product] ?? contract.product}</strong>
-        <span>{carrierName}</span>
+        <CarrierLogo carrier={carrierSlug(carrierName)} size="md" />
+        <strong>{carrierName}</strong>
         <Status variant={expired ? 'alert' : 'success'}>
           {expired ? copy.contract.expired : copy.contract.active}
         </Status>
       </div>
+      <p className={styles.line}>
+        {copy.contract.benefit} {PRODUCT_COPY[contract.product] ?? contract.product}
+      </p>
       <p className={styles.line}>
         {copy.contract.number} <span className={styles.number}>{contract.number}</span>
         <CopyButton value={contract.number} label={copy.contract.copyNumber(contract.number)} />
@@ -95,13 +99,20 @@ export function CompanyTab({ companyId, policyId, records, capturedAt, today }: 
   if (!company) return <RecordEmpty>{recordCopy.notFound.company}</RecordEmpty>
 
   const parent = company.parentId ? records.companyById.get(company.parentId) : undefined
-  const branches = records.branchesOf(company.id)
-  const contracts = records.contractsOf(company.id)
+  const companyContracts = records.contractsOf(company.id)
   const companyPlans = records.policiesOf(company.id)
   // Only the moved policy; the whole list is the fallback for a policy of another
   // company (a branch on the parent's), and the section says so instead of hiding it.
   const currentPlan = companyPlans.find((plan) => plan.id === policyId)
   const plans = currentPlan ? [currentPlan] : companyPlans
+  /* The contract is company × carrier × product, and the policy already names
+     the three — the whole list is the same fallback as `plans`. */
+  const contracts = currentPlan
+    ? companyContracts.filter(
+        (contract) =>
+          contract.carrierId === currentPlan.carrierId && contract.product === currentPlan.product,
+      )
+    : companyContracts
   const plansNotCut = policyId !== undefined && currentPlan === undefined && plans.length > 0
   const files = records.documentsOf('company', company.id)
 
@@ -130,20 +141,10 @@ export function CompanyTab({ companyId, policyId, records, capturedAt, today }: 
         )}
       </RecordSection>
 
-      {branches.length > 0 && (
-        <RecordSection level="h2" title={copy.sections.branches}>
-          <ul className={styles.list}>
-            {branches.map((branch) => (
-              <li key={branch.id} className={styles.row}>
-                <span>{branch.legalName}</span>
-                <span>{branch.cnpj}</span>
-              </li>
-            ))}
-          </ul>
-        </RecordSection>
-      )}
-
-      <RecordSection level="h2" title={copy.sections.contracts}>
+      <RecordSection
+        level="h2"
+        title={currentPlan ? copy.sections.ticketContract : copy.sections.contracts}
+      >
         {contracts.length === 0 ? (
           <RecordEmpty>{copy.contract.empty}</RecordEmpty>
         ) : (
@@ -155,7 +156,9 @@ export function CompanyTab({ companyId, policyId, records, capturedAt, today }: 
         )}
         <RecordNote>
           <Emphasis text={copy.contract.note} />
-          {parent && <Emphasis text={copy.contract.branchNote(parent.tradeName)} />}
+          {parent && (
+            <Emphasis text={copy.contract.branchNote(parent.tradeName, contracts.length === 1)} />
+          )}
         </RecordNote>
       </RecordSection>
 

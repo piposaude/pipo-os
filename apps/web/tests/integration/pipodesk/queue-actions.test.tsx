@@ -10,6 +10,7 @@ import {
 } from '@/fixtures/pipodesk/dataset'
 import { isAuthenticated, logout } from '@/lib/auth'
 import constants from '@/constants/pages/pipodesk/queue'
+import searchCopy from '@/constants/pipodesk/search'
 
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
@@ -347,6 +348,29 @@ describe('busca global', () => {
     expect(screen.getByRole('navigation', { name: /breadcrumb/i })).toHaveTextContent(
       'Meus tickets',
     )
+  })
+
+  it('should close the palette from the × in the field', async () => {
+    await renderQueue()
+    const user = userEvent.setup()
+
+    await user.keyboard('{Meta>}k{/Meta}')
+    const palette = await screen.findByRole('dialog', { name: /busca/i })
+    await user.click(within(palette).getByRole('button', { name: searchCopy.close }))
+
+    expect(screen.queryByRole('dialog', { name: /busca/i })).not.toBeInTheDocument()
+  })
+
+  it('should spell the three shortcuts in the footer, the label before the key', async () => {
+    await renderQueue()
+
+    await userEvent.setup().keyboard('{Meta>}k{/Meta}')
+    const palette = await screen.findByRole('dialog', { name: /busca/i })
+
+    for (const { label, key } of searchCopy.shortcuts) {
+      const line = within(palette).getByText(label).closest('span')!
+      expect(line).toHaveTextContent(`${label} ${key}`)
+    }
   })
 
   it('should give back the queue the search started from, not the viewer home', async () => {

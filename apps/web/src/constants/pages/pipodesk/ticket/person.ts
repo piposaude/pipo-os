@@ -16,7 +16,7 @@ export default {
   ] as Emphasized,
   sections: {
     personal: 'Dados pessoais',
-    holder: 'Dados do titular',
+    holder: 'Dados de vínculo',
     contact: 'Dados de contato',
     refund: 'Dados de reembolso',
     dependents: 'Dependentes',
@@ -76,6 +76,15 @@ export default {
   },
   dependents: {
     noBenefit: 'sem benefício',
+    /* "Vínculo" reads "Dependente" on every row: the record carries no
+       kinship, so the column aligns the table, it does not tell rows apart. */
+    columns: {
+      name: 'Nome',
+      relationship: 'Vínculo',
+      birthDate: 'Nascimento',
+      cpf: 'CPF',
+      benefits: 'Benefícios',
+    },
     note: [
       'Elegibilidade de dependente é diferente por produto: é comum em saúde e odonto, e muitas vezes MB não aceita. O que aparece aqui é o que cada dependente ',
       'tem',

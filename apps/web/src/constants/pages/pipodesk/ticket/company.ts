@@ -1,12 +1,12 @@
 import type { Emphasized } from './record'
 
-/** The Sobre a empresa tab: the Backoffice tabs Resumo, Filiais, Contratos,
- *  Prêmios and Arquivos as sections of one. */
+/** The Sobre a empresa tab: the Backoffice tabs Resumo, Contratos, Prêmios and
+ *  Arquivos as sections of one. */
 export default {
   sections: {
     data: 'Dados da empresa',
-    branches: 'Filiais',
     contracts: 'Contratos',
+    ticketContract: 'Contrato deste chamado',
     plans: 'Prêmios',
     files: 'Arquivos',
   },
@@ -32,6 +32,7 @@ export default {
     active: 'Ativo',
     expired: 'Vencido',
     expiredWarning: 'Contrato com vigência vencida',
+    benefit: 'Benefício',
     number: 'Contrato nº',
     copyNumber: (number: string) => `Copiar o número do contrato ${number}`,
     files: (count: number) =>
@@ -57,9 +58,9 @@ export default {
       'quem pode revelar a senha',
       ' ainda não foi decidido.',
     ] as Emphasized,
-    branchNote: (parent: string): Emphasized => [
-      ` Esta empresa é filial (sub-estipulante) de ${parent}, e os contratos aqui são `,
-      'os dela',
+    branchNote: (parent: string, single: boolean): Emphasized => [
+      ` Esta empresa é filial (sub-estipulante) de ${parent}, e ${single ? 'o contrato aqui é ' : 'os contratos aqui são '}`,
+      single ? 'o dela' : 'os dela',
       ': matriz e filial podem ter contratos e benefícios diferentes. Se a regra real for a da apólice da matriz, contrato, prêmios e acesso ao portal passam a ser os da matriz — a confirmar com a Juka.',
     ],
   },

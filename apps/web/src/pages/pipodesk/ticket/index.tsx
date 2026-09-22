@@ -105,11 +105,47 @@ export default function TicketPage() {
     ? `${DISPLAY_STATUS_COPY[ticket.display]} · ${PENDING_REASON_COPY[ticket.reason]}`
     : DISPLAY_STATUS_COPY[ticket.display]
 
+  const company = records.companyById.get(ticket.companyId)
+  /* The row's own column decides it, not whether the record resolved: rows and
+     records are separate snapshots, and a missing one would make a branch
+     ticket claim the movement is the parent's. */
+  const isBranch = ticket.parentCompanyId !== null
+  const parentCompany = ticket.parentCompanyId
+    ? records.companyById.get(ticket.parentCompanyId)
+    : undefined
+
   const movimentacao = (
     <section className={styles.block}>
       <h2 className={styles.blockTitle}>{constants.facts.heading}</h2>
+      {isBranch && (
+        /* `important` is the DS beige for an informative notice; `warning`
+           would read as an alert where there is none. */
+        <Banner variant="important" icon={false} className={styles.branchNotice}>
+          {constants.facts.branchNotice(ticket.enrollmentType)}{' '}
+          <strong>{company?.tradeName ?? ticket.companyName ?? '—'}</strong>
+        </Banner>
+      )}
       <dl className={styles.facts}>
-        <Fact label={constants.facts.company} value={ticket.companyName ?? '—'} />
+        {isBranch ? (
+          <>
+            <Fact
+              label={constants.facts.parentCompany}
+              value={parentCompany?.tradeName ?? ticket.parentCompanyName ?? '—'}
+            />
+            <Fact label={constants.facts.cnpj} value={parentCompany?.cnpj ?? '—'} />
+            <Fact
+              label={constants.facts.branchCompany}
+              value={company?.tradeName ?? ticket.companyName ?? '—'}
+            />
+            <Fact label={constants.facts.cnpj} value={company?.cnpj ?? '—'} />
+          </>
+        ) : (
+          <>
+            <Fact label={constants.facts.company} value={ticket.companyName ?? '—'} />
+            <Fact label={constants.facts.structure} value={constants.facts.isParent} />
+            <Fact label={constants.facts.cnpj} value={company?.cnpj ?? '—'} />
+          </>
+        )}
         <Fact label={constants.facts.carrier} value={ticket.carrierName ?? '—'} />
         <Fact
           label={constants.facts.product}

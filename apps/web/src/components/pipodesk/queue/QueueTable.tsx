@@ -1,12 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import type { PopoverAlign } from '@/components/pipodesk/primitives'
+import { SortHeader, type PopoverAlign } from '@/components/pipodesk/primitives'
 import { FILTER_BY_COLUMN, SORTABLE, type QueueColumn } from '@/lib/pipodesk/columns'
 import type { FilterField } from '@/lib/pipodesk/filter'
 import type { TicketGroup } from '@/lib/pipodesk/group'
 import type { TicketSort } from '@/lib/pipodesk/sort'
+import { clickedControl, opensElsewhere } from '@/lib/pipodesk/row-click'
 import { computeWindow, flattenGroups, ROW_HEIGHT } from '@/lib/pipodesk/virtual'
 import constants from '@/constants/pages/pipodesk/queue'
 import { QueueRow } from './QueueRow'
+import sortHeader from '@/components/pipodesk/primitives/SortHeader.module.css'
 import styles from './Queue.module.css'
 
 /**
@@ -110,7 +112,7 @@ export function QueueTable({
         </div>
       )}
       {rows.length > 0 && (
-        <table className={styles.table}>
+        <table className={`${styles.table} ${sortHeader.table}`}>
           <colgroup>
             {columns.map((column) => (
               <col key={column.key} style={{ width: column.width }} />
@@ -147,21 +149,12 @@ export function QueueTable({
                           span is a mouse tooltip and nothing else, while on a button
                           it is also the accessible description. */}
                       {SORTABLE[column.key] ? (
-                        <button
-                          type="button"
-                          className={styles.headerButton}
+                        <SortHeader
+                          label={column.label}
+                          state={sortOf(column.key) ?? 'none'}
                           title={column.title}
-                          onClick={() => toggleSort(column.key)}
-                        >
-                          {column.label}
-                          <span aria-hidden="true" className={styles.sortGlyph}>
-                            {sortOf(column.key) === 'ascending'
-                              ? '↑'
-                              : sortOf(column.key) === 'descending'
-                                ? '↓'
-                                : '↕'}
-                          </span>
-                        </button>
+                          onSort={() => toggleSort(column.key)}
+                        />
                       ) : (
                         <span title={column.title}>{column.label}</span>
                       )}
@@ -199,15 +192,8 @@ export function QueueTable({
                   key={row.key}
                   data-ticket-id={row.ticket.id}
                   data-selected={selected.has(row.ticket.id) ? 'true' : undefined}
-                  /* The whole row opens the ticket, with the usual guard: a click that
-                                   started on a control belongs to the control — `a`
-                                   included, or the subject link would navigate twice. */
                   onClick={(event) => {
-                    if ((event.target as HTMLElement).closest('label,input,button,a')) return
-                    /* ⌘/ctrl/shift-click means "somewhere else" — `navigate` would
-                                       ignore that and steal the tab. The subject link handles
-                                       those, so the row simply stands aside. */
-                    if (event.metaKey || event.ctrlKey || event.shiftKey) return
+                    if (clickedControl(event) || opensElsewhere(event)) return
                     onOpenTicket(row.ticket.id)
                   }}
                 >

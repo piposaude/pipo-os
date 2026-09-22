@@ -1,3 +1,4 @@
+import { ENROLLMENT_TYPE_COPY } from '@/constants/pipodesk/domain'
 import type { CommentChannel } from '@/lib/pipodesk/timeline'
 
 export default {
@@ -17,7 +18,15 @@ export default {
   },
   facts: {
     heading: 'Movimentação',
+    branchNotice: (type: string) => `${ENROLLMENT_TYPE_COPY[type] ?? type} na filial:`,
     company: 'Empresa',
+    /* Matriz is the estipulante and filial the sub-estipulante; on a branch
+       ticket the two labels carry the structure and `structure` drops out. */
+    parentCompany: 'Matriz',
+    branchCompany: 'Filial',
+    cnpj: 'CNPJ',
+    structure: 'Estrutura',
+    isParent: 'Matriz',
     carrier: 'Operadora',
     product: 'Produto',
     type: 'Tipo',

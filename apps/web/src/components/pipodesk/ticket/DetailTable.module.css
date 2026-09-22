@@ -1,0 +1,40 @@
+/* The shared face of the detail tables — Histórico, Dependentes, Carteirinhas.
+   Ported from the prototype's `.tabela-detalhe` (ticket.css). */
+
+/* Double class to beat the DS sheet in order; `th` already wins on specificity. */
+.table.table,
+.table th {
+  background: transparent;
+}
+
+.table.table thead,
+.table.table tr {
+  border-bottom: 0;
+}
+
+/* A row that leads nowhere does not light. */
+.table.table tbody tr:not(.inert):hover td {
+  background: var(--desk-hover);
+}
+
+/* With `border-collapse` the radius goes on the end cells, not the row, and
+   the ends take 16px so the text does not touch the curve. */
+.table.table tbody td:first-child {
+  border-radius: var(--pipo-radius-small) 0 0 var(--pipo-radius-small);
+}
+
+.table.table tbody td:last-child {
+  border-radius: 0 var(--pipo-radius-small) var(--pipo-radius-small) 0;
+}
+
+.table.table :is(th, td):first-child {
+  padding-left: var(--pipo-space-small);
+}
+
+.table.table :is(th, td):last-child {
+  padding-right: var(--pipo-space-small);
+}
+
+.table.table tbody tr[data-row-target] {
+  cursor: pointer;
+}
