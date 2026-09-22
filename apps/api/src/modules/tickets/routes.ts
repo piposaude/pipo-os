@@ -204,8 +204,7 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
       },
     },
     async (request) => {
-      const assigneeId = requireUserId(request)
-      return service.claim(request.params.id, assigneeId)
+      return service.claim(request.params.id, { id: requireUserId(request), type: 'user' })
     },
   )
 }

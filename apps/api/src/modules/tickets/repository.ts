@@ -138,7 +138,7 @@ export interface TicketsRepositoryPort {
   findById(id: string): Promise<Ticket | undefined>
   create(data: CreateTicketData): Promise<Ticket>
   update(id: string, data: UpdateTicketBody, author?: Author): Promise<Ticket | undefined>
-  claimOpen(id: string, assigneeId: string): Promise<Ticket | undefined>
+  claimOpen(id: string, claimer: Author): Promise<Ticket | undefined>
   changeStatus(
     id: string,
     toStatus: TicketStatus,
@@ -511,16 +511,40 @@ export class TicketsRepository implements TicketsRepositoryPort {
     })
   }
 
-  async claimOpen(id: string, assigneeId: string): Promise<Ticket | undefined> {
-    const row = await this.db
-      .updateTable('tickets')
-      .set({ assignee_id: assigneeId })
-      .where('id', '=', id)
-      .where('status', 'not in', ['completed', 'cancelled'])
-      .returningAll()
-      .executeTakeFirst()
+  async claimOpen(id: string, claimer: Author): Promise<Ticket | undefined> {
+    return this.db.transaction().execute(async (trx) => {
+      const current = await trx
+        .selectFrom('tickets')
+        .selectAll()
+        .where('id', '=', id)
+        .where('status', 'not in', ['completed', 'cancelled'])
+        .forUpdate()
+        .executeTakeFirst()
 
-    return row ? toTicket(row) : undefined
+      if (!current) return undefined
+
+      const row = await trx
+        .updateTable('tickets')
+        .set({ assignee_id: claimer.id })
+        .where('id', '=', id)
+        .returningAll()
+        .executeTakeFirstOrThrow()
+
+      if (current.assignee_id !== claimer.id) {
+        await insertEvent(
+          trx,
+          {
+            ticketId: id,
+            eventType: 'assigned',
+            body: assignmentEventBody(claimer.id, current.assignee_id),
+            metadata: { assigneeId: claimer.id, previous: current.assignee_id },
+          },
+          claimer,
+        )
+      }
+
+      return toTicket(row)
+    })
   }
 
   async update(id: string, data: UpdateTicketBody, author?: Author): Promise<Ticket | undefined> {
