@@ -25,6 +25,7 @@
   display: flex;
   align-items: center;
   padding-right: var(--pipo-space-small);
+  border-radius: var(--pipo-radius-small);
 }
 
 .input {
@@ -57,9 +58,10 @@
   background: var(--pipo-neutral-lightest);
 }
 
-/* The only `outline: none` of the queue without a replacement — coming back to
-   the field with Shift+Tab showed nothing. */
-.input:focus-visible {
+/* The ring goes on the field, not on the `<input>`: the input has no border and
+   no background of its own, so a ring on it would draw a loose rectangle beside
+   the `×` instead of around the band the person sees as the control. */
+.field:has(.input:focus-visible) {
   box-shadow: var(--pipo-shadow-focus-primary);
 }
 
