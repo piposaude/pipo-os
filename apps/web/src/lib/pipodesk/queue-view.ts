@@ -368,14 +368,14 @@ export function parseQueueSearch(raw: Record<string, unknown>): QueueSearch {
   const sort = asText(raw.sort)
   const direction = asText(raw.dir)
   const groupBy = asText(raw.group)
-  const window = Number(raw.win)
+  const window = raw.win
 
   if (node) search.node = node
   if (filters) search.f = filters
   if (sort && isKeyOf(SORT_FIELDS, sort)) search.sort = sort as SortField
   if (direction === 'asc' || direction === 'desc') search.dir = direction
   if (groupBy && isKeyOf(GROUP_BY_COPY, groupBy)) search.group = groupBy as GroupBy
-  if (Number.isInteger(window) && window >= 0) search.win = window
+  if (typeof window === 'number' && Number.isInteger(window) && window >= 0) search.win = window
 
   return search
 }

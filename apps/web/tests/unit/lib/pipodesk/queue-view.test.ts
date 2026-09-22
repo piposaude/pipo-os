@@ -503,4 +503,13 @@ describe('parseQueueSearch', () => {
   it('should drop a sort or grouping inherited from the object prototype', () => {
     expect(parseQueueSearch({ sort: 'toString', group: 'constructor' })).toEqual({})
   })
+
+  it('should keep a window the router parsed as a number, including 0 for the whole period', () => {
+    expect(parseQueueSearch({ win: 30 })).toEqual({ win: 30 })
+    expect(parseQueueSearch({ win: 0 })).toEqual({ win: 0 })
+  })
+
+  it('should drop an empty, null or false window instead of reading it as the whole period', () => {
+    for (const win of ['', null, false]) expect(parseQueueSearch({ win })).toEqual({})
+  })
 })
