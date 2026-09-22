@@ -15,7 +15,7 @@ import { ENROLLMENT_TYPE_COPY, PRODUCT_COPY } from '@/constants/pipodesk/domain'
 import { DISPLAY_STATUS_COPY } from '@/constants/pipodesk/status'
 import copy from '@/constants/pages/pipodesk/ticket/history'
 import { formatNumericDate } from '@/lib/pipodesk/format'
-import { clickedControl } from '@/lib/pipodesk/row-click'
+import { clickedControl, opensElsewhere } from '@/lib/pipodesk/row-click'
 import { historyOf, type TicketRecords } from '@/lib/pipodesk/record'
 import { sortTickets, type SortField, type TicketSort } from '@/lib/pipodesk/sort'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
@@ -93,7 +93,7 @@ export function HistoryTab({ ticket, rows, records }: HistoryTabProps) {
                   current
                     ? undefined
                     : (event) => {
-                        if (clickedControl(event)) return
+                        if (clickedControl(event) || opensElsewhere(event)) return
                         void navigate({ to: '/tickets/$id', params: { id: item.id } })
                       }
                 }

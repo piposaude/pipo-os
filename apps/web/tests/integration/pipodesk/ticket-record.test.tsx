@@ -491,6 +491,20 @@ describe('aba Histórico', () => {
     expect(router.state.location.pathname).toBe(`/tickets/${other.id}`)
   })
 
+  it('should stand aside on a meta-click, so the row does not steal the tab from the link', async () => {
+    const { panel, user, router } = await openTab('/tickets/705639', 'Histórico')
+    const other = historyOf(queueSeed, records, '705639').find((row) => row.id !== '705639')!
+    const table = within(panel).getByRole('table')
+
+    await user.keyboard('{Meta>}')
+    await user.click(
+      within(within(table).getByText(other.id).closest('tr')!).getAllByRole('cell')[1],
+    )
+    await user.keyboard('{/Meta}')
+
+    expect(router.state.location.pathname).toBe('/tickets/705639')
+  })
+
   it('should open another ticket of the person from its id', async () => {
     const { panel, user, router } = await openTab('/tickets/705639', 'Histórico')
     const other = historyOf(queueSeed, records, '705639').find((row) => row.id !== '705639')!
