@@ -12,13 +12,14 @@ import { DeskContext } from './desk-context'
 import { displayNameFromEmail } from '@/lib/pipodesk/format'
 import { logout } from '@/lib/auth'
 import { useSessionStore } from '@/stores/session'
+import { api } from '@/lib/api'
+import { structureFromApi } from '@/lib/pipodesk/structure-from-api'
 import {
   COMPANY_REGISTRY,
   DATASET_TODAY,
   FIXTURE_USER_NAMES,
   INBOX_TICKET_IDS,
   queueSeed,
-  structureFixture,
 } from '@/fixtures/pipodesk/dataset'
 import '@/styles/pipodesk-tokens.css'
 
@@ -109,17 +110,36 @@ export function DeskShell() {
     })
   }, [])
 
+  const STRUCTURE_STALE_MS = 5 * 60 * 1000
+  const groupsQuery = api.useQuery(
+    'get',
+    '/api/groups',
+    { params: { query: { pageSize: 100 } } },
+    { staleTime: STRUCTURE_STALE_MS },
+  )
+  const queuesQuery = api.useQuery(
+    'get',
+    '/api/queues',
+    { params: { query: { pageSize: 100 } } },
+    { staleTime: STRUCTURE_STALE_MS },
+  )
+
+  const structure = useMemo(
+    () => structureFromApi(groupsQuery.data?.data ?? [], queuesQuery.data?.data ?? [], viewerId),
+    [groupsQuery.data, queuesQuery.data, viewerId],
+  )
+
   const sections = useMemo(
     () =>
       buildTree(rows, {
         viewerId,
         viewerGroupId,
-        structure: structureFixture,
+        structure,
         today: DATASET_TODAY,
         inboxTicketIds: INBOX_TICKET_IDS,
         resolveName,
       }),
-    [rows, viewerId, viewerGroupId, resolveName],
+    [rows, viewerId, viewerGroupId, structure, resolveName],
   )
 
   /* Open on the "Meus tickets" NODE, not a raw INITIAL_VIEW: filter, scope
@@ -246,7 +266,7 @@ export function DeskShell() {
               sections={sections}
               activeId={view.nodeId}
               onSelect={selectNode}
-              structure={structureFixture}
+              structure={structure}
               viewerInitials={iniciaisDe(viewerName)}
               viewerName={viewerName}
               viewerEmail={email}

@@ -21,9 +21,18 @@ configure({ asyncUtilTimeout: 3000 })
 
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
+let restoreApi: () => void
+
 beforeEach(async () => {
   const { signInAsFixtureViewer } = await import('../../helpers/auth')
+  const { mockApi, fixtureStructureRoutes } = await import('../../helpers/api')
+  const { VIEWER_ID } = await import('@/fixtures/pipodesk/dataset')
   signInAsFixtureViewer()
+  restoreApi = mockApi(fixtureStructureRoutes(VIEWER_ID))
+})
+
+afterEach(() => {
+  restoreApi()
 })
 
 async function openTab(path: string, tab: string) {
