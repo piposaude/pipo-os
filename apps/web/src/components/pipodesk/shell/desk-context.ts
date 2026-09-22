@@ -3,6 +3,7 @@ import type { QueueView, QueueAction } from '@/lib/pipodesk/queue-view'
 import type { TicketPatch } from '@/lib/pipodesk/patches'
 import type { CommentChannel, TicketComment } from '@/lib/pipodesk/timeline'
 import type { TreeSection } from '@/lib/pipodesk/tree'
+import type { StructureState } from '@/lib/pipodesk/structure'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 
 /**
@@ -16,6 +17,10 @@ export interface DeskContextValue {
   view: QueueView
   dispatch: Dispatch<QueueAction>
   /** The whole base, before scope, window and filter. */
+  /** Pods, memberships and saved views, as the API serves them. */
+  structure: StructureState
+  /** The pod the viewer works in, `null` when they belong to none. */
+  viewerGroupId: string | null
   rows: TicketRow[]
   /** What the projection says exists, which is more than `rows` when it
    *  capped the answer — every count on screen is over the slice, not this. */

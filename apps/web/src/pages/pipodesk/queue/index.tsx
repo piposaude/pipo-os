@@ -6,6 +6,7 @@ import { ColumnFilter } from '@/components/pipodesk/queue/ColumnFilter'
 import { QueueTable } from '@/components/pipodesk/queue/QueueTable'
 import { BatchBar, type PodOption } from '@/components/pipodesk/queue/BatchBar'
 import styles from '@/components/pipodesk/queue/Queue.module.css'
+import { analystsOf } from '@/lib/pipodesk/permissions'
 import { useDesk } from '@/components/pipodesk/shell/desk-context'
 import {
   applyColumnPrefs,
@@ -24,7 +25,6 @@ import { transitionsFrom } from '@/lib/pipodesk/status'
 import type { ApiStatus } from '@/lib/pipodesk/status'
 import { isSearchNode, pillsOf, type TreeNode } from '@/lib/pipodesk/tree'
 import { toQueueNode } from '@/lib/pipodesk/queue-node'
-import { ANALYSTS_BY_POD, structureFixture, VIEWER_GROUP_ID } from '@/fixtures/pipodesk/dataset'
 import constants from '@/constants/pages/pipodesk/queue'
 
 const COLUMN_PREFS_KEY = 'pipodesk:columns'
@@ -36,8 +36,19 @@ const COLUMN_PREFS_KEY = 'pipodesk:columns'
  */
 export default function QueuePage() {
   const navigate = useNavigate()
-  const { sections, view, dispatch, rows, rowsTotal, today, viewerId, resolveName, applyPatch } =
-    useDesk()
+  const {
+    sections,
+    view,
+    dispatch,
+    structure,
+    viewerGroupId,
+    rows,
+    rowsTotal,
+    today,
+    viewerId,
+    resolveName,
+    applyPatch,
+  } = useDesk()
 
   /* Node base: scope + window, before the filter — what the panel counts
        per option against. */
@@ -146,16 +157,21 @@ export default function QueuePage() {
 
   /* The pod the queue is showing, not the viewer's. Nodes outside a pod
        (Meus tickets, Todos) have no owner pod, so the viewer's own answers. */
-  const analysts = (ANALYSTS_BY_POD[view.groupId ?? VIEWER_GROUP_ID] ?? []).map((id) => ({
-    id,
-    name: resolveName(id),
-  }))
-  const pods: PodOption[] = structureFixture.groups
+  const analysts = analystsOf(structure, view.groupId ?? viewerGroupId ?? '').map(
+    ({ userId: id }) => ({
+      id,
+      name: resolveName(id),
+    }),
+  )
+  const pods: PodOption[] = structure.groups
     .filter((group) => group.parentId !== null)
     .map((group) => ({
       id: group.id,
       name: group.name,
-      analysts: (ANALYSTS_BY_POD[group.id] ?? []).map((id) => ({ id, name: resolveName(id) })),
+      analysts: analystsOf(structure, group.id).map(({ userId: id }) => ({
+        id,
+        name: resolveName(id),
+      })),
     }))
 
   return (

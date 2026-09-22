@@ -172,6 +172,19 @@ describe('a árvore da sidebar vem do banco', () => {
     expect(pods[0]).toMatch(/^POD 9/)
   })
 
+  it('should oferecer no lote a analista do pod que está no banco', async () => {
+    await renderDesk()
+    await screen.findByRole('table')
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('checkbox', { name: /selecionar todos/i }))
+    const barra = await screen.findByRole('group', { name: 'Ações em lote' })
+    await user.click(within(barra).getByRole('button', { name: 'Ações' }))
+    await user.click(screen.getByRole('button', { name: 'Reatribuir' }))
+
+    expect(await screen.findByRole('button', { name: 'Ana Souza' })).toBeInTheDocument()
+  })
+
   it('should desenhar as visões salvas que o banco carrega', async () => {
     await renderDesk()
     await within(sidebar()).findByRole('button', { name: /^POD 9/ })
