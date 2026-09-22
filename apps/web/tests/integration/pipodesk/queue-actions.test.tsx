@@ -181,8 +181,8 @@ describe('barra de lote', () => {
     expect(screen.queryByRole('group', { name: 'Ações em lote' })).not.toBeInTheDocument()
   })
 
-  /** The bar returned to whatever screen the last selection left open, date
-   *  and all — `return null` came after the hooks, so nothing was reset. */
+  /** The bar returned to whatever screen the last selection left open —
+   *  `return null` came after the hooks, so nothing was reset. */
   it('should reopen the batch panel from the start after a new selection', async () => {
     await renderQueue()
     const user = userEvent.setup()

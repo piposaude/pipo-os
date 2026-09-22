@@ -74,6 +74,17 @@ describe('o que a tela muda, a API grava', () => {
     await expect.poll(() => screen.getByRole('status').textContent).toBe(antes)
   })
 
+  it('should manter na tela a escrita que gravou, mesmo que a releitura falhe', async () => {
+    await renderQueue()
+    const antes = screen.getByRole('status').textContent
+    desk.failReads = true
+
+    await reassignAll(userEvent.setup())
+
+    await expect.poll(() => screen.getByRole('status').textContent).not.toBe(antes)
+    expect(screen.queryByText(/não foi possível/i)).not.toBeInTheDocument()
+  })
+
   it('should mandar a mudança de status pela rota que a audita, não pela do chamado', async () => {
     await renderQueue()
     const user = userEvent.setup()

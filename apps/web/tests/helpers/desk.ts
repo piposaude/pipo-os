@@ -13,11 +13,10 @@ export function mountDeskFixture(writes: Record<string, number> = {}): ApiMock {
   signInAsFixtureViewer()
   const api = mockApi(fixtureStructureRoutes(VIEWER_ID), writes)
 
-  return {
-    calls: api.calls,
-    restore: () => {
-      api.restore()
-      vi.useRealTimers()
-    },
+  const restore = api.restore
+  api.restore = () => {
+    restore()
+    vi.useRealTimers()
   }
+  return api
 }

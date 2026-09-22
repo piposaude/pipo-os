@@ -9,6 +9,7 @@ export interface ApiCall {
 export interface ApiMock {
   restore: () => void
   calls: ApiCall[]
+  failReads: boolean
 }
 
 /** Restores by assignment, never `unstubAllGlobals()`: the setup file stubs
@@ -20,6 +21,7 @@ export function mockApi(
   const original = globalThis.fetch
   const calls: ApiCall[] = []
   const applied = new Map<string, Record<string, unknown>>()
+  const mock = { calls, failReads: false } as ApiMock
 
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
@@ -40,6 +42,13 @@ export function mockApi(
       }
       return new Response(status === 204 ? null : JSON.stringify({ message: 'recusado' }), {
         status,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+
+    if (mock.failReads) {
+      return new Response(JSON.stringify({ message: 'indisponível' }), {
+        status: 503,
         headers: { 'content-type': 'application/json' },
       })
     }
@@ -72,12 +81,10 @@ export function mockApi(
     })
   }) as typeof globalThis.fetch
 
-  return {
-    calls,
-    restore: () => {
-      globalThis.fetch = original
-    },
+  mock.restore = () => {
+    globalThis.fetch = original
   }
+  return mock
 }
 
 export const page = <T>(data: T[]) => ({ data, total: data.length, page: 1, pageSize: 100 })

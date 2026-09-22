@@ -67,7 +67,7 @@ const STRUCTURE_STALE_MS = 5 * 60 * 1000
 const WRITE_CONCURRENCY = 6
 
 /** `groupId` has no route yet (PD-052): sending it would be dropped in silence,
- *  so the move stays local and the screen keeps the button disabled. */
+ *  so the move stays out of the batch menu until the route exists. */
 async function persistPatch(id: string, patch: TicketPatch): Promise<void> {
   const { status, groupId, ...fields } = patch
   void groupId
@@ -172,16 +172,24 @@ export function DeskShell() {
         return next
       })
 
-      void persistBatch(ids, patch).then((refused) => {
-        /* Every patch is dropped, saved or refused: kept after a save it would
-           be reapplied over each refetch, hiding what someone else changed. */
+      const drop = (gone: string[]) =>
         setPatches((current) => {
           const next = { ...current }
-          for (const id of ids) delete next[id]
+          for (const id of gone) delete next[id]
           return next
         })
-        if (refused.length > 0) setWriteFailed(true)
-        void refetchRows()
+
+      void persistBatch(ids, patch).then(async (refused) => {
+        if (refused.length > 0) {
+          drop(refused)
+          setWriteFailed(true)
+        }
+
+        const saved = ids.filter((id) => !refused.includes(id))
+        if (saved.length === 0) return
+
+        await refetchRows()
+        drop(saved)
       })
     },
     [refetchRows],
@@ -253,7 +261,7 @@ export function DeskShell() {
   const nodePending =
     search.node !== undefined &&
     findNode(sections, search.node) === null &&
-    (groupsQuery.isPending || queuesQuery.isPending)
+    (groupsQuery.isPending || queuesQuery.isPending || rowsQuery.isPending)
 
   useEffect(() => {
     if (!onQueue || nodePending || JSON.stringify(search) === asLink) return
