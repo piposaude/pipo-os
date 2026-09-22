@@ -12,7 +12,14 @@ import {
   relationshipOf,
   snapshotString,
 } from './enrollment-snapshot.js'
-import { actionDateWindowCondition, ticketFilterConditions } from './filter-resolver.js'
+import type { QueueSort } from '../queues/view-vocabulary.js'
+import type { TicketReadFilter } from './filter-schema.js'
+import {
+  actionDateWindowCondition,
+  ticketFilterConditions,
+  type ActionDateWindow,
+} from './filter-resolver.js'
+import { queueOrderBy } from './sort.js'
 import type { TicketRowPayload, TicketRowsQuery } from './rows-schema.js'
 import { toClient } from './vocabulary.js'
 import {
@@ -93,6 +100,30 @@ function toTicket(row: Selectable<Tickets>): Ticket {
   }
 }
 
+/** The saved filter plus the window the screen is showing — the two together
+ *  are what a view selects. */
+function viewConditions(
+  eb: Parameters<typeof ticketFilterConditions>[0],
+  filter: TicketReadFilter,
+  viewerId: string,
+  window: ActionDateWindow,
+  today: string,
+) {
+  const parts = ticketFilterConditions(eb, filter, viewerId)
+  const slice = actionDateWindowCondition(window, today)
+  return slice ? [...parts, slice] : parts
+}
+
+/** What a saved view asks of the tickets: its own filter and its own sort. */
+export interface SavedViewQuery {
+  filter: TicketReadFilter
+  sort: QueueSort
+  window: ActionDateWindow
+  today: string
+  page: number
+  pageSize: number
+}
+
 export interface TicketsRepositoryPort {
   findById(id: string): Promise<Ticket | undefined>
   create(data: CreateTicketData): Promise<Ticket>
@@ -106,6 +137,13 @@ export interface TicketsRepositoryPort {
     reason?: string,
   ): Promise<ChangeStatusResult>
   findMany(query: ListTicketsQuery): Promise<{ data: Ticket[]; total: number }>
+  findByFilter(params: SavedViewQuery, viewerId: string): Promise<{ data: Ticket[]; total: number }>
+  countByFilters(
+    filters: ReadonlyMap<string, TicketReadFilter>,
+    viewerId: string,
+    window: ActionDateWindow,
+    today: string,
+  ): Promise<Map<string, number>>
   findRows(
     query: TicketRowsQuery,
     viewerId: string,
@@ -186,6 +224,72 @@ export class TicketsRepository implements TicketsRepositoryPort {
       .executeTakeFirstOrThrow()
 
     return { data: [], total: Number(count) }
+  }
+
+  async findByFilter(
+    { filter, sort, window, today, page, pageSize }: SavedViewQuery,
+    viewerId: string,
+  ): Promise<{ data: Ticket[]; total: number }> {
+    const base = this.db
+      .selectFrom('tickets')
+      .where((eb) => eb.and(viewConditions(eb, filter, viewerId, window, today)))
+
+    const rows = await base
+      .selectAll()
+      .select(sql<string>`count(*) over ()`.as('total_count'))
+      .orderBy(queueOrderBy(sort))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+      .execute()
+
+    if (rows.length > 0) {
+      return {
+        data: rows.map((row) => toTicket(row)),
+        total: Number(rows[0].total_count),
+      }
+    }
+
+    const { count } = await base
+      .select((eb) => eb.fn.countAll<string>().as('count'))
+      .executeTakeFirstOrThrow()
+
+    return { data: [], total: Number(count) }
+  }
+
+  /** Every view in one pass: a COUNT FILTER per view over a single scan, so the
+   *  sidebar costs one query instead of one per badge. */
+  async countByFilters(
+    filters: ReadonlyMap<string, TicketReadFilter>,
+    viewerId: string,
+    window: ActionDateWindow,
+    today: string,
+  ): Promise<Map<string, number>> {
+    const entries = [...filters]
+    if (entries.length === 0) return new Map()
+
+    const slice = actionDateWindowCondition(window, today)
+
+    const row = await this.db
+      .selectFrom('tickets')
+      // The window is the one WHERE every view shares, so the scan narrows once
+      // instead of inside each of the fifty counters.
+      .$if(slice !== null, (q) => q.where(slice!))
+      .select((eb) =>
+        entries.map(([, filter], index) =>
+          eb.fn
+            .countAll<string>()
+            .filterWhere(eb.and(ticketFilterConditions(eb, filter, viewerId)))
+            .as(`c${index}`),
+        ),
+      )
+      .executeTakeFirstOrThrow()
+
+    return new Map(
+      entries.map(([queueId], index) => [
+        queueId,
+        Number((row as Record<string, string>)[`c${index}`]),
+      ]),
+    )
   }
 
   /** Three values have no column yet, so they are dug out of the jsonb here. */
