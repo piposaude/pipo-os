@@ -1,6 +1,6 @@
 import { businessDay } from '@/lib/date'
 import { isApiStatus, toDisplayStatus } from './status'
-import { buildSubject, type Priority, type Relationship, type TicketRow } from './ticket-row'
+import { buildSubject, isPriority, type Relationship, type TicketRow } from './ticket-row'
 
 export interface ApiTicketRow {
   id: string
@@ -44,6 +44,13 @@ export function rowsFromApi(rows: ApiTicketRow[]): TicketRow[] {
       continue
     }
 
+    const priority = row.priority !== null && isPriority(row.priority) ? row.priority : null
+    if (row.priority !== null && priority === null) {
+      console.error(
+        `fila: chamado ${row.id} sem prioridade — "${row.priority}" fora do vocabulário desta versão.`,
+      )
+    }
+
     const { status: display, reason } = toDisplayStatus(row.status)
     const { title, ...rest } = row
 
@@ -62,7 +69,7 @@ export function rowsFromApi(rows: ApiTicketRow[]): TicketRow[] {
       /* The projection sends an instant; the queue compares days as strings,
          and the business timezone decides which day an instant belongs to. */
       actionDate: row.actionDate === null ? null : businessDay(row.actionDate),
-      priority: row.priority as Priority | null,
+      priority,
     })
   }
 

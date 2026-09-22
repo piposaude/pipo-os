@@ -69,6 +69,18 @@ describe('rowsFromApi', () => {
     expect(row.subject).toBe('Inclusão urgente')
   })
 
+  it('should manter o chamado sem prioridade quando ela está fora do vocabulário desta versão', () => {
+    const rows = rowsFromApi([
+      apiRow({ id: 'conhecido', priority: 'urgent' }),
+      apiRow({ id: 'novo-nivel', priority: 'critical' }),
+    ])
+
+    expect(rows.map((row) => [row.id, row.priority])).toEqual([
+      ['conhecido', 'urgent'],
+      ['novo-nivel', null],
+    ])
+  })
+
   it('should deixar passar a linha cujo status esta versão não conhece, sem derrubar a fila', () => {
     const rows = rowsFromApi([apiRow({ id: 'bom' }), apiRow({ id: 'ruim', status: 'inventado' })])
 
