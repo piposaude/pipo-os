@@ -1166,6 +1166,188 @@ describe('tickets routes', () => {
       }
     })
 
+    it('records who rescheduled the ticket, and the date it had before', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, actionDate: '2026-10-01T03:00:00.000Z' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      const patch = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${id}`,
+        payload: { actionDate: '2026-10-08T03:00:00.000Z' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(patch.statusCode).toBe(200)
+
+      const timeline = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${id}/timeline`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const events = timeline.json().data.filter((item: { type: string }) => item.type === 'event')
+
+      expect(events).toHaveLength(1)
+      expect(events[0]).toMatchObject({
+        eventType: 'action_date_changed',
+        authorId: 'dev@piposaude.com.br',
+        body: 'Data de ação alterada',
+        metadata: { actionDate: '2026-10-08T03:00:00.000Z', previous: '2026-10-01T03:00:00.000Z' },
+      })
+    })
+
+    it('tells scheduling, rescheduling and unscheduling apart', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      for (const actionDate of ['2026-10-01T03:00:00.000Z', '2026-10-08T03:00:00.000Z', null]) {
+        const patch = await app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${id}`,
+          payload: { actionDate },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        expect(patch.statusCode).toBe(200)
+      }
+
+      const timeline = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${id}/timeline`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const events = timeline.json().data.filter((item: { type: string }) => item.type === 'event')
+
+      expect(events.map((event: { body: string }) => event.body)).toEqual([
+        'Data de ação definida',
+        'Data de ação alterada',
+        'Data de ação removida',
+      ])
+      expect(events[2].metadata).toEqual({
+        actionDate: null,
+        previous: '2026-10-08T03:00:00.000Z',
+      })
+    })
+
+    it('says nothing when the date sent is the same instant in another offset', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: { ...validTicketBody, actionDate: '2026-10-01T03:00:00.000Z' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      const patch = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${id}`,
+        payload: { actionDate: '2026-10-01T00:00:00-03:00' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(patch.statusCode).toBe(200)
+      expect(patch.json().actionDate).toBe('2026-10-01T03:00:00.000Z')
+
+      const timeline = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${id}/timeline`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(
+        timeline.json().data.filter((item: { type: string }) => item.type === 'event'),
+      ).toHaveLength(0)
+    })
+
+    it('records the priority and the action date changed together as two events', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      const patch = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${id}`,
+        payload: { priority: 'urgent', actionDate: '2026-10-01T03:00:00.000Z' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(patch.statusCode).toBe(200)
+
+      const timeline = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${id}/timeline`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const types = timeline
+        .json()
+        .data.filter((item: { type: string }) => item.type === 'event')
+        .map((event: { eventType: string }) => event.eventType)
+
+      expect(types.sort()).toEqual(['action_date_changed', 'priority_changed'])
+    })
+
+    it('refuses to reschedule from a session with no sub to sign it', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${created.json().id}`,
+        payload: { actionDate: '2026-10-01T03:00:00.000Z' },
+        cookies: { [SESSION_COOKIE_NAME]: sessionWithoutSub(app, TICKET_POLICIES) },
+      })
+
+      expect(response.statusCode).toBe(401)
+    })
+
+    it('leaves neither the date nor the event behind when another field fails', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        payload: validTicketBody,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const { id } = created.json()
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${id}`,
+        payload: { actionDate: '2026-10-01T03:00:00.000Z', queueId: NONEXISTENT_ID },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(response.statusCode).toBe(422)
+
+      const ticket = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${id}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const timeline = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${id}/timeline`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      expect(ticket.json().actionDate).toBeNull()
+      expect(
+        timeline.json().data.filter((item: { type: string }) => item.type === 'event'),
+      ).toHaveLength(0)
+    })
+
     it('refuses a new action date without a timezone, naming the field', async () => {
       const created = await app.inject({
         method: 'POST',

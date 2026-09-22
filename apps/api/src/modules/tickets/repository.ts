@@ -4,7 +4,7 @@ import type { Tickets } from '../../infrastructure/db-types.js'
 import { ValidationFailedError } from '../../shared/errors.js'
 import { FK_VIOLATION, UNIQUE_VIOLATION } from '../../shared/pg.js'
 import type { Author } from '../auth/authenticate.js'
-import { insertEvent } from '../comments/repository.js'
+import { insertEvent, type TicketEventInput } from '../comments/repository.js'
 import { OpenTicketConflictError } from './errors.js'
 import {
   companyFieldsOf,
@@ -61,6 +61,11 @@ function rethrowMissingReference(err: unknown): never {
  *  whole page, so a blank column reads as the null it means. */
 const blankAsNull = (value: string | null): string | null =>
   value === null || value.trim() === '' ? null : value
+
+function scheduleEventBody(actionDate: string | null, previous: string | null): string {
+  if (actionDate === null) return 'Data de ação removida'
+  return previous === null ? 'Data de ação definida' : 'Data de ação alterada'
+}
 
 function toTicket(row: Selectable<Tickets>): Ticket {
   return {
@@ -525,9 +530,9 @@ export class TicketsRepository implements TicketsRepositoryPort {
     }
 
     try {
-      // Only the priority writes an event, and only the event needs the value
-      // it replaced: every other field keeps the single statement it had.
-      if (data.priority === undefined) {
+      // Only the priority and the action date write events, and only an event
+      // needs the value it replaced: every other field keeps a single statement.
+      if (data.priority === undefined && data.actionDate === undefined) {
         const row = await this.db
           .updateTable('tickets')
           .set(columns)
@@ -557,20 +562,32 @@ export class TicketsRepository implements TicketsRepositoryPort {
           .returningAll()
           .executeTakeFirstOrThrow()
 
-        if (data.priority !== current.priority) {
-          // Loud and not `author &&`: a line skipped quietly loses who changed it.
-          if (!author) throw new Error('Priority changed with no author to sign it')
+        const events: TicketEventInput[] = []
 
-          await insertEvent(
-            trx,
-            {
-              ticketId: id,
-              eventType: 'priority_changed',
-              body: data.priority === null ? 'Prioridade removida' : 'Prioridade alterada',
-              metadata: { priority: data.priority, previous: current.priority },
-            },
-            author,
-          )
+        if (data.priority !== undefined && data.priority !== current.priority) {
+          events.push({
+            ticketId: id,
+            eventType: 'priority_changed',
+            body: data.priority === null ? 'Prioridade removida' : 'Prioridade alterada',
+            metadata: { priority: data.priority, previous: current.priority },
+          })
+        }
+
+        const actionDate = row.action_date?.toISOString() ?? null
+        const previousActionDate = current.action_date?.toISOString() ?? null
+        if (data.actionDate !== undefined && actionDate !== previousActionDate) {
+          events.push({
+            ticketId: id,
+            eventType: 'action_date_changed',
+            body: scheduleEventBody(actionDate, previousActionDate),
+            metadata: { actionDate, previous: previousActionDate },
+          })
+        }
+
+        if (events.length > 0) {
+          // Loud and not `author &&`: a line skipped quietly loses who changed it.
+          if (!author) throw new Error('Ticket changed with no author to sign the event')
+          for (const event of events) await insertEvent(trx, event, author)
         }
 
         return toTicket(row)
