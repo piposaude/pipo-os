@@ -15,6 +15,7 @@ import { ENROLLMENT_TYPE_COPY, PRODUCT_COPY } from '@/constants/pipodesk/domain'
 import { DISPLAY_STATUS_COPY } from '@/constants/pipodesk/status'
 import copy from '@/constants/pages/pipodesk/ticket/history'
 import { formatNumericDate } from '@/lib/pipodesk/format'
+import { clickedControl } from '@/lib/pipodesk/row-click'
 import { historyOf, type TicketRecords } from '@/lib/pipodesk/record'
 import { sortTickets, type SortField, type TicketSort } from '@/lib/pipodesk/sort'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
@@ -92,9 +93,7 @@ export function HistoryTab({ ticket, rows, records }: HistoryTabProps) {
                   current
                     ? undefined
                     : (event) => {
-                        // The id link would navigate on its own; without this the
-                        // row fires a second time on the same click.
-                        if ((event.target as HTMLElement).closest('a')) return
+                        if (clickedControl(event)) return
                         void navigate({ to: '/tickets/$id', params: { id: item.id } })
                       }
                 }

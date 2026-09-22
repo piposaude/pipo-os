@@ -4,6 +4,7 @@ import { FILTER_BY_COLUMN, SORTABLE, type QueueColumn } from '@/lib/pipodesk/col
 import type { FilterField } from '@/lib/pipodesk/filter'
 import type { TicketGroup } from '@/lib/pipodesk/group'
 import type { TicketSort } from '@/lib/pipodesk/sort'
+import { clickedControl } from '@/lib/pipodesk/row-click'
 import { computeWindow, flattenGroups, ROW_HEIGHT } from '@/lib/pipodesk/virtual'
 import constants from '@/constants/pages/pipodesk/queue'
 import { QueueRow } from './QueueRow'
@@ -191,11 +192,8 @@ export function QueueTable({
                   key={row.key}
                   data-ticket-id={row.ticket.id}
                   data-selected={selected.has(row.ticket.id) ? 'true' : undefined}
-                  /* The whole row opens the ticket, with the usual guard: a click that
-                                   started on a control belongs to the control — `a`
-                                   included, or the subject link would navigate twice. */
                   onClick={(event) => {
-                    if ((event.target as HTMLElement).closest('label,input,button,a')) return
+                    if (clickedControl(event)) return
                     /* ⌘/ctrl/shift-click means "somewhere else" — `navigate` would
                                        ignore that and steal the tab. The subject link handles
                                        those, so the row simply stands aside. */

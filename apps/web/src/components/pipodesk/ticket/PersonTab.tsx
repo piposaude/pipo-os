@@ -22,6 +22,7 @@ import {
   formatZip,
 } from '@/lib/pipodesk/format'
 import { displayNameOf, type Person, type TicketRecords } from '@/lib/pipodesk/record'
+import { clickedControl } from '@/lib/pipodesk/row-click'
 import { OutageNotice } from './OutageNotice'
 import detail from './DetailTable.module.css'
 import {
@@ -228,9 +229,7 @@ export function PersonTab({ personId, records, capturedAt, onSelectPerson }: Per
                   key={dependent.id}
                   data-row-target={dependent.id}
                   onClick={(event) => {
-                    // The name is a button so the keyboard reaches the person;
-                    // without this guard the row fires a second time on it.
-                    if ((event.target as HTMLElement).closest('button')) return
+                    if (clickedControl(event)) return
                     selectPerson(dependent.id)
                   }}
                 >
