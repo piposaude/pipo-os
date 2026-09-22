@@ -61,7 +61,7 @@ async function renderDesk() {
 const sidebar = () => screen.getByRole('navigation', { name: /pipodesk/i })
 
 describe('a árvore da sidebar vem do banco', () => {
-  let restore: () => void
+  let api: import('../../helpers/api').ApiMock
   let routes: Record<string, unknown>
 
   beforeEach(() => {
@@ -111,11 +111,11 @@ describe('a árvore da sidebar vem do banco', () => {
         view('8f2c9a10-0000-4000-8000-00000000c002', 'MOV PJ', { contractTypes: ['pj'] }),
       ]),
     }
-    restore = mockApi(routes)
+    api = mockApi(routes)
   })
 
   afterEach(() => {
-    restore()
+    api.restore()
     useSessionStore.setState({ status: 'idle', user: null })
   })
 
@@ -145,8 +145,8 @@ describe('a árvore da sidebar vem do banco', () => {
   })
 
   it('should avisar que a fila é um recorte quando o banco tem mais do que coube', async () => {
-    restore()
-    restore = mockApi({
+    api.restore()
+    api = mockApi({
       ...routes,
       '/api/tickets/rows': { ...(routes['/api/tickets/rows'] as object), total: 9999 },
     })

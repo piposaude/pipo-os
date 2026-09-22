@@ -1,33 +1,62 @@
 import { FIXTURE_USER_NAMES, queueSeed, structureFixture } from '@/fixtures/pipodesk/dataset'
 
+export interface ApiCall {
+  method: string
+  path: string
+  body: unknown
+}
+
+export interface ApiMock {
+  restore: () => void
+  calls: ApiCall[]
+}
+
 /** Restores by assignment, never `unstubAllGlobals()`: the setup file stubs
  *  `Request`, and unstubbing here would take it down with it. */
-export function mockApi(routes: Record<string, unknown>): () => void {
+export function mockApi(
+  routes: Record<string, unknown>,
+  writes: Record<string, number> = {},
+): ApiMock {
   const original = globalThis.fetch
+  const calls: ApiCall[] = []
 
-  globalThis.fetch = ((input: RequestInfo | URL) => {
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+    const method = (init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase()
     const { pathname } = new URL(url, 'http://localhost')
-    const body = routes[pathname]
 
-    if (body === undefined) {
-      return Promise.resolve(
-        new Response(JSON.stringify({ message: `sem mock para ${pathname}` }), {
-          status: 404,
-          headers: { 'content-type': 'application/json' },
-        }),
-      )
-    }
-    return Promise.resolve(
-      new Response(typeof body === 'string' ? body : JSON.stringify(body), {
-        status: 200,
+    if (method !== 'GET') {
+      const raw = init?.body ?? (input instanceof Request ? await input.clone().text() : null)
+      calls.push({
+        method,
+        path: pathname,
+        body: typeof raw === 'string' && raw !== '' ? JSON.parse(raw) : null,
+      })
+      const status = writes[`${method} ${pathname}`] ?? writes[method] ?? 204
+      return new Response(status === 204 ? null : JSON.stringify({ message: 'recusado' }), {
+        status,
         headers: { 'content-type': 'application/json' },
-      }),
-    )
+      })
+    }
+
+    const body = routes[pathname]
+    if (body === undefined) {
+      return new Response(JSON.stringify({ message: `sem mock para ${pathname}` }), {
+        status: 404,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+    return new Response(typeof body === 'string' ? body : JSON.stringify(body), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })
   }) as typeof globalThis.fetch
 
-  return () => {
-    globalThis.fetch = original
+  return {
+    calls,
+    restore: () => {
+      globalThis.fetch = original
+    },
   }
 }
 

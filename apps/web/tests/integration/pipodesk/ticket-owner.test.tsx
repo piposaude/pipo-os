@@ -6,14 +6,14 @@ import constants from '@/constants/pages/pipodesk/ticket'
 
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
-let unmountDesk: () => void
+let desk: import('../../helpers/api').ApiMock
 
 beforeEach(async () => {
-  unmountDesk = (await import('../../helpers/desk')).mountDeskFixture()
+  desk = (await import('../../helpers/desk')).mountDeskFixture()
 })
 
 afterEach(() => {
-  unmountDesk()
+  desk.restore()
 })
 
 /**

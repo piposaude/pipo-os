@@ -1,5 +1,5 @@
 import { signInAsFixtureViewer } from './auth'
-import { fixtureStructureRoutes, mockApi } from './api'
+import { fixtureStructureRoutes, mockApi, type ApiMock } from './api'
 import { DATASET_TODAY, VIEWER_ID } from '@/fixtures/pipodesk/dataset'
 
 /**
@@ -8,13 +8,16 @@ import { DATASET_TODAY, VIEWER_ID } from '@/fixtures/pipodesk/dataset'
  * exported — the screen reads the real clock now, so without pinning it every
  * count drifts as the awake/sleeping window moves.
  */
-export function mountDeskFixture(): () => void {
+export function mountDeskFixture(writes: Record<string, number> = {}): ApiMock {
   vi.useFakeTimers({ shouldAdvanceTime: true, now: new Date(`${DATASET_TODAY}T12:00:00-03:00`) })
   signInAsFixtureViewer()
-  const restoreApi = mockApi(fixtureStructureRoutes(VIEWER_ID))
+  const api = mockApi(fixtureStructureRoutes(VIEWER_ID), writes)
 
-  return () => {
-    restoreApi()
-    vi.useRealTimers()
+  return {
+    calls: api.calls,
+    restore: () => {
+      api.restore()
+      vi.useRealTimers()
+    },
   }
 }

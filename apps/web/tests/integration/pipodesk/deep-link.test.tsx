@@ -5,14 +5,14 @@ import { routeTree } from '@/routeTree.gen'
 
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
-let unmountDesk: () => void
+let desk: import('../../helpers/api').ApiMock
 
 beforeEach(async () => {
-  unmountDesk = (await import('../../helpers/desk')).mountDeskFixture()
+  desk = (await import('../../helpers/desk')).mountDeskFixture()
 })
 
 afterEach(() => {
-  unmountDesk()
+  desk.restore()
 })
 
 async function renderAt(entry: string) {

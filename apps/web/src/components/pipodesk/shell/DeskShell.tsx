@@ -17,8 +17,9 @@ import { toQueueNode } from '@/lib/pipodesk/queue-node'
 import { DeskContext } from './desk-context'
 import { displayNameFromEmail } from '@/lib/pipodesk/format'
 import { logout } from '@/lib/auth'
+import queueConstants from '@/constants/pages/pipodesk/queue'
 import { useSessionStore } from '@/stores/session'
-import { api } from '@/lib/api'
+import { api, client } from '@/lib/api'
 import { structureFromApi } from '@/lib/pipodesk/structure-from-api'
 import { rowsFromApi } from '@/lib/pipodesk/rows-from-api'
 import { businessToday } from '@/lib/date'
@@ -60,6 +61,42 @@ const iniciaisDe = (name: string): string =>
     .join('')
 
 const STRUCTURE_STALE_MS = 5 * 60 * 1000
+
+/** There is no batch route: reassigning a whole cut becomes one request per
+ *  ticket, so they go a few at a time instead of all at once. */
+const WRITE_CONCURRENCY = 6
+
+/** `groupId` has no route yet (PD-052): sending it would be dropped in silence,
+ *  so the move stays local and the screen keeps the button disabled. */
+async function persistPatch(id: string, patch: TicketPatch): Promise<void> {
+  const { status, groupId, ...fields } = patch
+  void groupId
+
+  if (Object.keys(fields).length > 0) {
+    await client.PATCH('/api/tickets/{id}', { params: { path: { id } }, body: fields })
+  }
+  if (status !== undefined) {
+    await client.PATCH('/api/tickets/{id}/status', { params: { path: { id } }, body: { status } })
+  }
+}
+
+async function persistBatch(ids: string[], patch: TicketPatch): Promise<string[]> {
+  const refused: string[] = []
+  const queue = [...ids]
+
+  const worker = async (): Promise<void> => {
+    for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
+      try {
+        await persistPatch(id, patch)
+      } catch {
+        refused.push(id)
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: WRITE_CONCURRENCY }, worker))
+  return refused
+}
 
 export function DeskShell() {
   const navigate = useNavigate()
@@ -124,13 +161,30 @@ export function DeskShell() {
     [email],
   )
 
-  const applyPatch = useCallback((ids: string[], patch: TicketPatch) => {
-    setPatches((current) => {
-      const next = { ...current }
-      for (const id of ids) next[id] = { ...next[id], ...patch }
-      return next
-    })
-  }, [])
+  const [writeFailed, setWriteFailed] = useState(false)
+  const { refetch: refetchRows } = rowsQuery
+
+  const applyPatch = useCallback(
+    (ids: string[], patch: TicketPatch) => {
+      setPatches((current) => {
+        const next = { ...current }
+        for (const id of ids) next[id] = { ...next[id], ...patch }
+        return next
+      })
+
+      void persistBatch(ids, patch).then((refused) => {
+        if (refused.length === 0) return
+        setPatches((current) => {
+          const next = { ...current }
+          for (const id of refused) delete next[id]
+          return next
+        })
+        setWriteFailed(true)
+        void refetchRows()
+      })
+    },
+    [refetchRows],
+  )
 
   const groupsQuery = api.useQuery(
     'get',
@@ -306,6 +360,14 @@ export function DeskShell() {
   return (
     <DeskContext.Provider value={context}>
       <div className="desk-root">
+        {writeFailed && (
+          <p role="alert" className="desk-write-failed">
+            {queueConstants.writeFailed}
+            <button type="button" onClick={() => setWriteFailed(false)}>
+              {queueConstants.dismiss}
+            </button>
+          </p>
+        )}
         <SidebarMainLayout
           sidebarWidth={sidebarCollapsed ? '0px' : 'var(--sidebar-w)'}
           sidebar={
