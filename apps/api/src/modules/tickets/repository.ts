@@ -62,14 +62,31 @@ function rethrowMissingReference(err: unknown): never {
 const blankAsNull = (value: string | null): string | null =>
   value === null || value.trim() === '' ? null : value
 
-function assignmentEventBody(assigneeId: string | null, previous: string | null): string {
-  if (assigneeId === null) return 'Responsável removido'
-  return previous === null ? 'Responsável definido' : 'Responsável alterado'
+interface ChangeLabels {
+  removed: string
+  set: string
+  changed: string
 }
 
-function scheduleEventBody(actionDate: string | null, previous: string | null): string {
-  if (actionDate === null) return 'Data de ação removida'
-  return previous === null ? 'Data de ação definida' : 'Data de ação alterada'
+const ASSIGNMENT_LABELS: ChangeLabels = {
+  removed: 'Responsável removido',
+  set: 'Responsável definido',
+  changed: 'Responsável alterado',
+}
+
+const ACTION_DATE_LABELS: ChangeLabels = {
+  removed: 'Data de ação removida',
+  set: 'Data de ação definida',
+  changed: 'Data de ação alterada',
+}
+
+function changeEventBody(
+  value: string | null,
+  previous: string | null,
+  labels: ChangeLabels,
+): string {
+  if (value === null) return labels.removed
+  return previous === null ? labels.set : labels.changed
 }
 
 function toTicket(row: Selectable<Tickets>): Ticket {
@@ -536,7 +553,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
           {
             ticketId: id,
             eventType: 'assigned',
-            body: assignmentEventBody(claimer.id, current.assignee_id),
+            body: changeEventBody(claimer.id, current.assignee_id, ASSIGNMENT_LABELS),
             metadata: { assigneeId: claimer.id, previous: current.assignee_id },
           },
           claimer,
@@ -613,7 +630,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
           events.push({
             ticketId: id,
             eventType: 'action_date_changed',
-            body: scheduleEventBody(actionDate, previousActionDate),
+            body: changeEventBody(actionDate, previousActionDate, ACTION_DATE_LABELS),
             metadata: { actionDate, previous: previousActionDate },
           })
         }
@@ -622,7 +639,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
           events.push({
             ticketId: id,
             eventType: 'assigned',
-            body: assignmentEventBody(data.assigneeId, current.assignee_id),
+            body: changeEventBody(data.assigneeId, current.assignee_id, ASSIGNMENT_LABELS),
             metadata: { assigneeId: data.assigneeId, previous: current.assignee_id },
           })
         }
