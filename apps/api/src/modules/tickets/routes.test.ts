@@ -1668,6 +1668,62 @@ describe('tickets routes', () => {
         })
         expect(ticket.json().assigneeId).toBe(ANA)
       })
+
+      const close = (id: string, status: 'completed' | 'cancelled') =>
+        app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${id}/status`,
+          payload: { status },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+
+      const read = async (id: string) =>
+        (
+          await app.inject({
+            method: 'GET',
+            url: `/api/tickets/${id}`,
+            cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+          })
+        ).json()
+
+      it.each(['completed', 'cancelled'] as const)(
+        'refuses to change the assignee of a %s ticket',
+        async (status) => {
+          const id = await createTicket(ANA)
+          await close(id, status)
+
+          const response = await assign(id, BRUNO)
+
+          expect(response.statusCode).toBe(422)
+          expect(response.json().error).toBe('UnprocessableEntityError')
+          expect((await read(id)).assigneeId).toBe(ANA)
+          expect(await eventsOf(id)).toEqual([])
+        },
+      )
+
+      it('refuses to remove the assignee of a closed ticket', async () => {
+        const id = await createTicket(ANA)
+        await close(id, 'completed')
+
+        expect((await assign(id, null)).statusCode).toBe(422)
+
+        expect((await read(id)).assigneeId).toBe(ANA)
+      })
+
+      it('still takes a change with no assignee on a closed ticket', async () => {
+        const id = await createTicket(ANA)
+        await close(id, 'completed')
+
+        const response = await app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${id}`,
+          payload: { tags: ['revisado'] },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+
+        expect(response.statusCode).toBe(200)
+        expect(response.json().tags).toEqual(['revisado'])
+      })
     })
 
     describe('o pod', () => {
@@ -1684,6 +1740,37 @@ describe('tickets routes', () => {
 
       afterAll(async () => {
         await app.db.deleteFrom('ticket_groups').where('id', '=', pod).execute()
+      })
+
+      it('refuses the whole move when it carries an assignee to a closed ticket', async () => {
+        const created = await app.inject({
+          method: 'POST',
+          url: '/api/tickets',
+          payload: { ...validTicketBody, assigneeId: 'ana@pipo.health' },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        const { id, groupId } = created.json()
+        await app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${id}/status`,
+          payload: { status: 'completed' },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+
+        const response = await app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${id}`,
+          payload: { groupId: pod, assigneeId: 'bruno@pipo.health' },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+
+        expect(response.statusCode).toBe(422)
+        const ticket = await app.inject({
+          method: 'GET',
+          url: `/api/tickets/${id}`,
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        expect(ticket.json()).toMatchObject({ groupId, assigneeId: 'ana@pipo.health' })
       })
 
       const createTicket = async (): Promise<string> => {

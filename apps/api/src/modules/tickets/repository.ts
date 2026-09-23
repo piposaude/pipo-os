@@ -1,7 +1,11 @@
 import { sql, type Kysely, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
-import { ServiceUnavailableError, ValidationFailedError } from '../../shared/errors.js'
+import {
+  ServiceUnavailableError,
+  UnprocessableEntityError,
+  ValidationFailedError,
+} from '../../shared/errors.js'
 import { FK_VIOLATION, UNIQUE_VIOLATION } from '../../shared/pg.js'
 import type { Author } from '../auth/authenticate.js'
 import { insertEvent, type TicketEventInput } from '../comments/repository.js'
@@ -630,6 +634,9 @@ export class TicketsRepository implements TicketsRepositoryPort {
           .executeTakeFirst()
 
         if (!current) return undefined
+        if (data.assigneeId !== undefined && CLOSED_STATUSES.has(current.status as TicketStatus)) {
+          throw new UnprocessableEntityError(`Ticket ${id} is already closed`)
+        }
 
         const row = await trx
           .updateTable('tickets')
