@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from '@/routeTree.gen'
@@ -107,10 +107,23 @@ async function renderDesk() {
 
 const sidebar = () => screen.getByRole('navigation', { name: /pipodesk/i })
 
+const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 50)))
+
+async function reassignInboxToColleague(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await within(sidebar()).findByRole('button', { name: /^Inbox\s*3$/ }))
+  await screen.findByText('Respondida Aberta')
+  await user.click(screen.getByRole('checkbox', { name: /selecionar todos/i }))
+  const barra = await screen.findByRole('group', { name: 'Ações em lote' })
+  await user.click(within(barra).getByRole('button', { name: 'Ações' }))
+  await user.click(screen.getByRole('button', { name: 'Reatribuir' }))
+  await user.click(await screen.findByRole('button', { name: 'Bruno Lima' }))
+}
+
 describe('a caixa de entrada vem da API', () => {
   let api: import('../../helpers/api').ApiMock
 
   afterEach(() => {
+    vi.useRealTimers()
     api.restore()
     useSessionStore.setState({ status: 'idle', user: null })
   })
@@ -147,29 +160,53 @@ describe('a caixa de entrada vem da API', () => {
           : routes['/api/tickets/inbox'],
     })
     await renderDesk()
-    const user = userEvent.setup()
-
-    await user.click(await within(sidebar()).findByRole('button', { name: /^Inbox\s*3$/ }))
-    await screen.findByText('Respondida Aberta')
-    await user.click(screen.getByRole('checkbox', { name: /selecionar todos/i }))
-    const barra = await screen.findByRole('group', { name: 'Ações em lote' })
-    await user.click(within(barra).getByRole('button', { name: 'Ações' }))
-    await user.click(screen.getByRole('button', { name: 'Reatribuir' }))
-    await user.click(await screen.findByRole('button', { name: 'Bruno Lima' }))
+    await reassignInboxToColleague(userEvent.setup())
 
     expect(
       await within(sidebar()).findByRole('button', { name: /^Inbox\s*0$/ }),
     ).toBeInTheDocument()
   })
 
-  it('should não contar a fila só com a caixa de entrada enquanto o /rows não chegou', async () => {
+  it('should manter a escrita na linha que só veio pela inbox quando a releitura dela falha', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const routes = baseRoutes()
+    let reread = false
+    api = mockApi({
+      ...routes,
+      '/api/tickets/inbox': () => {
+        if (!api.calls.some((call) => call.method === 'PATCH')) return routes['/api/tickets/inbox']
+        reread = true
+        return undefined
+      },
+    })
+    await renderDesk()
+    expect(
+      await within(sidebar()).findByRole('button', { name: /^Em espera\s*3$/ }),
+    ).toBeInTheDocument()
+
+    await reassignInboxToColleague(userEvent.setup())
+    await waitFor(() => expect(reread).toBe(true))
+    await act(() => vi.advanceTimersByTimeAsync(60_000))
+
+    expect(within(sidebar()).getByRole('button', { name: /^Em espera\s*1$/ })).toBeInTheDocument()
+  })
+
+  it('should esperar o /rows para contar a caixa de entrada, e não abrir uma lista vazia', async () => {
     const routes = baseRoutes()
     delete routes['/api/tickets/rows']
-    api = mockApi(routes)
+    let served = false
+    api = mockApi({
+      ...routes,
+      '/api/tickets/inbox': () => {
+        served = true
+        return routes['/api/tickets/inbox']
+      },
+    })
     await renderDesk()
+    await waitFor(() => expect(served).toBe(true))
+    await settle()
 
-    await within(sidebar()).findByRole('button', { name: /^Inbox\s*3$/ })
-
+    expect(within(sidebar()).getByRole('button', { name: /^Inbox\s*0$/ })).toBeInTheDocument()
     expect(within(sidebar()).getByRole('button', { name: /^Em espera\s*0$/ })).toBeInTheDocument()
   })
 

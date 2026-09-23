@@ -161,8 +161,8 @@ export function DeskShell() {
     return applyPatches(rowsFromApi([...listed, ...unlisted]), patches, today)
   }, [rowsQuery.data, inboxQuery.data, patches, today])
   const inboxTicketIds = useMemo(
-    () => (inboxQuery.data?.data ?? []).map((row) => row.id),
-    [inboxQuery.data],
+    () => (rowsQuery.data ? (inboxQuery.data?.data ?? []).map((row) => row.id) : []),
+    [rowsQuery.data, inboxQuery.data],
   )
 
   const [comments, setComments] = useState<TicketComment[]>([])
@@ -184,8 +184,8 @@ export function DeskShell() {
   )
 
   const [writeFailed, setWriteFailed] = useState(false)
-  const { refetch: refetchRows, dataUpdatedAt: rowsUpdatedAt } = rowsQuery
-  const { refetch: refetchInbox } = inboxQuery
+  const { refetch: refetchRows, dataUpdatedAt: rowsUpdatedAt, isError: rowsFailed } = rowsQuery
+  const { refetch: refetchInbox, dataUpdatedAt: inboxUpdatedAt, isError: inboxFailed } = inboxQuery
 
   const dropPatches = useCallback(
     (gone: string[]) =>
@@ -199,11 +199,11 @@ export function DeskShell() {
 
   const awaitingRead = useRef(new Set<string>())
   useEffect(() => {
-    if (awaitingRead.current.size === 0) return
+    if (awaitingRead.current.size === 0 || rowsFailed || inboxFailed) return
     const confirmed = [...awaitingRead.current]
     awaitingRead.current.clear()
     dropPatches(confirmed)
-  }, [rowsUpdatedAt, dropPatches])
+  }, [rowsUpdatedAt, inboxUpdatedAt, rowsFailed, inboxFailed, dropPatches])
 
   const applyPatch = useCallback(
     (ids: string[], patch: TicketPatch) => {
@@ -222,8 +222,8 @@ export function DeskShell() {
         const saved = ids.filter((id) => !refused.includes(id))
         if (saved.length === 0) return
 
-        const [read] = await Promise.all([refetchRows(), refetchInbox()])
-        if (read.isError) for (const id of saved) awaitingRead.current.add(id)
+        const reads = await Promise.all([refetchRows(), refetchInbox()])
+        if (reads.some((read) => read.isError)) for (const id of saved) awaitingRead.current.add(id)
         else dropPatches(saved)
       })
     },
