@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildApp } from '../../app.js'
+import { createRootGroup } from '../groups/root.test-helpers.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
 import { jsonResponse } from '../../shared/json.test-helpers.js'
 
@@ -34,6 +35,7 @@ function cookieValue(
 
 describe('a comment written by a service', () => {
   let app: FastifyInstance
+  let rootGroupId: string
   let sessionCookie: string
   let ticketId: string
   const fetchMock = vi.fn()
@@ -55,6 +57,7 @@ describe('a comment written by a service', () => {
       done()
     })
     await app.ready()
+    rootGroupId = await createRootGroup(app.db)
 
     const login = await app.inject({
       method: 'POST',
@@ -81,6 +84,7 @@ describe('a comment written by a service', () => {
   afterAll(async () => {
     await app.db.deleteFrom('ticket_comments').execute()
     await app.db.deleteFrom('tickets').execute()
+    await app.db.deleteFrom('ticket_groups').where('id', '=', rootGroupId).execute()
     await app.close()
     delete process.env.DEV_LOGIN_ENABLED
     delete process.env.SERVICE_ALLOWED_ACCOUNTS

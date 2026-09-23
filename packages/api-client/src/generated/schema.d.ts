@@ -1571,6 +1571,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -2619,7 +2628,7 @@ export interface components {
             channel: "internal" | "email";
             /** @enum {string} */
             visibility: "public" | "private";
-            eventType: ("hr_platform_reply" | "enrollment_cancellation_requested" | "document_signature_sent" | "contractor_document_failed" | "internal_note" | "assigned" | "priority_changed" | "action_date_changed" | "document_attached") | null;
+            eventType: ("hr_platform_reply" | "enrollment_cancellation_requested" | "document_signature_sent" | "contractor_document_failed" | "internal_note" | "assigned" | "priority_changed" | "action_date_changed" | "moved" | "document_attached") | null;
             authorId: string | null;
             /** @enum {string} */
             authorType: "user" | "service" | "system";
@@ -2771,7 +2780,7 @@ export interface components {
             /** @constant */
             type: "event";
             /** @enum {string} */
-            eventType: "hr_platform_reply" | "enrollment_cancellation_requested" | "document_signature_sent" | "contractor_document_failed" | "internal_note" | "assigned" | "priority_changed" | "action_date_changed" | "document_attached";
+            eventType: "hr_platform_reply" | "enrollment_cancellation_requested" | "document_signature_sent" | "contractor_document_failed" | "internal_note" | "assigned" | "priority_changed" | "action_date_changed" | "moved" | "document_attached";
             body: string;
             metadata: {
                 [key: string]: unknown;
@@ -2814,6 +2823,8 @@ export interface components {
             priority?: components["schemas"]["TicketPriorityInput"] | null;
             actionDate?: string | null;
             queueId?: string | null;
+            /** Format: uuid */
+            groupId?: string;
             assigneeId?: string | null;
             tags?: string[];
             forceCompletion?: boolean;

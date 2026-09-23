@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import type { FastifyInstance } from 'fastify'
 import { afterEach, afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
+import { createRootGroup } from '../groups/root.test-helpers.js'
 import { businessToday } from '../../shared/business-date.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
 
@@ -28,6 +29,7 @@ type Seed = {
 
 describe('GET /api/tickets/rows', () => {
   let app: FastifyInstance
+  let rootGroupId: string
   let cookie: string
   /** Asked, not assumed: the dev login mints its own address. */
   let viewer: string
@@ -39,6 +41,7 @@ describe('GET /api/tickets/rows', () => {
     process.env.DEV_LOGIN_ENABLED = 'true'
     app = buildApp()
     await app.ready()
+    rootGroupId = await createRootGroup(app.db)
     const login = await app.inject({
       method: 'POST',
       url: '/api/auth/dev-login',
@@ -59,6 +62,7 @@ describe('GET /api/tickets/rows', () => {
   })
 
   afterAll(async () => {
+    await app.db.deleteFrom('ticket_groups').where('id', '=', rootGroupId).execute()
     await app.close()
   })
 
@@ -72,6 +76,7 @@ describe('GET /api/tickets/rows', () => {
           company_id: row.companyId ?? COMPANY,
           source_system: 'enrollment-integrations',
           status: row.status ?? 'broker-processing',
+          group_id: rootGroupId,
           assignee_id: row.assigneeId ?? null,
           priority: row.priority ?? null,
           action_date: row.actionDate ?? null,
@@ -393,6 +398,7 @@ describe('GET /api/tickets/rows', () => {
         company_id: COMPANY,
         source_system: 'enrollment-integrations',
         status: 'broker-processing',
+        group_id: rootGroupId,
         tags: [],
         title: null,
       })
