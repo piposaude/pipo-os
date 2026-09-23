@@ -2,8 +2,9 @@ import { sql, type Kysely, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { TicketGroupMembers, TicketGroups } from '../../infrastructure/db-types.js'
 import { ADVISORY_LOCKS } from '../../shared/advisory-locks.js'
-import { ConflictError, NotFoundError } from '../../shared/errors.js'
+import { ConflictError, NotFoundError, ValidationFailedError } from '../../shared/errors.js'
 import { FK_VIOLATION } from '../../shared/pg.js'
+import { CompanyCarriedConflictError } from './errors.js'
 import type { GroupNode } from './hierarchy.js'
 import type {
   AddMemberBody,
@@ -45,15 +46,127 @@ function toGroup(row: Selectable<TicketGroups>): Group {
   }
 }
 
-function toMember(row: Selectable<TicketGroupMembers>): GroupMember {
+/** NO KEY UPDATE, not UPDATE: FKs of other writers into the group still take
+ *  their KEY SHARE, so it only serialises the portfolio and slice writers. */
+async function lockGroup(db: Kysely<Database>, id: string): Promise<boolean> {
+  const row = await db
+    .selectFrom('ticket_groups')
+    .select('id')
+    .where('id', '=', id)
+    .forNoKeyUpdate()
+    .executeTakeFirst()
+  return row !== undefined
+}
+
+async function lockPortfolios(db: Kysely<Database>): Promise<void> {
+  await sql`select pg_advisory_xact_lock(${ADVISORY_LOCKS.groupPortfolios})`.execute(db)
+}
+
+async function carryCompanies(
+  db: Kysely<Database>,
+  groupId: string,
+  companyIds: readonly string[],
+): Promise<void> {
+  if (companyIds.length === 0) return
+
+  await db
+    .insertInto('ticket_group_companies')
+    .values(companyIds.map((companyId) => ({ group_id: groupId, company_id: companyId })))
+    .onConflict((oc) => oc.column('company_id').doNothing())
+    .execute()
+
+  const owners = await db
+    .selectFrom('ticket_group_companies as c')
+    .innerJoin('ticket_groups as g', 'g.id', 'c.group_id')
+    .select(['c.company_id', 'g.id', 'g.name'])
+    .where('c.company_id', 'in', companyIds)
+    .where('c.group_id', '<>', groupId)
+    .orderBy('c.company_id')
+    .execute()
+
+  if (owners.length > 0) {
+    const taken = owners.map((o) => `${o.company_id} belongs to ${o.name} (${o.id})`)
+    throw new CompanyCarriedConflictError(
+      `Companies already carried by another group: ${taken.join('; ')}`,
+      owners.map((o) => ({ companyId: o.company_id, groupId: o.id, groupName: o.name })),
+    )
+  }
+}
+
+function toMember(row: Selectable<TicketGroupMembers>, companyIds: string[]): GroupMember {
   return {
     groupId: row.group_id,
     userId: row.user_id,
     // The column is text; the CHECK of migration 0024 is what narrows it.
     role: row.role as MemberRole,
     active: row.active,
+    companyIds,
     createdAt: row.created_at.toISOString(),
   }
+}
+
+function outsidePortfolio(companyIds: readonly string[]): ValidationFailedError {
+  const message = `Companies outside the portfolio of the group: ${companyIds.join(', ')}`
+  return new ValidationFailedError(message, [
+    { field: 'companyIds', message, code: 'not_in_portfolio' },
+  ])
+}
+
+async function assertInPortfolio(
+  db: Kysely<Database>,
+  groupId: string,
+  companyIds: readonly string[],
+): Promise<void> {
+  if (companyIds.length === 0) return
+  const carried = await db
+    .selectFrom('ticket_group_companies')
+    .select('company_id')
+    .where('group_id', '=', groupId)
+    .where('company_id', 'in', companyIds)
+    .execute()
+  const inside = new Set(carried.map((row) => row.company_id))
+  const outside = companyIds.filter((id) => !inside.has(id))
+  if (outside.length > 0) throw outsidePortfolio(outside)
+}
+
+async function replaceSlice(
+  db: Kysely<Database>,
+  groupId: string,
+  userId: string,
+  companyIds: readonly string[],
+): Promise<void> {
+  await assertInPortfolio(db, groupId, companyIds)
+
+  await db
+    .deleteFrom('ticket_group_member_companies')
+    .where('group_id', '=', groupId)
+    .where('user_id', '=', userId)
+    .$if(companyIds.length > 0, (q) => q.where('company_id', 'not in', companyIds))
+    .execute()
+
+  if (companyIds.length === 0) return
+  await db
+    .insertInto('ticket_group_member_companies')
+    .values(
+      companyIds.map((companyId) => ({
+        group_id: groupId,
+        user_id: userId,
+        company_id: companyId,
+      })),
+    )
+    .onConflict((oc) => oc.columns(['group_id', 'user_id', 'company_id']).doNothing())
+    .execute()
+}
+
+async function sliceOf(db: Kysely<Database>, groupId: string, userId: string): Promise<string[]> {
+  const rows = await db
+    .selectFrom('ticket_group_member_companies')
+    .select('company_id')
+    .where('group_id', '=', groupId)
+    .where('user_id', '=', userId)
+    .orderBy('company_id')
+    .execute()
+  return rows.map((row) => row.company_id)
 }
 
 export interface GroupsRepositoryPort {
@@ -64,6 +177,8 @@ export interface GroupsRepositoryPort {
   withHierarchyLock<T>(fn: (repository: GroupsRepositoryPort) => Promise<T>): Promise<T>
   findRelations(groupIds: readonly string[]): Promise<GroupRelations>
   update(id: string, data: UpdateGroupBody, updatedBy: string): Promise<Group | undefined>
+  replaceCompanies(id: string, companyIds: readonly string[]): Promise<boolean>
+  carryCompany(id: string, companyId: string): Promise<boolean>
   delete(id: string): Promise<boolean>
 }
 
@@ -203,6 +318,31 @@ export class GroupsRepository implements GroupsRepositoryPort {
     return row ? toGroup(row) : undefined
   }
 
+  replaceCompanies(id: string, companyIds: readonly string[]): Promise<boolean> {
+    return this.db.transaction().execute(async (trx) => {
+      await lockPortfolios(trx)
+      if (!(await lockGroup(trx, id))) return false
+
+      await trx
+        .deleteFrom('ticket_group_companies')
+        .where('group_id', '=', id)
+        .$if(companyIds.length > 0, (q) => q.where('company_id', 'not in', companyIds))
+        .execute()
+
+      await carryCompanies(trx, id, companyIds)
+      return true
+    })
+  }
+
+  carryCompany(id: string, companyId: string): Promise<boolean> {
+    return this.db.transaction().execute(async (trx) => {
+      await lockPortfolios(trx)
+      if (!(await lockGroup(trx, id))) return false
+      await carryCompanies(trx, id, [companyId])
+      return true
+    })
+  }
+
   async delete(id: string): Promise<boolean> {
     try {
       const [result] = await this.db.deleteFrom('ticket_groups').where('id', '=', id).execute()
@@ -236,9 +376,11 @@ export interface GroupMembersRepositoryPort {
 export class GroupMembersRepository implements GroupMembersRepositoryPort {
   constructor(private readonly db: Kysely<Database>) {}
 
-  async add(groupId: string, { userId, role }: AddMemberBody): Promise<GroupMember> {
-    try {
-      const row = await this.db
+  add(groupId: string, { userId, role, companyIds = [] }: AddMemberBody): Promise<GroupMember> {
+    return this.db.transaction().execute(async (trx) => {
+      if (!(await lockGroup(trx, groupId))) throw new NotFoundError(`Group ${groupId} not found`)
+
+      const row = await trx
         .insertInto('ticket_group_members')
         .values({ group_id: groupId, user_id: userId, ...(role !== undefined && { role }) })
         .onConflict((oc) => oc.columns(['group_id', 'user_id']).doNothing())
@@ -249,13 +391,9 @@ export class GroupMembersRepository implements GroupMembersRepositoryPort {
         throw new ConflictError(`User ${userId} is already a member of group ${groupId}`)
       }
 
-      return toMember(row)
-    } catch (err) {
-      if (err instanceof Error && 'code' in err && err.code === FK_VIOLATION) {
-        throw new NotFoundError(`Group ${groupId} not found`)
-      }
-      throw err
-    }
+      await replaceSlice(trx, groupId, userId, companyIds)
+      return toMember(row, [...companyIds].sort())
+    })
   }
 
   // Active only: a deactivated membership is history, and reading it as current
@@ -282,22 +420,38 @@ export class GroupMembersRepository implements GroupMembersRepositoryPort {
     return (result?.numDeletedRows ?? 0n) > 0n
   }
 
-  async update(
+  update(
     groupId: string,
     userId: string,
-    data: UpdateMemberBody,
+    { active, role, companyIds }: UpdateMemberBody,
   ): Promise<GroupMember | undefined> {
-    const row = await this.db
-      .updateTable('ticket_group_members')
-      .set({
-        ...(data.active !== undefined && { active: data.active }),
-        ...(data.role !== undefined && { role: data.role }),
-      })
-      .where('group_id', '=', groupId)
-      .where('user_id', '=', userId)
-      .returningAll()
-      .executeTakeFirst()
+    return this.db.transaction().execute(async (trx) => {
+      if (!(await lockGroup(trx, groupId))) return undefined
 
-    return row ? toMember(row) : undefined
+      const row =
+        active === undefined && role === undefined
+          ? await trx
+              .selectFrom('ticket_group_members')
+              .selectAll()
+              .where('group_id', '=', groupId)
+              .where('user_id', '=', userId)
+              .forUpdate()
+              .executeTakeFirst()
+          : await trx
+              .updateTable('ticket_group_members')
+              .set({
+                ...(active !== undefined && { active }),
+                ...(role !== undefined && { role }),
+              })
+              .where('group_id', '=', groupId)
+              .where('user_id', '=', userId)
+              .returningAll()
+              .executeTakeFirst()
+
+      if (!row) return undefined
+      if (companyIds === undefined) return toMember(row, await sliceOf(trx, groupId, userId))
+      await replaceSlice(trx, groupId, userId, companyIds)
+      return toMember(row, [...companyIds].sort())
+    })
   }
 }

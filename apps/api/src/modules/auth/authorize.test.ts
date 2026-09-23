@@ -292,12 +292,14 @@ describe('the policy each route requires', () => {
     ['PATCH /api/tickets/:id/status', TICKET],
     ['POST /api/auth/logout', null],
     ['POST /api/groups', STRUCTURE],
+    ['POST /api/groups/:id/companies/:companyId', STRUCTURE],
     ['POST /api/groups/:id/members', STRUCTURE],
     ['POST /api/queues', [TICKET, STRUCTURE]],
     ['POST /api/queues/:id/favorite', [TICKET, STRUCTURE]],
     ['POST /api/tickets', TICKET],
     ['POST /api/tickets/:id/claim', TICKET],
     ['POST /api/tickets/:id/comments', TICKET],
+    ['PUT /api/groups/:id/companies', STRUCTURE],
   ]
 
   it('is exactly the routes whose side is already stated', () => {

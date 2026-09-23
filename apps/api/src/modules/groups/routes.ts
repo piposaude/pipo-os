@@ -1,11 +1,14 @@
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { requireUserId } from '../auth/authenticate.js'
 import { errorResponseSchema } from '../../shared/schemas.js'
 import { STRUCTURE_POLICY } from '../auth/policy.js'
+import { CompanyCarriedConflictError } from './errors.js'
 import {
   addMemberBodySchema,
+  companyCarriedConflictSchema,
+  companyParamsSchema,
   createGroupBodySchema,
   groupDetailSchema,
   groupListSchema,
@@ -14,10 +17,25 @@ import {
   groupSchema,
   listGroupsQuerySchema,
   memberParamsSchema,
+  replaceCompaniesBodySchema,
   updateGroupBodySchema,
   updateMemberBodySchema,
 } from './schemas.js'
 import type { GroupsService } from './service.js'
+
+async function withOwners<T>(
+  reply: FastifyReply,
+  write: () => Promise<T>,
+): Promise<T | FastifyReply> {
+  try {
+    return await write()
+  } catch (err) {
+    if (err instanceof CompanyCarriedConflictError) {
+      return reply.status(409).send({ error: err.name, message: err.message, owners: err.owners })
+    }
+    throw err
+  }
+}
 
 export function registerGroupRoutes(app: FastifyInstance, service: GroupsService): void {
   const server = app.withTypeProvider<ZodTypeProvider>()
@@ -111,6 +129,55 @@ export function registerGroupRoutes(app: FastifyInstance, service: GroupsService
     },
   )
 
+  server.put(
+    '/api/groups/:id/companies',
+    {
+      config: { policy: STRUCTURE_POLICY },
+      schema: {
+        params: groupParamsSchema,
+        body: replaceCompaniesBodySchema,
+        response: {
+          200: groupDetailSchema,
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+          409: companyCarriedConflictSchema,
+          413: errorResponseSchema,
+          415: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      return withOwners(reply, () =>
+        service.replaceCompanies(request.params.id, request.body.companyIds),
+      )
+    },
+  )
+
+  server.post(
+    '/api/groups/:id/companies/:companyId',
+    {
+      config: { policy: STRUCTURE_POLICY },
+      schema: {
+        params: companyParamsSchema,
+        response: {
+          200: groupDetailSchema,
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+          409: companyCarriedConflictSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      return withOwners(reply, () =>
+        service.carryCompany(request.params.id, request.params.companyId),
+      )
+    },
+  )
+
   server.delete(
     '/api/groups/:id',
     {
@@ -150,6 +217,7 @@ export function registerGroupRoutes(app: FastifyInstance, service: GroupsService
           409: errorResponseSchema,
           413: errorResponseSchema,
           415: errorResponseSchema,
+          422: errorResponseSchema,
         },
       },
     },
@@ -197,6 +265,7 @@ export function registerGroupRoutes(app: FastifyInstance, service: GroupsService
           404: errorResponseSchema,
           413: errorResponseSchema,
           415: errorResponseSchema,
+          422: errorResponseSchema,
         },
       },
     },
