@@ -82,6 +82,9 @@ describe('o que a tela muda, a API grava', () => {
     await reassignAll(userEvent.setup())
 
     await expect.poll(() => screen.getByRole('status').textContent).not.toBe(antes)
+    await vi.advanceTimersByTimeAsync(60_000)
+
+    expect(screen.getByRole('status').textContent).not.toBe(antes)
     expect(screen.queryByText(/não foi possível/i)).not.toBeInTheDocument()
   })
 

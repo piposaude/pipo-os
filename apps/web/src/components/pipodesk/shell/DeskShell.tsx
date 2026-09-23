@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { Outlet, useNavigate, useRouterState, useSearch } from '@tanstack/react-router'
 import { SidebarMainLayout } from '@piposaude/design-system'
 import { QueueSidebar } from '@/components/pipodesk/sidebar/QueueSidebar'
@@ -162,7 +162,25 @@ export function DeskShell() {
   )
 
   const [writeFailed, setWriteFailed] = useState(false)
-  const { refetch: refetchRows } = rowsQuery
+  const { refetch: refetchRows, dataUpdatedAt: rowsUpdatedAt } = rowsQuery
+
+  const dropPatches = useCallback(
+    (gone: string[]) =>
+      setPatches((current) => {
+        const next = { ...current }
+        for (const id of gone) delete next[id]
+        return next
+      }),
+    [],
+  )
+
+  const awaitingRead = useRef(new Set<string>())
+  useEffect(() => {
+    if (awaitingRead.current.size === 0) return
+    const confirmed = [...awaitingRead.current]
+    awaitingRead.current.clear()
+    dropPatches(confirmed)
+  }, [rowsUpdatedAt, dropPatches])
 
   const applyPatch = useCallback(
     (ids: string[], patch: TicketPatch) => {
@@ -172,27 +190,21 @@ export function DeskShell() {
         return next
       })
 
-      const drop = (gone: string[]) =>
-        setPatches((current) => {
-          const next = { ...current }
-          for (const id of gone) delete next[id]
-          return next
-        })
-
       void persistBatch(ids, patch).then(async (refused) => {
         if (refused.length > 0) {
-          drop(refused)
+          dropPatches(refused)
           setWriteFailed(true)
         }
 
         const saved = ids.filter((id) => !refused.includes(id))
         if (saved.length === 0) return
 
-        await refetchRows()
-        drop(saved)
+        const read = await refetchRows()
+        if (read.isError) for (const id of saved) awaitingRead.current.add(id)
+        else dropPatches(saved)
       })
     },
-    [refetchRows],
+    [refetchRows, dropPatches],
   )
 
   const groupsQuery = api.useQuery(
