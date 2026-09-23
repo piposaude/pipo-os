@@ -1,6 +1,7 @@
 import { sql, type Kysely, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
+import { ADVISORY_LOCKS } from '../../shared/advisory-locks.js'
 import { ServiceUnavailableError, ValidationFailedError } from '../../shared/errors.js'
 import { FK_VIOLATION, UNIQUE_VIOLATION } from '../../shared/pg.js'
 import type { Author } from '../auth/authenticate.js'
@@ -176,6 +177,28 @@ export interface TicketsRepositoryPort {
     viewerId: string,
     today: string,
   ): Promise<{ data: TicketRowPayload[]; total: number }>
+}
+
+async function groupIdOf(db: Kysely<Database>, companyId: string): Promise<string> {
+  const carried = await db
+    .selectFrom('ticket_group_companies')
+    .select('group_id')
+    .where('company_id', '=', companyId)
+    .executeTakeFirst()
+  if (carried) return carried.group_id
+
+  const root = await db
+    .selectFrom('ticket_groups')
+    .select('id')
+    .where('parent_id', 'is', null)
+    .orderBy('created_at')
+    .executeTakeFirst()
+  if (!root) {
+    throw new ServiceUnavailableError(
+      `Company ${companyId} is in no portfolio and there is no root group to route its ticket to`,
+    )
+  }
+  return root.id
 }
 
 export class TicketsRepository implements TicketsRepositoryPort {
@@ -422,41 +445,49 @@ export class TicketsRepository implements TicketsRepositoryPort {
     /* No company is a branch of itself, whichever source named the parent:
        the Empresa cell would read `Meridiano › Meridiano`. */
     const parent = named.id === data.companyId ? { id: null, name: null } : named
-    const groupId = data.groupId ?? (await this.groupIdOf(data.companyId))
-
     try {
-      const row = await this.db
-        .insertInto('tickets')
-        .values({
-          enrollment_id: data.enrollmentId,
-          enrollment_type: data.enrollmentType,
-          company_id: data.companyId,
-          source_system: data.sourceSystem,
-          enrollment_snapshot: JSON.stringify(data.enrollmentSnapshot),
-          title: data.title,
-          action_date: data.actionDate,
-          origin: data.origin,
-          requester: data.requester ? JSON.stringify(data.requester) : null,
-          collaborators: JSON.stringify(data.collaborators ?? []),
-          carrier_id: data.carrierId ?? derived.carrierId,
-          carrier_name: data.carrierName ?? derived.carrierName,
-          product: data.product ?? derived.product,
-          contract_type: data.contractType ?? derived.contractType,
-          company_size: data.companySize ?? derived.companySize,
-          parent_company_id: parent.id,
-          parent_company_name: parent.name,
-          company_tax_id: data.companyTaxId ?? company.companyTaxId,
-          relationship: relationshipOf(data.enrollmentSnapshot),
-          status: 'broker-processing',
-          queue_id: data.queueId,
-          assignee_id: data.assigneeId,
-          group_id: groupId,
-          tags: data.tags ?? [],
-          force_completion: data.forceCompletion ?? false,
-          parent_ticket_id: data.parentTicketId,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow()
+      const row = await this.db.transaction().execute(async (trx) => {
+        let groupId = data.groupId
+        if (groupId === undefined) {
+          await sql`select pg_advisory_xact_lock_shared(${ADVISORY_LOCKS.groupPortfolios})`.execute(
+            trx,
+          )
+          groupId = await groupIdOf(trx, data.companyId)
+        }
+
+        return trx
+          .insertInto('tickets')
+          .values({
+            enrollment_id: data.enrollmentId,
+            enrollment_type: data.enrollmentType,
+            company_id: data.companyId,
+            source_system: data.sourceSystem,
+            enrollment_snapshot: JSON.stringify(data.enrollmentSnapshot),
+            title: data.title,
+            action_date: data.actionDate,
+            origin: data.origin,
+            requester: data.requester ? JSON.stringify(data.requester) : null,
+            collaborators: JSON.stringify(data.collaborators ?? []),
+            carrier_id: data.carrierId ?? derived.carrierId,
+            carrier_name: data.carrierName ?? derived.carrierName,
+            product: data.product ?? derived.product,
+            contract_type: data.contractType ?? derived.contractType,
+            company_size: data.companySize ?? derived.companySize,
+            parent_company_id: parent.id,
+            parent_company_name: parent.name,
+            company_tax_id: data.companyTaxId ?? company.companyTaxId,
+            relationship: relationshipOf(data.enrollmentSnapshot),
+            status: 'broker-processing',
+            queue_id: data.queueId,
+            assignee_id: data.assigneeId,
+            group_id: groupId,
+            tags: data.tags ?? [],
+            force_completion: data.forceCompletion ?? false,
+            parent_ticket_id: data.parentTicketId,
+          })
+          .returningAll()
+          .executeTakeFirstOrThrow()
+      })
 
       return toTicket(row)
     } catch (err) {
@@ -484,28 +515,6 @@ export class TicketsRepository implements TicketsRepositoryPort {
       }
       rethrowMissingReference(err)
     }
-  }
-
-  private async groupIdOf(companyId: string): Promise<string> {
-    const carried = await this.db
-      .selectFrom('ticket_group_companies')
-      .select('group_id')
-      .where('company_id', '=', companyId)
-      .executeTakeFirst()
-    if (carried) return carried.group_id
-
-    const root = await this.db
-      .selectFrom('ticket_groups')
-      .select('id')
-      .where('parent_id', 'is', null)
-      .orderBy('created_at')
-      .executeTakeFirst()
-    if (!root) {
-      throw new ServiceUnavailableError(
-        `Company ${companyId} is in no portfolio and there is no root group to route its ticket to`,
-      )
-    }
-    return root.id
   }
 
   async changeStatus(
