@@ -4,6 +4,7 @@ import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/rea
 import { routeTree } from '@/routeTree.gen'
 import constants from '@/constants/pages/pipodesk/team'
 import sidebarConstants from '@/constants/pipodesk/sidebar'
+import { holdGet } from '../../helpers/api'
 
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
@@ -106,6 +107,17 @@ describe('home do pod', () => {
     await user.click(within(sidebar).getByRole('link', { name: 'Home' }))
 
     expect(router.state.location.pathname).toBe('/teams/pod-1')
+  })
+
+  it('should wait for the pods before saying the group does not exist', async () => {
+    const release = holdGet('/api/groups')
+    await renderAt('/teams/pod-1')
+
+    expect(await screen.findByRole('status', { name: 'Carregando' })).toBeInTheDocument()
+    expect(screen.queryByText(/não encontramos esse time/i)).not.toBeInTheDocument()
+
+    release()
+    expect(await screen.findByRole('heading', { level: 1, name: 'POD 1' })).toBeInTheDocument()
   })
 
   it('should say plainly when the group does not exist, instead of rendering an empty page', async () => {

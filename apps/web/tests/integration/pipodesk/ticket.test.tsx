@@ -14,6 +14,7 @@ import { analystsOf } from '@/lib/pipodesk/permissions'
 import { records } from '@/fixtures/pipodesk/records'
 import constants from '@/constants/pages/pipodesk/ticket'
 import copyButton from '@/constants/pipodesk/copy-button'
+import { holdGet } from '../../helpers/api'
 
 /**
  * The first drawn row — the table is virtualized, so only the visible window
@@ -367,6 +368,20 @@ describe('detalhe do chamado', () => {
 
     expect(status).toHaveTextContent(copyButton.copied)
     expect(button).toHaveAttribute('data-copied', 'true')
+  })
+
+  it('should wait for the rows before saying the id does not exist', async () => {
+    const { id, beneficiaryName, subject } = queueSeed[0]!
+    const release = holdGet('/api/tickets/rows')
+    await renderAt(`/tickets/${id}`)
+
+    expect(await screen.findByRole('status', { name: 'Carregando' })).toBeInTheDocument()
+    expect(screen.queryByText(/não existe chamado com o id/i)).not.toBeInTheDocument()
+
+    release()
+    expect(
+      await screen.findByRole('heading', { level: 1, name: beneficiaryName ?? subject }),
+    ).toBeInTheDocument()
   })
 
   it('should say plainly when the id does not exist', async () => {

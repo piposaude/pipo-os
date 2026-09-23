@@ -5,6 +5,7 @@ import {
   Breadcrumb,
   BreadcrumbItem,
   Heading,
+  Loading,
   Table,
   TableBody,
   TableCell,
@@ -46,7 +47,7 @@ export default function TeamPage() {
   /* `validateSearch` already restricted this to the two tabs or nothing —
      re-checking here would be a second source of truth for the same rule. */
   const { tab = 'home' } = useSearch({ from: '/_auth/_desk/teams/$groupId' })
-  const { structure, rows, resolveName, today } = useDesk()
+  const { structure, structurePending, rows, resolveName, today } = useDesk()
 
   const group = structure.groups.find((candidate) => candidate.id === groupId)
 
@@ -90,7 +91,11 @@ export default function TeamPage() {
   if (!group) {
     return (
       <div className={`${styles.screen} ${styles.missing}`}>
-        <Text>{constants.notFound}</Text>
+        {structurePending ? (
+          <Loading show variant="contained" role="status" />
+        ) : (
+          <Text>{constants.notFound}</Text>
+        )}
       </div>
     )
   }

@@ -294,10 +294,12 @@ export function DeskShell() {
   /* The link may name a node the tree does not have yet — a pod, a MOV, an
      analyst all arrive with the structure. Writing over it before that would
      erase the link, and `replace` leaves nothing to go back to. */
+  const structurePending = groupsQuery.isPending || queuesQuery.isPending
+  const rowsPending = rowsQuery.isPending
   const nodePending =
     search.node !== undefined &&
     findNode(sections, search.node) === null &&
-    (groupsQuery.isPending || queuesQuery.isPending || rowsQuery.isPending)
+    (structurePending || rowsPending)
 
   useEffect(() => {
     if (!onQueue || nodePending || JSON.stringify(search) === asLink) return
@@ -383,8 +385,10 @@ export function DeskShell() {
       view,
       dispatch,
       structure,
+      structurePending,
       viewerGroupId,
       rows,
+      rowsPending,
       today,
       applyPatch,
       rowsTotal,
@@ -400,8 +404,10 @@ export function DeskShell() {
       view,
       dispatch,
       structure,
+      structurePending,
       viewerGroupId,
       rows,
+      rowsPending,
       applyPatch,
       rowsTotal,
       comments,

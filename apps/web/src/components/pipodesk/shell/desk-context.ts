@@ -16,12 +16,14 @@ export interface DeskContextValue {
   sections: TreeSection[]
   view: QueueView
   dispatch: Dispatch<QueueAction>
-  /** The whole base, before scope, window and filter. */
   /** Pods, memberships and saved views, as the API serves them. */
   structure: StructureState
+  structurePending: boolean
   /** The pod the viewer works in, `null` when they belong to none. */
   viewerGroupId: string | null
+  /** The whole base, before scope, window and filter. */
   rows: TicketRow[]
+  rowsPending: boolean
   /** What the projection says exists, which is more than `rows` when it
    *  capped the answer — every count on screen is over the slice, not this. */
   rowsTotal: number

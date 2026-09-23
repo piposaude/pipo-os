@@ -1,5 +1,13 @@
 import { useMemo, useRef, useState } from 'react'
-import { Banner, Breadcrumb, BreadcrumbItem, Button, Heading, Tabs } from '@piposaude/design-system'
+import {
+  Banner,
+  Breadcrumb,
+  BreadcrumbItem,
+  Button,
+  Heading,
+  Loading,
+  Tabs,
+} from '@piposaude/design-system'
 import { Link, useParams } from '@tanstack/react-router'
 import { useDesk } from '@/components/pipodesk/shell/desk-context'
 import { SidebarToggle } from '@/components/pipodesk/shell/SidebarToggle'
@@ -52,7 +60,17 @@ function Fact({ label, value }: { label: string; value: string }) {
  */
 export default function TicketPage() {
   const { id } = useParams({ from: '/_auth/_desk/tickets/$id' })
-  const { view, structure, rows, today, resolveName, applyPatch, comments, addComment } = useDesk()
+  const {
+    view,
+    structure,
+    rows,
+    rowsPending,
+    today,
+    resolveName,
+    applyPatch,
+    comments,
+    addComment,
+  } = useDesk()
 
   const ticket = useMemo(() => rows.find((row) => row.id === id), [rows, id])
 
@@ -86,7 +104,11 @@ export default function TicketPage() {
   if (!ticket) {
     return (
       <div className={`${styles.screen} ${styles.missing}`}>
-        <p>{constants.notFound(id)}</p>
+        {rowsPending ? (
+          <Loading show variant="contained" role="status" />
+        ) : (
+          <p>{constants.notFound(id)}</p>
+        )}
       </div>
     )
   }

@@ -4,7 +4,7 @@ import { Snackbar } from '@piposaude/design-system'
 import { QueueHeader } from '@/components/pipodesk/queue/QueueHeader'
 import { ColumnFilter } from '@/components/pipodesk/queue/ColumnFilter'
 import { QueueTable } from '@/components/pipodesk/queue/QueueTable'
-import { BatchBar, type PodOption } from '@/components/pipodesk/queue/BatchBar'
+import { BatchBar } from '@/components/pipodesk/queue/BatchBar'
 import styles from '@/components/pipodesk/queue/Queue.module.css'
 import { analystsOf } from '@/lib/pipodesk/permissions'
 import { useDesk } from '@/components/pipodesk/shell/desk-context'
@@ -163,17 +163,6 @@ export default function QueuePage() {
       name: resolveName(id),
     }),
   )
-  const pods: PodOption[] = structure.groups
-    .filter((group) => group.parentId !== null)
-    .map((group) => ({
-      id: group.id,
-      name: group.name,
-      analysts: analystsOf(structure, group.id).map(({ userId: id }) => ({
-        id,
-        name: resolveName(id),
-      })),
-    }))
-
   return (
     <div className={styles.screen}>
       <QueueHeader
@@ -274,10 +263,7 @@ export default function QueuePage() {
           onClear={() => dispatch({ type: 'clear-selection' })}
           analysts={analysts}
           onAssign={(userId) => runBatch({ assigneeId: userId })}
-          pods={pods}
-          onMoveToPod={(groupId, userId) => runBatch({ groupId, assigneeId: userId })}
           onStatus={runStatusBatch}
-          onSchedule={(date) => runBatch({ actionDate: date })}
         />
       )}
 
