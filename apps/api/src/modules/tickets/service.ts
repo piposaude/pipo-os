@@ -13,6 +13,7 @@ import {
   type CreateTicketBody,
   type ListTicketsQuery,
   type Ticket,
+  type TicketDetail,
   type TicketList,
   type UpdateTicketBody,
   type UpdateTicketStatusBody,
@@ -21,8 +22,8 @@ import {
 export class TicketsService {
   constructor(private readonly repository: TicketsRepositoryPort) {}
 
-  async get(id: string): Promise<Ticket> {
-    const ticket = await this.repository.findById(id)
+  async get(id: string): Promise<TicketDetail> {
+    const ticket = await this.repository.findDetailById(id)
 
     if (!ticket) {
       throw new NotFoundError(`Ticket ${id} not found`)
