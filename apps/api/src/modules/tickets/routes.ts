@@ -111,6 +111,7 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
           413: errorResponseSchema,
           415: errorResponseSchema,
           422: errorResponseSchema,
+          503: errorResponseSchema,
         },
       },
     },
