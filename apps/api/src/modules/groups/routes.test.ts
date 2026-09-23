@@ -751,6 +751,72 @@ describe('groups routes', () => {
   })
 
   // ---------------------------------------------------------------------------
+  describe('POST /api/groups/:id/companies/:companyId', () => {
+    const carry = (groupId: string, companyId: string) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/groups/${groupId}/companies/${companyId}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+    it('returns 401 without session cookie', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/groups/${NONEXISTENT_ID}/companies/${COMPANY_A}`,
+      })
+
+      expect(response.statusCode).toBe(401)
+    })
+
+    it('adds one company and keeps the rest of the portfolio', async () => {
+      const pod = await createGroup('POD 3')
+      await carry(pod, COMPANY_A)
+
+      const response = await carry(pod, COMPANY_B)
+
+      expect(response.statusCode).toBe(200)
+      expect(response.json()).toMatchObject({ id: pod, companyIds: [COMPANY_A, COMPANY_B] })
+    })
+
+    it('answers the same portfolio when the pod already carries the company', async () => {
+      const pod = await createGroup('POD 3')
+      await carry(pod, COMPANY_A)
+
+      const response = await carry(pod, COMPANY_A)
+
+      expect(response.statusCode).toBe(200)
+      expect(response.json().companyIds).toEqual([COMPANY_A])
+    })
+
+    it('answers 409 naming the group that already carries the company', async () => {
+      const geben = await createGroup('Gestão de Benefícios')
+      const pod3 = await createGroup('POD 3', geben)
+      const pod5 = await createGroup('POD 5', geben)
+      await carry(pod3, COMPANY_A)
+
+      const response = await carry(pod5, COMPANY_A)
+
+      expect(response.statusCode).toBe(409)
+      expect(response.json().message).toContain('POD 3')
+      expect(response.json().message).toContain(pod3)
+    })
+
+    it('returns 404 for non-existent group', async () => {
+      const response = await carry(NONEXISTENT_ID, COMPANY_A)
+
+      expect(response.statusCode).toBe(404)
+    })
+
+    it('returns 400 when the company id is not a uuid', async () => {
+      const pod = await createGroup('POD 3')
+
+      const response = await carry(pod, 'acme')
+
+      expect(response.statusCode).toBe(400)
+    })
+  })
+
+  // ---------------------------------------------------------------------------
   describe('the shape of the hierarchy', () => {
     /* `code` is what the web switches the pt-BR copy on, so it is asserted
        here too: a rename that only the message notices is a silent break. */
@@ -1553,6 +1619,7 @@ describe('groups routes', () => {
       ['GET', '/api/groups/:id'],
       ['PATCH', '/api/groups/:id'],
       ['PUT', '/api/groups/:id/companies'],
+      ['POST', '/api/groups/:id/companies/:companyId'],
       ['DELETE', '/api/groups/:id'],
       ['POST', '/api/groups/:id/members'],
       ['PATCH', '/api/groups/:id/members/:memberId'],
@@ -1563,7 +1630,10 @@ describe('groups routes', () => {
     it.each(routes)('answers 403 on %s %s for a session with no policy', async (method, url) => {
       const response = await app.inject({
         method: method as 'GET',
-        url: url.replace(':id', NONEXISTENT_ID).replace(':memberId', USER_ID_1),
+        url: url
+          .replace(':id', NONEXISTENT_ID)
+          .replace(':memberId', USER_ID_1)
+          .replace(':companyId', COMPANY_A),
         cookies: { [SESSION_COOKIE_NAME]: withoutPolicy },
         payload: method === 'GET' || method === 'DELETE' ? undefined : { name: 'Grupo' },
       })

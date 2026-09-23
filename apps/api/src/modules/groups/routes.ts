@@ -6,6 +6,7 @@ import { errorResponseSchema } from '../../shared/schemas.js'
 import { STRUCTURE_POLICY } from '../auth/policy.js'
 import {
   addMemberBodySchema,
+  companyParamsSchema,
   createGroupBodySchema,
   groupDetailSchema,
   groupListSchema,
@@ -133,6 +134,27 @@ export function registerGroupRoutes(app: FastifyInstance, service: GroupsService
     },
     async (request) => {
       return service.replaceCompanies(request.params.id, request.body.companyIds)
+    },
+  )
+
+  server.post(
+    '/api/groups/:id/companies/:companyId',
+    {
+      config: { policy: STRUCTURE_POLICY },
+      schema: {
+        params: companyParamsSchema,
+        response: {
+          200: groupDetailSchema,
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+          409: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      return service.carryCompany(request.params.id, request.params.companyId)
     },
   )
 

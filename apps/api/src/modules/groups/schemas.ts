@@ -64,6 +64,11 @@ export const memberParamsSchema = z.object({
   memberId: trimmedInput(),
 })
 
+export const companyParamsSchema = z.object({
+  id: z.uuid(),
+  companyId: z.uuid(),
+})
+
 export const createGroupBodySchema = z
   .object({
     name: trimmedInput().max(255),

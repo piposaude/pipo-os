@@ -292,6 +292,7 @@ describe('the policy each route requires', () => {
     ['PATCH /api/tickets/:id/status', TICKET],
     ['POST /api/auth/logout', null],
     ['POST /api/groups', STRUCTURE],
+    ['POST /api/groups/:id/companies/:companyId', STRUCTURE],
     ['POST /api/groups/:id/members', STRUCTURE],
     ['POST /api/queues', [TICKET, STRUCTURE]],
     ['POST /api/queues/:id/favorite', [TICKET, STRUCTURE]],

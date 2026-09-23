@@ -105,6 +105,7 @@ export interface GroupsRepositoryPort {
   findRelations(groupIds: readonly string[]): Promise<GroupRelations>
   update(id: string, data: UpdateGroupBody, updatedBy: string): Promise<Group | undefined>
   replaceCompanies(id: string, companyIds: readonly string[]): Promise<boolean>
+  carryCompany(id: string, companyId: string): Promise<boolean>
   delete(id: string): Promise<boolean>
 }
 
@@ -255,6 +256,14 @@ export class GroupsRepository implements GroupsRepositoryPort {
         .execute()
 
       await carryCompanies(trx, id, companyIds)
+      return true
+    })
+  }
+
+  carryCompany(id: string, companyId: string): Promise<boolean> {
+    return this.db.transaction().execute(async (trx) => {
+      if (!(await lockGroup(trx, id))) return false
+      await carryCompanies(trx, id, [companyId])
       return true
     })
   }
