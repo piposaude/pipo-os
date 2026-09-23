@@ -1837,6 +1837,71 @@ describe('tickets routes', () => {
         })
         expect(ticket.json().assigneeId).toBe(ANA)
       })
+
+      const close = async (id: string, status: 'completed' | 'cancelled') => {
+        const closed = await app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${id}/status`,
+          payload: { status },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        expect(closed.statusCode).toBe(200)
+      }
+
+      const read = async (id: string) =>
+        (
+          await app.inject({
+            method: 'GET',
+            url: `/api/tickets/${id}`,
+            cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+          })
+        ).json()
+
+      it.each(['completed', 'cancelled'] as const)(
+        'refuses to change the assignee of a %s ticket',
+        async (status) => {
+          const id = await createTicket(ANA)
+          await close(id, status)
+
+          const response = await assign(id, BRUNO)
+
+          expect(response.statusCode).toBe(422)
+          expect(response.json()).toMatchObject({
+            error: 'UnprocessableEntityError',
+            message: `Ticket ${id} is already closed`,
+          })
+          expect((await read(id)).assigneeId).toBe(ANA)
+          expect(await eventsOf(id)).toEqual([])
+        },
+      )
+
+      it('refuses to remove the assignee of a closed ticket', async () => {
+        const id = await createTicket(ANA)
+        await close(id, 'completed')
+
+        expect((await assign(id, null)).statusCode).toBe(422)
+
+        expect((await read(id)).assigneeId).toBe(ANA)
+        expect(await eventsOf(id)).toEqual([])
+      })
+
+      it('still takes a change with no assignee on a closed ticket', async () => {
+        const id = await createTicket(ANA)
+        await close(id, 'completed')
+
+        const response = await app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${id}`,
+          payload: { priority: 'high' },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+
+        expect(response.statusCode).toBe(200)
+        expect(response.json().priority).toBe('high')
+        expect(await eventsOf(id)).toEqual([
+          expect.objectContaining({ eventType: 'priority_changed' }),
+        ])
+      })
     })
 
     describe('o pod', () => {
@@ -1853,6 +1918,46 @@ describe('tickets routes', () => {
 
       afterAll(async () => {
         await app.db.deleteFrom('ticket_groups').where('id', '=', pod).execute()
+      })
+
+      it('refuses the whole move when it carries an assignee to a closed ticket', async () => {
+        const created = await app.inject({
+          method: 'POST',
+          url: '/api/tickets',
+          payload: { ...validTicketBody, assigneeId: 'ana@pipo.health' },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        const { id, groupId } = created.json()
+        const closed = await app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${id}/status`,
+          payload: { status: 'completed' },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        expect(closed.statusCode).toBe(200)
+
+        const response = await app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${id}`,
+          payload: { groupId: pod, assigneeId: 'bruno@pipo.health' },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+
+        expect(response.statusCode).toBe(422)
+        const ticket = await app.inject({
+          method: 'GET',
+          url: `/api/tickets/${id}`,
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        expect(ticket.json()).toMatchObject({ groupId, assigneeId: 'ana@pipo.health' })
+        const timeline = await app.inject({
+          method: 'GET',
+          url: `/api/tickets/${id}/timeline`,
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        expect(
+          timeline.json().data.filter((item: { type: string }) => item.type === 'event'),
+        ).toEqual([])
       })
 
       const createTicket = async (): Promise<string> => {
