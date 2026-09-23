@@ -130,14 +130,14 @@ As rotas de `/api/auth/*` estão em [Autenticação](#autenticação). Contrato 
 
 **Pods (grupos)**
 
-| Método                 | Rota                                   | O que faz                                                                                        |
-| ---------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `GET` `POST`           | `/api/groups`                          | Lista e cria. A leitura traz `parentId`, a carteira de empresas e `members[]` com papel e ativo  |
-| `GET` `PATCH` `DELETE` | `/api/groups/:id`                      | Lê, renomeia e remove. O `DELETE` responde `409` dizendo qual dos cinco vínculos barrou          |
-| `PUT`                  | `/api/groups/:id/companies`            | Troca a carteira do pod pelo conjunto enviado. Empresa que já é de outro pod dá `409` com o dono |
-| `POST`                 | `/api/groups/:id/companies/:companyId` | Aloca uma empresa ao pod sem reenviar a carteira. Mesmo `409` do `PUT`                           |
-| `POST`                 | `/api/groups/:id/members`              | Adiciona pessoa ao pod, com papel `admin` (coordenação) ou `member` (analista)                   |
-| `PATCH` `DELETE`       | `/api/groups/:id/members/:memberId`    | Muda o papel e desativa a filiação (soft delete por `active`)                                    |
+| Método                 | Rota                                   | O que faz                                                                                                          |
+| ---------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `GET` `POST`           | `/api/groups`                          | Lista e cria. A leitura traz `parentId`, a carteira de empresas e `members[]` com papel e ativo                    |
+| `GET` `PATCH` `DELETE` | `/api/groups/:id`                      | Lê, renomeia e remove. O `DELETE` responde `409` dizendo qual dos cinco vínculos barrou                            |
+| `PUT`                  | `/api/groups/:id/companies`            | Troca a carteira do pod pelo conjunto enviado. Empresa que já é de outro pod dá `409` com o dono                   |
+| `POST`                 | `/api/groups/:id/companies/:companyId` | Aloca uma empresa ao pod sem reenviar a carteira. Mesmo `409` do `PUT`                                             |
+| `POST`                 | `/api/groups/:id/members`              | Adiciona pessoa ao pod, com papel `admin` (coordenação) ou `member` (analista) e a fatia da carteira que ela segue |
+| `PATCH` `DELETE`       | `/api/groups/:id/members/:memberId`    | Muda o papel, a fatia da carteira e desativa a filiação (soft delete por `active`)                                 |
 
 **Filas**
 
@@ -182,6 +182,8 @@ Um índice único parcial sobre `parent_id IS NULL` não coexiste com uma tabela
 O membro tem papel: `admin` é a coordenação do pod, `member` é a analista. `GET /api/groups` e `GET /api/groups/:id` devolvem, por grupo, `parentId`, a carteira de empresas (`companyIds`) e `members[]` com papel, ativo e a fatia da carteira que segue cada pessoa. Membro inativo continua na lista, sinalizado.
 
 Uma empresa pertence a um pod só — a PK de `ticket_group_companies` é `company_id`. `PUT /api/groups/:id/companies` recebe a carteira inteira e calcula, numa transação, o que entra e o que sai; o que sai leva junto a fatia de quem seguia aquela empresa. Se alguma empresa já é de outro pod, nada muda e o `409` nomeia o pod dono de cada uma, para a tela oferecer a troca. `POST /api/groups/:id/companies/:companyId` aloca uma empresa só, para o gesto de carteirar não reenviar a carteira inteira; alocar a mesma empresa de novo ao mesmo pod não é erro. As duas respondem o `GroupDetail`, como na leitura.
+
+A fatia de cada pessoa vai em `companyIds` no `POST` e no `PATCH` de membro: o `PATCH` troca a fatia pelo conjunto enviado e, sem o campo, a mantém. Empresa fora da carteira do pod dá `422` com `details` em `companyIds`, código `not_in_portfolio`, nomeando só as que estão fora — e nada da escrita fica. As duas rotas devolvem o membro com a fatia.
 
 A listagem continua paginada (`pageSize` padrão 20, máximo 100) e ordenada da mais nova para a mais antiga — que é a ordem em que a raiz sai por último. Quem monta a árvore precisa do conjunto inteiro: um `pageSize` que cubra `total`, ou paginar até fechá-lo. Uma página sozinha traz filhos cujo `parentId` ficou de fora, e uma montagem que confia numa página só os descarta calada. `POST` e `PATCH` devolvem o grupo sem `companyIds` e sem `members`, porque nenhum dos dois mexe nessas relações — o cliente atualiza o nó que já tem em mãos, sem refazer o `GET`.
 

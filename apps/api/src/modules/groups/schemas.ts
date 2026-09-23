@@ -5,6 +5,11 @@ import { z } from 'zod'
 const trimmedInput = (): z.ZodString =>
   z.string().trim().min(1).describe('Trimmed before validation: whitespace only is rejected.')
 
+export const companyIdsSchema = z
+  .array(z.uuid())
+  .max(1000)
+  .refine((ids) => new Set(ids).size === ids.length, { message: 'Company ids must be unique' })
+
 export const groupSchema = z
   .object({
     id: z.uuid(),
@@ -32,6 +37,7 @@ export const groupMemberSchema = z
     userId: z.string().min(1),
     role: memberRoleSchema,
     active: z.boolean(),
+    companyIds: z.array(z.uuid()),
     createdAt: z.iso.datetime(),
   })
   .meta({ id: 'GroupMember' })
@@ -92,6 +98,7 @@ export const addMemberBodySchema = z
   .object({
     userId: trimmedInput().max(255),
     role: memberRoleSchema.optional(),
+    companyIds: companyIdsSchema.optional(),
   })
   .strict()
   .meta({ id: 'AddGroupMemberBody' })
@@ -100,17 +107,13 @@ export const updateMemberBodySchema = z
   .object({
     active: z.boolean().optional(),
     role: memberRoleSchema.optional(),
+    companyIds: companyIdsSchema.optional(),
   })
   .strict()
-  .refine((d) => d.active !== undefined || d.role !== undefined, {
+  .refine((d) => d.active !== undefined || d.role !== undefined || d.companyIds !== undefined, {
     message: 'At least one field is required',
   })
   .meta({ id: 'UpdateGroupMemberBody' })
-
-export const companyIdsSchema = z
-  .array(z.uuid())
-  .max(1000)
-  .refine((ids) => new Set(ids).size === ids.length, { message: 'Company ids must be unique' })
 
 export const replaceCompaniesBodySchema = z
   .object({ companyIds: companyIdsSchema })

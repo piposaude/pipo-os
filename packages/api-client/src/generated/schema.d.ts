@@ -804,6 +804,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Default Response */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -955,6 +964,15 @@ export interface paths {
                 };
                 /** @description Default Response */
                 415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2517,6 +2535,7 @@ export interface components {
             /** @description Trimmed before validation: whitespace only is rejected. */
             userId: string;
             role?: components["schemas"]["GroupMemberRoleInput"];
+            companyIds?: string[];
         };
         AuthMe: {
             sub: string | null;
@@ -2689,6 +2708,7 @@ export interface components {
             userId: string;
             role: components["schemas"]["GroupMemberRole"];
             active: boolean;
+            companyIds: string[];
             /** Format: date-time */
             createdAt: string;
         };
@@ -2991,6 +3011,7 @@ export interface components {
         UpdateGroupMemberBodyInput: {
             active?: boolean;
             role?: components["schemas"]["GroupMemberRoleInput"];
+            companyIds?: string[];
         };
         UpdateQueueBodyInput: {
             name?: string;

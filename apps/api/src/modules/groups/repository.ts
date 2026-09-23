@@ -2,7 +2,7 @@ import { sql, type Kysely, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { TicketGroupMembers, TicketGroups } from '../../infrastructure/db-types.js'
 import { ADVISORY_LOCKS } from '../../shared/advisory-locks.js'
-import { ConflictError, NotFoundError } from '../../shared/errors.js'
+import { ConflictError, NotFoundError, ValidationFailedError } from '../../shared/errors.js'
 import { FK_VIOLATION } from '../../shared/pg.js'
 import type { GroupNode } from './hierarchy.js'
 import type {
@@ -85,15 +85,87 @@ async function carryCompanies(
   }
 }
 
-function toMember(row: Selectable<TicketGroupMembers>): GroupMember {
+function toMember(row: Selectable<TicketGroupMembers>, companyIds: string[]): GroupMember {
   return {
     groupId: row.group_id,
     userId: row.user_id,
     // The column is text; the CHECK of migration 0024 is what narrows it.
     role: row.role as MemberRole,
     active: row.active,
+    companyIds,
     createdAt: row.created_at.toISOString(),
   }
+}
+
+function outsidePortfolio(companyIds: readonly string[]): ValidationFailedError {
+  const message = `Companies outside the portfolio of the group: ${companyIds.join(', ')}`
+  return new ValidationFailedError(message, [
+    { field: 'companyIds', message, code: 'not_in_portfolio' },
+  ])
+}
+
+async function assertInPortfolio(
+  db: Kysely<Database>,
+  groupId: string,
+  companyIds: readonly string[],
+): Promise<void> {
+  if (companyIds.length === 0) return
+  const carried = await db
+    .selectFrom('ticket_group_companies')
+    .select('company_id')
+    .where('group_id', '=', groupId)
+    .where('company_id', 'in', companyIds)
+    .execute()
+  const inside = new Set(carried.map((row) => row.company_id))
+  const outside = companyIds.filter((id) => !inside.has(id))
+  if (outside.length > 0) throw outsidePortfolio(outside)
+}
+
+async function replaceSlice(
+  db: Kysely<Database>,
+  groupId: string,
+  userId: string,
+  companyIds: readonly string[],
+): Promise<void> {
+  await assertInPortfolio(db, groupId, companyIds)
+
+  await db
+    .deleteFrom('ticket_group_member_companies')
+    .where('group_id', '=', groupId)
+    .where('user_id', '=', userId)
+    .$if(companyIds.length > 0, (q) => q.where('company_id', 'not in', companyIds))
+    .execute()
+
+  if (companyIds.length === 0) return
+  try {
+    await db
+      .insertInto('ticket_group_member_companies')
+      .values(
+        companyIds.map((companyId) => ({
+          group_id: groupId,
+          user_id: userId,
+          company_id: companyId,
+        })),
+      )
+      .onConflict((oc) => oc.columns(['group_id', 'user_id', 'company_id']).doNothing())
+      .execute()
+  } catch (err) {
+    if (err instanceof Error && 'code' in err && err.code === FK_VIOLATION) {
+      throw outsidePortfolio(companyIds)
+    }
+    throw err
+  }
+}
+
+async function sliceOf(db: Kysely<Database>, groupId: string, userId: string): Promise<string[]> {
+  const rows = await db
+    .selectFrom('ticket_group_member_companies')
+    .select('company_id')
+    .where('group_id', '=', groupId)
+    .where('user_id', '=', userId)
+    .orderBy('company_id')
+    .execute()
+  return rows.map((row) => row.company_id)
 }
 
 export interface GroupsRepositoryPort {
@@ -301,26 +373,30 @@ export interface GroupMembersRepositoryPort {
 export class GroupMembersRepository implements GroupMembersRepositoryPort {
   constructor(private readonly db: Kysely<Database>) {}
 
-  async add(groupId: string, { userId, role }: AddMemberBody): Promise<GroupMember> {
-    try {
-      const row = await this.db
-        .insertInto('ticket_group_members')
-        .values({ group_id: groupId, user_id: userId, ...(role !== undefined && { role }) })
-        .onConflict((oc) => oc.columns(['group_id', 'user_id']).doNothing())
-        .returningAll()
-        .executeTakeFirst()
+  add(groupId: string, { userId, role, companyIds = [] }: AddMemberBody): Promise<GroupMember> {
+    return this.db.transaction().execute(async (trx) => {
+      let row: Selectable<TicketGroupMembers> | undefined
+      try {
+        row = await trx
+          .insertInto('ticket_group_members')
+          .values({ group_id: groupId, user_id: userId, ...(role !== undefined && { role }) })
+          .onConflict((oc) => oc.columns(['group_id', 'user_id']).doNothing())
+          .returningAll()
+          .executeTakeFirst()
+      } catch (err) {
+        if (err instanceof Error && 'code' in err && err.code === FK_VIOLATION) {
+          throw new NotFoundError(`Group ${groupId} not found`)
+        }
+        throw err
+      }
 
       if (!row) {
         throw new ConflictError(`User ${userId} is already a member of group ${groupId}`)
       }
 
-      return toMember(row)
-    } catch (err) {
-      if (err instanceof Error && 'code' in err && err.code === FK_VIOLATION) {
-        throw new NotFoundError(`Group ${groupId} not found`)
-      }
-      throw err
-    }
+      await replaceSlice(trx, groupId, userId, companyIds)
+      return toMember(row, await sliceOf(trx, groupId, userId))
+    })
   }
 
   // Active only: a deactivated membership is history, and reading it as current
@@ -347,22 +423,34 @@ export class GroupMembersRepository implements GroupMembersRepositoryPort {
     return (result?.numDeletedRows ?? 0n) > 0n
   }
 
-  async update(
+  update(
     groupId: string,
     userId: string,
-    data: UpdateMemberBody,
+    { active, role, companyIds }: UpdateMemberBody,
   ): Promise<GroupMember | undefined> {
-    const row = await this.db
-      .updateTable('ticket_group_members')
-      .set({
-        ...(data.active !== undefined && { active: data.active }),
-        ...(data.role !== undefined && { role: data.role }),
-      })
-      .where('group_id', '=', groupId)
-      .where('user_id', '=', userId)
-      .returningAll()
-      .executeTakeFirst()
+    return this.db.transaction().execute(async (trx) => {
+      const row =
+        active === undefined && role === undefined
+          ? await trx
+              .selectFrom('ticket_group_members')
+              .selectAll()
+              .where('group_id', '=', groupId)
+              .where('user_id', '=', userId)
+              .executeTakeFirst()
+          : await trx
+              .updateTable('ticket_group_members')
+              .set({
+                ...(active !== undefined && { active }),
+                ...(role !== undefined && { role }),
+              })
+              .where('group_id', '=', groupId)
+              .where('user_id', '=', userId)
+              .returningAll()
+              .executeTakeFirst()
 
-    return row ? toMember(row) : undefined
+      if (!row) return undefined
+      if (companyIds !== undefined) await replaceSlice(trx, groupId, userId, companyIds)
+      return toMember(row, await sliceOf(trx, groupId, userId))
+    })
   }
 }

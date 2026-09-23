@@ -1585,6 +1585,139 @@ describe('groups routes', () => {
     })
   })
 
+  describe('the slice of the portfolio a person follows', () => {
+    const ANA = 'ana@pipo.health'
+
+    const podCarrying = async (...companyIds: string[]): Promise<string> => {
+      const pod = await createGroup('POD 3')
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/api/groups/${pod}/companies`,
+        payload: { companyIds },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(response.statusCode).toBe(200)
+      return pod
+    }
+
+    const addMember = (groupId: string, payload: object) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/groups/${groupId}/members`,
+        payload,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+    const updateMember = (groupId: string, payload: object) =>
+      app.inject({
+        method: 'PATCH',
+        url: `/api/groups/${groupId}/members/${ANA}`,
+        payload,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+    const sliceOf = async (groupId: string): Promise<string[] | undefined> => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/groups/${groupId}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      return response.json().members.find((m: { userId: string }) => m.userId === ANA)?.companyIds
+    }
+
+    it('adds a person already following part of the portfolio', async () => {
+      const pod = await podCarrying(COMPANY_A, COMPANY_B)
+
+      const response = await addMember(pod, { userId: ANA, companyIds: [COMPANY_B] })
+
+      expect(response.statusCode).toBe(201)
+      expect(response.json().companyIds).toEqual([COMPANY_B])
+      expect(await sliceOf(pod)).toEqual([COMPANY_B])
+    })
+
+    it('adds a person with an empty slice when the body leaves it out', async () => {
+      const pod = await podCarrying(COMPANY_A)
+
+      const response = await addMember(pod, { userId: ANA })
+
+      expect(response.json().companyIds).toEqual([])
+    })
+
+    it('answers 422 on companyIds when the slice leaves the portfolio, and adds no one', async () => {
+      const pod = await podCarrying(COMPANY_A)
+
+      const response = await addMember(pod, { userId: ANA, companyIds: [COMPANY_A, COMPANY_B] })
+
+      expect(response.statusCode).toBe(422)
+      expect(response.json().details).toEqual([
+        {
+          field: 'companyIds',
+          message: expect.stringContaining(COMPANY_B),
+          code: 'not_in_portfolio',
+        },
+      ])
+      expect(response.json().message).not.toContain(COMPANY_A)
+      expect(await sliceOf(pod)).toBeUndefined()
+    })
+
+    it('returns 400 when the slice repeats a company', async () => {
+      const pod = await podCarrying(COMPANY_A)
+
+      const response = await addMember(pod, { userId: ANA, companyIds: [COMPANY_A, COMPANY_A] })
+
+      expect(response.statusCode).toBe(400)
+    })
+
+    it('replaces the slice with the set sent', async () => {
+      const pod = await podCarrying(COMPANY_A, COMPANY_B)
+      await addMember(pod, { userId: ANA, companyIds: [COMPANY_A] })
+
+      const response = await updateMember(pod, { companyIds: [COMPANY_B] })
+
+      expect(response.statusCode).toBe(200)
+      expect(response.json().companyIds).toEqual([COMPANY_B])
+      expect(await sliceOf(pod)).toEqual([COMPANY_B])
+    })
+
+    it('keeps the slice when the update only changes the role', async () => {
+      const pod = await podCarrying(COMPANY_A)
+      await addMember(pod, { userId: ANA, companyIds: [COMPANY_A] })
+
+      const response = await updateMember(pod, { role: 'admin' })
+
+      expect(response.statusCode).toBe(200)
+      expect(response.json()).toMatchObject({ role: 'admin', companyIds: [COMPANY_A] })
+    })
+
+    it('answers 422 on companyIds when the new slice leaves the portfolio, and keeps the old one', async () => {
+      const pod = await podCarrying(COMPANY_A)
+      await addMember(pod, { userId: ANA, companyIds: [COMPANY_A] })
+
+      const response = await updateMember(pod, { role: 'admin', companyIds: [COMPANY_B] })
+
+      expect(response.statusCode).toBe(422)
+      expect(response.json().details[0]).toMatchObject({
+        field: 'companyIds',
+        code: 'not_in_portfolio',
+      })
+      expect(await sliceOf(pod)).toEqual([COMPANY_A])
+      const detail = await app.inject({
+        method: 'GET',
+        url: `/api/groups/${pod}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      expect(detail.json().members[0].role).toBe('member')
+    })
+
+    it('returns 404 when the person is not a member of the group', async () => {
+      const pod = await podCarrying(COMPANY_A)
+
+      const response = await updateMember(pod, { companyIds: [COMPANY_A] })
+
+      expect(response.statusCode).toBe(404)
+    })
+  })
+
   describe('the structure policy', () => {
     let withoutPolicy: string
     let withTicketPolicy: string
