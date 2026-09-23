@@ -4,7 +4,7 @@ import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/rea
 import { routeTree } from '@/routeTree.gen'
 import constants from '@/constants/pages/pipodesk/team'
 import sidebarConstants from '@/constants/pipodesk/sidebar'
-import { holdGet } from '../../helpers/api'
+import { holdGet, truncatedRowsRoute } from '../../helpers/api'
 
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
@@ -118,6 +118,19 @@ describe('home do pod', () => {
 
     release()
     expect(await screen.findByRole('heading', { level: 1, name: 'POD 1' })).toBeInTheDocument()
+  })
+
+  it('should warn that the counts are partial when the base held more than came', async () => {
+    desk.restore()
+    desk = (await import('../../helpers/desk')).mountDeskFixture(
+      {},
+      { '/api/tickets/rows': truncatedRowsRoute(99_999) },
+    )
+    await renderAt('/teams/pod-1')
+
+    expect(await screen.findByText(/Mostrando um recorte/)).toHaveTextContent(
+      'contagens deste time valem só para o que está aqui',
+    )
   })
 
   it('should say plainly when the group does not exist, instead of rendering an empty page', async () => {

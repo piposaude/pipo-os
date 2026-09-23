@@ -47,7 +47,7 @@ export default function TeamPage() {
   /* `validateSearch` already restricted this to the two tabs or nothing —
      re-checking here would be a second source of truth for the same rule. */
   const { tab = 'home' } = useSearch({ from: '/_auth/_desk/teams/$groupId' })
-  const { structure, structurePending, rows, resolveName, today } = useDesk()
+  const { structure, structurePending, rows, rowsTotal, resolveName, today } = useDesk()
 
   const group = structure.groups.find((candidate) => candidate.id === groupId)
 
@@ -150,6 +150,12 @@ export default function TeamPage() {
                      people hunt for a button that does not exist. */}
         <p className={styles.acao}>{constants.editableBy(group.name)}</p>
       </header>
+
+      {rowsTotal > rows.length && (
+        <p className={styles.truncated} role="status">
+          {constants.truncated(rows.length, rowsTotal)}
+        </p>
+      )}
 
       {/* `note`, not `status`: the count is fixed at load, and a live region with
                nothing to announce competes with the text for the accessible name. */}

@@ -174,7 +174,9 @@ describe('a árvore da sidebar vem do banco', () => {
     await userEvent.click(within(sidebar()).getByRole('button', { name: /Expandir POD 9/i }))
     await userEvent.click(within(sidebar()).getByRole('button', { name: /Expandir MOV CLT/i }))
 
-    expect(await within(sidebar()).findByRole('button', { name: /^Ana\b/ })).toBeInTheDocument()
+    expect(
+      await within(sidebar()).findByRole('button', { name: /^Ana\s*\d+$/ }),
+    ).toBeInTheDocument()
   })
 
   it('should avisar que a fila é um recorte quando o banco tem mais do que coube', async () => {
@@ -223,9 +225,10 @@ describe('a árvore da sidebar vem do banco', () => {
 
     await within(sidebar()).findByRole('button', { name: /^POD 9/ })
 
-    await expect
-      .poll(() => (router.state.location.search as { node?: string }).node)
-      .toBe(`node-${POD_ID}`)
+    expect(await screen.findByRole('status', { name: 'Total da fila' })).toHaveTextContent(
+      /em POD 9$/,
+    )
+    expect((router.state.location.search as { node?: string }).node).toBe(`node-${POD_ID}`)
   })
 
   it('should desenhar as visões salvas que o banco carrega', async () => {

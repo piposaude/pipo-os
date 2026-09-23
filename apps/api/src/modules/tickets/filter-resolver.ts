@@ -108,8 +108,8 @@ export const FIELD_RESOLVERS: Record<keyof TicketReadFilter, Resolver> = {
     contractTypes?.length ? translatedIn(eb, 'contract_type', contractTypes) : null,
   relationships: (eb, { relationships }) =>
     relationships?.length ? eb('relationship', 'in', relationships) : null,
-  // Still `source_system`, not the `origin` column: nobody writes `origin` yet,
-  // so switching now would empty the filter. Moves when a producer fills it.
+  // Still `source_system`: the create route accepts `origin`, but no producer
+  // sends it yet, so switching now would empty the filter.
   origins: (eb, { origins }) => (origins?.length ? eb('source_system', 'in', origins) : null),
   groupIds: (eb, { groupIds }) => (groupIds?.length ? eb('group_id', 'in', groupIds) : null),
   // `@>` is contains, not `&&`: the contract asks for every tag listed, while

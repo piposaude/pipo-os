@@ -153,6 +153,9 @@ export function fixtureRowsRoute(): string {
   return rowsBody
 }
 
+export const truncatedRowsRoute = (total: number): string =>
+  JSON.stringify({ ...JSON.parse(fixtureRowsRoute()), total })
+
 export function fixtureUsersRoute(): unknown {
   return {
     data: Object.entries(FIXTURE_USER_NAMES).map(([userId, name]) => ({

@@ -14,7 +14,7 @@ import { analystsOf } from '@/lib/pipodesk/permissions'
 import { records } from '@/fixtures/pipodesk/records'
 import constants from '@/constants/pages/pipodesk/ticket'
 import copyButton from '@/constants/pipodesk/copy-button'
-import { holdGet } from '../../helpers/api'
+import { holdGet, truncatedRowsRoute } from '../../helpers/api'
 
 /**
  * The first drawn row — the table is virtualized, so only the visible window
@@ -388,6 +388,18 @@ describe('detalhe do chamado', () => {
     await renderAt('/tickets/000000')
 
     expect(await screen.findByText(/não existe chamado com o id/i)).toBeInTheDocument()
+  })
+
+  it('should not claim the id does not exist when the rows were cut at the limit', async () => {
+    desk.restore()
+    desk = (await import('../../helpers/desk')).mountDeskFixture(
+      {},
+      { '/api/tickets/rows': truncatedRowsRoute(99_999) },
+    )
+    await renderAt('/tickets/000000')
+
+    expect(await screen.findByText(/não está no recorte carregado/i)).toBeInTheDocument()
+    expect(screen.queryByText(/não existe chamado com o id/i)).not.toBeInTheDocument()
   })
 
   /**

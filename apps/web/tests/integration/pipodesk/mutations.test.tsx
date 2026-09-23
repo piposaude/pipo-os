@@ -31,12 +31,26 @@ afterEach(() => {
 
 const colega = ANALYSTS_BY_POD[VIEWER_GROUP_ID].find((id) => id !== VIEWER_ID)!
 
+/** The bar's own count: the table is virtualized, so the checked boxes in the
+ *  DOM are only the visible window of the selection. */
+const selectedCount = (barra: HTMLElement) =>
+  Number(
+    within(barra)
+      .getByText(/selecionados?$/)
+      .textContent!.replace(/\D/g, ''),
+  )
+
+const writtenIds = (paths: string[]) =>
+  new Set(paths.map((path) => path.replace(/^\/api\/tickets\//, '').replace(/\/status$/, '')))
+
 async function reassignAll(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('checkbox', { name: /selecionar todos/i }))
   const barra = await screen.findByRole('group', { name: 'Ações em lote' })
+  const selected = selectedCount(barra)
   await user.click(within(barra).getByRole('button', { name: 'Ações' }))
   await user.click(screen.getByRole('button', { name: 'Reatribuir' }))
   await user.click(await screen.findByRole('button', { name: FIXTURE_USER_NAMES[colega] }))
+  return selected
 }
 
 describe('o que a tela muda, a API grava', () => {
@@ -55,13 +69,14 @@ describe('o que a tela muda, a API grava', () => {
 
   it('should mandar o novo responsável para a API, um PATCH por chamado', async () => {
     await renderQueue()
-    await reassignAll(userEvent.setup())
+    const selected = await reassignAll(userEvent.setup())
 
     const writes = desk.calls.filter((call) => call.method === 'PATCH')
 
-    expect(writes.length).toBeGreaterThan(0)
-    expect(writes[0].path).toMatch(/^\/api\/tickets\//)
-    expect(writes[0].body).toEqual({ assigneeId: colega })
+    expect(selected).toBeGreaterThan(1)
+    expect(writes).toHaveLength(selected)
+    expect(writtenIds(writes.map((call) => call.path)).size).toBe(selected)
+    expect(writes.map((call) => call.body)).toEqual(writes.map(() => ({ assigneeId: colega })))
   })
 
   it('should desfazer na tela o que a API recusou, em vez de mentir que gravou', async () => {
@@ -95,12 +110,18 @@ describe('o que a tela muda, a API grava', () => {
     await user.click(screen.getByRole('checkbox', { name: /selecionar todos/i }))
     const barra = await screen.findByRole('group', { name: 'Ações em lote' })
     await user.click(within(barra).getByRole('button', { name: 'Ações' }))
+    const selected = selectedCount(barra)
     await user.click(screen.getByRole('button', { name: 'Mudar status' }))
     await user.click(await screen.findByRole('button', { name: /Na operadora/ }))
+    const kept = Number(screen.queryByText(/em estado final/)?.textContent?.match(/^\d+/)?.[0] ?? 0)
 
     const status = desk.calls.filter((call) => call.path.endsWith('/status'))
 
-    expect(status.length).toBeGreaterThan(0)
-    expect(status[0].body).toEqual({ status: 'carrier-processing' })
+    expect(selected - kept).toBeGreaterThan(1)
+    expect(status).toHaveLength(selected - kept)
+    expect(writtenIds(status.map((call) => call.path)).size).toBe(selected - kept)
+    expect(status.map((call) => call.body)).toEqual(
+      status.map(() => ({ status: 'carrier-processing' })),
+    )
   })
 })
