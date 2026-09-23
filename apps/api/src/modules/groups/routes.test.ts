@@ -695,9 +695,9 @@ describe('groups routes', () => {
       const response = await putCompanies(pod5, [COMPANY_A])
 
       expect(response.statusCode).toBe(409)
-      expect(response.json().message).toContain('POD 3')
-      expect(response.json().message).toContain(pod3)
-      expect(response.json().message).toContain(COMPANY_A)
+      expect(response.json().owners).toEqual([
+        { companyId: COMPANY_A, groupId: pod3, groupName: 'POD 3' },
+      ])
     })
 
     it('leaves the portfolio as it was when the set is refused', async () => {
@@ -797,8 +797,9 @@ describe('groups routes', () => {
       const response = await carry(pod5, COMPANY_A)
 
       expect(response.statusCode).toBe(409)
-      expect(response.json().message).toContain('POD 3')
-      expect(response.json().message).toContain(pod3)
+      expect(response.json().owners).toEqual([
+        { companyId: COMPANY_A, groupId: pod3, groupName: 'POD 3' },
+      ])
     })
 
     it('returns 404 for non-existent group', async () => {

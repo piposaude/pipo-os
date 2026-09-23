@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { errorResponseSchema } from '../../shared/schemas.js'
 
 /** `"   "` satisfies the `minLength: 1` that OpenAPI can express and fails the
  *  `.trim()` that it cannot — hence the description. */
@@ -120,6 +121,14 @@ export const replaceCompaniesBodySchema = z
   .strict()
   .meta({ id: 'ReplaceGroupCompaniesBody' })
 
+export const companyOwnerSchema = z
+  .object({ companyId: z.uuid(), groupId: z.uuid(), groupName: z.string() })
+  .meta({ id: 'GroupCompanyOwner' })
+
+export const companyCarriedConflictSchema = errorResponseSchema
+  .extend({ owners: z.array(companyOwnerSchema) })
+  .meta({ id: 'GroupCompanyConflict' })
+
 export const listGroupsQuerySchema = z.object({
   name: z.string().optional(),
   page: z.coerce.number().int().min(1).max(10_000).default(1),
@@ -147,5 +156,6 @@ export type UpdateGroupBody = z.infer<typeof updateGroupBodySchema>
 export type AddMemberBody = z.infer<typeof addMemberBodySchema>
 export type UpdateMemberBody = z.infer<typeof updateMemberBodySchema>
 export type ReplaceCompaniesBody = z.infer<typeof replaceCompaniesBodySchema>
+export type CompanyOwner = z.infer<typeof companyOwnerSchema>
 export type ListGroupsQuery = z.infer<typeof listGroupsQuerySchema>
 export type GroupList = z.infer<typeof groupListSchema>

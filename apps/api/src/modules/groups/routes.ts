@@ -1,11 +1,13 @@
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { requireUserId } from '../auth/authenticate.js'
 import { errorResponseSchema } from '../../shared/schemas.js'
 import { STRUCTURE_POLICY } from '../auth/policy.js'
+import { CompanyCarriedConflictError } from './errors.js'
 import {
   addMemberBodySchema,
+  companyCarriedConflictSchema,
   companyParamsSchema,
   createGroupBodySchema,
   groupDetailSchema,
@@ -20,6 +22,21 @@ import {
   updateMemberBodySchema,
 } from './schemas.js'
 import type { GroupsService } from './service.js'
+
+// The shared handler serializes error, message and details only.
+async function withOwners<T>(
+  reply: FastifyReply,
+  write: () => Promise<T>,
+): Promise<T | FastifyReply> {
+  try {
+    return await write()
+  } catch (err) {
+    if (err instanceof CompanyCarriedConflictError) {
+      return reply.status(409).send({ error: err.name, message: err.message, owners: err.owners })
+    }
+    throw err
+  }
+}
 
 export function registerGroupRoutes(app: FastifyInstance, service: GroupsService): void {
   const server = app.withTypeProvider<ZodTypeProvider>()
@@ -126,14 +143,16 @@ export function registerGroupRoutes(app: FastifyInstance, service: GroupsService
           401: errorResponseSchema,
           403: errorResponseSchema,
           404: errorResponseSchema,
-          409: errorResponseSchema,
+          409: companyCarriedConflictSchema,
           413: errorResponseSchema,
           415: errorResponseSchema,
         },
       },
     },
-    async (request) => {
-      return service.replaceCompanies(request.params.id, request.body.companyIds)
+    async (request, reply) => {
+      return withOwners(reply, () =>
+        service.replaceCompanies(request.params.id, request.body.companyIds),
+      )
     },
   )
 
@@ -149,12 +168,14 @@ export function registerGroupRoutes(app: FastifyInstance, service: GroupsService
           401: errorResponseSchema,
           403: errorResponseSchema,
           404: errorResponseSchema,
-          409: errorResponseSchema,
+          409: companyCarriedConflictSchema,
         },
       },
     },
-    async (request) => {
-      return service.carryCompany(request.params.id, request.params.companyId)
+    async (request, reply) => {
+      return withOwners(reply, () =>
+        service.carryCompany(request.params.id, request.params.companyId),
+      )
     },
   )
 

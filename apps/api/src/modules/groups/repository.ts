@@ -4,6 +4,7 @@ import type { TicketGroupMembers, TicketGroups } from '../../infrastructure/db-t
 import { ADVISORY_LOCKS } from '../../shared/advisory-locks.js'
 import { ConflictError, NotFoundError, ValidationFailedError } from '../../shared/errors.js'
 import { FK_VIOLATION } from '../../shared/pg.js'
+import { CompanyCarriedConflictError } from './errors.js'
 import type { GroupNode } from './hierarchy.js'
 import type {
   AddMemberBody,
@@ -81,7 +82,10 @@ async function carryCompanies(
 
   if (owners.length > 0) {
     const taken = owners.map((o) => `${o.company_id} belongs to ${o.name} (${o.id})`)
-    throw new ConflictError(`Companies already carried by another group: ${taken.join('; ')}`)
+    throw new CompanyCarriedConflictError(
+      `Companies already carried by another group: ${taken.join('; ')}`,
+      owners.map((o) => ({ companyId: o.company_id, groupId: o.id, groupName: o.name })),
+    )
   }
 }
 

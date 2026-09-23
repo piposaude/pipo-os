@@ -595,7 +595,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": components["schemas"]["GroupCompanyConflict"];
                     };
                 };
                 /** @description Default Response */
@@ -697,7 +697,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": components["schemas"]["GroupCompanyConflict"];
                     };
                 };
             };
@@ -2675,6 +2675,19 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        GroupCompanyConflict: {
+            error: string;
+            message: string;
+            details?: components["schemas"]["ErrorDetail"][];
+            owners: components["schemas"]["GroupCompanyOwner"][];
+        };
+        GroupCompanyOwner: {
+            /** Format: uuid */
+            companyId: string;
+            /** Format: uuid */
+            groupId: string;
+            groupName: string;
         };
         GroupDetail: {
             /** Format: uuid */
