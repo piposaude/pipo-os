@@ -10,14 +10,6 @@ import { DISPLAY_STATUS_COPY, PENDING_REASON_COPY } from '@/constants/pipodesk/s
 import { formatCount } from '@/lib/pipodesk/format'
 import styles from './Queue.module.css'
 
-/** A pod and its analysts, for "move to portfolio". Built by whoever holds
- *  the structure — an action bar is no place to derive the org. */
-export interface PodOption {
-  id: string
-  name: string
-  analysts: { id: string; name: string }[]
-}
-
 export interface BatchBarProps {
   selectedCount: number
   matchingCount: number
@@ -26,13 +18,10 @@ export interface BatchBarProps {
   onClear: () => void
   analysts: { id: string; name: string }[]
   onAssign: (userId: string | null) => void
-  pods: PodOption[]
-  onMoveToPod: (groupId: string, userId: string | null) => void
   onStatus: (status: ApiStatus) => void
-  onSchedule: (date: string | null) => void
 }
 
-type Screen = 'root' | 'assign' | 'move' | 'status' | 'schedule' | { pod: PodOption }
+type Screen = 'root' | 'assign' | 'status'
 
 const statusLabel = (status: ApiStatus): string => {
   const display = toDisplayStatus(status)
@@ -44,8 +33,11 @@ const statusLabel = (status: ApiStatus): string => {
  * Batch bar: the compact pill (count · Ações · ×) pinned to the bottom, shown
  * only while something is selected. "Select all N matching" sits on top,
  * separated: it changes the selection's scope, not the selection — and the
- * number is literal. Comment/complete are absent (PD-040/PD-031), not
- * disabled: a grayed menu item with no visible reason only frustrates.
+ * number is literal.
+ *
+ * Absent, not disabled — a grayed item with no visible reason only frustrates:
+ * comment and complete (PD-040/PD-031), move-to-pod (PD-052) and schedule
+ * (PD-106).
  */
 export function BatchBar({
   selectedCount,
@@ -55,15 +47,11 @@ export function BatchBar({
   onClear,
   analysts,
   onAssign,
-  pods,
-  onMoveToPod,
   onStatus,
-  onSchedule,
 }: BatchBarProps) {
   const [open, setOpen] = useState(false)
   const trigger = useRef<HTMLButtonElement>(null)
   const [screen, setScreen] = useState<Screen>('root')
-  const [date, setDate] = useState('')
 
   if (selectedCount === 0) return null
 
@@ -73,7 +61,6 @@ export function BatchBar({
   const close = () => {
     setOpen(false)
     setScreen('root')
-    setDate('')
   }
 
   const act = (run: () => void) => {
@@ -126,9 +113,7 @@ export function BatchBar({
                     </>
                   )}
                   {item('Reatribuir', () => setScreen('assign'))}
-                  {pods.length > 0 && item('Mover para carteira', () => setScreen('move'))}
                   {item('Mudar status', () => setScreen('status'))}
-                  {item('Agendar', () => setScreen('schedule'))}
                 </>
               )}
 
@@ -151,48 +136,6 @@ export function BatchBar({
                 </>
               )}
 
-              {screen === 'move' && (
-                <>
-                  <div className={styles.panelHead}>
-                    <button
-                      type="button"
-                      className={styles.panelBack}
-                      onClick={() => setScreen('root')}
-                    >
-                      Voltar
-                    </button>
-                    <span>Mover para carteira</span>
-                  </div>
-                  {pods.map((pod) => item(pod.name, () => setScreen({ pod }), pod.id))}
-                </>
-              )}
-
-              {typeof screen === 'object' && (
-                <>
-                  <div className={styles.panelHead}>
-                    <button
-                      type="button"
-                      className={styles.panelBack}
-                      onClick={() => setScreen('move')}
-                    >
-                      Voltar
-                    </button>
-                    <span>{screen.pod.name}</span>
-                  </div>
-                  {/* `null` = arrives free in the receiving pod — its rotation decides. */}
-                  {item(`Livre em ${screen.pod.name}`, () =>
-                    act(() => onMoveToPod(screen.pod.id, null)),
-                  )}
-                  {screen.pod.analysts.map((analyst) =>
-                    item(
-                      analyst.name,
-                      () => act(() => onMoveToPod(screen.pod.id, analyst.id)),
-                      analyst.id,
-                    ),
-                  )}
-                </>
-              )}
-
               {screen === 'status' && (
                 <>
                   <div className={styles.panelHead}>
@@ -210,37 +153,6 @@ export function BatchBar({
                   {API_STATUSES.filter((status) => !FINAL_STATUSES.includes(status)).map((status) =>
                     item(statusLabel(status), () => act(() => onStatus(status)), status),
                   )}
-                </>
-              )}
-
-              {screen === 'schedule' && (
-                <>
-                  <div className={styles.panelHead}>
-                    <button
-                      type="button"
-                      className={styles.panelBack}
-                      onClick={() => setScreen('root')}
-                    >
-                      Voltar
-                    </button>
-                    <span>Agendar</span>
-                  </div>
-                  <input
-                    type="date"
-                    aria-label="Data da ação"
-                    className={styles.panelSearch}
-                    value={date}
-                    onChange={(event) => setDate(event.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className={styles.panelItem}
-                    disabled={date === ''}
-                    onClick={() => act(() => onSchedule(date))}
-                  >
-                    Agendar para {date || '—'}
-                  </button>
-                  {item('Remover agendamento', () => act(() => onSchedule(null)))}
                 </>
               )}
             </div>

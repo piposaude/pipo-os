@@ -4,12 +4,18 @@ import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/rea
 import { routeTree } from '@/routeTree.gen'
 import constants from '@/constants/pages/pipodesk/team'
 import sidebarConstants from '@/constants/pipodesk/sidebar'
+import { holdGet, truncatedRowsRoute } from '../../helpers/api'
 
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
+let desk: import('../../helpers/api').ApiMock
+
 beforeEach(async () => {
-  const { signInAsFixtureViewer } = await import('../../helpers/auth')
-  signInAsFixtureViewer()
+  desk = (await import('../../helpers/desk')).mountDeskFixture()
+})
+
+afterEach(() => {
+  desk.restore()
 })
 
 async function renderAt(path: string) {
@@ -101,6 +107,30 @@ describe('home do pod', () => {
     await user.click(within(sidebar).getByRole('link', { name: 'Home' }))
 
     expect(router.state.location.pathname).toBe('/teams/pod-1')
+  })
+
+  it('should wait for the pods before saying the group does not exist', async () => {
+    const release = holdGet('/api/groups')
+    await renderAt('/teams/pod-1')
+
+    expect(await screen.findByRole('status', { name: 'Carregando' })).toBeInTheDocument()
+    expect(screen.queryByText(/não encontramos esse time/i)).not.toBeInTheDocument()
+
+    release()
+    expect(await screen.findByRole('heading', { level: 1, name: 'POD 1' })).toBeInTheDocument()
+  })
+
+  it('should warn that the counts are partial when the base held more than came', async () => {
+    desk.restore()
+    desk = (await import('../../helpers/desk')).mountDeskFixture(
+      {},
+      { '/api/tickets/rows': truncatedRowsRoute(99_999) },
+    )
+    await renderAt('/teams/pod-1')
+
+    expect(await screen.findByText(/Mostrando um recorte/)).toHaveTextContent(
+      'contagens deste time valem só para o que está aqui',
+    )
   })
 
   it('should say plainly when the group does not exist, instead of rendering an empty page', async () => {

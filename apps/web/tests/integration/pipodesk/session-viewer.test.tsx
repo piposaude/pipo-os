@@ -4,6 +4,7 @@ import { routeTree } from '@/routeTree.gen'
 import { useSessionStore } from '@/stores/session'
 import { DESK_POLICIES } from '@/lib/policy'
 import type { AuthMe } from '@pipo-os/api-client'
+import { fixtureStructureRoutes, mockApi, type ApiMock } from '../../helpers/api'
 
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
@@ -16,7 +17,10 @@ const session = (overrides: Partial<AuthMe>): AuthMe => ({
   ...overrides,
 })
 
+let api: ApiMock
+
 async function renderAs(user: AuthMe) {
+  api = mockApi(fixtureStructureRoutes(user.sub ?? undefined))
   useSessionStore.setState({ status: 'authenticated', user })
   const router = createRouter({
     routeTree,
@@ -26,11 +30,11 @@ async function renderAs(user: AuthMe) {
   await screen.findByRole('navigation', { name: /pipodesk/i })
 }
 
-const podOrder = () => {
+const podOrder = async () => {
   const sidebar = screen.getByRole('navigation', { name: /pipodesk/i })
-  return within(sidebar)
-    .getAllByRole('button', { name: /^POD \d/ })
-    .map((button) => button.textContent?.match(/POD \d/)?.[0])
+  return (await within(sidebar).findAllByRole('button', { name: /^POD \d/ })).map(
+    (button) => button.textContent?.match(/POD \d/)?.[0],
+  )
 }
 
 const countOf = (name: RegExp) => {
@@ -41,6 +45,7 @@ const countOf = (name: RegExp) => {
 
 describe('o viewer vem da sessão', () => {
   afterEach(() => {
+    api.restore()
     useSessionStore.setState({ status: 'idle', user: null })
   })
 
@@ -72,12 +77,12 @@ describe('o viewer vem da sessão', () => {
   it('should abrir a árvore pelo pod de quem logou', async () => {
     await renderAs(session({ groups: [{ groupId: 'pod-2', role: 'member' }] }))
 
-    expect(podOrder()[0]).toBe('POD 2')
+    expect((await podOrder())[0]).toBe('POD 2')
   })
 
   it('should manter a ordem natural dos pods para quem não é membro de nenhum, sem destacar o da fixture', async () => {
     await renderAs(session({ groups: [{ groupId: 'pod-5', role: 'admin' }] }))
 
-    expect(podOrder()).toEqual(['POD 1', 'POD 2', 'POD 3', 'POD 4', 'POD 5', 'POD 6'])
+    expect(await podOrder()).toEqual(['POD 1', 'POD 2', 'POD 3', 'POD 4', 'POD 5', 'POD 6'])
   })
 })
