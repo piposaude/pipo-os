@@ -99,3 +99,16 @@
 .desk-root > div {
   padding-top: var(--pipo-space-xsmall);
 }
+
+.desk-write-failed {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--desk-hairline);
+  background: var(--desk-panel);
+  color: var(--desk-nav-text-strong);
+  font-size: 0.8125rem;
+}

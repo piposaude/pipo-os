@@ -57,6 +57,15 @@ export interface TicketComments {
   visibility: string;
 }
 
+export interface TicketCompletionMembers {
+  created_at: Generated<Timestamp>;
+  id_card_number: string;
+  start_date: Timestamp;
+  tax_id: string;
+  ticket_id: string;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface TicketEmailAttachments {
   filename: string;
   id: Generated<string>;
@@ -150,6 +159,7 @@ export interface Tickets {
   assignee_id: string | null;
   carrier_id: string | null;
   carrier_name: string | null;
+  carrier_tracking_number: string | null;
   closed_at: Timestamp | null;
   collaborators: Generated<Json>;
   company_id: string;
@@ -158,12 +168,17 @@ export interface Tickets {
   contract_type: string | null;
   created_at: Generated<Timestamp>;
   display_number: Generated<string>;
+  document_types: string[] | null;
+  effective_date: Timestamp | null;
+  end_date: Timestamp | null;
   enrollment_id: string;
   enrollment_snapshot: Generated<Json>;
   enrollment_type: string;
   force_completion: Generated<boolean>;
   group_id: string;
+  has_grace_period: boolean | null;
   id: Generated<string>;
+  mecsas_company_code: string | null;
   origin: string | null;
   parent_company_id: string | null;
   parent_company_name: string | null;
@@ -207,6 +222,7 @@ export interface WebhookConfigs {
 export interface DB {
   outbound_webhook_deliveries: OutboundWebhookDeliveries;
   ticket_comments: TicketComments;
+  ticket_completion_members: TicketCompletionMembers;
   ticket_email_attachments: TicketEmailAttachments;
   ticket_emails: TicketEmails;
   ticket_form_values: TicketFormValues;

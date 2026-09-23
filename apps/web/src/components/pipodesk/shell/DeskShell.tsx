@@ -1,9 +1,16 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
-import { Outlet, useNavigate } from '@tanstack/react-router'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { Outlet, useNavigate, useRouterState, useSearch } from '@tanstack/react-router'
 import { SidebarMainLayout } from '@piposaude/design-system'
+import { useQuery } from '@tanstack/react-query'
 import { QueueSidebar } from '@/components/pipodesk/sidebar/QueueSidebar'
 import { HOME_NODE_ID, buildTree, type TreeNode, type TreeSection } from '@/lib/pipodesk/tree'
-import { INITIAL_VIEW, queueViewReducer } from '@/lib/pipodesk/queue-view'
+import {
+  INITIAL_VIEW,
+  fromSearch,
+  queueViewReducer,
+  toSearch,
+  type QueueSearch,
+} from '@/lib/pipodesk/queue-view'
 import { applyPatches, type TicketPatch } from '@/lib/pipodesk/patches'
 import { SearchPalette } from '@/components/pipodesk/queue/SearchPalette'
 import type { CommentChannel, TicketComment } from '@/lib/pipodesk/timeline'
@@ -11,22 +18,20 @@ import { toQueueNode } from '@/lib/pipodesk/queue-node'
 import { DeskContext } from './desk-context'
 import { displayNameFromEmail } from '@/lib/pipodesk/format'
 import { logout } from '@/lib/auth'
+import queueConstants from '@/constants/pages/pipodesk/queue'
 import { useSessionStore } from '@/stores/session'
-import {
-  COMPANY_REGISTRY,
-  DATASET_TODAY,
-  FIXTURE_USER_NAMES,
-  INBOX_TICKET_IDS,
-  queueSeed,
-  structureFixture,
-} from '@/fixtures/pipodesk/dataset'
+import { api, client } from '@/lib/api'
+import { structureFromApi } from '@/lib/pipodesk/structure-from-api'
+import { rowsFromApi } from '@/lib/pipodesk/rows-from-api'
+import { businessToday } from '@/lib/date'
+import { COMPANY_REGISTRY, INBOX_TICKET_IDS } from '@/fixtures/pipodesk/dataset'
 import '@/styles/pipodesk-tokens.css'
 
 /**
  * The Pipodesk shell: tree left, content right. `.desk-root` scopes the
- * operation tokens (login carries none). The base is still a fixture —
- * swapping in the API (PD-043/PD-050) changes the source of `rows`, not the
- * shape.
+ * operation tokens (login carries none). Rows, structure and names come from
+ * the API; the inbox ids and the company registry are the last two fixtures,
+ * and they leave with PD-080b and PD-054.
  */
 /** Node by id, at any depth of the three sections. */
 function findNode(sections: TreeSection[], id: string): TreeNode | null {
@@ -56,6 +61,57 @@ const iniciaisDe = (name: string): string =>
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('')
 
+const STRUCTURE_STALE_MS = 5 * 60 * 1000
+const MAX_PAGE_SIZE = 100
+
+async function allPages<T>(
+  fetchPage: (page: number) => Promise<{ data: T[]; total: number } | undefined>,
+): Promise<T[]> {
+  const items: T[] = []
+  for (let page = 1; ; page++) {
+    const result = await fetchPage(page)
+    const data = result?.data ?? []
+    items.push(...data)
+    if (data.length === 0 || items.length >= (result?.total ?? 0)) return items
+  }
+}
+
+/** There is no batch route: reassigning a whole cut becomes one request per
+ *  ticket, so they go a few at a time instead of all at once. */
+const WRITE_CONCURRENCY = 6
+
+/** `groupId` has no route yet (PD-052): sending it would be dropped in silence,
+ *  so the move stays out of the batch menu until the route exists. */
+async function persistPatch(id: string, patch: TicketPatch): Promise<void> {
+  const { status, groupId, ...fields } = patch
+  void groupId
+
+  if (Object.keys(fields).length > 0) {
+    await client.PATCH('/api/tickets/{id}', { params: { path: { id } }, body: fields })
+  }
+  if (status !== undefined) {
+    await client.PATCH('/api/tickets/{id}/status', { params: { path: { id } }, body: { status } })
+  }
+}
+
+async function persistBatch(ids: string[], patch: TicketPatch): Promise<string[]> {
+  const refused: string[] = []
+  const queue = [...ids]
+
+  const worker = async (): Promise<void> => {
+    for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
+      try {
+        await persistPatch(id, patch)
+      } catch {
+        refused.push(id)
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: WRITE_CONCURRENCY }, worker))
+  return refused
+}
+
 export function DeskShell() {
   const navigate = useNavigate()
   const user = useSessionStore((state) => state.user)
@@ -73,15 +129,33 @@ export function DeskShell() {
     [user],
   )
 
+  /* The whole window, awake and sleeping: the tree splits them itself, and
+     asking for one would zero "Movimentações futuras". */
+  const rowsQuery = api.useQuery(
+    'get',
+    '/api/tickets/rows',
+    { params: { query: { window: 'all' as const, limit: 5000 } } },
+    { staleTime: 30_000 },
+  )
+  const usersQuery = api.useQuery('get', '/api/users', {}, { staleTime: STRUCTURE_STALE_MS })
+
+  const namesByEmail = useMemo(
+    () => new Map((usersQuery.data?.data ?? []).map((person) => [person.email, person.name])),
+    [usersQuery.data],
+  )
   const resolveName = useMemo(
-    () => (userId: string) => FIXTURE_USER_NAMES[userId] ?? displayNameFromEmail(userId),
-    [],
+    () => (userId: string) => namesByEmail.get(userId)?.trim() || displayNameFromEmail(userId),
+    [namesByEmail],
   )
 
   /* Prototype model: the base never changes; actions become patches applied
        on read. When the backend lands, the patch becomes the PATCH body. */
   const [patches, setPatches] = useState<Record<string, TicketPatch>>({})
-  const rows = useMemo(() => applyPatches(queueSeed, patches, DATASET_TODAY), [patches])
+  const today = businessToday()
+  const rows = useMemo(
+    () => applyPatches(rowsFromApi(rowsQuery.data?.data ?? []), patches, today),
+    [rowsQuery.data, patches, today],
+  )
 
   const [comments, setComments] = useState<TicketComment[]>([])
   const addComment = useCallback(
@@ -101,25 +175,91 @@ export function DeskShell() {
     [email],
   )
 
-  const applyPatch = useCallback((ids: string[], patch: TicketPatch) => {
-    setPatches((current) => {
-      const next = { ...current }
-      for (const id of ids) next[id] = { ...next[id], ...patch }
-      return next
-    })
-  }, [])
+  const [writeFailed, setWriteFailed] = useState(false)
+  const { refetch: refetchRows, dataUpdatedAt: rowsUpdatedAt } = rowsQuery
+
+  const dropPatches = useCallback(
+    (gone: string[]) =>
+      setPatches((current) => {
+        const next = { ...current }
+        for (const id of gone) delete next[id]
+        return next
+      }),
+    [],
+  )
+
+  const awaitingRead = useRef(new Set<string>())
+  useEffect(() => {
+    if (awaitingRead.current.size === 0) return
+    const confirmed = [...awaitingRead.current]
+    awaitingRead.current.clear()
+    dropPatches(confirmed)
+  }, [rowsUpdatedAt, dropPatches])
+
+  const applyPatch = useCallback(
+    (ids: string[], patch: TicketPatch) => {
+      setPatches((current) => {
+        const next = { ...current }
+        for (const id of ids) next[id] = { ...next[id], ...patch }
+        return next
+      })
+
+      void persistBatch(ids, patch).then(async (refused) => {
+        if (refused.length > 0) {
+          dropPatches(refused)
+          setWriteFailed(true)
+        }
+
+        const saved = ids.filter((id) => !refused.includes(id))
+        if (saved.length === 0) return
+
+        const read = await refetchRows()
+        if (read.isError) for (const id of saved) awaitingRead.current.add(id)
+        else dropPatches(saved)
+      })
+    },
+    [refetchRows, dropPatches],
+  )
+
+  const groupsQuery = useQuery({
+    queryKey: ['get', '/api/groups', 'all'],
+    queryFn: () =>
+      allPages(async (page) => {
+        const { data } = await client.GET('/api/groups', {
+          params: { query: { page, pageSize: MAX_PAGE_SIZE } },
+        })
+        return data
+      }),
+    staleTime: STRUCTURE_STALE_MS,
+  })
+  const queuesQuery = useQuery({
+    queryKey: ['get', '/api/queues', 'all'],
+    queryFn: () =>
+      allPages(async (page) => {
+        const { data } = await client.GET('/api/queues', {
+          params: { query: { page, pageSize: MAX_PAGE_SIZE } },
+        })
+        return data
+      }),
+    staleTime: STRUCTURE_STALE_MS,
+  })
+
+  const structure = useMemo(
+    () => structureFromApi(groupsQuery.data ?? [], queuesQuery.data ?? [], viewerId),
+    [groupsQuery.data, queuesQuery.data, viewerId],
+  )
 
   const sections = useMemo(
     () =>
       buildTree(rows, {
         viewerId,
         viewerGroupId,
-        structure: structureFixture,
-        today: DATASET_TODAY,
+        structure,
+        today,
         inboxTicketIds: INBOX_TICKET_IDS,
         resolveName,
       }),
-    [rows, viewerId, viewerGroupId, resolveName],
+    [rows, viewerId, viewerGroupId, structure, today, resolveName],
   )
 
   /* Open on the "Meus tickets" NODE, not a raw INITIAL_VIEW: filter, scope
@@ -131,6 +271,40 @@ export function DeskShell() {
       ? INITIAL_VIEW
       : queueViewReducer(INITIAL_VIEW, { type: 'select-node', node: toQueueNode(start) })
   })
+
+  /* The link IS the view. One comparison drives both directions, so neither
+     effect can chase the other: whoever is behind catches up, and stops. */
+  const search = useSearch({ strict: false }) as QueueSearch
+  const asLink = useMemo(() => JSON.stringify(toSearch(view)), [view])
+  const onQueue = useRouterState({ select: (state) => state.location.pathname === '/' })
+
+  useEffect(() => {
+    if (!onQueue || JSON.stringify(search) === asLink) return
+    const node = search.node === undefined ? null : findNode(sections, search.node)
+    if (node === null) return
+    dispatch({
+      type: 'restore',
+      view: fromSearch(search, { ...toQueueNode(node), nodeId: node.id, today }),
+    })
+    // `asLink` is the guard, not an input: reacting to it would restore the
+    // view from the link it just produced.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, sections, today, onQueue])
+
+  /* The link may name a node the tree does not have yet — a pod, a MOV, an
+     analyst all arrive with the structure. Writing over it before that would
+     erase the link, and `replace` leaves nothing to go back to. */
+  const structurePending = groupsQuery.isPending || queuesQuery.isPending
+  const rowsPending = rowsQuery.isPending
+  const nodePending =
+    search.node !== undefined &&
+    findNode(sections, search.node) === null &&
+    (structurePending || rowsPending)
+
+  useEffect(() => {
+    if (!onQueue || nodePending || JSON.stringify(search) === asLink) return
+    void navigate({ to: '/', search: JSON.parse(asLink) as QueueSearch, replace: true })
+  }, [asLink, search, navigate, onQueue, nodePending])
 
   /* Survives reloads. `localStorage` may throw (private window); a layout
        preference must not keep the queue from opening. */
@@ -179,7 +353,7 @@ export function DeskShell() {
   const selectNode = useCallback(
     (node: TreeNode) => {
       dispatch({ type: 'select-node', node: toQueueNode(node) })
-      navigate({ to: '/' })
+      void navigate({ to: '/' })
     },
     [dispatch, navigate],
   )
@@ -203,14 +377,23 @@ export function DeskShell() {
 
   /* Memoized: the shell sits above every screen of the desk, so a new object
      here rerenders all of them on any state change. */
+  const rowsTotal = rowsQuery.data?.total ?? 0
+  const rowsTruncated = rowsTotal > (rowsQuery.data?.data.length ?? 0)
+
   const context = useMemo(
     () => ({
       sections,
       view,
       dispatch,
+      structure,
+      structurePending,
+      viewerGroupId,
       rows,
-      today: DATASET_TODAY,
+      rowsPending,
+      today,
       applyPatch,
+      rowsTotal,
+      rowsTruncated,
       comments,
       addComment,
       viewerId,
@@ -222,11 +405,18 @@ export function DeskShell() {
       sections,
       view,
       dispatch,
+      structure,
+      structurePending,
+      viewerGroupId,
       rows,
+      rowsPending,
       applyPatch,
+      rowsTotal,
+      rowsTruncated,
       comments,
       addComment,
       viewerId,
+      today,
       resolveName,
       sidebarCollapsed,
       toggleSidebar,
@@ -236,6 +426,14 @@ export function DeskShell() {
   return (
     <DeskContext.Provider value={context}>
       <div className="desk-root">
+        {writeFailed && (
+          <p role="alert" className="desk-write-failed">
+            {queueConstants.writeFailed}
+            <button type="button" onClick={() => setWriteFailed(false)}>
+              {queueConstants.dismiss}
+            </button>
+          </p>
+        )}
         <SidebarMainLayout
           sidebarWidth={sidebarCollapsed ? '0px' : 'var(--sidebar-w)'}
           sidebar={
@@ -246,7 +444,7 @@ export function DeskShell() {
               sections={sections}
               activeId={view.nodeId}
               onSelect={selectNode}
-              structure={structureFixture}
+              structure={structure}
               viewerInitials={iniciaisDe(viewerName)}
               viewerName={viewerName}
               viewerEmail={email}

@@ -3,7 +3,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { buildApp } from '../../app.js'
 import { createRootGroup } from '../groups/root.test-helpers.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
-import { insertEvent } from './repository.js'
+import { insertEvent, insertEvents } from './repository.js'
 
 const ANALYST = { id: 'dev@piposaude.com.br', type: 'user' } as const
 
@@ -135,5 +135,18 @@ describe('insertEvent', () => {
 
     const rows = await app.db.selectFrom('ticket_comments').selectAll().execute()
     expect(rows).toHaveLength(0)
+  })
+
+  it('writes a batch past the bind parameter limit of a single Postgres statement', async () => {
+    const events = Array.from({ length: 7000 }, () => ({
+      ticketId,
+      eventType: 'moved' as const,
+      body: 'Pod alterado',
+    }))
+
+    await insertEvents(app.db, events, ANALYST)
+
+    const rows = await app.db.selectFrom('ticket_comments').select('id').execute()
+    expect(rows).toHaveLength(7000)
   })
 })

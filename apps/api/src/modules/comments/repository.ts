@@ -46,6 +46,21 @@ export interface TicketEventInput {
   idempotencyKey?: string
 }
 
+function eventRow(event: TicketEventInput, author: Author) {
+  return {
+    ticket_id: event.ticketId,
+    kind: 'automated_event' as const,
+    channel: 'internal' as const,
+    visibility: event.visibility ?? 'private',
+    body: event.body,
+    author_id: author.id,
+    author_type: author.type,
+    event_type: event.eventType,
+    metadata: JSON.stringify(event.metadata ?? {}),
+    idempotency_key: event.idempotencyKey ?? null,
+  }
+}
+
 /**
  * Writes an automated event on the executor the caller hands over, so the event
  * and the change that caused it commit together — PD-047 writes the assignment
@@ -63,18 +78,7 @@ export async function insertEvent(
 ): Promise<WrittenComment> {
   const row = await executor
     .insertInto('ticket_comments')
-    .values({
-      ticket_id: event.ticketId,
-      kind: 'automated_event',
-      channel: 'internal',
-      visibility: event.visibility ?? 'private',
-      body: event.body,
-      author_id: author.id,
-      author_type: author.type,
-      event_type: event.eventType,
-      metadata: JSON.stringify(event.metadata ?? {}),
-      idempotency_key: event.idempotencyKey ?? null,
-    })
+    .values(eventRow(event, author))
     /* The predicate has to match the partial index, or Postgres finds no
        arbiter for it. A row with no key never conflicts: the partial index
        does not hold it. */
@@ -96,6 +100,22 @@ export async function insertEvent(
   if (!existing) throw new Error('Automated event vanished between insert and read')
 
   return { comment: existing, created: false }
+}
+
+const EVENTS_PER_INSERT = 1000
+
+/** No idempotency key: a batch has no single row to report as replayed. */
+export async function insertEvents(
+  executor: CommentExecutor,
+  events: readonly Omit<TicketEventInput, 'idempotencyKey'>[],
+  author: Author,
+): Promise<void> {
+  for (let start = 0; start < events.length; start += EVENTS_PER_INSERT) {
+    await executor
+      .insertInto('ticket_comments')
+      .values(events.slice(start, start + EVENTS_PER_INSERT).map((e) => eventRow(e, author)))
+      .execute()
+  }
 }
 
 async function findByIdempotencyKey(

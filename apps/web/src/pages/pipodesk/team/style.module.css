@@ -62,6 +62,16 @@
   text-align: right;
 }
 
+.truncated {
+  margin: 0 var(--pipo-space-medium) var(--pipo-space-small);
+  padding: var(--pipo-space-xsmall) var(--pipo-space-small);
+  border: var(--pipo-border-width-small) solid var(--desk-hairline);
+  border-radius: var(--pipo-radius-small);
+  background: var(--desk-panel);
+  color: var(--desk-nav-text);
+  font-size: 0.8125rem;
+}
+
 /* Outlined box, not a filled banner: a debt for coordination to resolve,
    not a system error — filled red would shout all day. */
 .pendencia {

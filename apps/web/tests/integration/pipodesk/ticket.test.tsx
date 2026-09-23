@@ -14,6 +14,7 @@ import { analystsOf } from '@/lib/pipodesk/permissions'
 import { records } from '@/fixtures/pipodesk/records'
 import constants from '@/constants/pages/pipodesk/ticket'
 import copyButton from '@/constants/pipodesk/copy-button'
+import { holdGet, truncatedRowsRoute } from '../../helpers/api'
 
 /**
  * The first drawn row — the table is virtualized, so only the visible window
@@ -38,9 +39,14 @@ configure({ asyncUtilTimeout: 3000 })
 
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
+let desk: import('../../helpers/api').ApiMock
+
 beforeEach(async () => {
-  const { signInAsFixtureViewer } = await import('../../helpers/auth')
-  signInAsFixtureViewer()
+  desk = (await import('../../helpers/desk')).mountDeskFixture()
+})
+
+afterEach(() => {
+  desk.restore()
 })
 
 async function renderAt(path: string) {
@@ -364,10 +370,36 @@ describe('detalhe do chamado', () => {
     expect(button).toHaveAttribute('data-copied', 'true')
   })
 
+  it('should wait for the rows before saying the id does not exist', async () => {
+    const { id, beneficiaryName, subject } = queueSeed[0]!
+    const release = holdGet('/api/tickets/rows')
+    await renderAt(`/tickets/${id}`)
+
+    expect(await screen.findByRole('status', { name: 'Carregando' })).toBeInTheDocument()
+    expect(screen.queryByText(/não existe chamado com o id/i)).not.toBeInTheDocument()
+
+    release()
+    expect(
+      await screen.findByRole('heading', { level: 1, name: beneficiaryName ?? subject }),
+    ).toBeInTheDocument()
+  })
+
   it('should say plainly when the id does not exist', async () => {
     await renderAt('/tickets/000000')
 
     expect(await screen.findByText(/não existe chamado com o id/i)).toBeInTheDocument()
+  })
+
+  it('should not claim the id does not exist when the rows were cut at the limit', async () => {
+    desk.restore()
+    desk = (await import('../../helpers/desk')).mountDeskFixture(
+      {},
+      { '/api/tickets/rows': truncatedRowsRoute(99_999) },
+    )
+    await renderAt('/tickets/000000')
+
+    expect(await screen.findByText(/não está no recorte carregado/i)).toBeInTheDocument()
+    expect(screen.queryByText(/não existe chamado com o id/i)).not.toBeInTheDocument()
   })
 
   /**

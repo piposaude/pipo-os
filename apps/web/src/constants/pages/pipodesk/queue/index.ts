@@ -15,6 +15,10 @@ export default {
   liveCount: (count: number, label: string) =>
     `${count} ${count === 1 ? 'chamado' : 'chamados'} em ${label}`,
   liveCountLabel: 'Total da fila',
+  writeFailed: 'Não foi possível salvar a alteração. A tela voltou ao que está gravado.',
+  dismiss: 'Entendi',
+  truncated: (shown: number, total: number) =>
+    `Mostrando um recorte: ${shown.toLocaleString('pt-BR')} de ${total.toLocaleString('pt-BR')} chamados. As contagens da árvore valem só para o que está aqui.`,
   free: 'Livre no pod',
   batchFinalKept: (count: number) =>
     `${count} ${count === 1 ? 'chamado' : 'chamados'} em estado final ${

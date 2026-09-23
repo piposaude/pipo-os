@@ -81,6 +81,30 @@ export const ticketSchema = z
   })
   .meta({ id: 'Ticket' })
 
+export const completionMemberSchema = z
+  .object({
+    taxId: z.string().regex(/^\d{11}$/),
+    idCardNumber: z.string(),
+    startDate: z.iso.date(),
+  })
+  .meta({ id: 'TicketCompletionMember' })
+
+export const completionSchema = z
+  .object({
+    members: z.array(completionMemberSchema),
+    endDate: z.iso.date().nullable(),
+    effectiveDate: z.iso.date().nullable(),
+    mecsasCompanyCode: z.string().nullable(),
+    hasGracePeriod: z.boolean().nullable(),
+    carrierTrackingNumber: z.string().nullable(),
+    documentTypes: z.array(z.string()).nullable(),
+  })
+  .meta({ id: 'TicketCompletion' })
+
+export const ticketDetailSchema = ticketSchema
+  .extend({ completion: completionSchema.nullable() })
+  .meta({ id: 'TicketDetail' })
+
 export const ticketParamsSchema = z.object({
   id: z.uuid(),
 })
@@ -213,6 +237,8 @@ export const ticketListSchema = z
 
 export type TicketStatus = z.infer<typeof ticketStatusSchema>
 export type Ticket = z.infer<typeof ticketSchema>
+export type TicketCompletion = z.infer<typeof completionSchema>
+export type TicketDetail = z.infer<typeof ticketDetailSchema>
 export type TicketParams = z.infer<typeof ticketParamsSchema>
 export type CreateTicketBody = z.infer<typeof createTicketBodySchema>
 /** What the repository writes: the body after the service translated the

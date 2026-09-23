@@ -13,6 +13,7 @@ import {
   openTicketConflictSchema,
   ticketListSchema,
   ticketParamsSchema,
+  ticketDetailSchema,
   ticketSchema,
   updateTicketBodySchema,
   updateTicketStatusBodySchema,
@@ -76,7 +77,7 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
       schema: {
         params: ticketParamsSchema,
         response: {
-          200: ticketSchema,
+          200: ticketDetailSchema,
           400: errorResponseSchema,
           401: errorResponseSchema,
           403: errorResponseSchema,

@@ -1,5 +1,13 @@
 import { useMemo, useRef, useState } from 'react'
-import { Banner, Breadcrumb, BreadcrumbItem, Button, Heading, Tabs } from '@piposaude/design-system'
+import {
+  Banner,
+  Breadcrumb,
+  BreadcrumbItem,
+  Button,
+  Heading,
+  Loading,
+  Tabs,
+} from '@piposaude/design-system'
 import { Link, useParams } from '@tanstack/react-router'
 import { useDesk } from '@/components/pipodesk/shell/desk-context'
 import { SidebarToggle } from '@/components/pipodesk/shell/SidebarToggle'
@@ -20,7 +28,6 @@ import {
 } from '@/constants/pipodesk/domain'
 import { ORIGIN_COPY } from '@/lib/pipodesk/filter-copy'
 import { analystsOf } from '@/lib/pipodesk/permissions'
-import { structureFixture } from '@/fixtures/pipodesk/dataset'
 import { records } from '@/fixtures/pipodesk/records'
 import { daysOverdue, formatDate, formatDayMonth, formatLongDate } from '@/lib/pipodesk/format'
 import {
@@ -53,7 +60,19 @@ function Fact({ label, value }: { label: string; value: string }) {
  */
 export default function TicketPage() {
   const { id } = useParams({ from: '/_auth/_desk/tickets/$id' })
-  const { view, rows, today, resolveName, applyPatch, comments, addComment } = useDesk()
+  const {
+    view,
+    structure,
+    rows,
+    rowsPending,
+    rowsTotal,
+    rowsTruncated,
+    today,
+    resolveName,
+    applyPatch,
+    comments,
+    addComment,
+  } = useDesk()
 
   const ticket = useMemo(() => rows.find((row) => row.id === id), [rows, id])
 
@@ -80,14 +99,20 @@ export default function TicketPage() {
    *  person you want to hand work to. Above the early return because it is a
    *  hook: an absent ticket has no pod, and `''` matches no group. */
   const podAnalysts = useMemo(
-    () => analystsOf(structureFixture, ticket?.groupId ?? '').map(({ userId }) => userId),
-    [ticket?.groupId],
+    () => analystsOf(structure, ticket?.groupId ?? '').map(({ userId }) => userId),
+    [structure, ticket?.groupId],
   )
 
   if (!ticket) {
     return (
       <div className={`${styles.screen} ${styles.missing}`}>
-        <p>{constants.notFound(id)}</p>
+        {rowsPending ? (
+          <Loading show variant="contained" role="status" />
+        ) : rowsTruncated ? (
+          <p>{constants.outsideSlice(id, rows.length, rowsTotal)}</p>
+        ) : (
+          <p>{constants.notFound(id)}</p>
+        )}
       </div>
     )
   }

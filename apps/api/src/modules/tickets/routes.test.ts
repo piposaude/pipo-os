@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify'
+import { sql } from 'kysely'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
+import { ADVISORY_LOCKS } from '../../shared/advisory-locks.js'
 import { businessToday } from '../../shared/business-date.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
 import { sessionWithoutSub } from '../auth/session.test-helpers.js'
@@ -54,6 +56,7 @@ describe('tickets routes', () => {
   afterEach(async () => {
     await app.db.deleteFrom('ticket_comments').execute()
     await app.db.deleteFrom('ticket_status_history').execute()
+    await app.db.deleteFrom('ticket_completion_members').execute()
     await app.db.deleteFrom('tickets').execute()
     await app.db.deleteFrom('ticket_queues').execute()
   })
@@ -328,6 +331,44 @@ describe('tickets routes', () => {
 
         expect(response.statusCode).toBe(201)
         expect(response.json().groupId).toBe(rootGroupId)
+      })
+
+      it('is the pod of a portfolio still being written when the ticket arrives', async () => {
+        const pod = await createPod('POD 1')
+        pods.push(pod)
+
+        const waitUntilBlockedOnPortfolios = async (): Promise<void> => {
+          for (let attempt = 0; attempt < 100; attempt++) {
+            const { rows } = await sql<{ waiting: number }>`
+              select count(*)::int as waiting from pg_locks
+              where locktype = 'advisory' and objid = ${ADVISORY_LOCKS.groupPortfolios}
+                and mode = 'ShareLock' and not granted`.execute(app.db)
+            if (rows[0]?.waiting) return
+            await new Promise((resolve) => setTimeout(resolve, 20))
+          }
+          throw new Error('The ticket creation never waited on the portfolio lock')
+        }
+
+        const { request } = await app.db.transaction().execute(async (trx) => {
+          await sql`select pg_advisory_xact_lock(${ADVISORY_LOCKS.groupPortfolios})`.execute(trx)
+          await trx
+            .insertInto('ticket_group_companies')
+            .values({ group_id: pod, company_id: validTicketBody.companyId })
+            .execute()
+
+          const request = app.inject({
+            method: 'POST',
+            url: '/api/tickets',
+            payload: validTicketBody,
+            cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+          })
+          await waitUntilBlockedOnPortfolios()
+          return { request }
+        })
+        const creating = await request
+
+        expect(creating.statusCode).toBe(201)
+        expect(creating.json().groupId).toBe(pod)
       })
 
       it('is the one the caller sent, over the portfolio', async () => {
@@ -995,6 +1036,134 @@ describe('tickets routes', () => {
       expect(response.statusCode).toBe(200)
       expect(response.json().id).toBe(id)
       expect(response.json().enrollmentId).toBe(validTicketBody.enrollmentId)
+    })
+
+    describe('a conclusão', () => {
+      const familySnapshot = {
+        member_type: 'primary',
+        primary: { profile: { tax_id: '222.222.222-22' } },
+        dependents: [
+          { profile: { tax_id: '333.333.333-33' } },
+          { profile: { tax_id: '111.111.111-11' } },
+        ],
+      }
+
+      const createTicket = async (enrollmentSnapshot: object): Promise<string> => {
+        const created = await app.inject({
+          method: 'POST',
+          url: '/api/tickets',
+          payload: { ...validTicketBody, enrollmentSnapshot },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        return created.json().id
+      }
+
+      const read = (id: string) =>
+        app.inject({
+          method: 'GET',
+          url: `/api/tickets/${id}`,
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+
+      it('é nula quando nada foi gravado', async () => {
+        const id = await createTicket(familySnapshot)
+
+        const response = await read(id)
+
+        expect(response.statusCode).toBe(200)
+        expect(response.json().completion).toBeNull()
+      })
+
+      it('devolve as vidas na ordem em que o snapshot as traz', async () => {
+        const id = await createTicket(familySnapshot)
+        await app.db
+          .insertInto('ticket_completion_members')
+          .values([
+            {
+              ticket_id: id,
+              tax_id: '33333333333',
+              id_card_number: 'C3',
+              start_date: '2026-10-03',
+            },
+            {
+              ticket_id: id,
+              tax_id: '11111111111',
+              id_card_number: 'C1',
+              start_date: '2026-10-01',
+            },
+            {
+              ticket_id: id,
+              tax_id: '22222222222',
+              id_card_number: 'C2',
+              start_date: '2026-10-02',
+            },
+          ])
+          .execute()
+
+        const response = await read(id)
+
+        expect(response.json().completion.members).toEqual([
+          { taxId: '22222222222', idCardNumber: 'C2', startDate: '2026-10-02' },
+          { taxId: '33333333333', idCardNumber: 'C3', startDate: '2026-10-03' },
+          { taxId: '11111111111', idCardNumber: 'C1', startDate: '2026-10-01' },
+        ])
+      })
+
+      it('devolve depois das do snapshot uma vida que o snapshot não traz', async () => {
+        const id = await createTicket(familySnapshot)
+        await app.db
+          .insertInto('ticket_completion_members')
+          .values([
+            {
+              ticket_id: id,
+              tax_id: '22222222222',
+              id_card_number: 'C2',
+              start_date: '2026-10-02',
+            },
+            {
+              ticket_id: id,
+              tax_id: '99999999999',
+              id_card_number: 'C9',
+              start_date: '2026-10-09',
+            },
+          ])
+          .execute()
+
+        const response = await read(id)
+
+        expect(response.json().completion.members.map((m: { taxId: string }) => m.taxId)).toEqual([
+          '22222222222',
+          '99999999999',
+        ])
+      })
+
+      it('devolve os campos que valem uma vez por chamado', async () => {
+        const id = await createTicket(familySnapshot)
+        await app.db
+          .updateTable('tickets')
+          .set({
+            end_date: '2026-10-31',
+            effective_date: '2026-11-01',
+            mecsas_company_code: 'MEC-42',
+            has_grace_period: false,
+            carrier_tracking_number: 'PROT-9',
+            document_types: ['rg', 'cpf'],
+          })
+          .where('id', '=', id)
+          .execute()
+
+        const response = await read(id)
+
+        expect(response.json().completion).toEqual({
+          members: [],
+          endDate: '2026-10-31',
+          effectiveDate: '2026-11-01',
+          mecsasCompanyCode: 'MEC-42',
+          hasGracePeriod: false,
+          carrierTrackingNumber: 'PROT-9',
+          documentTypes: ['rg', 'cpf'],
+        })
+      })
     })
   })
 
