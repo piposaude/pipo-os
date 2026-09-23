@@ -1709,6 +1709,45 @@ describe('groups routes', () => {
       expect(detail.json().members[0].role).toBe('member')
     })
 
+    it('never merges two slices sent at the same time', async () => {
+      const COMPANY_C = '00000000-0000-4000-8000-00000000000c'
+      const pod = await podCarrying(COMPANY_A, COMPANY_B, COMPANY_C)
+      await addMember(pod, { userId: ANA, companyIds: [COMPANY_C] })
+
+      for (let round = 0; round < 10; round += 1) {
+        await Promise.all([
+          updateMember(pod, { companyIds: [COMPANY_A] }),
+          updateMember(pod, { companyIds: [COMPANY_B] }),
+        ])
+        expect([[COMPANY_A], [COMPANY_B]]).toContainEqual(await sliceOf(pod))
+      }
+    })
+
+    it('names only the companies that left when the portfolio shrinks during the write', async () => {
+      const COMPANY_C = '00000000-0000-4000-8000-00000000000c'
+      const pod = await podCarrying(COMPANY_A, COMPANY_B)
+      await addMember(pod, { userId: ANA })
+
+      for (let round = 0; round < 10; round += 1) {
+        const [slice] = await Promise.all([
+          updateMember(pod, { companyIds: [COMPANY_A, COMPANY_B] }),
+          app.inject({
+            method: 'PUT',
+            url: `/api/groups/${pod}/companies`,
+            payload: { companyIds: [COMPANY_B, COMPANY_C] },
+            cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+          }),
+        ])
+        if (slice.statusCode === 422) expect(slice.json().message).not.toContain(COMPANY_B)
+        else expect(slice.statusCode).toBe(200)
+        await app.db
+          .insertInto('ticket_group_companies')
+          .values({ group_id: pod, company_id: COMPANY_A })
+          .onConflict((oc) => oc.column('company_id').doNothing())
+          .execute()
+      }
+    })
+
     it('returns 404 when the person is not a member of the group', async () => {
       const pod = await podCarrying(COMPANY_A)
 

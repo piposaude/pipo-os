@@ -45,8 +45,8 @@ function toGroup(row: Selectable<TicketGroups>): Group {
   }
 }
 
-/** NO KEY UPDATE, not UPDATE: it still lets the FKs of other writers into the
- *  group take their KEY SHARE, so it only serialises portfolio writes. */
+/** NO KEY UPDATE, not UPDATE: FKs of other writers into the group still take
+ *  their KEY SHARE, so it only serialises the portfolio and slice writers. */
 async function lockGroup(db: Kysely<Database>, id: string): Promise<boolean> {
   const row = await db
     .selectFrom('ticket_groups')
@@ -137,24 +137,17 @@ async function replaceSlice(
     .execute()
 
   if (companyIds.length === 0) return
-  try {
-    await db
-      .insertInto('ticket_group_member_companies')
-      .values(
-        companyIds.map((companyId) => ({
-          group_id: groupId,
-          user_id: userId,
-          company_id: companyId,
-        })),
-      )
-      .onConflict((oc) => oc.columns(['group_id', 'user_id', 'company_id']).doNothing())
-      .execute()
-  } catch (err) {
-    if (err instanceof Error && 'code' in err && err.code === FK_VIOLATION) {
-      throw outsidePortfolio(companyIds)
-    }
-    throw err
-  }
+  await db
+    .insertInto('ticket_group_member_companies')
+    .values(
+      companyIds.map((companyId) => ({
+        group_id: groupId,
+        user_id: userId,
+        company_id: companyId,
+      })),
+    )
+    .onConflict((oc) => oc.columns(['group_id', 'user_id', 'company_id']).doNothing())
+    .execute()
 }
 
 async function sliceOf(db: Kysely<Database>, groupId: string, userId: string): Promise<string[]> {
@@ -375,6 +368,8 @@ export class GroupMembersRepository implements GroupMembersRepositoryPort {
 
   add(groupId: string, { userId, role, companyIds = [] }: AddMemberBody): Promise<GroupMember> {
     return this.db.transaction().execute(async (trx) => {
+      if (!(await lockGroup(trx, groupId))) throw new NotFoundError(`Group ${groupId} not found`)
+
       let row: Selectable<TicketGroupMembers> | undefined
       try {
         row = await trx
@@ -429,6 +424,8 @@ export class GroupMembersRepository implements GroupMembersRepositoryPort {
     { active, role, companyIds }: UpdateMemberBody,
   ): Promise<GroupMember | undefined> {
     return this.db.transaction().execute(async (trx) => {
+      if (!(await lockGroup(trx, groupId))) return undefined
+
       const row =
         active === undefined && role === undefined
           ? await trx
@@ -436,6 +433,7 @@ export class GroupMembersRepository implements GroupMembersRepositoryPort {
               .selectAll()
               .where('group_id', '=', groupId)
               .where('user_id', '=', userId)
+              .forUpdate()
               .executeTakeFirst()
           : await trx
               .updateTable('ticket_group_members')
