@@ -75,6 +75,10 @@ export class TicketsService {
     return this.repository.findRows(query, viewerId, today)
   }
 
+  async inbox(viewerId: string, today: string) {
+    return this.repository.findInbox(viewerId, today)
+  }
+
   async changeStatus(id: string, data: UpdateTicketStatusBody, authorId: string): Promise<Ticket> {
     const isClosed = CLOSED_STATUSES.has(data.status)
     const closedAt = isClosed ? new Date().toISOString() : null

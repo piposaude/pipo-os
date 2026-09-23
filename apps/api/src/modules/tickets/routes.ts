@@ -71,6 +71,21 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
   )
 
   server.get(
+    '/api/tickets/inbox',
+    {
+      config: { policy: TICKET_POLICY },
+      schema: {
+        response: {
+          200: ticketRowsSchema,
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => service.inbox(requireUserId(request), businessToday()),
+  )
+
+  server.get(
     '/api/tickets/:id',
     {
       config: { policy: TICKET_POLICY, serviceAllowed: true },

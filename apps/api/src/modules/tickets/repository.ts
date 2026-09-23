@@ -2,6 +2,7 @@ import { sql, type InferResult, type Kysely, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
 import { ADVISORY_LOCKS } from '../../shared/advisory-locks.js'
+import { startOfBusinessDay } from '../../shared/business-date.js'
 import {
   ServiceUnavailableError,
   UnprocessableEntityError,
@@ -23,6 +24,7 @@ import type { QueueSort } from '../queues/view-vocabulary.js'
 import type { TicketReadFilter } from './filter-schema.js'
 import {
   actionDateWindowCondition,
+  plusDays,
   ticketFilterConditions,
   type ActionDateWindow,
 } from './filter-resolver.js'
@@ -306,6 +308,7 @@ export interface TicketsRepositoryPort {
     viewerId: string,
     today: string,
   ): Promise<{ data: TicketRowPayload[]; total: number }>
+  findInbox(viewerId: string, today: string): Promise<{ data: TicketRowPayload[]; total: number }>
 }
 
 async function groupIdOf(db: Kysely<Database>, companyId: string): Promise<string> {
@@ -518,6 +521,31 @@ export class TicketsRepository implements TicketsRepositoryPort {
       data: rows.map(toRowPayload),
       total: rows.length > 0 ? Number(rows[0].total_count) : 0,
     }
+  }
+
+  async findInbox(
+    viewerId: string,
+    today: string,
+  ): Promise<{ data: TicketRowPayload[]; total: number }> {
+    const rows = await selectRows(this.db)
+      .where('assignee_id', '=', viewerId)
+      .where(({ exists, selectFrom }) =>
+        exists(
+          selectFrom('ticket_comments as c')
+            .select(sql`1`.as('one'))
+            .whereRef('c.ticket_id', '=', 'tickets.id')
+            .where('c.created_at', '>=', new Date(startOfBusinessDay(plusDays(today, -1))))
+            .where((eb) =>
+              eb.or([eb('c.visibility', '=', 'public'), eb('c.channel', '=', 'email')]),
+            )
+            .where('c.author_id', 'is distinct from', viewerId),
+        ),
+      )
+      .orderBy('created_at', 'desc')
+      .orderBy('id', 'desc')
+      .execute()
+
+    return { data: rows.map(toRowPayload), total: rows.length }
   }
 
   async create(data: CreateTicketData): Promise<Ticket> {
