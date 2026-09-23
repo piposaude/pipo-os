@@ -5,7 +5,7 @@ import { ADVISORY_LOCKS } from '../../shared/advisory-locks.js'
 import { ConflictError, NotFoundError, ValidationFailedError } from '../../shared/errors.js'
 import { FK_VIOLATION } from '../../shared/pg.js'
 import type { Author } from '../auth/authenticate.js'
-import { insertEvent } from '../comments/repository.js'
+import { insertEvents } from '../comments/repository.js'
 import { CompanyCarriedConflictError } from './errors.js'
 import type { GroupNode } from './hierarchy.js'
 import type {
@@ -112,6 +112,8 @@ async function moveOpenTickets(
     .where('company_id', 'in', companyIds)
     .where('closed_at', 'is', null)
     .where('group_id', '<>', groupId)
+    // The portfolio lock does not cover a ticket's own PATCH or status change:
+    // the row lock is what keeps `previous` right and a just-closed ticket out.
     .forUpdate()
     .execute()
 
@@ -127,18 +129,16 @@ async function moveOpenTickets(
     )
     .execute()
 
-  for (const ticket of tickets) {
-    await insertEvent(
-      db,
-      {
-        ticketId: ticket.id,
-        eventType: 'moved',
-        body: 'Pod alterado',
-        metadata: { groupId, previous: ticket.group_id },
-      },
-      author,
-    )
-  }
+  await insertEvents(
+    db,
+    tickets.map((ticket) => ({
+      ticketId: ticket.id,
+      eventType: 'moved' as const,
+      body: 'Pod alterado',
+      metadata: { groupId, previous: ticket.group_id },
+    })),
+    author,
+  )
 }
 
 function toMember(row: Selectable<TicketGroupMembers>, companyIds: string[]): GroupMember {
