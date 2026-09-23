@@ -3178,7 +3178,7 @@
             "minLength": 1
           },
           "completion": {
-            "description": "Só junto de status completed; o que falta para concluir é a régua que decide",
+            "description": "Só junto de status completed",
             "$ref": "#/components/schemas/TicketCompletionBodyInput"
           }
         },

@@ -3184,7 +3184,7 @@ export interface components {
         UpdateTicketStatusBodyInput: {
             status: components["schemas"]["TicketStatusInput"];
             reason?: string;
-            /** @description Só junto de status completed; o que falta para concluir é a régua que decide */
+            /** @description Só junto de status completed */
             completion?: components["schemas"]["TicketCompletionBodyInput"];
         };
         /** @description Every Pipo member, unpaginated on purpose: the queue needs the whole e-mail to name map to draw a page of tickets. Bounded at 5.000 by the client that fills it. */

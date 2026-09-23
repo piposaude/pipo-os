@@ -208,9 +208,7 @@ export const updateTicketStatusBodySchema = z
   .object({
     status: ticketStatusSchema,
     reason: z.string().min(1).optional(),
-    completion: completionBodySchema
-      .describe('Só junto de status completed; o que falta para concluir é a régua que decide')
-      .optional(),
+    completion: completionBodySchema.describe('Só junto de status completed').optional(),
   })
   .strict()
   .superRefine((body, ctx) => {
