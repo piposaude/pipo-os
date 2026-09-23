@@ -392,7 +392,7 @@ export class GroupMembersRepository implements GroupMembersRepositoryPort {
       }
 
       await replaceSlice(trx, groupId, userId, companyIds)
-      return toMember(row, await sliceOf(trx, groupId, userId))
+      return toMember(row, [...companyIds].sort())
     })
   }
 
@@ -449,8 +449,9 @@ export class GroupMembersRepository implements GroupMembersRepositoryPort {
               .executeTakeFirst()
 
       if (!row) return undefined
-      if (companyIds !== undefined) await replaceSlice(trx, groupId, userId, companyIds)
-      return toMember(row, await sliceOf(trx, groupId, userId))
+      if (companyIds === undefined) return toMember(row, await sliceOf(trx, groupId, userId))
+      await replaceSlice(trx, groupId, userId, companyIds)
+      return toMember(row, [...companyIds].sort())
     })
   }
 }

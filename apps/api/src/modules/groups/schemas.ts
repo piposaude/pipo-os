@@ -7,7 +7,7 @@ const trimmedInput = (): z.ZodString =>
   z.string().trim().min(1).describe('Trimmed before validation: whitespace only is rejected.')
 
 export const companyIdsSchema = z
-  .array(z.uuid())
+  .array(z.uuid().toLowerCase())
   .max(1000)
   .refine((ids) => new Set(ids).size === ids.length, { message: 'Company ids must be unique' })
 

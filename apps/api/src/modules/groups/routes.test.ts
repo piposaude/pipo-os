@@ -1700,6 +1700,36 @@ describe('groups routes', () => {
       expect(response.statusCode).toBe(400)
     })
 
+    it('returns 400 when the slice repeats a company in another case', async () => {
+      const pod = await podCarrying(COMPANY_A)
+
+      const response = await addMember(pod, {
+        userId: ANA,
+        companyIds: [COMPANY_A, COMPANY_A.toUpperCase()],
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+
+    it('matches the slice against the portfolio by value, whatever the case sent', async () => {
+      const pod = await podCarrying(COMPANY_A)
+
+      const response = await addMember(pod, { userId: ANA, companyIds: [COMPANY_A.toUpperCase()] })
+
+      expect(response.statusCode).toBe(201)
+      expect(response.json().companyIds).toEqual([COMPANY_A])
+    })
+
+    it('answers the slice in the order the read routes use, whatever the order sent', async () => {
+      const pod = await podCarrying(COMPANY_A, COMPANY_B)
+      await addMember(pod, { userId: ANA })
+
+      const response = await updateMember(pod, { companyIds: [COMPANY_B, COMPANY_A] })
+
+      expect(response.json().companyIds).toEqual([COMPANY_A, COMPANY_B])
+      expect(await sliceOf(pod)).toEqual([COMPANY_A, COMPANY_B])
+    })
+
     it('replaces the slice with the set sent', async () => {
       const pod = await podCarrying(COMPANY_A, COMPANY_B)
       await addMember(pod, { userId: ANA, companyIds: [COMPANY_A] })

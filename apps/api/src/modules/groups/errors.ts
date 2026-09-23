@@ -6,7 +6,6 @@ export class CompanyCarriedConflictError extends ConflictError {
 
   constructor(message: string, owners: CompanyOwner[]) {
     super(message)
-    this.name = 'ConflictError'
     this.owners = owners
   }
 }
