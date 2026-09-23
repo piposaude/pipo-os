@@ -374,20 +374,12 @@ export class GroupMembersRepository implements GroupMembersRepositoryPort {
     return this.db.transaction().execute(async (trx) => {
       if (!(await lockGroup(trx, groupId))) throw new NotFoundError(`Group ${groupId} not found`)
 
-      let row: Selectable<TicketGroupMembers> | undefined
-      try {
-        row = await trx
-          .insertInto('ticket_group_members')
-          .values({ group_id: groupId, user_id: userId, ...(role !== undefined && { role }) })
-          .onConflict((oc) => oc.columns(['group_id', 'user_id']).doNothing())
-          .returningAll()
-          .executeTakeFirst()
-      } catch (err) {
-        if (err instanceof Error && 'code' in err && err.code === FK_VIOLATION) {
-          throw new NotFoundError(`Group ${groupId} not found`)
-        }
-        throw err
-      }
+      const row = await trx
+        .insertInto('ticket_group_members')
+        .values({ group_id: groupId, user_id: userId, ...(role !== undefined && { role }) })
+        .onConflict((oc) => oc.columns(['group_id', 'user_id']).doNothing())
+        .returningAll()
+        .executeTakeFirst()
 
       if (!row) {
         throw new ConflictError(`User ${userId} is already a member of group ${groupId}`)

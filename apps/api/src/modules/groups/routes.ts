@@ -23,7 +23,6 @@ import {
 } from './schemas.js'
 import type { GroupsService } from './service.js'
 
-// The shared handler serializes error, message and details only.
 async function withOwners<T>(
   reply: FastifyReply,
   write: () => Promise<T>,
