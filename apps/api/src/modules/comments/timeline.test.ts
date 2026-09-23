@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { sql } from 'kysely'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
+import { createRootGroup } from '../groups/root.test-helpers.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
 import { insertEvent } from './repository.js'
 import { timelineCommentSchema } from './schemas.js'
@@ -26,6 +27,7 @@ const validTicketBody = {
 
 describe('GET /api/tickets/:id/timeline', () => {
   let app: FastifyInstance
+  let rootGroupId: string
   let sessionCookie: string
   let ticketId: string
 
@@ -33,6 +35,7 @@ describe('GET /api/tickets/:id/timeline', () => {
     process.env.DEV_LOGIN_ENABLED = 'true'
     app = buildApp()
     await app.ready()
+    rootGroupId = await createRootGroup(app.db)
 
     const loginResponse = await app.inject({
       method: 'POST',
@@ -46,6 +49,7 @@ describe('GET /api/tickets/:id/timeline', () => {
     await app.db.deleteFrom('ticket_status_history').execute()
     await app.db.deleteFrom('ticket_comments').execute()
     await app.db.deleteFrom('tickets').execute()
+    await app.db.deleteFrom('ticket_groups').where('id', '=', rootGroupId).execute()
     await app.close()
     delete process.env.DEV_LOGIN_ENABLED
   })

@@ -124,7 +124,7 @@ export const createTicketBodySchema = z
     parentCompanyId: z.uuid().optional(),
     parentCompanyName: z.string().min(1).optional(),
     companyTaxId: z.string().min(1).optional(),
-    // Accepted, never chosen: routing by portfolio is PD-052.
+    // Absent, the company's portfolio decides, and the root group without one.
     groupId: z.uuid().optional(),
     queueId: z.uuid().optional(),
     assigneeId: z.string().min(1).optional(),
@@ -141,6 +141,7 @@ export const updateTicketBodySchema = z
     priority: ticketPrioritySchema.nullable().optional(),
     actionDate: z.iso.datetime({ offset: true }).nullable().optional(),
     queueId: z.uuid().nullable().optional(),
+    groupId: z.uuid().optional(),
     assigneeId: z.string().min(1).nullable().optional(),
     tags: z.array(tagSchema).optional(),
     forceCompletion: z.boolean().optional(),

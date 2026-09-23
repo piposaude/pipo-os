@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify'
 import { expressionBuilder, sql } from 'kysely'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
+import { createRootGroup } from '../groups/root.test-helpers.js'
 import type { Database } from '../../infrastructure/db.js'
 import { ticketReadFilterSchema, type TicketReadFilter } from './filter-schema.js'
 import {
@@ -39,13 +40,16 @@ type Seed = {
 
 describe('ticketFilterConditions — the saved filter, resolved in SQL', () => {
   let app: FastifyInstance
+  let rootGroupId: string
 
   beforeAll(async () => {
     app = buildApp()
     await app.ready()
+    rootGroupId = await createRootGroup(app.db)
   })
 
   afterAll(async () => {
+    await app.db.deleteFrom('ticket_groups').where('id', '=', rootGroupId).execute()
     await app.close()
   })
 
@@ -63,6 +67,7 @@ describe('ticketFilterConditions — the saved filter, resolved in SQL', () => {
           company_id: row.companyId ?? COMPANY_A,
           source_system: row.sourceSystem ?? 'enrollment-integrations',
           status: row.status ?? 'broker-processing',
+          group_id: rootGroupId,
           assignee_id: row.assigneeId ?? null,
           priority: row.priority ?? null,
           tags: row.tags ?? [],

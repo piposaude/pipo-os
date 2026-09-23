@@ -162,7 +162,7 @@ export interface Tickets {
   enrollment_snapshot: Generated<Json>;
   enrollment_type: string;
   force_completion: Generated<boolean>;
-  group_id: string | null;
+  group_id: string;
   id: Generated<string>;
   origin: string | null;
   parent_company_id: string | null;
