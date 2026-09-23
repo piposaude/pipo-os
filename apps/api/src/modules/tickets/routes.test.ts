@@ -1001,10 +1001,10 @@ describe('tickets routes', () => {
     describe('a conclusão', () => {
       const familySnapshot = {
         member_type: 'primary',
-        primary: { profile: { tax_id: '111.111.111-11' } },
+        primary: { profile: { tax_id: '222.222.222-22' } },
         dependents: [
-          { profile: { tax_id: '222.222.222-22' } },
           { profile: { tax_id: '333.333.333-33' } },
+          { profile: { tax_id: '111.111.111-11' } },
         ],
       }
 
@@ -1063,9 +1063,9 @@ describe('tickets routes', () => {
         const response = await read(id)
 
         expect(response.json().completion.members).toEqual([
-          { taxId: '11111111111', idCardNumber: 'C1', startDate: '2026-10-01' },
           { taxId: '22222222222', idCardNumber: 'C2', startDate: '2026-10-02' },
           { taxId: '33333333333', idCardNumber: 'C3', startDate: '2026-10-03' },
+          { taxId: '11111111111', idCardNumber: 'C1', startDate: '2026-10-01' },
         ])
       })
 
