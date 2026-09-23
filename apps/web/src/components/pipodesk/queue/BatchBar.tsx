@@ -47,9 +47,8 @@ const statusLabel = (status: ApiStatus): string => {
  * number is literal.
  *
  * Absent, not disabled — a grayed item with no visible reason only frustrates:
- * comment and complete (PD-040/PD-031), and move-to-pod and schedule, whose
- * routes do not exist yet (PD-052 and the `actionDate` the PATCH does not
- * accept). The screens below stay: they come back with the route.
+ * comment and complete (PD-040/PD-031), move-to-pod (PD-052) and schedule
+ * (PD-106). The screens below stay: they come back with those tickets.
  */
 export function BatchBar({
   selectedCount,
