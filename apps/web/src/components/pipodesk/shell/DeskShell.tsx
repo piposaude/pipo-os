@@ -24,14 +24,14 @@ import { api, client } from '@/lib/api'
 import { structureFromApi } from '@/lib/pipodesk/structure-from-api'
 import { rowsFromApi } from '@/lib/pipodesk/rows-from-api'
 import { businessToday } from '@/lib/date'
-import { COMPANY_REGISTRY, INBOX_TICKET_IDS } from '@/fixtures/pipodesk/dataset'
+import { COMPANY_REGISTRY } from '@/fixtures/pipodesk/dataset'
 import '@/styles/pipodesk-tokens.css'
 
 /**
  * The Pipodesk shell: tree left, content right. `.desk-root` scopes the
- * operation tokens (login carries none). Rows, structure and names come from
- * the API; the inbox ids and the company registry are the last two fixtures,
- * and they leave with PD-080b and PD-054.
+ * operation tokens (login carries none). Rows, structure, names and the inbox
+ * come from the API; the company registry is the last fixture, and it leaves
+ * with PD-054.
  */
 /** Node by id, at any depth of the three sections. */
 function findNode(sections: TreeSection[], id: string): TreeNode | null {
@@ -137,6 +137,7 @@ export function DeskShell() {
     { params: { query: { window: 'all' as const, limit: 5000 } } },
     { staleTime: 30_000 },
   )
+  const inboxQuery = api.useQuery('get', '/api/tickets/inbox', {}, { staleTime: 30_000 })
   const usersQuery = api.useQuery('get', '/api/users', {}, { staleTime: STRUCTURE_STALE_MS })
 
   const namesByEmail = useMemo(
@@ -152,9 +153,15 @@ export function DeskShell() {
        on read. When the backend lands, the patch becomes the PATCH body. */
   const [patches, setPatches] = useState<Record<string, TicketPatch>>({})
   const today = businessToday()
-  const rows = useMemo(
-    () => applyPatches(rowsFromApi(rowsQuery.data?.data ?? []), patches, today),
-    [rowsQuery.data, patches, today],
+  const rows = useMemo(() => {
+    const listed = rowsQuery.data?.data ?? []
+    const known = new Set(listed.map((row) => row.id))
+    const unlisted = (inboxQuery.data?.data ?? []).filter((row) => !known.has(row.id))
+    return applyPatches(rowsFromApi([...listed, ...unlisted]), patches, today)
+  }, [rowsQuery.data, inboxQuery.data, patches, today])
+  const inboxTicketIds = useMemo(
+    () => (inboxQuery.data?.data ?? []).map((row) => row.id),
+    [inboxQuery.data],
   )
 
   const [comments, setComments] = useState<TicketComment[]>([])
@@ -256,10 +263,10 @@ export function DeskShell() {
         viewerGroupId,
         structure,
         today,
-        inboxTicketIds: INBOX_TICKET_IDS,
+        inboxTicketIds,
         resolveName,
       }),
-    [rows, viewerId, viewerGroupId, structure, today, resolveName],
+    [rows, viewerId, viewerGroupId, structure, today, inboxTicketIds, resolveName],
   )
 
   /* Open on the "Meus tickets" NODE, not a raw INITIAL_VIEW: filter, scope
