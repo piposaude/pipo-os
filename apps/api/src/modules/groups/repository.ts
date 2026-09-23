@@ -4,6 +4,8 @@ import type { TicketGroupMembers, TicketGroups } from '../../infrastructure/db-t
 import { ADVISORY_LOCKS } from '../../shared/advisory-locks.js'
 import { ConflictError, NotFoundError, ValidationFailedError } from '../../shared/errors.js'
 import { FK_VIOLATION } from '../../shared/pg.js'
+import type { Author } from '../auth/authenticate.js'
+import { insertEvents } from '../comments/repository.js'
 import { CompanyCarriedConflictError } from './errors.js'
 import type { GroupNode } from './hierarchy.js'
 import type {
@@ -66,13 +68,14 @@ async function carryCompanies(
   db: Kysely<Database>,
   groupId: string,
   companyIds: readonly string[],
-): Promise<void> {
-  if (companyIds.length === 0) return
+): Promise<string[]> {
+  if (companyIds.length === 0) return []
 
-  await db
+  const added = await db
     .insertInto('ticket_group_companies')
     .values(companyIds.map((companyId) => ({ group_id: groupId, company_id: companyId })))
     .onConflict((oc) => oc.column('company_id').doNothing())
+    .returning('company_id')
     .execute()
 
   const owners = await db
@@ -91,6 +94,51 @@ async function carryCompanies(
       owners.map((o) => ({ companyId: o.company_id, groupId: o.id, groupName: o.name })),
     )
   }
+
+  return added.map((row) => row.company_id)
+}
+
+async function moveOpenTickets(
+  db: Kysely<Database>,
+  groupId: string,
+  companyIds: readonly string[],
+  author: Author,
+): Promise<void> {
+  if (companyIds.length === 0) return
+
+  const tickets = await db
+    .selectFrom('tickets')
+    .select(['id', 'group_id'])
+    .where('company_id', 'in', companyIds)
+    .where('closed_at', 'is', null)
+    .where('group_id', '<>', groupId)
+    // The portfolio lock does not cover a ticket's own PATCH or status change:
+    // the row lock is what keeps `previous` right and a just-closed ticket out.
+    .forUpdate()
+    .execute()
+
+  if (tickets.length === 0) return
+
+  await db
+    .updateTable('tickets')
+    .set({ group_id: groupId })
+    .where(
+      'id',
+      'in',
+      tickets.map((ticket) => ticket.id),
+    )
+    .execute()
+
+  await insertEvents(
+    db,
+    tickets.map((ticket) => ({
+      ticketId: ticket.id,
+      eventType: 'moved' as const,
+      body: 'Pod alterado',
+      metadata: { groupId, previous: ticket.group_id },
+    })),
+    author,
+  )
 }
 
 function toMember(row: Selectable<TicketGroupMembers>, companyIds: string[]): GroupMember {
@@ -177,8 +225,8 @@ export interface GroupsRepositoryPort {
   withHierarchyLock<T>(fn: (repository: GroupsRepositoryPort) => Promise<T>): Promise<T>
   findRelations(groupIds: readonly string[]): Promise<GroupRelations>
   update(id: string, data: UpdateGroupBody, updatedBy: string): Promise<Group | undefined>
-  replaceCompanies(id: string, companyIds: readonly string[]): Promise<boolean>
-  carryCompany(id: string, companyId: string): Promise<boolean>
+  replaceCompanies(id: string, companyIds: readonly string[], author: Author): Promise<boolean>
+  carryCompany(id: string, companyId: string, author: Author): Promise<boolean>
   delete(id: string): Promise<boolean>
 }
 
@@ -318,7 +366,7 @@ export class GroupsRepository implements GroupsRepositoryPort {
     return row ? toGroup(row) : undefined
   }
 
-  replaceCompanies(id: string, companyIds: readonly string[]): Promise<boolean> {
+  replaceCompanies(id: string, companyIds: readonly string[], author: Author): Promise<boolean> {
     return this.db.transaction().execute(async (trx) => {
       await lockPortfolios(trx)
       if (!(await lockGroup(trx, id))) return false
@@ -329,16 +377,18 @@ export class GroupsRepository implements GroupsRepositoryPort {
         .$if(companyIds.length > 0, (q) => q.where('company_id', 'not in', companyIds))
         .execute()
 
-      await carryCompanies(trx, id, companyIds)
+      const added = await carryCompanies(trx, id, companyIds)
+      await moveOpenTickets(trx, id, added, author)
       return true
     })
   }
 
-  carryCompany(id: string, companyId: string): Promise<boolean> {
+  carryCompany(id: string, companyId: string, author: Author): Promise<boolean> {
     return this.db.transaction().execute(async (trx) => {
       await lockPortfolios(trx)
       if (!(await lockGroup(trx, id))) return false
-      await carryCompanies(trx, id, [companyId])
+      const added = await carryCompanies(trx, id, [companyId])
+      await moveOpenTickets(trx, id, added, author)
       return true
     })
   }

@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify'
+import { sql } from 'kysely'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
+import { ADVISORY_LOCKS } from '../../shared/advisory-locks.js'
 import { businessToday } from '../../shared/business-date.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
 import { sessionWithoutSub } from '../auth/session.test-helpers.js'
@@ -329,6 +331,44 @@ describe('tickets routes', () => {
 
         expect(response.statusCode).toBe(201)
         expect(response.json().groupId).toBe(rootGroupId)
+      })
+
+      it('is the pod of a portfolio still being written when the ticket arrives', async () => {
+        const pod = await createPod('POD 1')
+        pods.push(pod)
+
+        const waitUntilBlockedOnPortfolios = async (): Promise<void> => {
+          for (let attempt = 0; attempt < 100; attempt++) {
+            const { rows } = await sql<{ waiting: number }>`
+              select count(*)::int as waiting from pg_locks
+              where locktype = 'advisory' and objid = ${ADVISORY_LOCKS.groupPortfolios}
+                and mode = 'ShareLock' and not granted`.execute(app.db)
+            if (rows[0]?.waiting) return
+            await new Promise((resolve) => setTimeout(resolve, 20))
+          }
+          throw new Error('The ticket creation never waited on the portfolio lock')
+        }
+
+        const { request } = await app.db.transaction().execute(async (trx) => {
+          await sql`select pg_advisory_xact_lock(${ADVISORY_LOCKS.groupPortfolios})`.execute(trx)
+          await trx
+            .insertInto('ticket_group_companies')
+            .values({ group_id: pod, company_id: validTicketBody.companyId })
+            .execute()
+
+          const request = app.inject({
+            method: 'POST',
+            url: '/api/tickets',
+            payload: validTicketBody,
+            cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+          })
+          await waitUntilBlockedOnPortfolios()
+          return { request }
+        })
+        const creating = await request
+
+        expect(creating.statusCode).toBe(201)
+        expect(creating.json().groupId).toBe(pod)
       })
 
       it('is the one the caller sent, over the portfolio', async () => {
