@@ -2373,6 +2373,39 @@ describe('tickets routes', () => {
         ])
       })
 
+      it('conclui com force_completion o chamado cujo tipo gravado a régua não conhece', async () => {
+        const id = await openTicket({ forceCompletion: true })
+        await app.db
+          .updateTable('tickets')
+          .set({ enrollment_type: 'Inclusão' })
+          .where('id', '=', id)
+          .execute()
+
+        const response = await complete(id)
+
+        expect(response.statusCode).toBe(200)
+      })
+
+      it('grava a carteirinha sem os espaços em volta', async () => {
+        const id = await openTicket()
+
+        await complete(id, {
+          members: [
+            member('22222222222', { idCardNumber: '  C-2 ' }),
+            member('33333333333'),
+            member('11111111111'),
+          ],
+        })
+
+        const row = await app.db
+          .selectFrom('ticket_completion_members')
+          .select('id_card_number')
+          .where('ticket_id', '=', id)
+          .where('tax_id', '=', '22222222222')
+          .executeTakeFirstOrThrow()
+        expect(row.id_card_number).toBe('C-2')
+      })
+
       it('conclui sem bloco a alteração de cadastro', async () => {
         const id = await openTicket({ enrollmentType: 'registration_data_change' })
 

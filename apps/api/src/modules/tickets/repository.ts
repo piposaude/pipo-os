@@ -709,7 +709,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
             completion.members.map((member) => ({
               ticket_id: id,
               tax_id: member.taxId,
-              id_card_number: member.idCardNumber,
+              id_card_number: member.idCardNumber.trim(),
               start_date: member.startDate,
             })),
           )
