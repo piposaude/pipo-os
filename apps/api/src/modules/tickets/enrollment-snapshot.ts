@@ -220,14 +220,10 @@ export interface CompletionContext {
 const taxIdOf = (member: unknown): string | null =>
   isRecord(member) ? readString(member, ['profile', 'tax-id']) : null
 
-export function completionContextOf(snapshot: unknown): CompletionContext {
-  if (!isRecord(snapshot)) return { memberTaxIds: [], admissionDate: null }
+export function snapshotLivesOf(snapshot: unknown): (string | null)[] {
+  if (!isRecord(snapshot)) return []
 
   const primary = readPath(snapshot, ['primary'])
-  const admissionDate = isRecord(primary)
-    ? readString(primary, ['employment', 'admission-date'])
-    : null
-
   const dependents = readPath(snapshot, ['dependents'])
   const list = Array.isArray(dependents) ? dependents : []
 
@@ -239,10 +235,17 @@ export function completionContextOf(snapshot: unknown): CompletionContext {
         ? undefined
         : list.find((member) => isRecord(member) && readString(member, ['member-id']) === memberId)
     const soleDependent = list.length === 1 ? list[0] : undefined
-    const taxId = taxIdOf(pointed ?? soleDependent)
-    return { memberTaxIds: taxId === null ? [] : [taxId], admissionDate }
+    return [taxIdOf(pointed ?? soleDependent)]
   }
 
-  const taxIds = [primary, ...list].map(taxIdOf)
-  return { memberTaxIds: taxIds.filter((taxId) => taxId !== null), admissionDate }
+  return [primary, ...list].map(taxIdOf)
+}
+
+export function completionContextOf(snapshot: unknown): CompletionContext {
+  const primary = isRecord(snapshot) ? readPath(snapshot, ['primary']) : undefined
+  const admissionDate = isRecord(primary)
+    ? readString(primary, ['employment', 'admission-date'])
+    : null
+  const memberTaxIds = snapshotLivesOf(snapshot).filter((taxId) => taxId !== null)
+  return { memberTaxIds, admissionDate }
 }

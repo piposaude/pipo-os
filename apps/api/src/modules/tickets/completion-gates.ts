@@ -1,6 +1,6 @@
 import type { ErrorDetail } from '../../shared/errors.js'
 import { digitsOf } from '../../shared/text.js'
-import { completionContextOf } from './enrollment-snapshot.js'
+import { completionContextOf, snapshotLivesOf } from './enrollment-snapshot.js'
 import type { CanonicalEnrollmentType } from './enrollment-type.js'
 import type { TicketCompletionBody, TicketStatus } from './schemas.js'
 
@@ -117,7 +117,7 @@ export function unknownMemberFailures(
   enrollmentSnapshot: unknown,
   members: readonly CompletionMember[],
 ): ErrorDetail[] {
-  const carried = completionContextOf(enrollmentSnapshot).memberTaxIds.map(digitsOf)
+  const carried = snapshotLivesOf(enrollmentSnapshot).map((taxId) => digitsOf(taxId ?? ''))
   if (carried.length === 0 || carried.includes('')) return []
 
   const lives = new Set(carried)

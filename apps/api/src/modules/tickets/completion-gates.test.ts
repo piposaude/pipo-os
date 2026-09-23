@@ -489,6 +489,17 @@ describe('completionFailures · a life the movement does not carry', () => {
     ])
   })
 
+  it('lets a forced ticket through when a life of the snapshot has no tax id', () => {
+    const subject = subjectOf({
+      forceCompletion: true,
+      enrollmentSnapshot: { ...family, dependents: [{ profile: {} }] },
+    })
+    const answer: CompletionData = {
+      members: [{ taxId: '222', idCardNumber: 'card', startDate: '2026-04-01' }],
+    }
+    expect(completionFailures(subject, answer)).toEqual([])
+  })
+
   it('lets a forced ticket through when the snapshot names no life to compare with', () => {
     expect(completionFailures(subjectOf({ forceCompletion: true }), stranger)).toEqual([])
   })
