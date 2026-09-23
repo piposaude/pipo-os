@@ -2464,7 +2464,29 @@ describe('tickets routes', () => {
           members: [member('22222222222'), member('33333333333'), member('11111111111')],
         }
 
-        const responses = await Promise.all([complete(id, completion), complete(id, completion)])
+        let release!: () => void
+        const released = new Promise<void>((resolve) => (release = resolve))
+        let held!: () => void
+        const locked = new Promise<void>((resolve) => (held = resolve))
+        const holder = app.db.transaction().execute(async (trx) => {
+          await trx.selectFrom('tickets').select('id').where('id', '=', id).forUpdate().execute()
+          held()
+          await released
+        })
+        await locked
+
+        const pending = Promise.all([complete(id, completion), complete(id, completion)])
+        for (let waiting = 0, tries = 0; waiting < 2 && tries < 300; tries++) {
+          await new Promise((resolve) => setTimeout(resolve, 10))
+          const row = await sql<{ count: number }>`
+            SELECT count(*)::int AS count FROM pg_stat_activity
+            WHERE datname = current_database() AND wait_event_type = 'Lock'
+          `.execute(app.db)
+          waiting = row.rows[0]!.count
+        }
+        release()
+        await holder
+        const responses = await pending
 
         expect(responses.map((r) => r.statusCode).sort()).toEqual([200, 422])
         expect(responses.find((r) => r.statusCode === 422)!.json().error).toBe(
