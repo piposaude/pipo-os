@@ -55,4 +55,10 @@ describe('o viewer vem da sessão', () => {
 
     expect(screen.getByRole('button', { name: /Bruno Lima/i })).toBeInTheDocument()
   })
+
+  it('should cair no e-mail quando o nome vem em branco, e não mostrar uma conta sem nome', async () => {
+    await renderAs(session({ name: '  ', email: 'bruno.lima@piposaude.com.br' }))
+
+    expect(screen.getByRole('button', { name: /Bruno Lima/i })).toBeInTheDocument()
+  })
 })

@@ -61,7 +61,7 @@ export function DeskShell() {
   const navigate = useNavigate()
   const user = useSessionStore((state) => state.user)
   const email = user?.email ?? ''
-  const viewerName = user?.name || (email ? displayNameFromEmail(email) : 'Você')
+  const viewerName = user?.name?.trim() || (email ? displayNameFromEmail(email) : 'Você')
 
   /* The `sub`, not the e-mail: it is the value the API writes into assigneeId,
      so `@me` resolves against what the rows actually carry. */
