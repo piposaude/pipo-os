@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import type { FastifyInstance } from 'fastify'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
@@ -42,6 +43,7 @@ describe('groups routes', () => {
      both `companies` and `members`. A table added in the wrong position here
      reintroduces FK violations that read as unrelated test failures. */
   afterEach(async () => {
+    await app.db.deleteFrom('ticket_comments').execute()
     await app.db.deleteFrom('tickets').execute()
     await app.db.deleteFrom('ticket_queues').execute()
     await app.db.deleteFrom('ticket_group_member_companies').execute()
@@ -845,6 +847,163 @@ describe('groups routes', () => {
       const response = await carry(pod, 'acme')
 
       expect(response.statusCode).toBe(400)
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  describe('carrying a company takes its open tickets along', () => {
+    const insertTicket = async (
+      groupId: string,
+      companyId: string,
+      closedAt: Date | null = null,
+    ): Promise<string> => {
+      const row = await app.db
+        .insertInto('tickets')
+        .values({
+          enrollment_id: randomUUID(),
+          enrollment_type: 'inclusion',
+          company_id: companyId,
+          source_system: 'enrollment-integrations',
+          status: closedAt ? 'completed' : 'broker-processing',
+          group_id: groupId,
+          closed_at: closedAt,
+          enrollment_snapshot: JSON.stringify({}),
+          tags: [],
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow()
+      return row.id
+    }
+
+    const groupOf = async (ticketId: string): Promise<string> => {
+      const row = await app.db
+        .selectFrom('tickets')
+        .select('group_id')
+        .where('id', '=', ticketId)
+        .executeTakeFirstOrThrow()
+      return row.group_id
+    }
+
+    const movedEventsOf = (ticketId: string) =>
+      app.db
+        .selectFrom('ticket_comments')
+        .select(['author_id', 'author_type', 'metadata'])
+        .where('ticket_id', '=', ticketId)
+        .where('event_type', '=', 'moved')
+        .execute()
+
+    const carry = (groupId: string, companyId: string) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/groups/${groupId}/companies/${companyId}`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+    const putCompanies = (groupId: string, companyIds: string[]) =>
+      app.inject({
+        method: 'PUT',
+        url: `/api/groups/${groupId}/companies`,
+        payload: { companyIds },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+    it('moves the open tickets of the company from the root into the pod on POST', async () => {
+      const geben = await createGroup('Gestão de Benefícios')
+      const pod = await createGroup('POD 3', geben)
+      const first = await insertTicket(geben, COMPANY_A)
+      const second = await insertTicket(geben, COMPANY_A)
+
+      const response = await carry(pod, COMPANY_A)
+
+      expect(response.statusCode).toBe(200)
+      expect(await groupOf(first)).toBe(pod)
+      expect(await groupOf(second)).toBe(pod)
+    })
+
+    it('leaves a closed ticket of the company in the group where it closed', async () => {
+      const geben = await createGroup('Gestão de Benefícios')
+      const pod = await createGroup('POD 3', geben)
+      const closed = await insertTicket(geben, COMPANY_A, new Date('2026-09-01T12:00:00Z'))
+
+      await carry(pod, COMPANY_A)
+
+      expect(await groupOf(closed)).toBe(geben)
+      expect(await movedEventsOf(closed)).toEqual([])
+    })
+
+    it('leaves the tickets of other companies where they are', async () => {
+      const geben = await createGroup('Gestão de Benefícios')
+      const pod = await createGroup('POD 3', geben)
+      const other = await insertTicket(geben, COMPANY_B)
+
+      await carry(pod, COMPANY_A)
+
+      expect(await groupOf(other)).toBe(geben)
+    })
+
+    it('records one moved event per ticket, signed by who carried the company', async () => {
+      const geben = await createGroup('Gestão de Benefícios')
+      const pod = await createGroup('POD 3', geben)
+      const ticket = await insertTicket(geben, COMPANY_A)
+
+      await carry(pod, COMPANY_A)
+
+      expect(await movedEventsOf(ticket)).toEqual([
+        {
+          author_id: DEV_LOGIN_USER_ID,
+          author_type: 'user',
+          metadata: { groupId: pod, previous: geben },
+        },
+      ])
+    })
+
+    it('records no second event when the pod already carries the company', async () => {
+      const geben = await createGroup('Gestão de Benefícios')
+      const pod = await createGroup('POD 3', geben)
+      const ticket = await insertTicket(geben, COMPANY_A)
+      await carry(pod, COMPANY_A)
+
+      await carry(pod, COMPANY_A)
+
+      expect(await movedEventsOf(ticket)).toHaveLength(1)
+    })
+
+    it('moves the open tickets of the companies a PUT adds', async () => {
+      const geben = await createGroup('Gestão de Benefícios')
+      const pod = await createGroup('POD 3', geben)
+      const first = await insertTicket(geben, COMPANY_A)
+      const second = await insertTicket(geben, COMPANY_B)
+
+      const response = await putCompanies(pod, [COMPANY_A, COMPANY_B])
+
+      expect(response.statusCode).toBe(200)
+      expect(await groupOf(first)).toBe(pod)
+      expect(await groupOf(second)).toBe(pod)
+      expect(await movedEventsOf(second)).toHaveLength(1)
+    })
+
+    it('leaves a ticket escalated to the root there when a PUT resends the portfolio', async () => {
+      const geben = await createGroup('Gestão de Benefícios')
+      const pod = await createGroup('POD 3', geben)
+      await putCompanies(pod, [COMPANY_A])
+      const escalated = await insertTicket(geben, COMPANY_A)
+
+      await putCompanies(pod, [COMPANY_A, COMPANY_B])
+
+      expect(await groupOf(escalated)).toBe(geben)
+    })
+
+    it('moves nothing when the company is carried by another pod', async () => {
+      const geben = await createGroup('Gestão de Benefícios')
+      const pod3 = await createGroup('POD 3', geben)
+      const pod5 = await createGroup('POD 5', geben)
+      await carry(pod3, COMPANY_A)
+      const ticket = await insertTicket(pod3, COMPANY_A)
+
+      const response = await carry(pod5, COMPANY_A)
+
+      expect(response.statusCode).toBe(409)
+      expect(await groupOf(ticket)).toBe(pod3)
     })
   })
 

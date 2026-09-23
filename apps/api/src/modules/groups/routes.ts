@@ -1,7 +1,7 @@
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import { z } from 'zod'
-import { requireUserId } from '../auth/authenticate.js'
+import { requireAuthor, requireUserId } from '../auth/authenticate.js'
 import { errorResponseSchema } from '../../shared/schemas.js'
 import { STRUCTURE_POLICY } from '../auth/policy.js'
 import { CompanyCarriedConflictError } from './errors.js'
@@ -150,7 +150,11 @@ export function registerGroupRoutes(app: FastifyInstance, service: GroupsService
     },
     async (request, reply) => {
       return withOwners(reply, () =>
-        service.replaceCompanies(request.params.id, request.body.companyIds),
+        service.replaceCompanies(
+          request.params.id,
+          request.body.companyIds,
+          requireAuthor(request),
+        ),
       )
     },
   )
@@ -173,7 +177,7 @@ export function registerGroupRoutes(app: FastifyInstance, service: GroupsService
     },
     async (request, reply) => {
       return withOwners(reply, () =>
-        service.carryCompany(request.params.id, request.params.companyId),
+        service.carryCompany(request.params.id, request.params.companyId, requireAuthor(request)),
       )
     },
   )

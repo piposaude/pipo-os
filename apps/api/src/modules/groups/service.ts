@@ -1,4 +1,5 @@
 import { NotFoundError } from '../../shared/errors.js'
+import type { Author } from '../auth/authenticate.js'
 import { assertParentIsValid } from './hierarchy.js'
 import type { GroupMembersRepositoryPort, GroupsRepositoryPort } from './repository.js'
 import type {
@@ -74,14 +75,18 @@ export class GroupsService {
     return group
   }
 
-  async replaceCompanies(id: string, companyIds: readonly string[]): Promise<GroupDetail> {
-    const found = await this.repository.replaceCompanies(id, companyIds)
+  async replaceCompanies(
+    id: string,
+    companyIds: readonly string[],
+    author: Author,
+  ): Promise<GroupDetail> {
+    const found = await this.repository.replaceCompanies(id, companyIds, author)
     if (!found) throw new NotFoundError(`Group ${id} not found`)
     return this.get(id)
   }
 
-  async carryCompany(id: string, companyId: string): Promise<GroupDetail> {
-    const found = await this.repository.carryCompany(id, companyId)
+  async carryCompany(id: string, companyId: string, author: Author): Promise<GroupDetail> {
+    const found = await this.repository.carryCompany(id, companyId, author)
     if (!found) throw new NotFoundError(`Group ${id} not found`)
     return this.get(id)
   }
