@@ -277,6 +277,7 @@ export const ticketListSchema = z
 export type TicketStatus = z.infer<typeof ticketStatusSchema>
 export type Ticket = z.infer<typeof ticketSchema>
 export type TicketCompletion = z.infer<typeof completionSchema>
+export type TicketCompletionBody = z.infer<typeof completionBodySchema>
 export type TicketDetail = z.infer<typeof ticketDetailSchema>
 export type TicketParams = z.infer<typeof ticketParamsSchema>
 export type CreateTicketBody = z.infer<typeof createTicketBodySchema>

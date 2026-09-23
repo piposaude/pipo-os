@@ -2,23 +2,10 @@ import type { ErrorDetail } from '../../shared/errors.js'
 import { digitsOf } from '../../shared/text.js'
 import { completionContextOf } from './enrollment-snapshot.js'
 import type { CanonicalEnrollmentType } from './enrollment-type.js'
-import type { TicketStatus } from './schemas.js'
+import type { TicketCompletionBody, TicketStatus } from './schemas.js'
 
-export interface CompletionMember {
-  readonly taxId: string
-  readonly idCardNumber: string
-  readonly startDate: string
-}
-
-export interface CompletionData {
-  readonly members?: readonly CompletionMember[]
-  readonly endDate?: string
-  readonly effectiveDate?: string
-  readonly mecsasCompanyCode?: string
-  readonly hasGracePeriod?: boolean
-  readonly carrierTrackingNumber?: string
-  readonly documentTypes?: string[]
-}
+export type CompletionData = TicketCompletionBody
+export type CompletionMember = NonNullable<CompletionData['members']>[number]
 
 export interface CompletionSubject {
   readonly enrollmentType: CanonicalEnrollmentType
