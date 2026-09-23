@@ -4,7 +4,7 @@ import type { Tickets } from '../../infrastructure/db-types.js'
 import { ValidationFailedError } from '../../shared/errors.js'
 import { FK_VIOLATION, UNIQUE_VIOLATION } from '../../shared/pg.js'
 import type { Author } from '../auth/authenticate.js'
-import { insertEvent } from '../comments/repository.js'
+import { insertEvent, type TicketEventInput } from '../comments/repository.js'
 import { OpenTicketConflictError } from './errors.js'
 import {
   companyFieldsOf,
@@ -61,6 +61,33 @@ function rethrowMissingReference(err: unknown): never {
  *  whole page, so a blank column reads as the null it means. */
 const blankAsNull = (value: string | null): string | null =>
   value === null || value.trim() === '' ? null : value
+
+interface ChangeLabels {
+  removed: string
+  set: string
+  changed: string
+}
+
+const ASSIGNMENT_LABELS: ChangeLabels = {
+  removed: 'Responsável removido',
+  set: 'Responsável definido',
+  changed: 'Responsável alterado',
+}
+
+const ACTION_DATE_LABELS: ChangeLabels = {
+  removed: 'Data de ação removida',
+  set: 'Data de ação definida',
+  changed: 'Data de ação alterada',
+}
+
+function changeEventBody(
+  value: string | null,
+  previous: string | null,
+  labels: ChangeLabels,
+): string {
+  if (value === null) return labels.removed
+  return previous === null ? labels.set : labels.changed
+}
 
 function toTicket(row: Selectable<Tickets>): Ticket {
   return {
@@ -128,7 +155,7 @@ export interface TicketsRepositoryPort {
   findById(id: string): Promise<Ticket | undefined>
   create(data: CreateTicketData): Promise<Ticket>
   update(id: string, data: UpdateTicketBody, author?: Author): Promise<Ticket | undefined>
-  claimOpen(id: string, assigneeId: string): Promise<Ticket | undefined>
+  claimOpen(id: string, claimer: Author): Promise<Ticket | undefined>
   changeStatus(
     id: string,
     toStatus: TicketStatus,
@@ -501,21 +528,46 @@ export class TicketsRepository implements TicketsRepositoryPort {
     })
   }
 
-  async claimOpen(id: string, assigneeId: string): Promise<Ticket | undefined> {
-    const row = await this.db
-      .updateTable('tickets')
-      .set({ assignee_id: assigneeId })
-      .where('id', '=', id)
-      .where('status', 'not in', ['completed', 'cancelled'])
-      .returningAll()
-      .executeTakeFirst()
+  async claimOpen(id: string, claimer: Author): Promise<Ticket | undefined> {
+    return this.db.transaction().execute(async (trx) => {
+      const current = await trx
+        .selectFrom('tickets')
+        .selectAll()
+        .where('id', '=', id)
+        .where('status', 'not in', ['completed', 'cancelled'])
+        .forUpdate()
+        .executeTakeFirst()
 
-    return row ? toTicket(row) : undefined
+      if (!current) return undefined
+
+      const row = await trx
+        .updateTable('tickets')
+        .set({ assignee_id: claimer.id })
+        .where('id', '=', id)
+        .returningAll()
+        .executeTakeFirstOrThrow()
+
+      if (current.assignee_id !== claimer.id) {
+        await insertEvent(
+          trx,
+          {
+            ticketId: id,
+            eventType: 'assigned',
+            body: changeEventBody(claimer.id, current.assignee_id, ASSIGNMENT_LABELS),
+            metadata: { assigneeId: claimer.id, previous: current.assignee_id },
+          },
+          claimer,
+        )
+      }
+
+      return toTicket(row)
+    })
   }
 
   async update(id: string, data: UpdateTicketBody, author?: Author): Promise<Ticket | undefined> {
     const columns = {
       ...(data.priority !== undefined && { priority: data.priority }),
+      ...(data.actionDate !== undefined && { action_date: data.actionDate }),
       ...(data.queueId !== undefined && { queue_id: data.queueId }),
       ...(data.assigneeId !== undefined && { assignee_id: data.assigneeId }),
       ...(data.tags !== undefined && { tags: data.tags }),
@@ -524,9 +576,14 @@ export class TicketsRepository implements TicketsRepositoryPort {
     }
 
     try {
-      // Only the priority writes an event, and only the event needs the value
-      // it replaced: every other field keeps the single statement it had.
-      if (data.priority === undefined) {
+      // Only the priority, the action date and the assignee write events, and
+      // only an event needs the value it replaced: every other field keeps a
+      // single statement.
+      if (
+        data.priority === undefined &&
+        data.actionDate === undefined &&
+        data.assigneeId === undefined
+      ) {
         const row = await this.db
           .updateTable('tickets')
           .set(columns)
@@ -556,20 +613,41 @@ export class TicketsRepository implements TicketsRepositoryPort {
           .returningAll()
           .executeTakeFirstOrThrow()
 
-        if (data.priority !== current.priority) {
-          // Loud and not `author &&`: a line skipped quietly loses who changed it.
-          if (!author) throw new Error('Priority changed with no author to sign it')
+        const events: TicketEventInput[] = []
 
-          await insertEvent(
-            trx,
-            {
-              ticketId: id,
-              eventType: 'priority_changed',
-              body: data.priority === null ? 'Prioridade removida' : 'Prioridade alterada',
-              metadata: { priority: data.priority, previous: current.priority },
-            },
-            author,
-          )
+        if (data.priority !== undefined && data.priority !== current.priority) {
+          events.push({
+            ticketId: id,
+            eventType: 'priority_changed',
+            body: data.priority === null ? 'Prioridade removida' : 'Prioridade alterada',
+            metadata: { priority: data.priority, previous: current.priority },
+          })
+        }
+
+        const actionDate = row.action_date?.toISOString() ?? null
+        const previousActionDate = current.action_date?.toISOString() ?? null
+        if (data.actionDate !== undefined && actionDate !== previousActionDate) {
+          events.push({
+            ticketId: id,
+            eventType: 'action_date_changed',
+            body: changeEventBody(actionDate, previousActionDate, ACTION_DATE_LABELS),
+            metadata: { actionDate, previous: previousActionDate },
+          })
+        }
+
+        if (data.assigneeId !== undefined && data.assigneeId !== current.assignee_id) {
+          events.push({
+            ticketId: id,
+            eventType: 'assigned',
+            body: changeEventBody(data.assigneeId, current.assignee_id, ASSIGNMENT_LABELS),
+            metadata: { assigneeId: data.assigneeId, previous: current.assignee_id },
+          })
+        }
+
+        if (events.length > 0) {
+          // Loud and not `author &&`: a line skipped quietly loses who changed it.
+          if (!author) throw new Error('Ticket changed with no author to sign the event')
+          for (const event of events) await insertEvent(trx, event, author)
         }
 
         return toTicket(row)

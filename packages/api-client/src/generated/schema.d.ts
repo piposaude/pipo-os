@@ -2812,6 +2812,7 @@ export interface components {
         };
         UpdateTicketBodyInput: {
             priority?: components["schemas"]["TicketPriorityInput"] | null;
+            actionDate?: string | null;
             queueId?: string | null;
             assigneeId?: string | null;
             tags?: string[];
