@@ -92,8 +92,8 @@ export class TicketsService {
     return result.ticket
   }
 
-  async claim(id: string, assigneeId: string): Promise<Ticket> {
-    const ticket = await this.repository.claimOpen(id, assigneeId)
+  async claim(id: string, claimer: Author): Promise<Ticket> {
+    const ticket = await this.repository.claimOpen(id, claimer)
     if (ticket) return ticket
 
     const existing = await this.repository.findById(id)
