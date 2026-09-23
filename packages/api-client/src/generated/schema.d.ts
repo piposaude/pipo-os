@@ -1902,7 +1902,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Ticket"];
+                        "application/json": components["schemas"]["TicketDetail"];
                     };
                 };
                 /** @description Default Response */
@@ -2860,6 +2860,64 @@ export interface components {
                 [key: string]: unknown;
             };
             createdAt: string;
+        };
+        TicketCompletion: {
+            members: components["schemas"]["TicketCompletionMember"][];
+            endDate: string | null;
+            effectiveDate: string | null;
+            mecsasCompanyCode: string | null;
+            hasGracePeriod: boolean | null;
+            carrierTrackingNumber: string | null;
+            documentTypes: string[] | null;
+        };
+        TicketCompletionMember: {
+            taxId: string;
+            idCardNumber: string;
+            /** Format: date */
+            startDate: string;
+        };
+        TicketDetail: {
+            /** Format: uuid */
+            id: string;
+            displayNumber: string;
+            title: string | null;
+            /** Format: uuid */
+            enrollmentId: string;
+            enrollmentType: string;
+            status: components["schemas"]["TicketStatus"];
+            priority: components["schemas"]["TicketPriority"] | null;
+            actionDate: string | null;
+            queueId: string | null;
+            groupId: string | null;
+            assigneeId: string | null;
+            /** Format: uuid */
+            companyId: string;
+            tags: string[];
+            pendingDocumentation: string[];
+            requester: components["schemas"]["TicketPerson"] | null;
+            collaborators: components["schemas"]["TicketPerson"][];
+            forceCompletion: boolean;
+            enrollmentSnapshot: {
+                [key: string]: unknown;
+            };
+            carrierId: string | null;
+            carrierName: string | null;
+            product: string | null;
+            contractType: string | null;
+            companySize: string | null;
+            parentCompanyId: string | null;
+            parentCompanyName: string | null;
+            companyTaxId: string | null;
+            relationship: components["schemas"]["Relationship"] | null;
+            sourceSystem: string;
+            origin: string | null;
+            parentTicketId: string | null;
+            closedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            completion: components["schemas"]["TicketCompletion"] | null;
         };
         TicketFilter: {
             statuses?: components["schemas"]["TicketStatus"][];
