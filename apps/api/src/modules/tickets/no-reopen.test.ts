@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
+import { createRootGroup } from '../groups/root.test-helpers.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
 import { CLOSED_STATUSES, type TicketStatus, updateTicketBodySchema } from './schemas.js'
 
@@ -19,6 +20,7 @@ const validTicketBody = {
 
 describe('a closed ticket does not go back to an open state', () => {
   let app: FastifyInstance
+  let rootGroupId: string
   let cookies: Record<string, string>
   let previousDevLoginEnabled: string | undefined
   const createdTicketIds: string[] = []
@@ -28,6 +30,7 @@ describe('a closed ticket does not go back to an open state', () => {
     process.env.DEV_LOGIN_ENABLED = 'true'
     app = buildApp()
     await app.ready()
+    rootGroupId = await createRootGroup(app.db)
 
     const login = await app.inject({
       method: 'POST',
@@ -39,6 +42,7 @@ describe('a closed ticket does not go back to an open state', () => {
   })
 
   afterAll(async () => {
+    await app.db.deleteFrom('ticket_groups').where('id', '=', rootGroupId).execute()
     await app.close()
     if (previousDevLoginEnabled === undefined) delete process.env.DEV_LOGIN_ENABLED
     else process.env.DEV_LOGIN_ENABLED = previousDevLoginEnabled

@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { sql, type Insertable } from 'kysely'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
+import { createRootGroup } from '../groups/root.test-helpers.js'
 import type { TicketComments } from '../../infrastructure/db-types.js'
 import {
   UNIQUE_VIOLATION,
@@ -25,6 +26,7 @@ const ticketBody = (enrollmentId: string) => ({
 
 describe('comments schema — submission and author columns', () => {
   let app: FastifyInstance
+  let rootGroupId: string
   let sessionCookie: string
   let ticketId: string
   let otherTicketId: string
@@ -33,6 +35,7 @@ describe('comments schema — submission and author columns', () => {
     process.env.DEV_LOGIN_ENABLED = 'true'
     app = buildApp()
     await app.ready()
+    rootGroupId = await createRootGroup(app.db)
     const login = await app.inject({
       method: 'POST',
       url: '/api/auth/dev-login',
@@ -42,6 +45,7 @@ describe('comments schema — submission and author columns', () => {
   })
 
   afterAll(async () => {
+    await app.db.deleteFrom('ticket_groups').where('id', '=', rootGroupId).execute()
     await app.close()
     delete process.env.DEV_LOGIN_ENABLED
   })

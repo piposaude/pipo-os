@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
+import { createRootGroup } from '../groups/root.test-helpers.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
 
 function cookieValue(
@@ -23,6 +24,7 @@ const validTicketBody = {
 
 describe('comments routes', () => {
   let app: FastifyInstance
+  let rootGroupId: string
   let sessionCookie: string
   let ticketId: string
 
@@ -30,6 +32,7 @@ describe('comments routes', () => {
     process.env.DEV_LOGIN_ENABLED = 'true'
     app = buildApp()
     await app.ready()
+    rootGroupId = await createRootGroup(app.db)
 
     const loginResponse = await app.inject({
       method: 'POST',
@@ -50,6 +53,7 @@ describe('comments routes', () => {
   afterAll(async () => {
     await app.db.deleteFrom('ticket_comments').execute()
     await app.db.deleteFrom('tickets').execute()
+    await app.db.deleteFrom('ticket_groups').where('id', '=', rootGroupId).execute()
     await app.close()
     delete process.env.DEV_LOGIN_ENABLED
   })

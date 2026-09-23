@@ -9,6 +9,7 @@
     "assigned",
     "priority_changed",
     "action_date_changed",
+    "moved",
     "document_attached"
   ],
   "writableByService": {

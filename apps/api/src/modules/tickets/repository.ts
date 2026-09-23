@@ -1,7 +1,7 @@
 import { sql, type Kysely, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
-import { ValidationFailedError } from '../../shared/errors.js'
+import { ServiceUnavailableError, ValidationFailedError } from '../../shared/errors.js'
 import { FK_VIOLATION, UNIQUE_VIOLATION } from '../../shared/pg.js'
 import type { Author } from '../auth/authenticate.js'
 import { insertEvent, type TicketEventInput } from '../comments/repository.js'
@@ -422,6 +422,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
     /* No company is a branch of itself, whichever source named the parent:
        the Empresa cell would read `Meridiano › Meridiano`. */
     const parent = named.id === data.companyId ? { id: null, name: null } : named
+    const groupId = data.groupId ?? (await this.groupIdOf(data.companyId))
 
     try {
       const row = await this.db
@@ -449,7 +450,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
           status: 'broker-processing',
           queue_id: data.queueId,
           assignee_id: data.assigneeId,
-          group_id: data.groupId,
+          group_id: groupId,
           tags: data.tags ?? [],
           force_completion: data.forceCompletion ?? false,
           parent_ticket_id: data.parentTicketId,
@@ -483,6 +484,28 @@ export class TicketsRepository implements TicketsRepositoryPort {
       }
       rethrowMissingReference(err)
     }
+  }
+
+  private async groupIdOf(companyId: string): Promise<string> {
+    const carried = await this.db
+      .selectFrom('ticket_group_companies')
+      .select('group_id')
+      .where('company_id', '=', companyId)
+      .executeTakeFirst()
+    if (carried) return carried.group_id
+
+    const root = await this.db
+      .selectFrom('ticket_groups')
+      .select('id')
+      .where('parent_id', 'is', null)
+      .orderBy('created_at')
+      .executeTakeFirst()
+    if (!root) {
+      throw new ServiceUnavailableError(
+        `Company ${companyId} is in no portfolio and there is no root group to route its ticket to`,
+      )
+    }
+    return root.id
   }
 
   async changeStatus(
@@ -569,6 +592,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
       ...(data.priority !== undefined && { priority: data.priority }),
       ...(data.actionDate !== undefined && { action_date: data.actionDate }),
       ...(data.queueId !== undefined && { queue_id: data.queueId }),
+      ...(data.groupId !== undefined && { group_id: data.groupId }),
       ...(data.assigneeId !== undefined && { assignee_id: data.assigneeId }),
       ...(data.tags !== undefined && { tags: data.tags }),
       ...(data.forceCompletion !== undefined && { force_completion: data.forceCompletion }),
@@ -576,12 +600,13 @@ export class TicketsRepository implements TicketsRepositoryPort {
     }
 
     try {
-      // Only the priority, the action date and the assignee write events, and
-      // only an event needs the value it replaced: every other field keeps a
-      // single statement.
+      // Only the priority, the action date, the pod and the assignee write
+      // events, and only an event needs the value it replaced: every other
+      // field keeps a single statement.
       if (
         data.priority === undefined &&
         data.actionDate === undefined &&
+        data.groupId === undefined &&
         data.assigneeId === undefined
       ) {
         const row = await this.db
@@ -632,6 +657,15 @@ export class TicketsRepository implements TicketsRepositoryPort {
             eventType: 'action_date_changed',
             body: changeEventBody(actionDate, previousActionDate, ACTION_DATE_LABELS),
             metadata: { actionDate, previous: previousActionDate },
+          })
+        }
+
+        if (data.groupId !== undefined && data.groupId !== current.group_id) {
+          events.push({
+            ticketId: id,
+            eventType: 'moved',
+            body: 'Pod alterado',
+            metadata: { groupId: data.groupId, previous: current.group_id },
           })
         }
 

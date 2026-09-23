@@ -521,6 +521,193 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/groups/{id}/companies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ReplaceGroupCompaniesBodyInput"];
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GroupDetail"];
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GroupCompanyConflict"];
+                    };
+                };
+                /** @description Default Response */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/groups/{id}/companies/{companyId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    companyId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GroupDetail"];
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GroupCompanyConflict"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/groups/{id}/members": {
         parameters: {
             query?: never;
@@ -610,6 +797,15 @@ export interface paths {
                 };
                 /** @description Default Response */
                 415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -768,6 +964,15 @@ export interface paths {
                 };
                 /** @description Default Response */
                 415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1571,6 +1776,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -2330,6 +2544,7 @@ export interface components {
             /** @description Trimmed before validation: whitespace only is rejected. */
             userId: string;
             role?: components["schemas"]["GroupMemberRoleInput"];
+            companyIds?: string[];
         };
         AuthMe: {
             sub: string | null;
@@ -2457,7 +2672,7 @@ export interface components {
             message: string;
             details?: components["schemas"]["ErrorDetail"][];
         };
-        /** @description The group by itself: POST and PATCH answer with this shape. Only GroupDetail, from the two read routes, carries companyIds and members. */
+        /** @description The group by itself: POST and PATCH answer with this shape. Only GroupDetail, from the read routes and the portfolio writes, carries companyIds and members. */
         Group: {
             /** Format: uuid */
             id: string;
@@ -2469,6 +2684,19 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        GroupCompanyConflict: {
+            error: string;
+            message: string;
+            details?: components["schemas"]["ErrorDetail"][];
+            owners: components["schemas"]["GroupCompanyOwner"][];
+        };
+        GroupCompanyOwner: {
+            /** Format: uuid */
+            companyId: string;
+            /** Format: uuid */
+            groupId: string;
+            groupName: string;
         };
         GroupDetail: {
             /** Format: uuid */
@@ -2502,6 +2730,7 @@ export interface components {
             userId: string;
             role: components["schemas"]["GroupMemberRole"];
             active: boolean;
+            companyIds: string[];
             /** Format: date-time */
             createdAt: string;
         };
@@ -2566,6 +2795,9 @@ export interface components {
         Relationship: "holder" | "dependent" | "family-group";
         /** @enum {string} */
         RelationshipInput: "holder" | "dependent" | "family-group";
+        ReplaceGroupCompaniesBodyInput: {
+            companyIds: string[];
+        };
         Ticket: {
             /** Format: uuid */
             id: string;
@@ -2619,7 +2851,7 @@ export interface components {
             channel: "internal" | "email";
             /** @enum {string} */
             visibility: "public" | "private";
-            eventType: ("hr_platform_reply" | "enrollment_cancellation_requested" | "document_signature_sent" | "contractor_document_failed" | "internal_note" | "assigned" | "priority_changed" | "action_date_changed" | "document_attached") | null;
+            eventType: ("hr_platform_reply" | "enrollment_cancellation_requested" | "document_signature_sent" | "contractor_document_failed" | "internal_note" | "assigned" | "priority_changed" | "action_date_changed" | "moved" | "document_attached") | null;
             authorId: string | null;
             /** @enum {string} */
             authorType: "user" | "service" | "system";
@@ -2771,7 +3003,7 @@ export interface components {
             /** @constant */
             type: "event";
             /** @enum {string} */
-            eventType: "hr_platform_reply" | "enrollment_cancellation_requested" | "document_signature_sent" | "contractor_document_failed" | "internal_note" | "assigned" | "priority_changed" | "action_date_changed" | "document_attached";
+            eventType: "hr_platform_reply" | "enrollment_cancellation_requested" | "document_signature_sent" | "contractor_document_failed" | "internal_note" | "assigned" | "priority_changed" | "action_date_changed" | "moved" | "document_attached";
             body: string;
             metadata: {
                 [key: string]: unknown;
@@ -2801,6 +3033,7 @@ export interface components {
         UpdateGroupMemberBodyInput: {
             active?: boolean;
             role?: components["schemas"]["GroupMemberRoleInput"];
+            companyIds?: string[];
         };
         UpdateQueueBodyInput: {
             name?: string;
@@ -2814,6 +3047,8 @@ export interface components {
             priority?: components["schemas"]["TicketPriorityInput"] | null;
             actionDate?: string | null;
             queueId?: string | null;
+            /** Format: uuid */
+            groupId?: string;
             assigneeId?: string | null;
             tags?: string[];
             forceCompletion?: boolean;

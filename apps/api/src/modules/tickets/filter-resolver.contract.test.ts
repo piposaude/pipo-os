@@ -28,7 +28,7 @@ type FixtureTicket = {
   companyTaxId: string | null
   enrollmentType: string
   sourceSystem: string
-  groupId: string | null
+  groupId: string
   assigneeId: string | null
   priority: string | null
   tags: string[]
@@ -45,6 +45,7 @@ type CaseFile = {
   viewerId: string
   today: string
   groupA: string
+  groupB: string
   tickets: FixtureTicket[]
   cases: {
     name: string
@@ -73,7 +74,10 @@ describe('the shared filter corpus, resolved in SQL', () => {
     // tickets.group_id carries an FK, so the pod has to exist before the rows do.
     await app.db
       .insertInto('ticket_groups')
-      .values({ id: fixture.groupA, name: 'POD contrato', created_by: fixture.viewerId })
+      .values([
+        { id: fixture.groupA, name: 'POD contrato', created_by: fixture.viewerId },
+        { id: fixture.groupB, name: 'POD vizinho', created_by: fixture.viewerId },
+      ])
       .onConflict((oc) => oc.column('id').doNothing())
       .execute()
     await app.db
@@ -112,7 +116,10 @@ describe('the shared filter corpus, resolved in SQL', () => {
 
   afterAll(async () => {
     await app.db.deleteFrom('tickets').execute()
-    await app.db.deleteFrom('ticket_groups').where('id', '=', fixture.groupA).execute()
+    await app.db
+      .deleteFrom('ticket_groups')
+      .where('id', 'in', [fixture.groupA, fixture.groupB])
+      .execute()
     await app.close()
   })
 

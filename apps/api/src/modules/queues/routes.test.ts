@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import type { FastifyInstance } from 'fastify'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
+import { createRootGroup } from '../groups/root.test-helpers.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
 import { sessionCookieFor } from '../auth/session.test-helpers.js'
 
@@ -447,6 +448,11 @@ describe('queues routes', () => {
 
   // ---------------------------------------------------------------------------
   describe('GET /api/queues/:id/tickets', () => {
+    // Tickets are born in a pod, and `clean` takes every group away.
+    beforeEach(async () => {
+      await createRootGroup(app.db)
+    })
+
     it('returns 401 without session cookie', async () => {
       const response = await app.inject({
         method: 'GET',
@@ -1313,6 +1319,11 @@ describe('queues routes', () => {
 
   // ---------------------------------------------------------------------------
   describe('GET /api/queues/counts', () => {
+    // Tickets are born in a pod, and `clean` takes every group away.
+    beforeEach(async () => {
+      await createRootGroup(app.db)
+    })
+
     const view = async (name: string, filters?: Record<string, unknown>): Promise<string> => {
       const response = await app.inject({
         method: 'POST',

@@ -24,6 +24,7 @@ export const API_EVENT_TYPES = [
   'assigned',
   'priority_changed',
   'action_date_changed',
+  'moved',
   'document_attached',
 ] as const
 
