@@ -1669,13 +1669,15 @@ describe('tickets routes', () => {
         expect(ticket.json().assigneeId).toBe(ANA)
       })
 
-      const close = (id: string, status: 'completed' | 'cancelled') =>
-        app.inject({
+      const close = async (id: string, status: 'completed' | 'cancelled') => {
+        const closed = await app.inject({
           method: 'PATCH',
           url: `/api/tickets/${id}/status`,
           payload: { status },
           cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
         })
+        expect(closed.statusCode).toBe(200)
+      }
 
       const read = async (id: string) =>
         (
@@ -1695,7 +1697,10 @@ describe('tickets routes', () => {
           const response = await assign(id, BRUNO)
 
           expect(response.statusCode).toBe(422)
-          expect(response.json().error).toBe('UnprocessableEntityError')
+          expect(response.json()).toMatchObject({
+            error: 'UnprocessableEntityError',
+            message: `Ticket ${id} is already closed`,
+          })
           expect((await read(id)).assigneeId).toBe(ANA)
           expect(await eventsOf(id)).toEqual([])
         },
@@ -1708,6 +1713,7 @@ describe('tickets routes', () => {
         expect((await assign(id, null)).statusCode).toBe(422)
 
         expect((await read(id)).assigneeId).toBe(ANA)
+        expect(await eventsOf(id)).toEqual([])
       })
 
       it('still takes a change with no assignee on a closed ticket', async () => {
@@ -1717,12 +1723,15 @@ describe('tickets routes', () => {
         const response = await app.inject({
           method: 'PATCH',
           url: `/api/tickets/${id}`,
-          payload: { tags: ['revisado'] },
+          payload: { priority: 'high' },
           cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
         })
 
         expect(response.statusCode).toBe(200)
-        expect(response.json().tags).toEqual(['revisado'])
+        expect(response.json().priority).toBe('high')
+        expect(await eventsOf(id)).toEqual([
+          expect.objectContaining({ eventType: 'priority_changed' }),
+        ])
       })
     })
 
@@ -1750,12 +1759,13 @@ describe('tickets routes', () => {
           cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
         })
         const { id, groupId } = created.json()
-        await app.inject({
+        const closed = await app.inject({
           method: 'PATCH',
           url: `/api/tickets/${id}/status`,
           payload: { status: 'completed' },
           cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
         })
+        expect(closed.statusCode).toBe(200)
 
         const response = await app.inject({
           method: 'PATCH',
@@ -1771,6 +1781,14 @@ describe('tickets routes', () => {
           cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
         })
         expect(ticket.json()).toMatchObject({ groupId, assigneeId: 'ana@pipo.health' })
+        const timeline = await app.inject({
+          method: 'GET',
+          url: `/api/tickets/${id}/timeline`,
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        expect(
+          timeline.json().data.filter((item: { type: string }) => item.type === 'event'),
+        ).toEqual([])
       })
 
       const createTicket = async (): Promise<string> => {
