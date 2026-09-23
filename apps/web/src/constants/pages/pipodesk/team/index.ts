@@ -3,6 +3,8 @@ import { formatCount } from '@/lib/pipodesk/format'
 export default {
   open: (count: number) =>
     `${formatCount(count)} ${count === 1 ? 'chamado aberto' : 'chamados abertos'}`,
+  truncated: (shown: number, total: number) =>
+    `Mostrando um recorte: ${formatCount(shown)} de ${formatCount(total)} chamados. As contagens deste time valem só para o que está aqui.`,
   unowned: {
     label: 'Empresas sem dono',
     title: (companies: number, tickets: number) =>

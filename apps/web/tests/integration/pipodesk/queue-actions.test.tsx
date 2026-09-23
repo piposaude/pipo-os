@@ -14,9 +14,14 @@ import searchCopy from '@/constants/pipodesk/search'
 
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
+let desk: import('../../helpers/api').ApiMock
+
 beforeEach(async () => {
-  const { signInAsFixtureViewer } = await import('../../helpers/auth')
-  signInAsFixtureViewer()
+  desk = (await import('../../helpers/desk')).mountDeskFixture()
+})
+
+afterEach(() => {
+  desk.restore()
 })
 
 async function renderQueue() {
@@ -176,8 +181,8 @@ describe('barra de lote', () => {
     expect(screen.queryByRole('group', { name: 'Ações em lote' })).not.toBeInTheDocument()
   })
 
-  /** The bar returned to whatever screen the last selection left open, date
-   *  and all — `return null` came after the hooks, so nothing was reset. */
+  /** The bar returned to whatever screen the last selection left open —
+   *  `return null` came after the hooks, so nothing was reset. */
   it('should reopen the batch panel from the start after a new selection', async () => {
     await renderQueue()
     const user = userEvent.setup()
@@ -186,7 +191,7 @@ describe('barra de lote', () => {
     await user.click(selectAll)
     const barra = await screen.findByRole('group', { name: 'Ações em lote' })
     await user.click(within(barra).getByRole('button', { name: 'Ações' }))
-    await user.click(screen.getByRole('button', { name: 'Agendar' }))
+    await user.click(screen.getByRole('button', { name: 'Mudar status' }))
     expect(screen.getByRole('dialog', { name: 'Ações em lote' })).toBeInTheDocument()
 
     // By keyboard, so no pointer lands outside the panel — a mouse click would
