@@ -5,6 +5,7 @@ import {
   Breadcrumb,
   BreadcrumbItem,
   Heading,
+  Loading,
   Table,
   TableBody,
   TableCell,
@@ -22,7 +23,7 @@ import type { LabelContext } from '@/lib/pipodesk/filter-copy'
 import { CarteirasTab } from './CarteirasTab'
 import { ViewsTab } from './ViewsTab'
 import { windowOf } from '@/lib/pipodesk/filter'
-import { COMPANY_NAMES, structureFixture } from '@/fixtures/pipodesk/dataset'
+import { COMPANY_NAMES } from '@/fixtures/pipodesk/dataset'
 import constants from '@/constants/pages/pipodesk/team'
 import sidebarConstants from '@/constants/pipodesk/sidebar'
 import styles from './style.module.css'
@@ -46,9 +47,10 @@ export default function TeamPage() {
   /* `validateSearch` already restricted this to the two tabs or nothing —
      re-checking here would be a second source of truth for the same rule. */
   const { tab = 'home' } = useSearch({ from: '/_auth/_desk/teams/$groupId' })
-  const { rows, resolveName, today } = useDesk()
+  const { structure, structurePending, rows, rowsTotal, rowsTruncated, resolveName, today } =
+    useDesk()
 
-  const group = structureFixture.groups.find((candidate) => candidate.id === groupId)
+  const group = structure.groups.find((candidate) => candidate.id === groupId)
 
   /* The SAME awake base the tree counts — counting differently is how the
        illegitimate subtraction is born (51 here vs 41 in the menu). */
@@ -66,12 +68,12 @@ export default function TeamPage() {
   /* Memoized like `inGroup` they derive from: both walk the structure and the
      pod's open tickets, and the page re-renders on every context change. */
   const unowned = useMemo(
-    () => unownedCompaniesOf(structureFixture, groupId, inGroup),
-    [groupId, inGroup],
+    () => unownedCompaniesOf(structure, groupId, inGroup),
+    [structure, groupId, inGroup],
   )
   const members = useMemo(
-    () => membersWithLoad(structureFixture, groupId, inGroup),
-    [groupId, inGroup],
+    () => membersWithLoad(structure, groupId, inGroup),
+    [structure, groupId, inGroup],
   )
 
   const ctx = useMemo<LabelContext>(() => {
@@ -90,12 +92,16 @@ export default function TeamPage() {
   if (!group) {
     return (
       <div className={`${styles.screen} ${styles.missing}`}>
-        <Text>{constants.notFound}</Text>
+        {structurePending ? (
+          <Loading show variant="contained" role="status" />
+        ) : (
+          <Text>{constants.notFound}</Text>
+        )}
       </div>
     )
   }
 
-  const trail = [...ancestorsOf(structureFixture, groupId)].reverse()
+  const trail = [...ancestorsOf(structure, groupId)].reverse()
   /* The breadcrumb, not a tab bar, says which section you are on (DSP-93):
      outside Home it ends in the section and the group becomes the way back. */
   const section = tab === 'home' ? null : sidebarConstants.adminLinks[tab]
@@ -145,6 +151,12 @@ export default function TeamPage() {
                      people hunt for a button that does not exist. */}
         <p className={styles.acao}>{constants.editableBy(group.name)}</p>
       </header>
+
+      {rowsTruncated && (
+        <p className={styles.truncated} role="status">
+          {constants.truncated(rows.length, rowsTotal)}
+        </p>
+      )}
 
       {/* `note`, not `status`: the count is fixed at load, and a live region with
                nothing to announce competes with the text for the accessible name. */}
@@ -211,7 +223,7 @@ export default function TeamPage() {
         )}
         {tab === 'portfolios' && (
           <CarteirasTab
-            structure={structureFixture}
+            structure={structure}
             groupId={groupId}
             rows={inGroup}
             companyName={ctx.companyName}
@@ -219,7 +231,7 @@ export default function TeamPage() {
           />
         )}
         {tab === 'views' && (
-          <ViewsTab structure={structureFixture} groupId={groupId} rows={inGroup} ctx={ctx} />
+          <ViewsTab structure={structure} groupId={groupId} rows={inGroup} ctx={ctx} />
         )}
       </div>
     </div>
