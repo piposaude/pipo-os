@@ -9,6 +9,7 @@ import { mockApi, page } from '../../helpers/api'
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
 const VIEWER = 'ana@piposaude.com.br'
+const COLLEAGUE = 'bruno@piposaude.com.br'
 const ROOT_ID = '8f2c9a10-0000-4000-8000-00000000aaaa'
 const POD_ID = '8f2c9a10-0000-4000-8000-00000000bbbb'
 
@@ -49,7 +50,12 @@ const group = (id: string, name: string, parentId: string | null) => ({
   name,
   parentId,
   companyIds: [],
-  members: [{ userId: VIEWER, role: 'member', active: true, companyIds: [] }],
+  members: [VIEWER, COLLEAGUE].map((userId) => ({
+    userId,
+    role: 'member',
+    active: true,
+    companyIds: [],
+  })),
   createdBy: VIEWER,
   updatedBy: null,
   createdAt: '2026-09-21T00:00:00.000Z',
@@ -70,7 +76,12 @@ const baseRoutes = (): Record<string, unknown> => ({
     group(POD_ID, 'POD 9', ROOT_ID),
   ]),
   '/api/queues': page([]),
-  '/api/users': { data: [{ email: VIEWER, name: 'Ana Souza' }] },
+  '/api/users': {
+    data: [
+      { email: VIEWER, name: 'Ana Souza' },
+      { email: COLLEAGUE, name: 'Bruno Lima' },
+    ],
+  },
   '/api/tickets/rows': { data: [quiet, answered, closed], total: 3 },
   '/api/tickets/inbox': { data: [answered, closed, beyondTheCut], total: 3 },
 })
@@ -124,6 +135,42 @@ describe('a caixa de entrada vem da API', () => {
     expect(within(table).getByText('Respondida Fechada')).toBeInTheDocument()
     expect(within(table).getByText('Fora Do Recorte')).toBeInTheDocument()
     expect(within(table).queryByText('Sem Resposta')).not.toBeInTheDocument()
+  })
+
+  it('should reler a caixa de entrada depois de reatribuir o que estava nela', async () => {
+    const routes = baseRoutes()
+    api = mockApi({
+      ...routes,
+      '/api/tickets/inbox': () =>
+        api.calls.some((call) => call.method === 'PATCH')
+          ? { data: [], total: 0 }
+          : routes['/api/tickets/inbox'],
+    })
+    await renderDesk()
+    const user = userEvent.setup()
+
+    await user.click(await within(sidebar()).findByRole('button', { name: /^Inbox\s*3$/ }))
+    await screen.findByText('Respondida Aberta')
+    await user.click(screen.getByRole('checkbox', { name: /selecionar todos/i }))
+    const barra = await screen.findByRole('group', { name: 'Ações em lote' })
+    await user.click(within(barra).getByRole('button', { name: 'Ações' }))
+    await user.click(screen.getByRole('button', { name: 'Reatribuir' }))
+    await user.click(await screen.findByRole('button', { name: 'Bruno Lima' }))
+
+    expect(
+      await within(sidebar()).findByRole('button', { name: /^Inbox\s*0$/ }),
+    ).toBeInTheDocument()
+  })
+
+  it('should não contar a fila só com a caixa de entrada enquanto o /rows não chegou', async () => {
+    const routes = baseRoutes()
+    delete routes['/api/tickets/rows']
+    api = mockApi(routes)
+    await renderDesk()
+
+    await within(sidebar()).findByRole('button', { name: /^Inbox\s*3$/ })
+
+    expect(within(sidebar()).getByRole('button', { name: /^Em espera\s*0$/ })).toBeInTheDocument()
   })
 
   it('should manter a fila de pé quando a caixa de entrada falha', async () => {

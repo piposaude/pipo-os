@@ -154,7 +154,8 @@ export function DeskShell() {
   const [patches, setPatches] = useState<Record<string, TicketPatch>>({})
   const today = businessToday()
   const rows = useMemo(() => {
-    const listed = rowsQuery.data?.data ?? []
+    if (!rowsQuery.data) return []
+    const listed = rowsQuery.data.data
     const known = new Set(listed.map((row) => row.id))
     const unlisted = (inboxQuery.data?.data ?? []).filter((row) => !known.has(row.id))
     return applyPatches(rowsFromApi([...listed, ...unlisted]), patches, today)
@@ -184,6 +185,7 @@ export function DeskShell() {
 
   const [writeFailed, setWriteFailed] = useState(false)
   const { refetch: refetchRows, dataUpdatedAt: rowsUpdatedAt } = rowsQuery
+  const { refetch: refetchInbox } = inboxQuery
 
   const dropPatches = useCallback(
     (gone: string[]) =>
@@ -220,12 +222,12 @@ export function DeskShell() {
         const saved = ids.filter((id) => !refused.includes(id))
         if (saved.length === 0) return
 
-        const read = await refetchRows()
+        const [read] = await Promise.all([refetchRows(), refetchInbox()])
         if (read.isError) for (const id of saved) awaitingRead.current.add(id)
         else dropPatches(saved)
       })
     },
-    [refetchRows, dropPatches],
+    [refetchRows, refetchInbox, dropPatches],
   )
 
   const groupsQuery = useQuery({
