@@ -67,7 +67,7 @@ describe('a closed ticket does not go back to an open state', () => {
     const created = await app.inject({
       method: 'POST',
       url: '/api/tickets',
-      payload: validTicketBody,
+      payload: { ...validTicketBody, forceCompletion: true },
       cookies,
     })
     expect(created.statusCode).toBe(201)

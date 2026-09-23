@@ -4,6 +4,7 @@ import type { Tickets } from '../../infrastructure/db-types.js'
 import { ADVISORY_LOCKS } from '../../shared/advisory-locks.js'
 import { startOfBusinessDay } from '../../shared/business-date.js'
 import {
+  type ErrorDetails,
   ServiceUnavailableError,
   UnprocessableEntityError,
   ValidationFailedError,
@@ -12,6 +13,8 @@ import { digitsOf } from '../../shared/text.js'
 import { FK_VIOLATION, UNIQUE_VIOLATION } from '../../shared/pg.js'
 import type { Author } from '../auth/authenticate.js'
 import { insertEvent, type TicketEventInput } from '../comments/repository.js'
+import { completionFailures, type CompletionData } from './completion-gates.js'
+import { canonicalEnrollmentTypeSchema } from './enrollment-type.js'
 import { OpenTicketConflictError } from './errors.js'
 import {
   companyFieldsOf,
@@ -44,7 +47,10 @@ import {
 } from './schemas.js'
 
 export type ChangeStatusResult =
-  { kind: 'not-found' } | { kind: 'already-closed' } | { kind: 'ok'; ticket: Ticket }
+  | { kind: 'not-found' }
+  | { kind: 'already-closed' }
+  | { kind: 'refused'; failures: ErrorDetails }
+  | { kind: 'ok'; ticket: Ticket }
 
 const OPEN_ENROLLMENT_CONSTRAINT = 'uq_tickets_open_enrollment'
 
@@ -258,6 +264,29 @@ function toRowPayload(row: InferResult<ReturnType<typeof selectRows>>[number]): 
   }
 }
 
+function gateFailures(row: Selectable<Tickets>, completion: CompletionData | undefined) {
+  const enrollmentType = canonicalEnrollmentTypeSchema.safeParse(row.enrollment_type)
+  if (!enrollmentType.success) {
+    if (row.force_completion) return []
+    return [
+      {
+        field: 'enrollmentType',
+        message: `The movement type ${row.enrollment_type} is not one the completion rules know`,
+        code: 'invalid',
+      },
+    ]
+  }
+  return completionFailures(
+    {
+      enrollmentType: enrollmentType.data,
+      status: row.status as TicketStatus,
+      forceCompletion: row.force_completion,
+      enrollmentSnapshot: row.enrollment_snapshot,
+    },
+    completion,
+  )
+}
+
 /** The saved filter plus the window the screen is showing — the two together
  *  are what a view selects. */
 function viewConditions(
@@ -294,6 +323,7 @@ export interface TicketsRepositoryPort {
     closedAt: string | null,
     authorId: string,
     reason?: string,
+    completion?: CompletionData,
   ): Promise<ChangeStatusResult>
   findMany(query: ListTicketsQuery): Promise<{ data: Ticket[]; total: number }>
   findByFilter(params: SavedViewQuery, viewerId: string): Promise<{ data: Ticket[]; total: number }>
@@ -640,6 +670,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
     closedAt: string | null,
     authorId: string,
     reason?: string,
+    completion?: CompletionData,
   ): Promise<ChangeStatusResult> {
     return this.db.transaction().execute(async (trx) => {
       const current = await trx
@@ -652,6 +683,11 @@ export class TicketsRepository implements TicketsRepositoryPort {
       if (!current) return { kind: 'not-found' }
       if (CLOSED_STATUSES.has(current.status as TicketStatus)) {
         return { kind: 'already-closed' }
+      }
+
+      if (toStatus === 'completed') {
+        const [first, ...rest] = gateFailures(current, completion)
+        if (first) return { kind: 'refused', failures: [first, ...rest] }
       }
 
       const updated = await trx
