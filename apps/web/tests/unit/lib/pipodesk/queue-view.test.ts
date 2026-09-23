@@ -3,6 +3,7 @@ import { NULL_TOKEN } from '@/lib/pipodesk/filter'
 import {
   INITIAL_VIEW,
   fromSearch,
+  parseQueueSearch,
   queueViewReducer,
   toSearch,
   type QueueNode,
@@ -487,5 +488,28 @@ describe('URL round trip', () => {
     )
 
     expect(restored.filter).toEqual({ assigneeIds: ['@me'] })
+  })
+})
+
+describe('parseQueueSearch', () => {
+  it('should keep the sort and grouping the queue knows', () => {
+    expect(parseQueueSearch({ sort: 'company', dir: 'desc', group: 'status' })).toEqual({
+      sort: 'company',
+      dir: 'desc',
+      group: 'status',
+    })
+  })
+
+  it('should drop a sort or grouping inherited from the object prototype', () => {
+    expect(parseQueueSearch({ sort: 'toString', group: 'constructor' })).toEqual({})
+  })
+
+  it('should keep a window the router parsed as a number, including 0 for the whole period', () => {
+    expect(parseQueueSearch({ win: 30 })).toEqual({ win: 30 })
+    expect(parseQueueSearch({ win: 0 })).toEqual({ win: 0 })
+  })
+
+  it('should drop an empty, null or false window instead of reading it as the whole period', () => {
+    for (const win of ['', null, false]) expect(parseQueueSearch({ win })).toEqual({})
   })
 })

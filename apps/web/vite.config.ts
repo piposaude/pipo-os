@@ -28,6 +28,9 @@ export default defineConfig({
     globals: true,
     setupFiles: ['tests/setup.ts'],
     include: ['tests/**/*.test.{ts,tsx}'],
+    // The queue waits on four requests and paints thousands of rows now; the
+    // 5s default was measured too tight under file parallelism.
+    testTimeout: 20_000,
     env: {
       // Absolute base URL: relative Requests work in browsers but not in
       // undici/jsdom, where they throw at construction time.

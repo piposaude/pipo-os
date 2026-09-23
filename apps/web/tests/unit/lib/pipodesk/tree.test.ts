@@ -398,3 +398,59 @@ describe('pillsOf', () => {
     expect(pillsOf(build([]), 'node-inbox')).toEqual([])
   })
 })
+
+describe('buildTree — as MOVs vindas do banco', () => {
+  const dbQueues = (groupId: string) => [
+    {
+      id: '8f2c9a10-0000-4000-8000-000000000001',
+      name: 'MOV CLT',
+      groupId,
+      ownerId: null,
+      subscriberIds: [],
+      filter: { contractTypes: ['clt'] },
+      sort: { by: 'actionDate' as const, direction: 'asc' as const },
+    },
+    {
+      id: '8f2c9a10-0000-4000-8000-000000000002',
+      name: 'MOV PJ',
+      groupId,
+      ownerId: null,
+      subscriberIds: [],
+      filter: { contractTypes: ['pj'] },
+      sort: { by: 'actionDate' as const, direction: 'asc' as const },
+    },
+    {
+      id: '8f2c9a10-0000-4000-8000-000000000003',
+      name: 'MOV MB',
+      groupId,
+      ownerId: null,
+      subscriberIds: [],
+      filter: { products: ['life'] },
+      sort: { by: 'updatedAt' as const, direction: 'desc' as const },
+    },
+  ]
+
+  it('should find the three MOVs by name, since the id from the database is a uuid', () => {
+    const sections = build([row({ id: 't1' })], structure({ queues: dbQueues('pod-1') }))
+    const pod = nodeById(sections, 'node-pod-1')
+
+    const movs = pod!.children.filter((node) => node.label.startsWith('MOV '))
+    expect(movs.map((node) => node.label)).toEqual(['MOV CLT', 'MOV PJ', 'MOV MB'])
+    expect(movs.every((node) => node.children.length > 0)).toBe(true)
+  })
+
+  it('should keep MOV MB as the cross cut, so the screen still draws the separator', () => {
+    const sections = build([row({ id: 't1' })], structure({ queues: dbQueues('pod-1') }))
+    const pod = nodeById(sections, 'node-pod-1')
+
+    const mb = pod!.children.find((node) => node.label === 'MOV MB')
+    expect(mb!.crossCut).toBe(true)
+  })
+
+  it('should not repeat a MOV as a plain saved view of the pod', () => {
+    const sections = build([row({ id: 't1' })], structure({ queues: dbQueues('pod-1') }))
+    const pod = nodeById(sections, 'node-pod-1')
+
+    expect(pod!.children.filter((node) => node.label === 'MOV CLT')).toHaveLength(1)
+  })
+})
