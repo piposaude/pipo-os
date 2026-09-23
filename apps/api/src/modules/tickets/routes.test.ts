@@ -2466,27 +2466,35 @@ describe('tickets routes', () => {
 
         let release!: () => void
         const released = new Promise<void>((resolve) => (release = resolve))
-        let held!: () => void
-        const locked = new Promise<void>((resolve) => (held = resolve))
+        let held!: (pid: number) => void
+        const locked = new Promise<number>((resolve) => (held = resolve))
         const holder = app.db.transaction().execute(async (trx) => {
           await trx.selectFrom('tickets').select('id').where('id', '=', id).forUpdate().execute()
-          held()
+          const { rows } = await sql<{ pid: number }>`SELECT pg_backend_pid() AS pid`.execute(trx)
+          held(rows[0]!.pid)
           await released
         })
-        await locked
+        const holderPid = await locked
 
         const pending = Promise.all([complete(id, completion), complete(id, completion)])
-        for (let waiting = 0, tries = 0; waiting < 2 && tries < 300; tries++) {
+        let waiting = 0
+        for (let tries = 0; waiting < 2 && tries < 300; tries++) {
           await new Promise((resolve) => setTimeout(resolve, 10))
-          const row = await sql<{ count: number }>`
+          const { rows } = await sql<{ count: number }>`
+            WITH queue AS (
+              SELECT pid FROM pg_stat_activity
+              WHERE pg_blocking_pids(pid) @> ARRAY[${holderPid}::int]
+            )
             SELECT count(*)::int AS count FROM pg_stat_activity
-            WHERE datname = current_database() AND wait_event_type = 'Lock'
+            WHERE pg_blocking_pids(pid) && (ARRAY[${holderPid}::int] || ARRAY(SELECT pid FROM queue))
           `.execute(app.db)
-          waiting = row.rows[0]!.count
+          waiting = rows[0]!.count
         }
         release()
         await holder
         const responses = await pending
+
+        expect(waiting).toBe(2)
 
         expect(responses.map((r) => r.statusCode).sort()).toEqual([200, 422])
         expect(responses.find((r) => r.statusCode === 422)!.json().error).toBe(
