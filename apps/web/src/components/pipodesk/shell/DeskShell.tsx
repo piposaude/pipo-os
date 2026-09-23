@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { Outlet, useNavigate, useRouterState, useSearch } from '@tanstack/react-router'
 import { SidebarMainLayout } from '@piposaude/design-system'
+import { useQuery } from '@tanstack/react-query'
 import { QueueSidebar } from '@/components/pipodesk/sidebar/QueueSidebar'
 import { HOME_NODE_ID, buildTree, type TreeNode, type TreeSection } from '@/lib/pipodesk/tree'
 import {
@@ -61,6 +62,19 @@ const iniciaisDe = (name: string): string =>
     .join('')
 
 const STRUCTURE_STALE_MS = 5 * 60 * 1000
+const MAX_PAGE_SIZE = 100
+
+async function allPages<T>(
+  fetchPage: (page: number) => Promise<{ data: T[]; total: number } | undefined>,
+): Promise<T[]> {
+  const items: T[] = []
+  for (let page = 1; ; page++) {
+    const result = await fetchPage(page)
+    const data = result?.data ?? []
+    items.push(...data)
+    if (data.length === 0 || items.length >= (result?.total ?? 0)) return items
+  }
+}
 
 /** There is no batch route: reassigning a whole cut becomes one request per
  *  ticket, so they go a few at a time instead of all at once. */
@@ -207,21 +221,31 @@ export function DeskShell() {
     [refetchRows, dropPatches],
   )
 
-  const groupsQuery = api.useQuery(
-    'get',
-    '/api/groups',
-    { params: { query: { pageSize: 100 } } },
-    { staleTime: STRUCTURE_STALE_MS },
-  )
-  const queuesQuery = api.useQuery(
-    'get',
-    '/api/queues',
-    { params: { query: { pageSize: 100 } } },
-    { staleTime: STRUCTURE_STALE_MS },
-  )
+  const groupsQuery = useQuery({
+    queryKey: ['get', '/api/groups', 'all'],
+    queryFn: () =>
+      allPages(async (page) => {
+        const { data } = await client.GET('/api/groups', {
+          params: { query: { page, pageSize: MAX_PAGE_SIZE } },
+        })
+        return data
+      }),
+    staleTime: STRUCTURE_STALE_MS,
+  })
+  const queuesQuery = useQuery({
+    queryKey: ['get', '/api/queues', 'all'],
+    queryFn: () =>
+      allPages(async (page) => {
+        const { data } = await client.GET('/api/queues', {
+          params: { query: { page, pageSize: MAX_PAGE_SIZE } },
+        })
+        return data
+      }),
+    staleTime: STRUCTURE_STALE_MS,
+  })
 
   const structure = useMemo(
-    () => structureFromApi(groupsQuery.data?.data ?? [], queuesQuery.data?.data ?? [], viewerId),
+    () => structureFromApi(groupsQuery.data ?? [], queuesQuery.data ?? [], viewerId),
     [groupsQuery.data, queuesQuery.data, viewerId],
   )
 

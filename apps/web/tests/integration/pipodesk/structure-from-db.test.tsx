@@ -145,6 +145,27 @@ describe('a árvore da sidebar vem do banco', () => {
     expect(await within(sidebar()).findByRole('button', { name: /^Ana Souza/ })).toBeInTheDocument()
   })
 
+  it('should montar a árvore com as visões de todas as páginas, não só da primeira', async () => {
+    const [clt, pj] = (routes['/api/queues'] as { data: unknown[] }).data
+    api.restore()
+    api = mockApi({
+      ...routes,
+      '/api/queues': (url: URL) => ({
+        data: url.searchParams.get('page') === '2' ? [clt] : [pj],
+        total: 2,
+        page: Number(url.searchParams.get('page')),
+        pageSize: 1,
+      }),
+    })
+    await renderDesk()
+    await within(sidebar()).findByRole('button', { name: /^POD 9/ })
+    await userEvent.click(within(sidebar()).getByRole('button', { name: /Expandir POD 9/i }))
+
+    expect(
+      await within(sidebar()).findByRole('button', { name: /Expandir MOV CLT/i }),
+    ).toBeInTheDocument()
+  })
+
   it('should cair no e-mail quando a lista de pessoas traz o nome em branco', async () => {
     api.restore()
     api = mockApi({ ...routes, '/api/users': { data: [{ email: VIEWER, name: '  ' }] } })

@@ -68,7 +68,8 @@ export function mockApi(
       })
     }
 
-    const body = routes[pathname]
+    const route = routes[pathname]
+    const body = typeof route === 'function' ? route(new URL(url, 'http://localhost')) : route
     if (body === undefined) {
       return new Response(JSON.stringify({ message: `sem mock para ${pathname}` }), {
         status: 404,
