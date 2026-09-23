@@ -164,9 +164,13 @@ function completionOf(
   }
 
   const order = completionContextOf(row.enrollment_snapshot).memberTaxIds.map(digitsOf)
+  const rank = (taxId: string) => {
+    const index = order.indexOf(taxId)
+    return index === -1 ? order.length : index
+  }
   return {
     members: [...members]
-      .sort((a, b) => order.indexOf(a.tax_id) - order.indexOf(b.tax_id))
+      .sort((a, b) => rank(a.tax_id) - rank(b.tax_id))
       .map((member) => ({
         taxId: member.tax_id,
         idCardNumber: member.id_card_number,
@@ -242,22 +246,23 @@ export class TicketsRepository implements TicketsRepositoryPort {
   }
 
   async findDetailById(id: string): Promise<TicketDetail | undefined> {
-    const row = await this.db
-      .selectFrom('tickets')
-      .selectAll()
-      .select([
-        sql<string | null>`end_date::text`.as('end_date_text'),
-        sql<string | null>`effective_date::text`.as('effective_date_text'),
-      ])
-      .where('id', '=', id)
-      .executeTakeFirst()
+    const [row, members] = await Promise.all([
+      this.db
+        .selectFrom('tickets')
+        .selectAll()
+        .select([
+          sql<string | null>`end_date::text`.as('end_date_text'),
+          sql<string | null>`effective_date::text`.as('effective_date_text'),
+        ])
+        .where('id', '=', id)
+        .executeTakeFirst(),
+      this.db
+        .selectFrom('ticket_completion_members')
+        .select(['tax_id', 'id_card_number', sql<string>`start_date::text`.as('start_date')])
+        .where('ticket_id', '=', id)
+        .execute(),
+    ])
     if (!row) return undefined
-
-    const members = await this.db
-      .selectFrom('ticket_completion_members')
-      .select(['tax_id', 'id_card_number', sql<string>`start_date::text`.as('start_date')])
-      .where('ticket_id', '=', id)
-      .execute()
 
     return { ...toTicket(row), completion: completionOf(row, members) }
   }

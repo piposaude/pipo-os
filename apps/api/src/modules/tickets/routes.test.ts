@@ -1069,6 +1069,34 @@ describe('tickets routes', () => {
         ])
       })
 
+      it('devolve depois das do snapshot uma vida que o snapshot não traz', async () => {
+        const id = await createTicket(familySnapshot)
+        await app.db
+          .insertInto('ticket_completion_members')
+          .values([
+            {
+              ticket_id: id,
+              tax_id: '22222222222',
+              id_card_number: 'C2',
+              start_date: '2026-10-02',
+            },
+            {
+              ticket_id: id,
+              tax_id: '99999999999',
+              id_card_number: 'C9',
+              start_date: '2026-10-09',
+            },
+          ])
+          .execute()
+
+        const response = await read(id)
+
+        expect(response.json().completion.members.map((m: { taxId: string }) => m.taxId)).toEqual([
+          '22222222222',
+          '99999999999',
+        ])
+      })
+
       it('devolve os campos que valem uma vez por chamado', async () => {
         const id = await createTicket(familySnapshot)
         await app.db
