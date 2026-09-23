@@ -335,7 +335,18 @@ describe('tickets routes', () => {
       it('is the pod of a portfolio still being written when the ticket arrives', async () => {
         const pod = await createPod('POD 1')
         pods.push(pod)
-        let settledDuringAllocation = false
+
+        const waitUntilBlockedOnPortfolios = async (): Promise<void> => {
+          for (let attempt = 0; attempt < 100; attempt++) {
+            const { rows } = await sql<{ waiting: number }>`
+              select count(*)::int as waiting from pg_locks
+              where locktype = 'advisory' and objid = ${ADVISORY_LOCKS.groupPortfolios}
+                and mode = 'ShareLock' and not granted`.execute(app.db)
+            if (rows[0]?.waiting) return
+            await new Promise((resolve) => setTimeout(resolve, 20))
+          }
+          throw new Error('The ticket creation never waited on the portfolio lock')
+        }
 
         const { request } = await app.db.transaction().execute(async (trx) => {
           await sql`select pg_advisory_xact_lock(${ADVISORY_LOCKS.groupPortfolios})`.execute(trx)
@@ -350,11 +361,7 @@ describe('tickets routes', () => {
             payload: validTicketBody,
             cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
           })
-          void request.then(() => {
-            settledDuringAllocation = true
-          })
-          await new Promise((resolve) => setTimeout(resolve, 200))
-          expect(settledDuringAllocation).toBe(false)
+          await waitUntilBlockedOnPortfolios()
           return { request }
         })
         const creating = await request
