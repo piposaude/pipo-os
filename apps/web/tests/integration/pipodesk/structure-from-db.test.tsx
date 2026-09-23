@@ -145,6 +145,17 @@ describe('a árvore da sidebar vem do banco', () => {
     expect(await within(sidebar()).findByRole('button', { name: /^Ana Souza/ })).toBeInTheDocument()
   })
 
+  it('should cair no e-mail quando a lista de pessoas traz o nome em branco', async () => {
+    api.restore()
+    api = mockApi({ ...routes, '/api/users': { data: [{ email: VIEWER, name: '  ' }] } })
+    await renderDesk()
+    await within(sidebar()).findByRole('button', { name: /^POD 9/ })
+    await userEvent.click(within(sidebar()).getByRole('button', { name: /Expandir POD 9/i }))
+    await userEvent.click(within(sidebar()).getByRole('button', { name: /Expandir MOV CLT/i }))
+
+    expect(await within(sidebar()).findByRole('button', { name: /^Ana\b/ })).toBeInTheDocument()
+  })
+
   it('should avisar que a fila é um recorte quando o banco tem mais do que coube', async () => {
     api.restore()
     api = mockApi({

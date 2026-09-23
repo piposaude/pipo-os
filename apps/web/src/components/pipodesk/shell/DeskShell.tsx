@@ -130,7 +130,7 @@ export function DeskShell() {
     [usersQuery.data],
   )
   const resolveName = useMemo(
-    () => (userId: string) => namesByEmail.get(userId) || displayNameFromEmail(userId),
+    () => (userId: string) => namesByEmail.get(userId)?.trim() || displayNameFromEmail(userId),
     [namesByEmail],
   )
 
