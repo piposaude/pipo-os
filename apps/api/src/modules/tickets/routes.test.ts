@@ -4,6 +4,7 @@ import { buildApp } from '../../app.js'
 import { businessToday } from '../../shared/business-date.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
 import { sessionWithoutSub } from '../auth/session.test-helpers.js'
+import { createRootGroup } from '../groups/root.test-helpers.js'
 import { CLOSED_STATUSES } from './schemas.js'
 
 function cookieValue(
@@ -28,11 +29,13 @@ const validTicketBody = {
 describe('tickets routes', () => {
   let app: FastifyInstance
   let sessionCookie: string
+  let rootGroupId: string
 
   beforeAll(async () => {
     process.env.DEV_LOGIN_ENABLED = 'true'
     app = buildApp()
     await app.ready()
+    rootGroupId = await createRootGroup(app.db)
 
     const loginResponse = await app.inject({
       method: 'POST',
@@ -43,6 +46,7 @@ describe('tickets routes', () => {
   })
 
   afterAll(async () => {
+    await app.db.deleteFrom('ticket_groups').where('id', '=', rootGroupId).execute()
     await app.close()
     delete process.env.DEV_LOGIN_ENABLED
   })
@@ -265,6 +269,102 @@ describe('tickets routes', () => {
       // database is shared with whatever else is running.
       await app.db.deleteFrom('tickets').where('id', '=', response.json().id).execute()
       await app.db.deleteFrom('ticket_groups').where('id', '=', group.id).execute()
+    })
+
+    describe('o pod em que o chamado nasce', () => {
+      const createPod = async (name: string): Promise<string> => {
+        const row = await app.db
+          .insertInto('ticket_groups')
+          .values({ name, parent_id: rootGroupId, created_by: DEV_LOGIN_USER_ID })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+        return row.id
+      }
+
+      const portfolio = async (groupId: string, companyId: string): Promise<void> => {
+        await app.db
+          .insertInto('ticket_group_companies')
+          .values({ group_id: groupId, company_id: companyId })
+          .execute()
+      }
+
+      const pods: string[] = []
+
+      afterEach(async () => {
+        await app.db.deleteFrom('tickets').execute()
+        if (pods.length === 0) return
+        await app.db.deleteFrom('ticket_group_companies').where('group_id', 'in', pods).execute()
+        await app.db.deleteFrom('ticket_groups').where('id', 'in', pods).execute()
+        pods.length = 0
+      })
+
+      it('is the pod whose portfolio carries the company', async () => {
+        const pod = await createPod('POD 1')
+        pods.push(pod)
+        await portfolio(pod, validTicketBody.companyId)
+
+        const response = await app.inject({
+          method: 'POST',
+          url: '/api/tickets',
+          payload: validTicketBody,
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+
+        expect(response.statusCode).toBe(201)
+        expect(response.json().groupId).toBe(pod)
+      })
+
+      it('is the root group when no portfolio carries the company', async () => {
+        const pod = await createPod('POD 1')
+        pods.push(pod)
+        await portfolio(pod, '00000000-0000-4000-8000-000000000077')
+
+        const response = await app.inject({
+          method: 'POST',
+          url: '/api/tickets',
+          payload: validTicketBody,
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+
+        expect(response.statusCode).toBe(201)
+        expect(response.json().groupId).toBe(rootGroupId)
+      })
+
+      it('is the one the caller sent, over the portfolio', async () => {
+        const carrier = await createPod('POD 1')
+        const chosen = await createPod('POD 2')
+        pods.push(carrier, chosen)
+        await portfolio(carrier, validTicketBody.companyId)
+
+        const response = await app.inject({
+          method: 'POST',
+          url: '/api/tickets',
+          payload: { ...validTicketBody, groupId: chosen },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+
+        expect(response.statusCode).toBe(201)
+        expect(response.json().groupId).toBe(chosen)
+      })
+
+      it('answers 503 and writes nothing when there is no root group to fall back to', async () => {
+        await app.db.deleteFrom('ticket_groups').where('id', '=', rootGroupId).execute()
+        try {
+          const response = await app.inject({
+            method: 'POST',
+            url: '/api/tickets',
+            payload: validTicketBody,
+            cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+          })
+
+          expect(response.statusCode).toBe(503)
+          expect(response.json().error).toBe('ServiceUnavailableError')
+          const written = await app.db.selectFrom('tickets').select('id').execute()
+          expect(written).toEqual([])
+        } finally {
+          rootGroupId = await createRootGroup(app.db)
+        }
+      })
     })
 
     it.each(['groupId', 'parentTicketId', 'queueId'])(
@@ -544,7 +644,7 @@ describe('tickets routes', () => {
       expect(ticket.title).toBeNull()
       expect(ticket.priority).toBeNull()
       expect(ticket.actionDate).toBeNull()
-      expect(ticket.groupId).toBeNull()
+      expect(ticket.groupId).toBe(rootGroupId)
       expect(ticket.pendingDocumentation).toEqual([])
       expect(ticket.requester).toBeNull()
       expect(ticket.collaborators).toEqual([])

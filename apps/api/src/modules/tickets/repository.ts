@@ -1,7 +1,7 @@
 import { sql, type Kysely, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
-import { ValidationFailedError } from '../../shared/errors.js'
+import { ServiceUnavailableError, ValidationFailedError } from '../../shared/errors.js'
 import { FK_VIOLATION, UNIQUE_VIOLATION } from '../../shared/pg.js'
 import type { Author } from '../auth/authenticate.js'
 import { insertEvent, type TicketEventInput } from '../comments/repository.js'
@@ -422,6 +422,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
     /* No company is a branch of itself, whichever source named the parent:
        the Empresa cell would read `Meridiano › Meridiano`. */
     const parent = named.id === data.companyId ? { id: null, name: null } : named
+    const groupId = data.groupId ?? (await this.groupIdOf(data.companyId))
 
     try {
       const row = await this.db
@@ -449,7 +450,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
           status: 'broker-processing',
           queue_id: data.queueId,
           assignee_id: data.assigneeId,
-          group_id: data.groupId,
+          group_id: groupId,
           tags: data.tags ?? [],
           force_completion: data.forceCompletion ?? false,
           parent_ticket_id: data.parentTicketId,
@@ -483,6 +484,28 @@ export class TicketsRepository implements TicketsRepositoryPort {
       }
       rethrowMissingReference(err)
     }
+  }
+
+  private async groupIdOf(companyId: string): Promise<string> {
+    const carried = await this.db
+      .selectFrom('ticket_group_companies')
+      .select('group_id')
+      .where('company_id', '=', companyId)
+      .executeTakeFirst()
+    if (carried) return carried.group_id
+
+    const root = await this.db
+      .selectFrom('ticket_groups')
+      .select('id')
+      .where('parent_id', 'is', null)
+      .orderBy('created_at')
+      .executeTakeFirst()
+    if (!root) {
+      throw new ServiceUnavailableError(
+        `Company ${companyId} is in no portfolio and there is no root group to route its ticket to`,
+      )
+    }
+    return root.id
   }
 
   async changeStatus(

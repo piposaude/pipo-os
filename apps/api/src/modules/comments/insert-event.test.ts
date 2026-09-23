@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
+import { createRootGroup } from '../groups/root.test-helpers.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
 import { insertEvent } from './repository.js'
 
@@ -8,15 +9,18 @@ const ANALYST = { id: 'dev@piposaude.com.br', type: 'user' } as const
 
 describe('insertEvent', () => {
   let app: FastifyInstance
+  let rootGroupId: string
   let ticketId: string
 
   beforeAll(async () => {
     process.env.DEV_LOGIN_ENABLED = 'true'
     app = buildApp()
     await app.ready()
+    rootGroupId = await createRootGroup(app.db)
   })
 
   afterAll(async () => {
+    await app.db.deleteFrom('ticket_groups').where('id', '=', rootGroupId).execute()
     await app.close()
     delete process.env.DEV_LOGIN_ENABLED
   })

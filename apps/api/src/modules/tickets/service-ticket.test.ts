@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildApp } from '../../app.js'
+import { createRootGroup } from '../groups/root.test-helpers.js'
 import { jsonResponse } from '../../shared/json.test-helpers.js'
 
 const SERVICE_ACCOUNT = 'cronjobs/enrollment-integrations-worker'
@@ -31,6 +32,7 @@ function serviceAccountToken(): string {
 // a ticket, find it again to stay idempotent, read it back.
 describe('a ticket opened by a service', () => {
   let app: FastifyInstance
+  let rootGroupId: string
   const fetchMock = vi.fn()
   const authorization = `Bearer ${serviceAccountToken()}`
 
@@ -38,10 +40,12 @@ describe('a ticket opened by a service', () => {
     process.env.SERVICE_ALLOWED_ACCOUNTS = SERVICE_ACCOUNT
     app = buildApp()
     await app.ready()
+    rootGroupId = await createRootGroup(app.db)
   })
 
   afterAll(async () => {
     await app.db.deleteFrom('tickets').where('enrollment_id', '=', ENROLLMENT_ID).execute()
+    await app.db.deleteFrom('ticket_groups').where('id', '=', rootGroupId).execute()
     await app.close()
     delete process.env.SERVICE_ALLOWED_ACCOUNTS
   })
