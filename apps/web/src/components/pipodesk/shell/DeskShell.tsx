@@ -19,7 +19,6 @@ import {
   INBOX_TICKET_IDS,
   queueSeed,
   structureFixture,
-  VIEWER_GROUP_ID,
 } from '@/fixtures/pipodesk/dataset'
 import '@/styles/pipodesk-tokens.css'
 
@@ -70,7 +69,7 @@ export function DeskShell() {
   /* The pod the person works in, not every group they answer for: coordination
      is admin in the root and in all six, and the first one would be the root. */
   const viewerGroupId = useMemo(
-    () => user?.groups?.find((group) => group.role === 'member')?.groupId ?? VIEWER_GROUP_ID,
+    () => user?.groups?.find((group) => group.role === 'member')?.groupId ?? null,
     [user],
   )
 

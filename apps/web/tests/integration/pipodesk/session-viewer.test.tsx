@@ -26,6 +26,13 @@ async function renderAs(user: AuthMe) {
   await screen.findByRole('navigation', { name: /pipodesk/i })
 }
 
+const podOrder = () => {
+  const sidebar = screen.getByRole('navigation', { name: /pipodesk/i })
+  return within(sidebar)
+    .getAllByRole('button', { name: /^POD \d/ })
+    .map((button) => button.textContent?.match(/POD \d/)?.[0])
+}
+
 const countOf = (name: RegExp) => {
   const sidebar = screen.getByRole('navigation', { name: /pipodesk/i })
   return within(sidebar).getByRole('button', { name }).querySelector('span:last-of-type')
@@ -60,5 +67,17 @@ describe('o viewer vem da sessão', () => {
     await renderAs(session({ name: '  ', email: 'bruno.lima@piposaude.com.br' }))
 
     expect(screen.getByRole('button', { name: /Bruno Lima/i })).toBeInTheDocument()
+  })
+
+  it('should abrir a árvore pelo pod de quem logou', async () => {
+    await renderAs(session({ groups: [{ groupId: 'pod-2', role: 'member' }] }))
+
+    expect(podOrder()[0]).toBe('POD 2')
+  })
+
+  it('should manter a ordem natural dos pods para quem não é membro de nenhum, sem destacar o da fixture', async () => {
+    await renderAs(session({ groups: [{ groupId: 'pod-5', role: 'admin' }] }))
+
+    expect(podOrder()).toEqual(['POD 1', 'POD 2', 'POD 3', 'POD 4', 'POD 5', 'POD 6'])
   })
 })
