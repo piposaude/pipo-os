@@ -110,13 +110,22 @@ function inclusionFailures(
     }
   }
 
-  if (unreadable) return failures
+  return failures
+}
 
-  const carried = new Set(lives)
+export function unknownMemberFailures(
+  enrollmentSnapshot: unknown,
+  members: readonly CompletionMember[],
+): ErrorDetail[] {
+  const carried = completionContextOf(enrollmentSnapshot).memberTaxIds.map(digitsOf)
+  if (carried.length === 0 || carried.includes('')) return []
+
+  const lives = new Set(carried)
   const reported = new Set<string>()
+  const failures: ErrorDetail[] = []
   for (const member of members) {
     const taxId = digitsOf(member.taxId)
-    if (carried.has(taxId)) continue
+    if (lives.has(taxId)) continue
     const label = taxId === '' ? member.taxId.trim() : taxId
     if (reported.has(label)) continue
     reported.add(label)
@@ -126,7 +135,6 @@ function inclusionFailures(
       code: 'unknown_member',
     })
   }
-
   return failures
 }
 
@@ -134,7 +142,8 @@ export function completionFailures(
   subject: CompletionSubject,
   completion: CompletionData | undefined,
 ): ErrorDetail[] {
-  if (subject.forceCompletion || EXEMPT.has(subject.enrollmentType)) return []
+  const strangers = unknownMemberFailures(subject.enrollmentSnapshot, completion?.members ?? [])
+  if (subject.forceCompletion || EXEMPT.has(subject.enrollmentType)) return strangers
 
   const failures: ErrorDetail[] = []
 
@@ -164,5 +173,5 @@ export function completionFailures(
     if (failure) failures.push(failure)
   }
 
-  return failures
+  return [...failures, ...strangers]
 }

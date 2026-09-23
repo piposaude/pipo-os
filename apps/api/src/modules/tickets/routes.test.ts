@@ -2386,6 +2386,39 @@ describe('tickets routes', () => {
         expect(response.statusCode).toBe(200)
       })
 
+      it('recusa com force_completion a vida que a movimentação não traz, e não grava nada', async () => {
+        const id = await openTicket({ forceCompletion: true })
+
+        const response = await complete(id, { members: [member('99999999999')] })
+
+        expect(response.statusCode).toBe(422)
+        expect(response.json().details).toEqual([
+          expect.objectContaining({ field: 'members[99999999999]', code: 'unknown_member' }),
+        ])
+        const answers = await app.db
+          .selectFrom('ticket_completion_members')
+          .select('tax_id')
+          .where('ticket_id', '=', id)
+          .execute()
+        expect(answers).toEqual([])
+      })
+
+      it('recusa a vida estranha também no chamado forçado cujo tipo a régua não conhece', async () => {
+        const id = await openTicket({ forceCompletion: true })
+        await app.db
+          .updateTable('tickets')
+          .set({ enrollment_type: 'Inclusão' })
+          .where('id', '=', id)
+          .execute()
+
+        const response = await complete(id, { members: [member('99999999999')] })
+
+        expect(response.statusCode).toBe(422)
+        expect(response.json().details).toEqual([
+          expect.objectContaining({ field: 'members[99999999999]', code: 'unknown_member' }),
+        ])
+      })
+
       it('grava a carteirinha sem os espaços em volta', async () => {
         const id = await openTicket()
 

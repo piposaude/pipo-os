@@ -13,7 +13,11 @@ import { digitsOf } from '../../shared/text.js'
 import { FK_VIOLATION, UNIQUE_VIOLATION } from '../../shared/pg.js'
 import type { Author } from '../auth/authenticate.js'
 import { insertEvent, type TicketEventInput } from '../comments/repository.js'
-import { completionFailures, type CompletionData } from './completion-gates.js'
+import {
+  completionFailures,
+  unknownMemberFailures,
+  type CompletionData,
+} from './completion-gates.js'
 import { canonicalEnrollmentTypeSchema } from './enrollment-type.js'
 import { OpenTicketConflictError } from './errors.js'
 import {
@@ -279,7 +283,9 @@ function completionColumnsOf(completion: CompletionData | undefined) {
 function gateFailures(row: Selectable<Tickets>, completion: CompletionData | undefined) {
   const enrollmentType = canonicalEnrollmentTypeSchema.safeParse(row.enrollment_type)
   if (!enrollmentType.success) {
-    if (row.force_completion) return []
+    if (row.force_completion) {
+      return unknownMemberFailures(row.enrollment_snapshot, completion?.members ?? [])
+    }
     return [
       {
         field: 'enrollmentType',
