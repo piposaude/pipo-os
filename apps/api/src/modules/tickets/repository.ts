@@ -1,4 +1,4 @@
-import { sql, type Kysely, type Selectable } from 'kysely'
+import { sql, type InferResult, type Kysely, type Selectable } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
 import { ADVISORY_LOCKS } from '../../shared/advisory-locks.js'
@@ -182,6 +182,77 @@ function completionOf(
         startDate: member.start_date,
       })),
     ...fields,
+  }
+}
+
+/** Three values have no column yet, so they are dug out of the jsonb here. */
+function selectRows(db: Kysely<Database>) {
+  return db
+    .selectFrom('tickets')
+    .select([
+      'id',
+      'display_number',
+      'title',
+      'enrollment_id',
+      'enrollment_type',
+      'status',
+      'priority',
+      'action_date',
+      'group_id',
+      'assignee_id',
+      'company_id',
+      'parent_company_id',
+      'parent_company_name',
+      'company_tax_id',
+      'carrier_id',
+      'carrier_name',
+      'product',
+      'contract_type',
+      'company_size',
+      'relationship',
+      'tags',
+      'source_system',
+      'closed_at',
+      'created_at',
+      'updated_at',
+    ])
+    .select([
+      snapshotString(['company'], ['company-name', 'name']).as('company_name'),
+      snapshotString(['primary', 'profile'], ['preferred-name', 'name']).as('beneficiary_name'),
+      snapshotString(['primary', 'profile'], ['tax-id']).as('tax_id'),
+    ])
+}
+
+function toRowPayload(row: InferResult<ReturnType<typeof selectRows>>[number]): TicketRowPayload {
+  return {
+    id: row.id,
+    displayNumber: row.display_number,
+    title: row.title,
+    enrollmentId: row.enrollment_id,
+    enrollmentType: row.enrollment_type,
+    status: row.status as TicketStatus,
+    priority: row.priority as TicketRowPayload['priority'],
+    actionDate: row.action_date ? row.action_date.toISOString() : null,
+    groupId: row.group_id,
+    assigneeId: row.assignee_id,
+    companyId: row.company_id,
+    companyName: row.company_name,
+    parentCompanyId: row.parent_company_id,
+    parentCompanyName: blankAsNull(row.parent_company_name),
+    companyTaxId: blankAsNull(row.company_tax_id),
+    beneficiaryName: row.beneficiary_name,
+    taxId: row.tax_id,
+    carrierId: row.carrier_id,
+    carrierName: row.carrier_name,
+    product: toClient('product', row.product),
+    contractType: toClient('contractType', row.contract_type),
+    companySize: toClient('companySize', row.company_size),
+    relationship: relationshipSchema.safeParse(row.relationship).data ?? null,
+    tags: row.tags as string[],
+    sourceSystem: row.source_system,
+    closedAt: row.closed_at ? row.closed_at.toISOString() : null,
+    createdAt: row.created_at.toISOString(),
+    updatedAt: row.updated_at.toISOString(),
   }
 }
 
@@ -422,7 +493,6 @@ export class TicketsRepository implements TicketsRepositoryPort {
     )
   }
 
-  /** Three values have no column yet, so they are dug out of the jsonb here. */
   async findRows(
     query: TicketRowsQuery,
     viewerId: string,
@@ -430,85 +500,24 @@ export class TicketsRepository implements TicketsRepositoryPort {
   ): Promise<{ data: TicketRowPayload[]; total: number }> {
     const { window, limit, ...filter } = query
 
-    const rows = await this.db
-      .selectFrom('tickets')
+    const rows = await selectRows(this.db)
       .where((eb) => {
         const parts = ticketFilterConditions(eb, filter, viewerId)
         const slice = actionDateWindowCondition(window, today)
         return eb.and(slice ? [...parts, slice] : parts)
       })
-      .select([
-        'id',
-        'display_number',
-        'title',
-        'enrollment_id',
-        'enrollment_type',
-        'status',
-        'priority',
-        'action_date',
-        'group_id',
-        'assignee_id',
-        'company_id',
-        'parent_company_id',
-        'parent_company_name',
-        'company_tax_id',
-        'carrier_id',
-        'carrier_name',
-        'product',
-        'contract_type',
-        'company_size',
-        'relationship',
-        'tags',
-        'source_system',
-        'closed_at',
-        'created_at',
-        'updated_at',
-      ])
-      .select([
-        snapshotString(['company'], ['company-name', 'name']).as('company_name'),
-        snapshotString(['primary', 'profile'], ['preferred-name', 'name']).as('beneficiary_name'),
-        snapshotString(['primary', 'profile'], ['tax-id']).as('tax_id'),
-      ])
       .select(sql<string>`count(*) over ()`.as('total_count'))
       .orderBy('created_at', 'desc')
       .orderBy('id', 'desc')
       .limit(limit)
       .execute()
 
-    const data = rows.map((row) => ({
-      id: row.id,
-      displayNumber: row.display_number,
-      title: row.title,
-      enrollmentId: row.enrollment_id,
-      enrollmentType: row.enrollment_type,
-      status: row.status as TicketStatus,
-      priority: row.priority as TicketRowPayload['priority'],
-      actionDate: row.action_date ? row.action_date.toISOString() : null,
-      groupId: row.group_id,
-      assigneeId: row.assignee_id,
-      companyId: row.company_id,
-      companyName: row.company_name,
-      parentCompanyId: row.parent_company_id,
-      parentCompanyName: blankAsNull(row.parent_company_name),
-      companyTaxId: blankAsNull(row.company_tax_id),
-      beneficiaryName: row.beneficiary_name,
-      taxId: row.tax_id,
-      carrierId: row.carrier_id,
-      carrierName: row.carrier_name,
-      product: toClient('product', row.product),
-      contractType: toClient('contractType', row.contract_type),
-      companySize: toClient('companySize', row.company_size),
-      relationship: relationshipSchema.safeParse(row.relationship).data ?? null,
-      tags: row.tags as string[],
-      sourceSystem: row.source_system,
-      closedAt: row.closed_at ? row.closed_at.toISOString() : null,
-      createdAt: row.created_at.toISOString(),
-      updatedAt: row.updated_at.toISOString(),
-    }))
-
     // The window function counts what matched, not what fit: with more rows than
     // the limit, data.length < total is how the caller learns it was cut.
-    return { data, total: rows.length > 0 ? Number(rows[0].total_count) : 0 }
+    return {
+      data: rows.map(toRowPayload),
+      total: rows.length > 0 ? Number(rows[0].total_count) : 0,
+    }
   }
 
   async create(data: CreateTicketData): Promise<Ticket> {
