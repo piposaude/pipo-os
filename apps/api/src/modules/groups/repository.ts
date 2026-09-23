@@ -58,6 +58,10 @@ async function lockGroup(db: Kysely<Database>, id: string): Promise<boolean> {
   return row !== undefined
 }
 
+async function lockPortfolios(db: Kysely<Database>): Promise<void> {
+  await sql`select pg_advisory_xact_lock(${ADVISORY_LOCKS.groupPortfolios})`.execute(db)
+}
+
 async function carryCompanies(
   db: Kysely<Database>,
   groupId: string,
@@ -316,6 +320,7 @@ export class GroupsRepository implements GroupsRepositoryPort {
 
   replaceCompanies(id: string, companyIds: readonly string[]): Promise<boolean> {
     return this.db.transaction().execute(async (trx) => {
+      await lockPortfolios(trx)
       if (!(await lockGroup(trx, id))) return false
 
       await trx
@@ -331,6 +336,7 @@ export class GroupsRepository implements GroupsRepositoryPort {
 
   carryCompany(id: string, companyId: string): Promise<boolean> {
     return this.db.transaction().execute(async (trx) => {
+      await lockPortfolios(trx)
       if (!(await lockGroup(trx, id))) return false
       await carryCompanies(trx, id, [companyId])
       return true

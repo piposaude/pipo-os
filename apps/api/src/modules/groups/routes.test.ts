@@ -727,6 +727,37 @@ describe('groups routes', () => {
       expect(responses.map((r) => r.statusCode).sort()).toEqual([200, 409])
     })
 
+    it('never answers 500 when two pods claim the same companies in opposite order', async () => {
+      const geben = await createGroup('Gestão de Benefícios')
+      const pod3 = await createGroup('POD 3', geben)
+      const pod5 = await createGroup('POD 5', geben)
+
+      for (let round = 0; round < 50; round += 1) {
+        const responses = await Promise.all([
+          putCompanies(pod3, [COMPANY_A, COMPANY_B]),
+          putCompanies(pod5, [COMPANY_B, COMPANY_A]),
+        ])
+        expect(responses.map((r) => r.statusCode).sort()).toEqual([200, 409])
+        await app.db.deleteFrom('ticket_group_companies').execute()
+      }
+    })
+
+    it('never answers 500 when a pod drops a company while another claims it', async () => {
+      const geben = await createGroup('Gestão de Benefícios')
+      const pod3 = await createGroup('POD 3', geben)
+      const pod5 = await createGroup('POD 5', geben)
+
+      for (let round = 0; round < 10; round += 1) {
+        await putCompanies(pod3, [COMPANY_A])
+        const responses = await Promise.all([
+          putCompanies(pod3, [COMPANY_B]),
+          putCompanies(pod5, [COMPANY_B, COMPANY_A]),
+        ])
+        expect(responses.map((r) => r.statusCode).sort()).toEqual([200, 409])
+        await app.db.deleteFrom('ticket_group_companies').execute()
+      }
+    })
+
     it('returns 404 for non-existent group', async () => {
       const response = await putCompanies(NONEXISTENT_ID, [COMPANY_A])
 
