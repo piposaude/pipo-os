@@ -378,6 +378,7 @@ export function DeskShell() {
   /* Memoized: the shell sits above every screen of the desk, so a new object
      here rerenders all of them on any state change. */
   const rowsTotal = rowsQuery.data?.total ?? 0
+  const rowsTruncated = rowsTotal > (rowsQuery.data?.data.length ?? 0)
 
   const context = useMemo(
     () => ({
@@ -392,6 +393,7 @@ export function DeskShell() {
       today,
       applyPatch,
       rowsTotal,
+      rowsTruncated,
       comments,
       addComment,
       viewerId,
@@ -410,6 +412,7 @@ export function DeskShell() {
       rowsPending,
       applyPatch,
       rowsTotal,
+      rowsTruncated,
       comments,
       addComment,
       viewerId,

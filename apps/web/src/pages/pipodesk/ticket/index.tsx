@@ -66,6 +66,7 @@ export default function TicketPage() {
     rows,
     rowsPending,
     rowsTotal,
+    rowsTruncated,
     today,
     resolveName,
     applyPatch,
@@ -107,7 +108,7 @@ export default function TicketPage() {
       <div className={`${styles.screen} ${styles.missing}`}>
         {rowsPending ? (
           <Loading show variant="contained" role="status" />
-        ) : rowsTotal > rows.length ? (
+        ) : rowsTruncated ? (
           <p>{constants.outsideSlice(id, rows.length, rowsTotal)}</p>
         ) : (
           <p>{constants.notFound(id)}</p>

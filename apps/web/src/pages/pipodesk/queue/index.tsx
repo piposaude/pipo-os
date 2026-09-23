@@ -44,6 +44,7 @@ export default function QueuePage() {
     viewerGroupId,
     rows,
     rowsTotal,
+    rowsTruncated,
     today,
     viewerId,
     resolveName,
@@ -215,7 +216,7 @@ export default function QueuePage() {
         {constants.liveCount(total, view.label)}
       </p>
 
-      {rowsTotal > rows.length && (
+      {rowsTruncated && (
         <p className={styles.truncated} role="status">
           {constants.truncated(rows.length, rowsTotal)}
         </p>

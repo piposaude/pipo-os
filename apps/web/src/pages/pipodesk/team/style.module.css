@@ -62,8 +62,6 @@
   text-align: right;
 }
 
-/* Outlined box, not a filled banner: a debt for coordination to resolve,
-   not a system error — filled red would shout all day. */
 .truncated {
   margin: 0 var(--pipo-space-medium) var(--pipo-space-small);
   padding: var(--pipo-space-xsmall) var(--pipo-space-small);
@@ -74,6 +72,8 @@
   font-size: 0.8125rem;
 }
 
+/* Outlined box, not a filled banner: a debt for coordination to resolve,
+   not a system error — filled red would shout all day. */
 .pendencia {
   margin: 0 var(--pipo-space-medium) var(--pipo-space-small);
   padding: var(--pipo-space-xsmall) var(--pipo-space-small);

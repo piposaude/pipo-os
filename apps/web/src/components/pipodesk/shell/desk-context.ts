@@ -27,6 +27,7 @@ export interface DeskContextValue {
   /** What the projection says exists, which is more than `rows` when it
    *  capped the answer — every count on screen is over the slice, not this. */
   rowsTotal: number
+  rowsTruncated: boolean
   /** Queue reference date — never the clock, for reproducibility. */
   today: string
   viewerId: string
