@@ -45,9 +45,9 @@ describe('o viewer vem da sessão', () => {
   })
 
   it('should nomear a conta com quem logou, não com a pessoa da fixture', async () => {
-    await renderAs(session({ sub: 'user-15', name: 'Carla Porto' }))
+    await renderAs(session({ sub: 'user-15', name: 'Marina Teste' }))
 
-    expect(screen.getByRole('button', { name: /Carla Porto/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Marina Teste/ })).toBeInTheDocument()
   })
 
   it('should cair no e-mail quando o auth-service não devolve nome', async () => {
