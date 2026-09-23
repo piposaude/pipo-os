@@ -154,7 +154,9 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
     async (request) => {
       // Conditional, or a session with no `sub` loses a PATCH it always had.
       const signsAnEvent =
-        request.body.priority !== undefined || request.body.actionDate !== undefined
+        request.body.priority !== undefined ||
+        request.body.actionDate !== undefined ||
+        request.body.assigneeId !== undefined
       const author = signsAnEvent ? requireAuthor(request) : undefined
       return service.update(request.params.id, request.body, author)
     },
@@ -202,8 +204,7 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
       },
     },
     async (request) => {
-      const assigneeId = requireUserId(request)
-      return service.claim(request.params.id, assigneeId)
+      return service.claim(request.params.id, { id: requireUserId(request), type: 'user' })
     },
   )
 }

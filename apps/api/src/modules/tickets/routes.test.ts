@@ -1486,6 +1486,89 @@ describe('tickets routes', () => {
 
       expect(response.statusCode).toBe(400)
     })
+
+    describe('o responsável', () => {
+      const ANA = 'ana@pipo.health'
+      const BRUNO = 'bruno@pipo.health'
+
+      const createTicket = async (assigneeId?: string): Promise<string> => {
+        const created = await app.inject({
+          method: 'POST',
+          url: '/api/tickets',
+          payload: { ...validTicketBody, ...(assigneeId && { assigneeId }) },
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        return created.json().id
+      }
+
+      const assign = (id: string, assigneeId: string | null, cookie = sessionCookie) =>
+        app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${id}`,
+          payload: { assigneeId },
+          cookies: { [SESSION_COOKIE_NAME]: cookie },
+        })
+
+      const eventsOf = async (id: string) => {
+        const timeline = await app.inject({
+          method: 'GET',
+          url: `/api/tickets/${id}/timeline`,
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        return timeline.json().data.filter((item: { type: string }) => item.type === 'event')
+      }
+
+      it('records who assigned the ticket, and to whom it was before', async () => {
+        const id = await createTicket(ANA)
+
+        expect((await assign(id, BRUNO)).json()).toMatchObject({ assigneeId: BRUNO })
+
+        expect(await eventsOf(id)).toEqual([
+          expect.objectContaining({
+            eventType: 'assigned',
+            body: 'Responsável alterado',
+            authorId: DEV_LOGIN_USER_ID,
+            metadata: { assigneeId: BRUNO, previous: ANA },
+          }),
+        ])
+      })
+
+      it('tells a first assignment and a removal apart from a change', async () => {
+        const id = await createTicket()
+
+        await assign(id, ANA)
+        await assign(id, null)
+
+        const events = await eventsOf(id)
+        expect(events.map((event: { body: string }) => event.body)).toEqual([
+          'Responsável definido',
+          'Responsável removido',
+        ])
+        expect(events[1].metadata).toEqual({ assigneeId: null, previous: ANA })
+      })
+
+      it('says nothing when the assignee sent is the one already there', async () => {
+        const id = await createTicket(ANA)
+
+        expect((await assign(id, ANA)).statusCode).toBe(200)
+
+        expect(await eventsOf(id)).toEqual([])
+      })
+
+      it('refuses to change the assignee from a session with no sub to sign it', async () => {
+        const id = await createTicket(ANA)
+
+        const response = await assign(id, BRUNO, sessionWithoutSub(app, TICKET_POLICIES))
+
+        expect(response.statusCode).toBe(401)
+        const ticket = await app.inject({
+          method: 'GET',
+          url: `/api/tickets/${id}`,
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        expect(ticket.json().assigneeId).toBe(ANA)
+      })
+    })
   })
 
   // ---------------------------------------------------------------------------
@@ -1679,6 +1762,67 @@ describe('tickets routes', () => {
 
       expect(response.statusCode).toBe(200)
       expect(response.json().assigneeId).toBe(DEV_LOGIN_USER_ID)
+    })
+
+    it('records that the claimer took the ticket, and from whom', async () => {
+      const previous = 'ana@pipo.health'
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: { ...validTicketBody, assigneeId: previous },
+      })
+      const { id } = created.json()
+
+      await app.inject({
+        method: 'POST',
+        url: `/api/tickets/${id}/claim`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+      const timeline = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${id}/timeline`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const events = timeline.json().data.filter((item: { type: string }) => item.type === 'event')
+
+      expect(events).toEqual([
+        expect.objectContaining({
+          eventType: 'assigned',
+          body: 'Responsável alterado',
+          authorId: DEV_LOGIN_USER_ID,
+          metadata: { assigneeId: DEV_LOGIN_USER_ID, previous },
+        }),
+      ])
+    })
+
+    it('says nothing when the claimer already holds the ticket', async () => {
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/tickets',
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload: validTicketBody,
+      })
+      const { id } = created.json()
+
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const response = await app.inject({
+          method: 'POST',
+          url: `/api/tickets/${id}/claim`,
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        expect(response.statusCode).toBe(200)
+      }
+
+      const timeline = await app.inject({
+        method: 'GET',
+        url: `/api/tickets/${id}/timeline`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+      const events = timeline.json().data.filter((item: { type: string }) => item.type === 'event')
+
+      expect(events.map((event: { body: string }) => event.body)).toEqual(['Responsável definido'])
     })
 
     it('returns 422 when ticket is already closed', async () => {
