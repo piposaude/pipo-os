@@ -2175,6 +2175,85 @@ describe('tickets routes', () => {
         expect(response.json().error).toBe('UnprocessableEntityError')
       },
     )
+
+    describe('o bloco da conclusão, na entrada', () => {
+      const member = (taxId: string) => ({
+        taxId,
+        idCardNumber: '0001234500018',
+        startDate: '2026-10-01',
+      })
+
+      const patchStatus = async (payload: object) => {
+        const created = await app.inject({
+          method: 'POST',
+          url: '/api/tickets',
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+          payload: validTicketBody,
+        })
+        return app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${created.json().id}/status`,
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+          payload,
+        })
+      }
+
+      const fieldsOf = (response: { json: () => { details?: { field: string }[] } }) =>
+        response.json().details?.map((detail) => detail.field)
+
+      it.each(['cancelled', 'carrier-processing'])(
+        'recusa com 400 o bloco junto do status %s',
+        async (status) => {
+          const response = await patchStatus({ status, completion: { endDate: '2026-10-31' } })
+
+          expect(response.statusCode).toBe(400)
+          expect(fieldsOf(response)).toEqual(['completion'])
+        },
+      )
+
+      it('recusa com 400 o mesmo CPF duas vezes', async () => {
+        const response = await patchStatus({
+          status: 'completed',
+          completion: { members: [member('11111111111'), member('11111111111')] },
+        })
+
+        expect(response.statusCode).toBe(400)
+        expect(fieldsOf(response)).toEqual(['completion.members.1.taxId'])
+      })
+
+      it('recusa com 400 mais de 50 vidas', async () => {
+        const members = Array.from({ length: 51 }, (_, i) => member(String(i).padStart(11, '0')))
+
+        const response = await patchStatus({ status: 'completed', completion: { members } })
+
+        expect(response.statusCode).toBe(400)
+        expect(fieldsOf(response)).toEqual(['completion.members'])
+      })
+
+      it.each([
+        ['o início de vigência como número', { startDate: 20261001 }, 'startDate'],
+        ['a data fora de YYYY-MM-DD', { startDate: '01/10/2026' }, 'startDate'],
+        ['o CPF com pontuação', { taxId: '111.111.111-11' }, 'taxId'],
+      ])('recusa com 400 %s', async (_, override, field) => {
+        const response = await patchStatus({
+          status: 'completed',
+          completion: { members: [{ ...member('11111111111'), ...override }] },
+        })
+
+        expect(response.statusCode).toBe(400)
+        expect(fieldsOf(response)).toEqual([`completion.members.0.${field}`])
+      })
+
+      it('recusa com 400 um campo que o bloco não conhece', async () => {
+        const response = await patchStatus({
+          status: 'completed',
+          completion: { endDate: '2026-10-31', closedAt: '2026-10-31' },
+        })
+
+        expect(response.statusCode).toBe(400)
+        expect(fieldsOf(response)).toEqual(['completion'])
+      })
+    })
   })
 
   // ---------------------------------------------------------------------------

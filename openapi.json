@@ -1632,6 +1632,64 @@
         ],
         "additionalProperties": false
       },
+      "TicketCompletionBodyInput": {
+        "type": "object",
+        "properties": {
+          "members": {
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "taxId": {
+                  "type": "string",
+                  "pattern": "^\\d{11}$"
+                },
+                "idCardNumber": {
+                  "type": "string"
+                },
+                "startDate": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                }
+              },
+              "required": [
+                "taxId",
+                "idCardNumber",
+                "startDate"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "effectiveDate": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "mecsasCompanyCode": {
+            "type": "string"
+          },
+          "hasGracePeriod": {
+            "type": "boolean"
+          },
+          "carrierTrackingNumber": {
+            "type": "string"
+          },
+          "documentTypes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "TicketCompletionMember": {
         "type": "object",
         "properties": {
@@ -3118,6 +3176,10 @@
           "reason": {
             "type": "string",
             "minLength": 1
+          },
+          "completion": {
+            "description": "Só junto de status completed; o que falta para concluir é a régua que decide",
+            "$ref": "#/components/schemas/TicketCompletionBodyInput"
           }
         },
         "required": [
