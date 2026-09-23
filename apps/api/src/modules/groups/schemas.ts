@@ -1,9 +1,15 @@
 import { z } from 'zod'
+import { errorResponseSchema } from '../../shared/schemas.js'
 
 /** `"   "` satisfies the `minLength: 1` that OpenAPI can express and fails the
  *  `.trim()` that it cannot — hence the description. */
 const trimmedInput = (): z.ZodString =>
   z.string().trim().min(1).describe('Trimmed before validation: whitespace only is rejected.')
+
+export const companyIdsSchema = z
+  .array(z.uuid().toLowerCase())
+  .max(1000)
+  .refine((ids) => new Set(ids).size === ids.length, { message: 'Company ids must be unique' })
 
 export const groupSchema = z
   .object({
@@ -18,7 +24,7 @@ export const groupSchema = z
   .meta({
     id: 'Group',
     description:
-      'The group by itself: POST and PATCH answer with this shape. Only GroupDetail, from the two read routes, carries companyIds and members.',
+      'The group by itself: POST and PATCH answer with this shape. Only GroupDetail, from the read routes and the portfolio writes, carries companyIds and members.',
   })
 
 /** Must stay the pair the CHECK of migration 0024 admits. */
@@ -32,6 +38,7 @@ export const groupMemberSchema = z
     userId: z.string().min(1),
     role: memberRoleSchema,
     active: z.boolean(),
+    companyIds: z.array(z.uuid()),
     createdAt: z.iso.datetime(),
   })
   .meta({ id: 'GroupMember' })
@@ -64,6 +71,11 @@ export const memberParamsSchema = z.object({
   memberId: trimmedInput(),
 })
 
+export const companyParamsSchema = z.object({
+  id: z.uuid(),
+  companyId: z.uuid(),
+})
+
 export const createGroupBodySchema = z
   .object({
     name: trimmedInput().max(255),
@@ -87,6 +99,7 @@ export const addMemberBodySchema = z
   .object({
     userId: trimmedInput().max(255),
     role: memberRoleSchema.optional(),
+    companyIds: companyIdsSchema.optional(),
   })
   .strict()
   .meta({ id: 'AddGroupMemberBody' })
@@ -95,12 +108,26 @@ export const updateMemberBodySchema = z
   .object({
     active: z.boolean().optional(),
     role: memberRoleSchema.optional(),
+    companyIds: companyIdsSchema.optional(),
   })
   .strict()
-  .refine((d) => d.active !== undefined || d.role !== undefined, {
+  .refine((d) => d.active !== undefined || d.role !== undefined || d.companyIds !== undefined, {
     message: 'At least one field is required',
   })
   .meta({ id: 'UpdateGroupMemberBody' })
+
+export const replaceCompaniesBodySchema = z
+  .object({ companyIds: companyIdsSchema })
+  .strict()
+  .meta({ id: 'ReplaceGroupCompaniesBody' })
+
+export const companyOwnerSchema = z
+  .object({ companyId: z.uuid(), groupId: z.uuid(), groupName: z.string() })
+  .meta({ id: 'GroupCompanyOwner' })
+
+export const companyCarriedConflictSchema = errorResponseSchema
+  .extend({ owners: z.array(companyOwnerSchema) })
+  .meta({ id: 'GroupCompanyConflict' })
 
 export const listGroupsQuerySchema = z.object({
   name: z.string().optional(),
@@ -128,5 +155,7 @@ export type CreateGroupBody = z.infer<typeof createGroupBodySchema>
 export type UpdateGroupBody = z.infer<typeof updateGroupBodySchema>
 export type AddMemberBody = z.infer<typeof addMemberBodySchema>
 export type UpdateMemberBody = z.infer<typeof updateMemberBodySchema>
+export type ReplaceCompaniesBody = z.infer<typeof replaceCompaniesBodySchema>
+export type CompanyOwner = z.infer<typeof companyOwnerSchema>
 export type ListGroupsQuery = z.infer<typeof listGroupsQuerySchema>
 export type GroupList = z.infer<typeof groupListSchema>

@@ -74,6 +74,18 @@ export class GroupsService {
     return group
   }
 
+  async replaceCompanies(id: string, companyIds: readonly string[]): Promise<GroupDetail> {
+    const found = await this.repository.replaceCompanies(id, companyIds)
+    if (!found) throw new NotFoundError(`Group ${id} not found`)
+    return this.get(id)
+  }
+
+  async carryCompany(id: string, companyId: string): Promise<GroupDetail> {
+    const found = await this.repository.carryCompany(id, companyId)
+    if (!found) throw new NotFoundError(`Group ${id} not found`)
+    return this.get(id)
+  }
+
   delete(id: string): Promise<void> {
     return this.repository.withHierarchyLock(async (repository) => {
       const deleted = await repository.delete(id)
