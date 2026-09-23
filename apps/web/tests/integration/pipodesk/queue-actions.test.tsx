@@ -14,6 +14,11 @@ import searchCopy from '@/constants/pipodesk/search'
 
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
+beforeEach(async () => {
+  const { signInAsFixtureViewer } = await import('../../helpers/auth')
+  signInAsFixtureViewer()
+})
+
 async function renderQueue() {
   const router = createRouter({
     routeTree,

@@ -21,6 +21,11 @@ configure({ asyncUtilTimeout: 3000 })
 
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
+beforeEach(async () => {
+  const { signInAsFixtureViewer } = await import('../../helpers/auth')
+  signInAsFixtureViewer()
+})
+
 async function openTab(path: string, tab: string) {
   const router = createRouter({
     routeTree,
