@@ -592,6 +592,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
       ...(data.priority !== undefined && { priority: data.priority }),
       ...(data.actionDate !== undefined && { action_date: data.actionDate }),
       ...(data.queueId !== undefined && { queue_id: data.queueId }),
+      ...(data.groupId !== undefined && { group_id: data.groupId }),
       ...(data.assigneeId !== undefined && { assignee_id: data.assigneeId }),
       ...(data.tags !== undefined && { tags: data.tags }),
       ...(data.forceCompletion !== undefined && { force_completion: data.forceCompletion }),
@@ -599,12 +600,13 @@ export class TicketsRepository implements TicketsRepositoryPort {
     }
 
     try {
-      // Only the priority, the action date and the assignee write events, and
-      // only an event needs the value it replaced: every other field keeps a
-      // single statement.
+      // Only the priority, the action date, the pod and the assignee write
+      // events, and only an event needs the value it replaced: every other
+      // field keeps a single statement.
       if (
         data.priority === undefined &&
         data.actionDate === undefined &&
+        data.groupId === undefined &&
         data.assigneeId === undefined
       ) {
         const row = await this.db
@@ -655,6 +657,15 @@ export class TicketsRepository implements TicketsRepositoryPort {
             eventType: 'action_date_changed',
             body: changeEventBody(actionDate, previousActionDate, ACTION_DATE_LABELS),
             metadata: { actionDate, previous: previousActionDate },
+          })
+        }
+
+        if (data.groupId !== undefined && data.groupId !== current.group_id) {
+          events.push({
+            ticketId: id,
+            eventType: 'moved',
+            body: 'Pod alterado',
+            metadata: { groupId: data.groupId, previous: current.group_id },
           })
         }
 

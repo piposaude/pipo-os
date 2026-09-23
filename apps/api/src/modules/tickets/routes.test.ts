@@ -1669,6 +1669,104 @@ describe('tickets routes', () => {
         expect(ticket.json().assigneeId).toBe(ANA)
       })
     })
+
+    describe('o pod', () => {
+      let pod: string
+
+      beforeAll(async () => {
+        const row = await app.db
+          .insertInto('ticket_groups')
+          .values({ name: 'POD 3', parent_id: rootGroupId, created_by: DEV_LOGIN_USER_ID })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+        pod = row.id
+      })
+
+      afterAll(async () => {
+        await app.db.deleteFrom('ticket_groups').where('id', '=', pod).execute()
+      })
+
+      const createTicket = async (): Promise<string> => {
+        const created = await app.inject({
+          method: 'POST',
+          url: '/api/tickets',
+          payload: validTicketBody,
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        return created.json().id
+      }
+
+      const move = (id: string, groupId: unknown, cookie = sessionCookie) =>
+        app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${id}`,
+          payload: { groupId },
+          cookies: { [SESSION_COOKIE_NAME]: cookie },
+        })
+
+      const eventsOf = async (id: string) => {
+        const timeline = await app.inject({
+          method: 'GET',
+          url: `/api/tickets/${id}/timeline`,
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        return timeline.json().data.filter((item: { type: string }) => item.type === 'event')
+      }
+
+      it('moves the ticket and records who moved it, and from which pod', async () => {
+        const id = await createTicket()
+
+        expect((await move(id, pod)).json()).toMatchObject({ groupId: pod })
+
+        expect(await eventsOf(id)).toEqual([
+          expect.objectContaining({
+            eventType: 'moved',
+            body: 'Pod alterado',
+            authorId: DEV_LOGIN_USER_ID,
+            metadata: { groupId: pod, previous: rootGroupId },
+          }),
+        ])
+      })
+
+      it('says nothing when the pod sent is the one already there', async () => {
+        const id = await createTicket()
+
+        expect((await move(id, rootGroupId)).statusCode).toBe(200)
+
+        expect(await eventsOf(id)).toEqual([])
+      })
+
+      it('refuses to take the ticket out of every pod', async () => {
+        const id = await createTicket()
+
+        const response = await move(id, null)
+
+        expect(response.statusCode).toBe(400)
+      })
+
+      it('names groupId when it points at nothing', async () => {
+        const id = await createTicket()
+
+        const response = await move(id, NONEXISTENT_ID)
+
+        expect(response.statusCode).toBe(422)
+        expect(response.json().details[0].field).toBe('groupId')
+      })
+
+      it('refuses to move the ticket from a session with no sub to sign it', async () => {
+        const id = await createTicket()
+
+        const response = await move(id, pod, sessionWithoutSub(app, TICKET_POLICIES))
+
+        expect(response.statusCode).toBe(401)
+        const ticket = await app.inject({
+          method: 'GET',
+          url: `/api/tickets/${id}`,
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        expect(ticket.json().groupId).toBe(rootGroupId)
+      })
+    })
   })
 
   // ---------------------------------------------------------------------------

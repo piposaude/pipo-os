@@ -141,6 +141,7 @@ export const updateTicketBodySchema = z
     priority: ticketPrioritySchema.nullable().optional(),
     actionDate: z.iso.datetime({ offset: true }).nullable().optional(),
     queueId: z.uuid().nullable().optional(),
+    groupId: z.uuid().optional(),
     assigneeId: z.string().min(1).nullable().optional(),
     tags: z.array(tagSchema).optional(),
     forceCompletion: z.boolean().optional(),

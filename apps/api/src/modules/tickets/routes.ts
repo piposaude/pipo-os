@@ -156,6 +156,7 @@ export function registerTicketRoutes(app: FastifyInstance, service: TicketsServi
       const signsAnEvent =
         request.body.priority !== undefined ||
         request.body.actionDate !== undefined ||
+        request.body.groupId !== undefined ||
         request.body.assigneeId !== undefined
       const author = signsAnEvent ? requireAuthor(request) : undefined
       return service.update(request.params.id, request.body, author)
