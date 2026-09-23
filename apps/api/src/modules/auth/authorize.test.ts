@@ -298,6 +298,7 @@ describe('the policy each route requires', () => {
     ['POST /api/tickets', TICKET],
     ['POST /api/tickets/:id/claim', TICKET],
     ['POST /api/tickets/:id/comments', TICKET],
+    ['PUT /api/groups/:id/companies', STRUCTURE],
   ]
 
   it('is exactly the routes whose side is already stated', () => {

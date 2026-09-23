@@ -521,6 +521,110 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/groups/{id}/companies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ReplaceGroupCompaniesBodyInput"];
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GroupDetail"];
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/groups/{id}/members": {
         parameters: {
             query?: never;
@@ -2457,7 +2561,7 @@ export interface components {
             message: string;
             details?: components["schemas"]["ErrorDetail"][];
         };
-        /** @description The group by itself: POST and PATCH answer with this shape. Only GroupDetail, from the two read routes, carries companyIds and members. */
+        /** @description The group by itself: POST and PATCH answer with this shape. Only GroupDetail, from the read routes and the portfolio writes, carries companyIds and members. */
         Group: {
             /** Format: uuid */
             id: string;
@@ -2566,6 +2670,9 @@ export interface components {
         Relationship: "holder" | "dependent" | "family-group";
         /** @enum {string} */
         RelationshipInput: "holder" | "dependent" | "family-group";
+        ReplaceGroupCompaniesBodyInput: {
+            companyIds: string[];
+        };
         Ticket: {
             /** Format: uuid */
             id: string;

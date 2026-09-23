@@ -45,6 +45,46 @@ function toGroup(row: Selectable<TicketGroups>): Group {
   }
 }
 
+/** NO KEY UPDATE, not UPDATE: it still lets the FKs of other writers into the
+ *  group take their KEY SHARE, so it only serialises portfolio writes. */
+async function lockGroup(db: Kysely<Database>, id: string): Promise<boolean> {
+  const row = await db
+    .selectFrom('ticket_groups')
+    .select('id')
+    .where('id', '=', id)
+    .forNoKeyUpdate()
+    .executeTakeFirst()
+  return row !== undefined
+}
+
+async function carryCompanies(
+  db: Kysely<Database>,
+  groupId: string,
+  companyIds: readonly string[],
+): Promise<void> {
+  if (companyIds.length === 0) return
+
+  await db
+    .insertInto('ticket_group_companies')
+    .values(companyIds.map((companyId) => ({ group_id: groupId, company_id: companyId })))
+    .onConflict((oc) => oc.column('company_id').doNothing())
+    .execute()
+
+  const owners = await db
+    .selectFrom('ticket_group_companies as c')
+    .innerJoin('ticket_groups as g', 'g.id', 'c.group_id')
+    .select(['c.company_id', 'g.id', 'g.name'])
+    .where('c.company_id', 'in', companyIds)
+    .where('c.group_id', '<>', groupId)
+    .orderBy('c.company_id')
+    .execute()
+
+  if (owners.length > 0) {
+    const taken = owners.map((o) => `${o.company_id} belongs to ${o.name} (${o.id})`)
+    throw new ConflictError(`Companies already carried by another group: ${taken.join('; ')}`)
+  }
+}
+
 function toMember(row: Selectable<TicketGroupMembers>): GroupMember {
   return {
     groupId: row.group_id,
@@ -64,6 +104,7 @@ export interface GroupsRepositoryPort {
   withHierarchyLock<T>(fn: (repository: GroupsRepositoryPort) => Promise<T>): Promise<T>
   findRelations(groupIds: readonly string[]): Promise<GroupRelations>
   update(id: string, data: UpdateGroupBody, updatedBy: string): Promise<Group | undefined>
+  replaceCompanies(id: string, companyIds: readonly string[]): Promise<boolean>
   delete(id: string): Promise<boolean>
 }
 
@@ -201,6 +242,21 @@ export class GroupsRepository implements GroupsRepositoryPort {
       .executeTakeFirst()
 
     return row ? toGroup(row) : undefined
+  }
+
+  replaceCompanies(id: string, companyIds: readonly string[]): Promise<boolean> {
+    return this.db.transaction().execute(async (trx) => {
+      if (!(await lockGroup(trx, id))) return false
+
+      await trx
+        .deleteFrom('ticket_group_companies')
+        .where('group_id', '=', id)
+        .$if(companyIds.length > 0, (q) => q.where('company_id', 'not in', companyIds))
+        .execute()
+
+      await carryCompanies(trx, id, companyIds)
+      return true
+    })
   }
 
   async delete(id: string): Promise<boolean> {

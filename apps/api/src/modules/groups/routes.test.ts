@@ -509,7 +509,6 @@ describe('groups routes', () => {
       expect(response.statusCode).toBe(201)
     }
 
-    /* The portfolio has no write route yet: it is PD-051. */
     const carry = (groupId: string, companyId: string): Promise<unknown> =>
       app.db
         .insertInto('ticket_group_companies')
@@ -605,6 +604,149 @@ describe('groups routes', () => {
       expect(response.json().members).toEqual([
         { userId: 'ana@pipo.health', role: 'member', active: false, companyIds: [] },
       ])
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  describe('PUT /api/groups/:id/companies', () => {
+    const putCompanies = (groupId: string, companyIds: unknown) =>
+      app.inject({
+        method: 'PUT',
+        url: `/api/groups/${groupId}/companies`,
+        payload: { companyIds },
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+      })
+
+    const portfolioOf = async (groupId: string): Promise<string[]> => {
+      const rows = await app.db
+        .selectFrom('ticket_group_companies')
+        .select('company_id')
+        .where('group_id', '=', groupId)
+        .orderBy('company_id')
+        .execute()
+      return rows.map((row) => row.company_id)
+    }
+
+    it('returns 401 without session cookie', async () => {
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/api/groups/${NONEXISTENT_ID}/companies`,
+        payload: { companyIds: [] },
+      })
+
+      expect(response.statusCode).toBe(401)
+    })
+
+    it('stores the set sent and answers with the group as the read routes see it', async () => {
+      const pod = await createGroup('POD 3')
+
+      const response = await putCompanies(pod, [COMPANY_B, COMPANY_A])
+
+      expect(response.statusCode).toBe(200)
+      expect(response.json()).toMatchObject({ id: pod, companyIds: [COMPANY_A, COMPANY_B] })
+      expect(await portfolioOf(pod)).toEqual([COMPANY_A, COMPANY_B])
+    })
+
+    it('drops from the portfolio what the set left out', async () => {
+      const pod = await createGroup('POD 3')
+      await putCompanies(pod, [COMPANY_A, COMPANY_B])
+
+      const response = await putCompanies(pod, [COMPANY_B])
+
+      expect(response.statusCode).toBe(200)
+      expect(await portfolioOf(pod)).toEqual([COMPANY_B])
+    })
+
+    it('empties the portfolio with an empty set', async () => {
+      const pod = await createGroup('POD 3')
+      await putCompanies(pod, [COMPANY_A])
+
+      const response = await putCompanies(pod, [])
+
+      expect(response.statusCode).toBe(200)
+      expect(await portfolioOf(pod)).toEqual([])
+    })
+
+    it('takes the company away from the person who followed it when the pod drops it', async () => {
+      const pod = await createGroup('POD 3')
+      await putCompanies(pod, [COMPANY_A, COMPANY_B])
+      await app.db
+        .insertInto('ticket_group_members')
+        .values({ group_id: pod, user_id: 'ana@pipo.health' })
+        .execute()
+      await app.db
+        .insertInto('ticket_group_member_companies')
+        .values({ group_id: pod, user_id: 'ana@pipo.health', company_id: COMPANY_A })
+        .execute()
+
+      const response = await putCompanies(pod, [COMPANY_B])
+
+      expect(response.json().members).toEqual([
+        { userId: 'ana@pipo.health', role: 'member', active: true, companyIds: [] },
+      ])
+    })
+
+    it('answers 409 naming the group that already carries the company', async () => {
+      const geben = await createGroup('Gestão de Benefícios')
+      const pod3 = await createGroup('POD 3', geben)
+      const pod5 = await createGroup('POD 5', geben)
+      await putCompanies(pod3, [COMPANY_A])
+
+      const response = await putCompanies(pod5, [COMPANY_A])
+
+      expect(response.statusCode).toBe(409)
+      expect(response.json().message).toContain('POD 3')
+      expect(response.json().message).toContain(pod3)
+      expect(response.json().message).toContain(COMPANY_A)
+    })
+
+    it('leaves the portfolio as it was when the set is refused', async () => {
+      const geben = await createGroup('Gestão de Benefícios')
+      const pod3 = await createGroup('POD 3', geben)
+      const pod5 = await createGroup('POD 5', geben)
+      await putCompanies(pod3, [COMPANY_A])
+      await putCompanies(pod5, [COMPANY_B])
+
+      const response = await putCompanies(pod5, [COMPANY_A])
+
+      expect(response.statusCode).toBe(409)
+      expect(await portfolioOf(pod5)).toEqual([COMPANY_B])
+      expect(await portfolioOf(pod3)).toEqual([COMPANY_A])
+    })
+
+    it('lets only one of two pods take the same company at the same time', async () => {
+      const geben = await createGroup('Gestão de Benefícios')
+      const pod3 = await createGroup('POD 3', geben)
+      const pod5 = await createGroup('POD 5', geben)
+
+      const responses = await Promise.all([
+        putCompanies(pod3, [COMPANY_A]),
+        putCompanies(pod5, [COMPANY_A]),
+      ])
+
+      expect(responses.map((r) => r.statusCode).sort()).toEqual([200, 409])
+    })
+
+    it('returns 404 for non-existent group', async () => {
+      const response = await putCompanies(NONEXISTENT_ID, [COMPANY_A])
+
+      expect(response.statusCode).toBe(404)
+    })
+
+    it('returns 400 when the set repeats a company', async () => {
+      const pod = await createGroup('POD 3')
+
+      const response = await putCompanies(pod, [COMPANY_A, COMPANY_A])
+
+      expect(response.statusCode).toBe(400)
+    })
+
+    it('returns 400 when a company id is not a uuid', async () => {
+      const pod = await createGroup('POD 3')
+
+      const response = await putCompanies(pod, ['acme'])
+
+      expect(response.statusCode).toBe(400)
     })
   })
 
@@ -1410,6 +1552,7 @@ describe('groups routes', () => {
       ['POST', '/api/groups'],
       ['GET', '/api/groups/:id'],
       ['PATCH', '/api/groups/:id'],
+      ['PUT', '/api/groups/:id/companies'],
       ['DELETE', '/api/groups/:id'],
       ['POST', '/api/groups/:id/members'],
       ['PATCH', '/api/groups/:id/members/:memberId'],

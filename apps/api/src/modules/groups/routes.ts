@@ -14,6 +14,7 @@ import {
   groupSchema,
   listGroupsQuerySchema,
   memberParamsSchema,
+  replaceCompaniesBodySchema,
   updateGroupBodySchema,
   updateMemberBodySchema,
 } from './schemas.js'
@@ -108,6 +109,30 @@ export function registerGroupRoutes(app: FastifyInstance, service: GroupsService
     async (request) => {
       const updatedBy = requireUserId(request)
       return service.update(request.params.id, request.body, updatedBy)
+    },
+  )
+
+  server.put(
+    '/api/groups/:id/companies',
+    {
+      config: { policy: STRUCTURE_POLICY },
+      schema: {
+        params: groupParamsSchema,
+        body: replaceCompaniesBodySchema,
+        response: {
+          200: groupDetailSchema,
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+          409: errorResponseSchema,
+          413: errorResponseSchema,
+          415: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      return service.replaceCompanies(request.params.id, request.body.companyIds)
     },
   )
 

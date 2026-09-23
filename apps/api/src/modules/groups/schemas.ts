@@ -18,7 +18,7 @@ export const groupSchema = z
   .meta({
     id: 'Group',
     description:
-      'The group by itself: POST and PATCH answer with this shape. Only GroupDetail, from the two read routes, carries companyIds and members.',
+      'The group by itself: POST and PATCH answer with this shape. Only GroupDetail, from the read routes and the portfolio writes, carries companyIds and members.',
   })
 
 /** Must stay the pair the CHECK of migration 0024 admits. */
@@ -102,6 +102,16 @@ export const updateMemberBodySchema = z
   })
   .meta({ id: 'UpdateGroupMemberBody' })
 
+export const companyIdsSchema = z
+  .array(z.uuid())
+  .max(1000)
+  .refine((ids) => new Set(ids).size === ids.length, { message: 'Company ids must be unique' })
+
+export const replaceCompaniesBodySchema = z
+  .object({ companyIds: companyIdsSchema })
+  .strict()
+  .meta({ id: 'ReplaceGroupCompaniesBody' })
+
 export const listGroupsQuerySchema = z.object({
   name: z.string().optional(),
   page: z.coerce.number().int().min(1).max(10_000).default(1),
@@ -128,5 +138,6 @@ export type CreateGroupBody = z.infer<typeof createGroupBodySchema>
 export type UpdateGroupBody = z.infer<typeof updateGroupBodySchema>
 export type AddMemberBody = z.infer<typeof addMemberBodySchema>
 export type UpdateMemberBody = z.infer<typeof updateMemberBodySchema>
+export type ReplaceCompaniesBody = z.infer<typeof replaceCompaniesBodySchema>
 export type ListGroupsQuery = z.infer<typeof listGroupsQuerySchema>
 export type GroupList = z.infer<typeof groupListSchema>
