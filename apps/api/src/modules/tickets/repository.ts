@@ -264,6 +264,18 @@ function toRowPayload(row: InferResult<ReturnType<typeof selectRows>>[number]): 
   }
 }
 
+function completionColumnsOf(completion: CompletionData | undefined) {
+  if (!completion) return {}
+  return {
+    end_date: completion.endDate,
+    effective_date: completion.effectiveDate,
+    mecsas_company_code: completion.mecsasCompanyCode,
+    has_grace_period: completion.hasGracePeriod,
+    carrier_tracking_number: completion.carrierTrackingNumber,
+    document_types: completion.documentTypes,
+  }
+}
+
 function gateFailures(row: Selectable<Tickets>, completion: CompletionData | undefined) {
   const enrollmentType = canonicalEnrollmentTypeSchema.safeParse(row.enrollment_type)
   if (!enrollmentType.success) {
@@ -690,9 +702,23 @@ export class TicketsRepository implements TicketsRepositoryPort {
         if (first) return { kind: 'refused', failures: [first, ...rest] }
       }
 
+      if (completion?.members?.length) {
+        await trx
+          .insertInto('ticket_completion_members')
+          .values(
+            completion.members.map((member) => ({
+              ticket_id: id,
+              tax_id: member.taxId,
+              id_card_number: member.idCardNumber,
+              start_date: member.startDate,
+            })),
+          )
+          .execute()
+      }
+
       const updated = await trx
         .updateTable('tickets')
-        .set({ status: toStatus, closed_at: closedAt })
+        .set({ status: toStatus, closed_at: closedAt, ...completionColumnsOf(completion) })
         .where('id', '=', id)
         .returningAll()
         .executeTakeFirstOrThrow()

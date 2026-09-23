@@ -2382,6 +2382,70 @@ describe('tickets routes', () => {
         expect(response.json().status).toBe('completed')
       })
 
+      it('grava o bloco e o GET devolve na mesma forma', async () => {
+        const id = await openTicket()
+        const members = [member('22222222222'), member('33333333333'), member('11111111111')]
+
+        const response = await complete(id, {
+          members: [members[2], members[0], members[1]],
+          hasGracePeriod: false,
+          carrierTrackingNumber: 'PROT-9',
+        })
+
+        expect(response.statusCode).toBe(200)
+        expect(response.json().status).toBe('completed')
+        expect(response.json().closedAt).not.toBeNull()
+        const read = await app.inject({
+          method: 'GET',
+          url: `/api/tickets/${id}`,
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        expect(read.json().completion).toEqual({
+          members,
+          endDate: null,
+          effectiveDate: null,
+          mecsasCompanyCode: null,
+          hasGracePeriod: false,
+          carrierTrackingNumber: 'PROT-9',
+          documentTypes: null,
+        })
+      })
+
+      it('grava a data de fim da exclusão', async () => {
+        const id = await openTicket({ enrollmentType: 'exclusion' })
+
+        const response = await complete(id, { endDate: '2026-10-31' })
+
+        expect(response.statusCode).toBe(200)
+        const row = await app.db
+          .selectFrom('tickets')
+          .select(sql<string>`end_date::text`.as('end_date'))
+          .where('id', '=', id)
+          .executeTakeFirstOrThrow()
+        expect(row.end_date).toBe('2026-10-31')
+      })
+
+      it('deixa um vencedor só entre duas conclusões concorrentes', async () => {
+        const id = await openTicket()
+        const completion = {
+          members: [member('22222222222'), member('33333333333'), member('11111111111')],
+        }
+
+        const responses = await Promise.all([complete(id, completion), complete(id, completion)])
+
+        expect(responses.map((r) => r.statusCode).sort()).toEqual([200, 422])
+        expect(responses.find((r) => r.statusCode === 422)!.json().error).toBe(
+          'UnprocessableEntityError',
+        )
+        expect((await historyOf(id)).map((row) => row.to_status)).toEqual(['completed'])
+        const answers = await app.db
+          .selectFrom('ticket_completion_members')
+          .select('tax_id')
+          .where('ticket_id', '=', id)
+          .execute()
+        expect(answers).toHaveLength(3)
+      })
+
       it('conclui sem bloco o chamado com force_completion', async () => {
         const id = await openTicket({ forceCompletion: true })
 
