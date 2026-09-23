@@ -48,7 +48,6 @@ interface RawRow {
 const data = raw as unknown as {
   today: string
   viewerId: string
-  inboxTicketIds: string[]
   users: { id: string; name: string }[]
   companies: Company[]
   structure: StructureState
