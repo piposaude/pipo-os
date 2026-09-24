@@ -51,6 +51,8 @@ export default {
     owner: 'Dono',
     free: 'Livre no pod',
     removeAssignment: 'Remover atribuição',
+    actionDate: 'Data de ação',
+    noActionDate: 'Sem data de ação. Agendar movimentação',
   },
   timeline: {
     heading: 'Linha do tempo',

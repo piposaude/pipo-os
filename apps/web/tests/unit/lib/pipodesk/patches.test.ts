@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { applyPatches, type TicketPatch } from '@/lib/pipodesk/patches'
+import { applyPatches, ticketFieldsBody, type TicketPatch } from '@/lib/pipodesk/patches'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 
 const row = (overrides: Partial<TicketRow> & Pick<TicketRow, 'id'>): TicketRow => ({
@@ -100,5 +100,28 @@ describe('applyPatches', () => {
 
     expect(movido.groupId).toBe('pod-2')
     expect(movido.assigneeId).toBeNull()
+  })
+})
+
+describe('ticketFieldsBody', () => {
+  it('should send the action date as the instant São Paulo midnight falls on', () => {
+    expect(ticketFieldsBody({ actionDate: '2026-09-30' })).toEqual({
+      actionDate: '2026-09-30T03:00:00.000Z',
+    })
+  })
+
+  it('should keep null as unscheduling, not turn it into an instant', () => {
+    expect(ticketFieldsBody({ actionDate: null })).toEqual({ actionDate: null })
+  })
+
+  it('should leave status and pod out, which travel by other routes', () => {
+    expect(
+      ticketFieldsBody({
+        status: 'completed',
+        groupId: 'pod-2',
+        priority: 'high',
+        assigneeId: null,
+      }),
+    ).toEqual({ priority: 'high', assigneeId: null })
   })
 })

@@ -237,6 +237,7 @@ export default function QueuePage() {
         onOpenTicket={(id) => navigate({ to: '/tickets/$id', params: { id } })}
         today={today}
         resolveName={resolveName}
+        onSetPriority={(id, priority) => applyPatch([id], { priority })}
         columnFilter={(field, align) => (
           <ColumnFilter
             field={field}
@@ -267,6 +268,7 @@ export default function QueuePage() {
           analysts={analysts}
           onAssign={(userId) => runBatch({ assigneeId: userId })}
           onStatus={runStatusBatch}
+          onSchedule={(actionDate) => runBatch({ actionDate })}
         />
       )}
 
