@@ -7,7 +7,7 @@ import constants from '@/constants/pipodesk/sidebar'
 import { formatCount, shortSidebarLabel } from '@/lib/pipodesk/format'
 import { canEditQueue, canEditStructure } from '@/lib/pipodesk/permissions'
 import type { StructureState } from '@/lib/pipodesk/structure'
-import { isPodCut, type TreeNode, type TreeSection } from '@/lib/pipodesk/tree'
+import { isPodCut, sourceQueueIdOf, type TreeNode, type TreeSection } from '@/lib/pipodesk/tree'
 import { InlineRename } from './InlineRename'
 import { RowMenu } from './RowMenu'
 import { SidebarIcon } from './SidebarIcon'
@@ -159,9 +159,10 @@ function Node(props: NodeProps) {
    *  analyst's daily section off screen. */
   const [open, setOpen] = useState(() => node.depth <= 0 && nodeGroup === undefined)
   const [renaming, setRenaming] = useState(false)
-  const queue = structure.queues.find((saved) => saved.id === node.id)
+  const queueId = sourceQueueIdOf(node.id) ?? node.id
+  const queue = structure.queues.find((saved) => saved.id === queueId)
   const canRename =
-    queue !== undefined && !isPodCut(queue) && canEditQueue(queue, structure, viewerId)
+    queue !== undefined && !isPodCut(queue, structure) && canEditQueue(queue, structure, viewerId)
 
   const activate = () => {
     if (isContainer) {

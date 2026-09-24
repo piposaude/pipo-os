@@ -8,6 +8,7 @@ import {
   buildTree,
   findNode,
   listNodeIdOf,
+  sourceQueueIdOf,
   type TreeNode,
   type TreeSection,
 } from '@/lib/pipodesk/tree'
@@ -415,7 +416,7 @@ export function DeskShell() {
     (id: string) => {
       const doomed = structure.queues.find((queue) => queue.id === id)
       if (!doomed) return
-      if (view.nodeId === id) {
+      if (view.nodeId === id || sourceQueueIdOf(view.nodeId) === id) {
         const landing = findNode(sections, listNodeIdOf(doomed.groupId, rootGroupOf(structure)))
         if (landing) selectNode(landing)
       }

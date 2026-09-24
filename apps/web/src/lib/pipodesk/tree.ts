@@ -32,8 +32,14 @@ const MOV_LABELS = { clt: 'MOV CLT', pj: 'MOV PJ', mb: 'MOV MB' } as const
 
 const POD_CUT_NAMES: ReadonlySet<string> = new Set(Object.values(MOV_LABELS))
 
-/** The API refuses renaming, moving or deleting these three for the same reason. */
-export const isPodCut = (queue: { name: string }): boolean => POD_CUT_NAMES.has(queue.name)
+export function isPodCut(
+  queue: Pick<Queue, 'name' | 'ownerId' | 'groupId'>,
+  structure: StructureState,
+): boolean {
+  if (queue.ownerId !== null || !POD_CUT_NAMES.has(queue.name)) return false
+  const root = rootGroupOf(structure)
+  return root !== null && childGroupsOf(structure, root.id).some((pod) => pod.id === queue.groupId)
+}
 
 export const FUTURE_NODE_ID = 'node-futuras'
 
