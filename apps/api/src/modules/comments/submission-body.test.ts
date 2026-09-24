@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { createSubmissionBodySchema } from './schemas.js'
 
-const pathsOf = (body: unknown) =>
-  createSubmissionBodySchema.safeParse(body).error?.issues.map((issue) => issue.path) ?? []
+const submissionId = '00000000-0000-4000-8000-0000000000bb'
+
+const pathsOf = (body: object) =>
+  createSubmissionBodySchema
+    .safeParse({ submissionId, ...body })
+    .error?.issues.map((issue) => issue.path) ?? []
 
 describe('the body of POST /tickets/:id/submissions', () => {
   it('takes the same text for the team and for HR', () => {
     const body = {
+      submissionId,
       parts: [
         { channel: 'internal', body: 'enviado para a operadora' },
         { channel: 'platform', body: 'enviado para a operadora' },
@@ -17,7 +22,10 @@ describe('the body of POST /tickets/:id/submissions', () => {
   })
 
   it('takes a status with no text', () => {
-    const body = { status: { status: 'carrier-processing', reason: 'cobrar segunda' } }
+    const body = {
+      submissionId,
+      status: { status: 'carrier-processing', reason: 'cobrar segunda' },
+    }
 
     expect(createSubmissionBodySchema.parse(body)).toEqual({ parts: [], ...body })
   })
@@ -28,7 +36,10 @@ describe('the body of POST /tickets/:id/submissions', () => {
     }
 
     expect(
-      createSubmissionBodySchema.parse({ status: { status: 'completed', completion } }).status,
+      createSubmissionBodySchema.parse({
+        submissionId,
+        status: { status: 'completed', completion },
+      }).status,
     ).toEqual({ status: 'completed', completion })
   })
 
@@ -68,8 +79,11 @@ describe('the body of POST /tickets/:id/submissions', () => {
 
     expect(pathsOf({ parts, inReplyTo: 'abc' })).toEqual([['inReplyTo']])
     expect(
-      createSubmissionBodySchema.parse({ parts, inReplyTo: '00000000-0000-4000-8000-0000000000aa' })
-        .inReplyTo,
+      createSubmissionBodySchema.parse({
+        submissionId,
+        parts,
+        inReplyTo: '00000000-0000-4000-8000-0000000000aa',
+      }).inReplyTo,
     ).toBe('00000000-0000-4000-8000-0000000000aa')
   })
 
@@ -85,6 +99,14 @@ describe('the body of POST /tickets/:id/submissions', () => {
   it('refuses a field it does not know', () => {
     const parts = [{ channel: 'internal', body: 'oi' }]
 
-    expect(pathsOf({ parts, submissionId: '00000000-0000-4000-8000-0000000000aa' })).toEqual([[]])
+    expect(pathsOf({ parts, ticketId: '00000000-0000-4000-8000-0000000000aa' })).toEqual([[]])
+  })
+
+  it('refuses a submission with no id of its own, which a retry could not be matched by', () => {
+    const parts = [{ channel: 'internal', body: 'oi' }]
+
+    expect(
+      createSubmissionBodySchema.safeParse({ parts }).error?.issues.map((i) => i.path),
+    ).toEqual([['submissionId']])
   })
 })

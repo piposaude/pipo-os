@@ -134,6 +134,7 @@ export function registerCommentRoutes(app: FastifyInstance, service: CommentsSer
         params: ticketParamsSchema,
         body: createSubmissionBodySchema,
         response: {
+          200: submissionSchema,
           201: submissionSchema,
           400: errorResponseSchema,
           401: errorResponseSchema,
@@ -146,12 +147,12 @@ export function registerCommentRoutes(app: FastifyInstance, service: CommentsSer
       },
     },
     async (request, reply) => {
-      const submission = await service.submit(
+      const { submission, created } = await service.submit(
         request.params.id,
         request.body,
         requireAuthor(request),
       )
-      reply.status(201)
+      reply.status(created ? 201 : 200)
       return submission
     },
   )

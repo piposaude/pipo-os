@@ -66,7 +66,11 @@ export class CommentsService {
     return this.repository.create(ticketId, data, author)
   }
 
-  async submit(ticketId: string, data: CreateSubmissionBody, author: Author): Promise<Submission> {
+  async submit(
+    ticketId: string,
+    data: CreateSubmissionBody,
+    author: Author,
+  ): Promise<{ submission: Submission; created: boolean }> {
     const result = await this.repository.submit(ticketId, data, author)
 
     if (result.kind === 'not-found') throw new NotFoundError(`Ticket ${ticketId} not found`)
@@ -87,7 +91,8 @@ export class CommentsService {
       ])
     }
 
-    return { submissionId: result.submissionId, ticket: result.ticket, comments: result.comments }
+    const { created, submissionId, ticket, comments } = result
+    return { submission: { submissionId, ticket, comments }, created }
   }
 
   async list(ticketId: string): Promise<CommentList> {

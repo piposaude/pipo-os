@@ -105,6 +105,9 @@ const submissionPartSchema = z
 
 export const createSubmissionBodySchema = z
   .object({
+    submissionId: z
+      .uuid()
+      .describe('Gerado pelo cliente, um por envio; repetir o mesmo devolve o envio já gravado'),
     parts: z
       .array(submissionPartSchema)
       .max(2)

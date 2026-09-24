@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import type { FastifyInstance } from 'fastify'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { buildApp } from '../../app.js'
@@ -82,7 +83,7 @@ describe('POST /api/tickets/:id/submissions', () => {
       method: 'POST',
       url: `/api/tickets/${id}/submissions`,
       cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-      payload,
+      payload: { submissionId: randomUUID(), ...payload },
     })
 
   const commentsOf = (id: string) =>
@@ -131,6 +132,43 @@ describe('POST /api/tickets/:id/submissions', () => {
     expect(await historyOf(id)).toMatchObject([
       { to_status: 'completed', submission_id: submissionId },
     ])
+  })
+
+  it('answers a replayed closing submission with the first answer, not with already-closed', async () => {
+    const id = await openTicket()
+    const payload = {
+      submissionId: randomUUID(),
+      parts: bothChannels,
+      status: {
+        status: 'completed',
+        completion: { members: [member('22222222222'), member('33333333333')] },
+      },
+    }
+    const first = await submit(id, payload)
+
+    const replay = await submit(id, payload)
+
+    expect(replay.statusCode).toBe(200)
+    const byId = (a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id)
+    const sent = first.json()
+    expect({ ...replay.json(), comments: replay.json().comments.sort(byId) }).toEqual({
+      ...sent,
+      comments: sent.comments.sort(byId),
+    })
+    expect(await commentsOf(id)).toHaveLength(2)
+    expect(await historyOf(id)).toHaveLength(1)
+  })
+
+  it('answers a replayed status-only submission without a second history row', async () => {
+    const id = await openTicket()
+    const payload = { submissionId: randomUUID(), status: { status: 'missing-documents' } }
+    const first = await submit(id, payload)
+
+    const replay = await submit(id, payload)
+
+    expect(replay.statusCode).toBe(200)
+    expect(replay.json()).toEqual(first.json())
+    expect(await historyOf(id)).toHaveLength(1)
   })
 
   it('refuses the completion field by field and writes nothing, not even the text', async () => {

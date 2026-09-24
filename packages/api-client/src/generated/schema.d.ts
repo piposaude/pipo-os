@@ -2538,6 +2538,15 @@ export interface paths {
             };
             responses: {
                 /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Submission"];
+                    };
+                };
+                /** @description Default Response */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -2847,6 +2856,11 @@ export interface components {
             groupBy?: components["schemas"]["QueueGroupByInput"];
         };
         CreateSubmissionBodyInput: {
+            /**
+             * Format: uuid
+             * @description Gerado pelo cliente, um por envio; repetir o mesmo devolve o envio já gravado
+             */
+            submissionId: string;
             /**
              * @description Uma parte por canal; sem parte, o envio precisa de status
              * @default []

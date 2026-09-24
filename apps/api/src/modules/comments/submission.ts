@@ -1,5 +1,4 @@
-import { randomUUID } from 'node:crypto'
-import type { Kysely } from 'kysely'
+import type { Kysely, Transaction } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { ErrorDetails } from '../../shared/errors.js'
 import type { Author } from '../auth/authenticate.js'
@@ -9,7 +8,7 @@ import { toComment } from './repository.js'
 import type { Comment, CreateSubmissionBody } from './schemas.js'
 
 export type SubmitResult =
-  | { kind: 'ok'; submissionId: string; ticket: Ticket; comments: Comment[] }
+  | { kind: 'ok'; created: boolean; submissionId: string; ticket: Ticket; comments: Comment[] }
   | { kind: 'not-found' }
   | { kind: 'already-closed' }
   | { kind: 'refused'; failures: ErrorDetails }
@@ -30,6 +29,18 @@ export async function submit(
       .forUpdate()
       .executeTakeFirst()
     if (!current) return { kind: 'not-found' }
+
+    const { submissionId } = body
+    const replayed = await findSubmission(trx, ticketId, submissionId)
+    if (replayed) {
+      return {
+        kind: 'ok',
+        created: false,
+        submissionId,
+        ticket: toTicket(current),
+        comments: replayed,
+      }
+    }
 
     if (body.inReplyTo) {
       const answered = await trx
@@ -57,7 +68,6 @@ export async function submit(
       if (nested) return { kind: 'reply-to-reply' }
     }
 
-    const submissionId = randomUUID()
     let ticket = toTicket(current)
 
     if (body.status) {
@@ -95,6 +105,30 @@ export async function submit(
             .returningAll()
             .execute()
 
-    return { kind: 'ok', submissionId, ticket, comments: rows.map(toComment) }
+    return { kind: 'ok', created: true, submissionId, ticket, comments: rows.map(toComment) }
   })
+}
+
+async function findSubmission(
+  trx: Transaction<Database>,
+  ticketId: string,
+  submissionId: string,
+): Promise<Comment[] | undefined> {
+  const comments = await trx
+    .selectFrom('ticket_comments')
+    .selectAll()
+    .where('ticket_id', '=', ticketId)
+    .where('submission_id', '=', submissionId)
+    .orderBy('created_at')
+    .orderBy('id')
+    .execute()
+  if (comments.length > 0) return comments.map(toComment)
+
+  const history = await trx
+    .selectFrom('ticket_status_history')
+    .select('id')
+    .where('ticket_id', '=', ticketId)
+    .where('submission_id', '=', submissionId)
+    .executeTakeFirst()
+  return history ? [] : undefined
 }

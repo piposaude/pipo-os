@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import type { FastifyInstance } from 'fastify'
 import { sql } from 'kysely'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
@@ -198,7 +199,7 @@ describe('GET /api/tickets/:id/timeline', () => {
         method: 'POST',
         url: `/api/tickets/${ticketId}/submissions`,
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload,
+        payload: { submissionId: randomUUID(), ...payload },
       })
 
     it('carries the submission id on the comments and the status change it wrote', async () => {

@@ -336,6 +336,12 @@
       "CreateSubmissionBodyInput": {
         "type": "object",
         "properties": {
+          "submissionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "Gerado pelo cliente, um por envio; repetir o mesmo devolve o envio já gravado"
+          },
           "parts": {
             "default": [],
             "description": "Uma parte por canal; sem parte, o envio precisa de status",
@@ -374,6 +380,9 @@
             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
           }
         },
+        "required": [
+          "submissionId"
+        ],
         "additionalProperties": false
       },
       "CreateTicketBodyInput": {
@@ -6378,6 +6387,16 @@
           }
         ],
         "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Submission"
+                }
+              }
+            }
+          },
           "201": {
             "description": "Default Response",
             "content": {
