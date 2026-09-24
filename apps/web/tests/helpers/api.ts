@@ -1,4 +1,8 @@
 import { FIXTURE_USER_NAMES, queueSeed, structureFixture } from '@/fixtures/pipodesk/dataset'
+import type { TicketRow } from '@/lib/pipodesk/ticket-row'
+
+/** Answers `GET /api/tickets/<id>` for any id without a route of its own. */
+export const TICKET_ROUTE = '/api/tickets/:id'
 
 export interface ApiCall {
   method: string
@@ -68,8 +72,12 @@ export function mockApi(
       })
     }
 
-    const route = routes[pathname]
-    const body = typeof route === 'function' ? route(new URL(url, 'http://localhost')) : route
+    const ticketId = /^\/api\/tickets\/([^/]+)$/.exec(pathname)?.[1]
+    const route = routes[pathname] ?? (ticketId ? routes[TICKET_ROUTE] : undefined)
+    let body = typeof route === 'function' ? route(new URL(url, 'http://localhost')) : route
+    if (ticketId && body !== undefined && applied.has(ticketId)) {
+      body = { ...(body as Record<string, unknown>), ...applied.get(ticketId) }
+    }
     if (body === undefined) {
       return new Response(JSON.stringify({ message: `sem mock para ${pathname}` }), {
         status: 404,
@@ -100,6 +108,7 @@ const STAMPS = {
 export function fixtureStructureRoutes(viewerId?: string): Record<string, unknown> {
   return {
     '/api/tickets/rows': fixtureRowsRoute(),
+    [TICKET_ROUTE]: fixtureTicketRoute,
     '/api/users': fixtureUsersRoute(),
     '/api/groups': page(
       structureFixture.groups.map((group) => ({
@@ -151,6 +160,35 @@ export function fixtureRowsRoute(): string {
     total: queueSeed.length,
   })
   return rowsBody
+}
+
+/** The ticket as `GET /api/tickets/:id` sends it, over a queue row; the
+ *  snapshot carries only the names the row read from it. */
+export function apiTicketOf(row: TicketRow): Record<string, unknown> {
+  return {
+    ...row,
+    title: row.subject,
+    displayNumber: row.displayNumber ?? row.id,
+    actionDate: row.actionDate === null ? null : `${row.actionDate}T12:00:00-03:00`,
+    queueId: null,
+    pendingDocumentation: [],
+    requester: null,
+    collaborators: [],
+    forceCompletion: false,
+    origin: null,
+    parentTicketId: null,
+    completion: null,
+    enrollmentSnapshot: {
+      primary: { profile: { name: row.beneficiaryName, tax_id: row.taxId } },
+      company: { company_name: row.companyName },
+    },
+  }
+}
+
+function fixtureTicketRoute(url: URL): Record<string, unknown> | undefined {
+  const id = url.pathname.split('/').pop()
+  const row = queueSeed.find((candidate) => candidate.id === id)
+  return row ? apiTicketOf(row) : undefined
 }
 
 export const truncatedRowsRoute = (total: number): string =>

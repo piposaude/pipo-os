@@ -14,7 +14,7 @@ import { analystsOf } from '@/lib/pipodesk/permissions'
 import { records } from '@/fixtures/pipodesk/records'
 import constants from '@/constants/pages/pipodesk/ticket'
 import copyButton from '@/constants/pipodesk/copy-button'
-import { holdGet, truncatedRowsRoute } from '../../helpers/api'
+import { apiTicketOf, holdGet } from '../../helpers/api'
 
 /**
  * The first drawn row — the table is virtualized, so only the visible window
@@ -370,9 +370,9 @@ describe('detalhe do chamado', () => {
     expect(button).toHaveAttribute('data-copied', 'true')
   })
 
-  it('should wait for the rows before saying the id does not exist', async () => {
+  it('should wait for the ticket before saying the id does not exist', async () => {
     const { id, beneficiaryName, subject } = queueSeed[0]!
-    const release = holdGet('/api/tickets/rows')
+    const release = holdGet(`/api/tickets/${id}`)
     await renderAt(`/tickets/${id}`)
 
     expect(await screen.findByRole('status', { name: 'Carregando' })).toBeInTheDocument()
@@ -390,16 +390,25 @@ describe('detalhe do chamado', () => {
     expect(await screen.findByText(/não existe chamado com o id/i)).toBeInTheDocument()
   })
 
-  it('should not claim the id does not exist when the rows were cut at the limit', async () => {
+  it('should open a closed ticket, which the queue rows do not carry', async () => {
+    const open = queueSeed[0]!
+    const closed = {
+      ...apiTicketOf(open),
+      id: 'closed-1',
+      status: 'completed',
+      closedAt: '2026-08-01T12:00:00.000Z',
+    }
     desk.restore()
     desk = (await import('../../helpers/desk')).mountDeskFixture(
       {},
-      { '/api/tickets/rows': truncatedRowsRoute(99_999) },
+      { '/api/tickets/closed-1': closed },
     )
-    await renderAt('/tickets/000000')
+    await renderAt('/tickets/closed-1')
 
-    expect(await screen.findByText(/não está no recorte carregado/i)).toBeInTheDocument()
-    expect(screen.queryByText(/não existe chamado com o id/i)).not.toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { level: 1, name: open.beneficiaryName ?? open.subject }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('closed-1')).toBeInTheDocument()
   })
 
   /**

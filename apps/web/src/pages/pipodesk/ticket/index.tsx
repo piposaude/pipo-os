@@ -9,6 +9,7 @@ import {
   Tabs,
 } from '@piposaude/design-system'
 import { Link, useParams } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
 import { useDesk } from '@/components/pipodesk/shell/desk-context'
 import { SidebarToggle } from '@/components/pipodesk/shell/SidebarToggle'
 import { CompanyTab } from '@/components/pipodesk/ticket/CompanyTab'
@@ -37,7 +38,9 @@ import {
   timelineOf,
   type CommentChannel,
 } from '@/lib/pipodesk/timeline'
-import { PRIORITIES } from '@/lib/pipodesk/ticket-row'
+import { isApiStatus } from '@/lib/pipodesk/status'
+import { PRIORITIES, toTicketRow } from '@/lib/pipodesk/ticket-row'
+import { ApiError, client } from '@/lib/api'
 import constants from '@/constants/pages/pipodesk/ticket'
 import recordCopy from '@/constants/pages/pipodesk/ticket/record'
 import styles from './style.module.css'
@@ -60,21 +63,29 @@ function Fact({ label, value }: { label: string; value: string }) {
  */
 export default function TicketPage() {
   const { id } = useParams({ from: '/_auth/_desk/tickets/$id' })
-  const {
-    view,
-    structure,
-    rows,
-    rowsPending,
-    rowsTotal,
-    rowsTruncated,
-    today,
-    resolveName,
-    applyPatch,
-    comments,
-    addComment,
-  } = useDesk()
+  const { view, structure, rows, today, resolveName, applyPatch, patchRow, comments, addComment } =
+    useDesk()
 
-  const ticket = useMemo(() => rows.find((row) => row.id === id), [rows, id])
+  const ticketQuery = useQuery({
+    queryKey: ['get', '/api/tickets/{id}', id],
+    queryFn: async () => {
+      try {
+        const { data } = await client.GET('/api/tickets/{id}', { params: { path: { id } } })
+        return data ?? null
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 404) return null
+        throw error
+      }
+    },
+  })
+  const unreadable = ticketQuery.data ? !isApiStatus(ticketQuery.data.status) : false
+  const ticket = useMemo(
+    () =>
+      ticketQuery.data && isApiStatus(ticketQuery.data.status)
+        ? patchRow(toTicketRow(ticketQuery.data))
+        : undefined,
+    [ticketQuery.data, patchRow],
+  )
 
   const [priorityOpen, setPriorityOpen] = useState(false)
   const [ownerOpen, setOwnerOpen] = useState(false)
@@ -106,10 +117,10 @@ export default function TicketPage() {
   if (!ticket) {
     return (
       <div className={`${styles.screen} ${styles.missing}`}>
-        {rowsPending ? (
+        {ticketQuery.isPending ? (
           <Loading show variant="contained" role="status" />
-        ) : rowsTruncated ? (
-          <p>{constants.outsideSlice(id, rows.length, rowsTotal)}</p>
+        ) : ticketQuery.isError || unreadable ? (
+          <p>{constants.loadFailed(id)}</p>
         ) : (
           <p>{constants.notFound(id)}</p>
         )}

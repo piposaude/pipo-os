@@ -37,6 +37,7 @@ export interface DeskContextValue {
   /** Applies a patch to tickets — the prototype's mutation model until the
    *  real PATCH exists, when this becomes optimistic cache. */
   applyPatch: (ids: string[], patch: TicketPatch) => void
+  patchRow: (row: TicketRow) => TicketRow
   /** Session comments. Gone on reload; persisting is PD-040. */
   comments: TicketComment[]
   addComment: (ticketId: string, channel: CommentChannel, body: string) => void

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { Outlet, useNavigate, useRouterState, useSearch } from '@tanstack/react-router'
 import { SidebarMainLayout } from '@piposaude/design-system'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { QueueSidebar } from '@/components/pipodesk/sidebar/QueueSidebar'
 import { HOME_NODE_ID, buildTree, type TreeNode, type TreeSection } from '@/lib/pipodesk/tree'
 import {
@@ -23,6 +23,7 @@ import { useSessionStore } from '@/stores/session'
 import { api, client } from '@/lib/api'
 import { structureFromApi } from '@/lib/pipodesk/structure-from-api'
 import { rowsFromApi } from '@/lib/pipodesk/rows-from-api'
+import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 import { businessToday } from '@/lib/date'
 import { COMPANY_REGISTRY } from '@/fixtures/pipodesk/dataset'
 import '@/styles/pipodesk-tokens.css'
@@ -152,6 +153,7 @@ export function DeskShell() {
   /* Prototype model: the base never changes; actions become patches applied
        on read. When the backend lands, the patch becomes the PATCH body. */
   const [patches, setPatches] = useState<Record<string, TicketPatch>>({})
+  const queryClient = useQueryClient()
   const today = businessToday()
   const rows = useMemo(() => {
     if (!rowsQuery.data) return []
@@ -222,12 +224,22 @@ export function DeskShell() {
         const saved = ids.filter((id) => !refused.includes(id))
         if (saved.length === 0) return
 
-        const reads = await Promise.all([refetchRows(), refetchInbox()])
-        if (reads.some((read) => read.isError)) for (const id of saved) awaitingRead.current.add(id)
+        const [rowsRead, inboxRead] = await Promise.all([
+          refetchRows(),
+          refetchInbox(),
+          queryClient.refetchQueries({ queryKey: ['get', '/api/tickets/{id}'] }),
+        ])
+        if (rowsRead.isError || inboxRead.isError)
+          for (const id of saved) awaitingRead.current.add(id)
         else dropPatches(saved)
       })
     },
-    [refetchRows, refetchInbox, dropPatches],
+    [refetchRows, refetchInbox, dropPatches, queryClient],
+  )
+
+  const patchRow = useCallback(
+    (row: TicketRow) => applyPatches([row], patches, today)[0] ?? row,
+    [patches, today],
   )
 
   const groupsQuery = useQuery({
@@ -401,6 +413,7 @@ export function DeskShell() {
       rowsPending,
       today,
       applyPatch,
+      patchRow,
       rowsTotal,
       rowsTruncated,
       comments,
@@ -420,6 +433,7 @@ export function DeskShell() {
       rows,
       rowsPending,
       applyPatch,
+      patchRow,
       rowsTotal,
       rowsTruncated,
       comments,

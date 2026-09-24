@@ -1,11 +1,9 @@
 import { ENROLLMENT_TYPE_COPY } from '@/constants/pipodesk/domain'
-import { formatCount } from '@/lib/pipodesk/format'
 import type { CommentChannel } from '@/lib/pipodesk/timeline'
 
 export default {
   notFound: (id: string) => `Não existe chamado com o id ${id}.`,
-  outsideSlice: (id: string, shown: number, total: number) =>
-    `O chamado ${id} não está no recorte carregado: ${formatCount(shown)} de ${formatCount(total)} chamados, os mais recentes.`,
+  loadFailed: (id: string) => `Não foi possível carregar o chamado ${id}.`,
   copyId: (id: string) => `Copiar o ID ${id}`,
   /** Two parts, as in the prototype: the fact carries the weight, the filed
    *  date follows in plain text — no period between them. */

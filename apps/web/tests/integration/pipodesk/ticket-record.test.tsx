@@ -141,6 +141,7 @@ describe('aba Dados pessoais', () => {
     ).toBeInTheDocument()
 
     await router.navigate({ to: '/tickets/$id', params: { id: '705639' } })
+    await user.click(await screen.findByRole('tab', { name: 'Dados pessoais' }))
 
     expect(
       await screen.findByRole('heading', { level: 2, name: displayNameOf(personOf('705639')) }),
