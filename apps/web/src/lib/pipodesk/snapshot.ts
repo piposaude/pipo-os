@@ -206,7 +206,7 @@ function documentsOf(people: unknown[], ticket: Ticket): RecordDocument[] {
 }
 
 function movedDependent(snapshot: unknown, dependents: Person[]): Person | undefined {
-  if (readString(snapshot, ['member-type']) !== 'dependent') return undefined
+  if (readString(snapshot, ['member-type'])?.toLowerCase() !== 'dependent') return undefined
   const memberId = readString(snapshot, ['member-id'])
   const named = dependents.find((dependent) => dependent.id === memberId)
   if (named) return named

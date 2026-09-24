@@ -247,6 +247,17 @@ describe('recordsFromTicket — a movimentação', () => {
     })
   })
 
+  it('should read the member type regardless of case, as the EI compares it', () => {
+    const dependentMove = apiTicket({
+      id: 'ticket-4',
+      enrollmentSnapshot: { ...payload, member_type: 'Dependent', member_id: 'member-dep' },
+    })
+
+    expect(recordsFromTicket(dependentMove).movementOf('ticket-4')?.beneficiaryId).toBe(
+      'member-dep',
+    )
+  })
+
   it('should move the only dependent when the EI names none', () => {
     const dependentMove = apiTicket({
       id: 'ticket-3',
