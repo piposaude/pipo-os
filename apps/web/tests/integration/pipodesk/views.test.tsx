@@ -170,6 +170,26 @@ describe('salvar a fila como visão', () => {
     expect(within(dialog).getByRole('textbox', { name: 'Nome' })).toHaveValue('Recusada')
   })
 
+  it('should create the view once when Salvar is pressed twice before the API answers', async () => {
+    let answer: (() => void) | undefined
+    await renderDesk({
+      'POST /api/queues': (body: Record<string, unknown>) => {
+        const created = { ...body, id: `view-${views.length}`, favorite: false } as SavedView
+        return new Promise((resolve) => {
+          answer = () => resolve({ status: 201, body: created })
+        })
+      },
+    })
+    const user = userEvent.setup()
+    const dialog = await openSaveView(user)
+
+    await user.type(within(dialog).getByRole('textbox', { name: 'Nome' }), 'Dupla{Enter}{Enter}')
+    await user.click(within(dialog).getByRole('button', { name: 'Salvar' }))
+    answer?.()
+
+    expect(desk.calls.filter((call) => call.method === 'POST')).toHaveLength(1)
+  })
+
   it('should take the name typed right after opening, with no click on the field', async () => {
     await renderDesk()
     const user = userEvent.setup()
@@ -191,6 +211,9 @@ describe('renomear uma visão na sidebar', () => {
 
     await user.dblClick(within(sidebar()).getByText('Minhas urgentes'))
     const field = within(sidebar()).getByRole('textbox', { name: 'Renomear Minhas urgentes' })
+    expect(
+      within(sidebar()).queryByRole('button', { name: 'Ações de Minhas urgentes' }),
+    ).not.toBeInTheDocument()
     await user.clear(field)
     await user.type(field, 'Urgentes do dia{Enter}')
 

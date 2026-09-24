@@ -44,7 +44,7 @@ export function mockApi(
         routes[`${method} ${pathname}`] ??
         routes[`${method} ${pathname.replace(/\/[^/]+$/, '/:id')}`]
       if (typeof handler === 'function') {
-        const answer = handler(body, pathname) as { status: number; body?: unknown }
+        const answer = (await handler(body, pathname)) as { status: number; body?: unknown }
         return new Response(answer.body === undefined ? null : JSON.stringify(answer.body), {
           status: answer.status,
           headers: { 'content-type': 'application/json' },
