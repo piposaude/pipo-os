@@ -14,6 +14,7 @@ export type SubmitResult =
   | { kind: 'already-closed' }
   | { kind: 'refused'; failures: ErrorDetails }
   | { kind: 'unknown-reply' }
+  | { kind: 'reply-to-reply' }
 
 export async function submit(
   db: Kysely<Database>,
@@ -45,6 +46,15 @@ export async function submit(
         )
         .executeTakeFirst()
       if (!answered) return { kind: 'unknown-reply' }
+
+      const nested = await trx
+        .selectFrom('ticket_comments')
+        .select('id')
+        .where('ticket_id', '=', ticketId)
+        .where('submission_id', '=', body.inReplyTo)
+        .where('in_reply_to', 'is not', null)
+        .executeTakeFirst()
+      if (nested) return { kind: 'reply-to-reply' }
     }
 
     const submissionId = randomUUID()

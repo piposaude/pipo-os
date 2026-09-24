@@ -2857,7 +2857,10 @@ export interface components {
                 body: string;
             }[];
             status?: components["schemas"]["UpdateTicketStatusBodyInput"];
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description O envio que abriu a conversa, no mesmo chamado; só junto de parts
+             */
             inReplyTo?: string;
         };
         CreateTicketBodyInput: {

@@ -80,6 +80,12 @@ export class CommentsService {
         { field: 'inReplyTo', message, code: 'unknown_submission' },
       ])
     }
+    if (result.kind === 'reply-to-reply') {
+      const message = 'inReplyTo is itself a reply: answer the submission that opened the thread'
+      throw new ValidationFailedError(message, [
+        { field: 'inReplyTo', message, code: 'not_thread_root' },
+      ])
+    }
 
     return { submissionId: result.submissionId, ticket: result.ticket, comments: result.comments }
   }

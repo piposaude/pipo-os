@@ -111,7 +111,10 @@ export const createSubmissionBodySchema = z
       .default([])
       .describe('Uma parte por canal; sem parte, o envio precisa de status'),
     status: updateTicketStatusBodySchema.optional(),
-    inReplyTo: z.uuid().optional(),
+    inReplyTo: z
+      .uuid()
+      .optional()
+      .describe('O envio que abriu a conversa, no mesmo chamado; só junto de parts'),
   })
   .strict()
   .superRefine((body, ctx) => {

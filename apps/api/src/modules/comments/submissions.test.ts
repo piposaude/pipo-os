@@ -223,6 +223,24 @@ describe('POST /api/tickets/:id/submissions', () => {
     expect(await historyOf(id)).toEqual([])
   })
 
+  it('refuses a reply to a reply, since the thread keeps only its root', async () => {
+    const id = await openTicket()
+    const root = await submit(id, { parts: [bothChannels[0]] })
+    const reply = await submit(id, {
+      parts: [bothChannels[1]],
+      inReplyTo: root.json().submissionId,
+    })
+
+    const response = await submit(id, {
+      parts: [bothChannels[0]],
+      inReplyTo: reply.json().submissionId,
+    })
+
+    expect(response.statusCode).toBe(422)
+    expect(response.json().details.map((d: { field: string }) => d.field)).toEqual(['inReplyTo'])
+    expect(await commentsOf(id)).toHaveLength(2)
+  })
+
   it('answers 404 for a ticket that does not exist', async () => {
     const response = await submit('00000000-0000-4000-8000-0000000004ff', {
       parts: [bothChannels[0]],
