@@ -1,9 +1,10 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from '@/routeTree.gen'
 import {
   ANALYSTS_BY_POD,
+  DATASET_TODAY,
   FIXTURE_USER_NAMES,
   VIEWER_GROUP_ID,
   VIEWER_ID,
@@ -23,6 +24,7 @@ async function renderQueue(writes: Record<string, number> = {}) {
   render(<RouterProvider router={router} />)
   await screen.findByRole('navigation', { name: /pipodesk/i })
   await screen.findByRole('table')
+  return router
 }
 
 afterEach(() => {
@@ -53,6 +55,27 @@ async function reassignAll(user: ReturnType<typeof userEvent.setup>) {
   return selected
 }
 
+const plusDays = (days: number) =>
+  new Date(Date.parse(`${DATASET_TODAY}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10)
+
+const futureNode = () => screen.getByRole('button', { name: /^Mov\. futuras\s*\d+$/ })
+const futureCount = () => Number(futureNode().textContent!.replace(/\D/g, ''))
+
+async function scheduleRow(
+  user: ReturnType<typeof userEvent.setup>,
+  row: HTMLElement,
+  day: string,
+) {
+  await user.click(within(row).getByRole('checkbox'))
+  const barra = await screen.findByRole('group', { name: 'Ações em lote' })
+  await user.click(within(barra).getByRole('button', { name: 'Ações' }))
+  await user.click(screen.getByRole('button', { name: 'Agendar' }))
+  fireEvent.change(screen.getByLabelText('Data da ação'), { target: { value: day } })
+  await user.click(screen.getByRole('button', { name: /Agendar para/ }))
+}
+
+const rowOf = (id: string) => document.querySelector<HTMLElement>(`tr[data-ticket-id="${id}"]`)
+
 describe('o que a tela muda, a API grava', () => {
   it('should não oferecer em lote a ação que a API ainda não sabe gravar', async () => {
     await renderQueue()
@@ -63,8 +86,70 @@ describe('o que a tela muda, a API grava', () => {
     await user.click(within(barra).getByRole('button', { name: 'Ações' }))
 
     expect(screen.getByRole('button', { name: 'Reatribuir' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Agendar' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Mover para carteira' })).not.toBeInTheDocument()
+  })
+
+  it('should agendar o lote mandando o instante em que o dia começa em São Paulo', async () => {
+    await renderQueue()
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('checkbox', { name: /selecionar todos/i }))
+    const barra = await screen.findByRole('group', { name: 'Ações em lote' })
+    const selected = selectedCount(barra)
+    await user.click(within(barra).getByRole('button', { name: 'Ações' }))
+    await user.click(screen.getByRole('button', { name: 'Agendar' }))
+    fireEvent.change(screen.getByLabelText('Data da ação'), { target: { value: '2026-12-15' } })
+    await user.click(screen.getByRole('button', { name: /Agendar para/ }))
+
+    const writes = desk.calls.filter((call) => call.method === 'PATCH')
+
+    expect(selected).toBeGreaterThan(1)
+    expect(writes).toHaveLength(selected)
+    expect(writes.map((call) => call.body)).toEqual(
+      writes.map(() => ({ actionDate: '2026-12-15T03:00:00.000Z' })),
+    )
+  })
+
+  it('should não agendar sem data escolhida', async () => {
+    await renderQueue()
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('checkbox', { name: /selecionar todos/i }))
+    const barra = await screen.findByRole('group', { name: 'Ações em lote' })
+    await user.click(within(barra).getByRole('button', { name: 'Ações' }))
+    await user.click(screen.getByRole('button', { name: 'Agendar' }))
+
+    expect(screen.getByRole('button', { name: /Agendar para/ })).toBeDisabled()
+  })
+
+  it('should trocar a prioridade pela linha sem abrir o chamado', async () => {
+    const router = await renderQueue()
+    const user = userEvent.setup()
+    const row = document.querySelector<HTMLElement>('tr[data-ticket-id]')!
+    const id = row.getAttribute('data-ticket-id')!
+
+    await user.click(within(row).getByRole('button', { name: /prioridade/i }))
+    await user.click(await screen.findByRole('button', { name: 'Alta' }))
+
+    expect(desk.calls.filter((call) => call.method === 'PATCH')).toEqual([
+      expect.objectContaining({ path: `/api/tickets/${id}`, body: { priority: 'high' } }),
+    ])
+    expect(router.state.location.pathname).toBe('/')
+    const number = within(row).getByRole('checkbox').getAttribute('aria-label')!.replace(/^\D+/, '')
+    expect(
+      within(row).getByRole('button', { name: `Prioridade Alta do chamado ${number}. Trocar` }),
+    ).toBeInTheDocument()
+  })
+
+  it('should não abrir o chamado num clique no espaço do menu de prioridade', async () => {
+    const router = await renderQueue()
+    const user = userEvent.setup()
+    const row = document.querySelector<HTMLElement>('tr[data-ticket-id]')!
+
+    await user.click(within(row).getByRole('button', { name: /prioridade/i }))
+    await user.click(await screen.findByRole('dialog', { name: 'Prioridade' }))
+
+    expect(router.state.location.pathname).toBe('/')
   })
 
   it('should mandar o novo responsável para a API, um PATCH por chamado', async () => {
@@ -123,5 +208,35 @@ describe('o que a tela muda, a API grava', () => {
     expect(status.map((call) => call.body)).toEqual(
       status.map(() => ({ status: 'carrier-processing' })),
     )
+  })
+})
+
+describe('agendar muda o chamado de janela', () => {
+  it('should tirar de hoje e levar para Movimentações futuras o que dorme depois da janela', async () => {
+    await renderQueue()
+    const user = userEvent.setup()
+    const antes = futureCount()
+    const row = document.querySelector<HTMLElement>('tr[data-ticket-id]')!
+    const id = row.getAttribute('data-ticket-id')!
+
+    await scheduleRow(user, row, plusDays(30))
+
+    await expect.poll(futureCount).toBe(antes + 1)
+    expect(rowOf(id)).toBeNull()
+  })
+
+  it('should trazer de volta para hoje o que foi reagendado para o passado', async () => {
+    await renderQueue()
+    const user = userEvent.setup()
+    const antes = futureCount()
+    await user.click(futureNode())
+    await screen.findByRole('table')
+    const row = document.querySelector<HTMLElement>('tr[data-ticket-id]')!
+    const id = row.getAttribute('data-ticket-id')!
+
+    await scheduleRow(user, row, plusDays(-1))
+
+    await expect.poll(futureCount).toBe(antes - 1)
+    expect(rowOf(id)).toBeNull()
   })
 })

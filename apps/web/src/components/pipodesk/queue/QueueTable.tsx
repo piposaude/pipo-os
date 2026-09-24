@@ -10,6 +10,7 @@ import constants from '@/constants/pages/pipodesk/queue'
 import { QueueRow } from './QueueRow'
 import sortHeader from '@/components/pipodesk/primitives/SortHeader.module.css'
 import styles from './Queue.module.css'
+import type { Priority } from '@/lib/pipodesk/ticket-row'
 
 /**
  * Queue table: sticky header, virtualized body, group headers. Virtualized
@@ -30,6 +31,7 @@ export interface QueueTableProps {
   onOpenTicket: (id: string) => void
   today: string
   resolveName: (userId: string) => string
+  onSetPriority: (id: string, priority: Priority | null) => void
   /** The funnel a filtering column shows. A render prop so the table stays
    *  ignorant of the filter panel and its state; `align` is the side the panel
    *  grows toward. */
@@ -49,6 +51,7 @@ export function QueueTable({
   onOpenTicket,
   today,
   resolveName,
+  onSetPriority,
   columnFilter,
 }: QueueTableProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -204,6 +207,7 @@ export function QueueTable({
                     onToggleSelect={onToggleTicket}
                     today={today}
                     resolveName={resolveName}
+                    onSetPriority={onSetPriority}
                   />
                 </tr>
               ),

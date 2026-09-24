@@ -11,7 +11,7 @@ import {
   toSearch,
   type QueueSearch,
 } from '@/lib/pipodesk/queue-view'
-import { applyPatches, type TicketPatch } from '@/lib/pipodesk/patches'
+import { applyPatches, ticketFieldsBody, type TicketPatch } from '@/lib/pipodesk/patches'
 import { SearchPalette } from '@/components/pipodesk/queue/SearchPalette'
 import { toQueueNode } from '@/lib/pipodesk/queue-node'
 import { DeskContext } from './desk-context'
@@ -85,8 +85,8 @@ const WRITE_CONCURRENCY = 6
 /** `groupId` has no route yet (PD-052): sending it would be dropped in silence,
  *  so the move stays out of the batch menu until the route exists. */
 async function persistPatch(id: string, patch: TicketPatch): Promise<void> {
-  const { status, groupId, ...fields } = patch
-  void groupId
+  const { status } = patch
+  const fields = ticketFieldsBody(patch)
 
   if (Object.keys(fields).length > 0) {
     await client.PATCH('/api/tickets/{id}', { params: { path: { id } }, body: fields })

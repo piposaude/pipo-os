@@ -102,6 +102,7 @@ function TicketDetail({ id }: { id: string }) {
 
   const [priorityOpen, setPriorityOpen] = useState(false)
   const [ownerOpen, setOwnerOpen] = useState(false)
+  const [dateDraft, setDateDraft] = useState<string | null>(null)
   const priorityTrigger = useRef<HTMLButtonElement>(null)
   const ownerTrigger = useRef<HTMLButtonElement>(null)
   const [channel, setChannel] = useState<CommentChannel>('internal')
@@ -170,6 +171,14 @@ function TicketDetail({ id }: { id: string }) {
      date is not an overdue deadline. */
   const overdue = ticket.actionDate === null ? null : daysOverdue(ticket.actionDate, today)
   const activeChannel = CHANNELS[channel]
+
+  const saveDate = (field: HTMLInputElement) => {
+    if (dateDraft === null) return
+    const next = dateDraft || null
+    setDateDraft(null)
+    if (field.validity.badInput) return
+    if (next !== ticket.actionDate) applyPatch([ticket.id], { actionDate: next })
+  }
 
   const situacao = ticket.reason
     ? `${DISPLAY_STATUS_COPY[ticket.display]} · ${PENDING_REASON_COPY[ticket.reason]}`
@@ -387,6 +396,29 @@ function TicketDetail({ id }: { id: string }) {
               ))}
             </Popover>
           </span>
+        </div>
+
+        <div className={styles.pill}>
+          <span className={styles.pillLabel}>{constants.context.actionDate}</span>
+          <input
+            type="date"
+            className={`${styles.pillAction} ${styles.pillDate}`}
+            value={dateDraft ?? ticket.actionDate ?? ''}
+            aria-label={
+              ticket.actionDate
+                ? constants.context.changeLabel(
+                    constants.context.actionDate,
+                    formatDate(ticket.actionDate),
+                  )
+                : constants.context.noActionDate
+            }
+            onClick={(event) => event.currentTarget.showPicker?.()}
+            onChange={(event) => setDateDraft(event.target.value)}
+            onBlur={(event) => saveDate(event.currentTarget)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') saveDate(event.currentTarget)
+            }}
+          />
         </div>
 
         <div className={styles.pill}>
