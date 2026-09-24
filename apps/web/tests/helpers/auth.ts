@@ -1,6 +1,6 @@
 import { DESK_POLICIES } from '@/lib/policy'
 import { useSessionStore } from '@/stores/session'
-import { FIXTURE_USER_NAMES, VIEWER_GROUP_ID, VIEWER_ID } from '@/fixtures/pipodesk/dataset'
+import { FIXTURE_USER_NAMES, VIEWER_GROUP_ID, VIEWER_ID } from '../fixtures/pipodesk/dataset'
 
 /** The `@/lib/auth` mock a desk screen needs: authenticated and holding the
  *  policies the `_desk` guard requires.

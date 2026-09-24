@@ -23,7 +23,7 @@ export interface DocumentsTabProps {
 }
 
 /** The note written here is session state, keyed by document id: it dies on
- *  reload like every other action on the fixture. */
+ *  reload, because no route stores it yet. */
 function DocumentGroup({
   title,
   empty,

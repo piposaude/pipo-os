@@ -11,6 +11,5 @@ packages/api-client/src/generated
 apps/web/src/routeTree.gen.ts
 apps/web/public/
 
-# fixtures geradas do protótipo (apps/web/scripts/export-fixture.mts) — como os demais gerados
-apps/web/src/fixtures/pipodesk/dataset.json
-apps/web/src/fixtures/pipodesk/records.json
+# massa dos testes, recortada dos dados do protótipo
+apps/web/tests/fixtures/pipodesk/*.json

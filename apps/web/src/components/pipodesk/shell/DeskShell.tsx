@@ -31,9 +31,7 @@ const DETAIL_KEY = ['get', '/api/tickets/{id}']
 
 /**
  * The Pipodesk shell: tree left, content right. `.desk-root` scopes the
- * operation tokens (login carries none). Rows, structure, names and the inbox
- * come from the API; the company registry is the last fixture, and it leaves
- * with PD-054.
+ * operation tokens (login carries none).
  */
 /** Node by id, at any depth of the three sections. */
 function findNode(sections: TreeSection[], id: string): TreeNode | null {

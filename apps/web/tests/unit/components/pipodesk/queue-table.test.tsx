@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import { QueueTable } from '@/components/pipodesk/queue/QueueTable'
 import { FILTER_BY_COLUMN, SORTABLE } from '@/lib/pipodesk/columns'
 import type { TicketGroup } from '@/lib/pipodesk/group'
-import { queueSeed } from '@/fixtures/pipodesk/dataset'
+import { queueSeed } from '../../../fixtures/pipodesk/dataset'
 import constants from '@/constants/pages/pipodesk/queue'
 
 const columns = [

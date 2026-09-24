@@ -1,6 +1,6 @@
 import { signInAsFixtureViewer } from './auth'
 import { fixtureStructureRoutes, mockApi, type ApiMock } from './api'
-import { DATASET_TODAY, VIEWER_ID } from '@/fixtures/pipodesk/dataset'
+import { DATASET_TODAY, VIEWER_ID } from '../fixtures/pipodesk/dataset'
 
 /**
  * A desk screen ready to render over the prototype data: signed in, the API

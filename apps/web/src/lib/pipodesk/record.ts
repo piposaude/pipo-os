@@ -1,5 +1,5 @@
 /** The full picture of a movement, as the record tabs read it. The tabs only
- *  know these types — never the fixture or the API snapshot shape. */
+ *  know these types — never the API snapshot shape. */
 
 import { daysBetween, type ContractualSla } from './format'
 import type { TicketRow } from './ticket-row'
@@ -173,7 +173,6 @@ function groupBy<T>(items: T[], keyOf: (item: T) => string | null): Map<string, 
   return groups
 }
 
-/** Indexed once at module scope by the fixture; the tabs only look up. */
 export function indexRecords(source: RecordSource): TicketRecords {
   const dependents = groupBy(source.beneficiaries, (p) =>
     p.role === 'dependent' ? p.holderId : null,

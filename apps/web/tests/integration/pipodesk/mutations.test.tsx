@@ -7,7 +7,7 @@ import {
   FIXTURE_USER_NAMES,
   VIEWER_GROUP_ID,
   VIEWER_ID,
-} from '@/fixtures/pipodesk/dataset'
+} from '../../fixtures/pipodesk/dataset'
 import type { ApiMock } from '../../helpers/api'
 
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
