@@ -2744,6 +2744,7 @@ describe('tickets routes', () => {
     const routes: Array<[string, string]> = [
       ['GET', '/api/tickets'],
       ['GET', '/api/tickets/rows'],
+      ['GET', '/api/tickets/inbox'],
       ['GET', '/api/tickets/:id'],
       ['POST', '/api/tickets'],
       ['PATCH', '/api/tickets/:id'],

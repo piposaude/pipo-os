@@ -72,6 +72,7 @@ describe('the set of public routes', () => {
 ├── /api/auth/logout (POST)
 ├── /api/tickets (GET, HEAD, POST)
 │   ├── /rows (GET, HEAD)
+│   ├── /inbox (GET, HEAD)
 │   └── /:id (GET, HEAD, PATCH)
 │       ├── /comments (GET, HEAD, POST)
 │       ├── /claim (POST)

@@ -48,7 +48,6 @@ interface RawRow {
 const data = raw as unknown as {
   today: string
   viewerId: string
-  inboxTicketIds: string[]
   users: { id: string; name: string }[]
   companies: Company[]
   structure: StructureState
@@ -57,7 +56,6 @@ const data = raw as unknown as {
 
 export const DATASET_TODAY = data.today
 export const VIEWER_ID = data.viewerId
-export const INBOX_TICKET_IDS = data.inboxTicketIds
 
 export const FIXTURE_USER_NAMES: Record<string, string> = Object.fromEntries(
   data.users.map((user) => [user.id, user.name]),

@@ -2,7 +2,7 @@
  * The sidebar tree: three sections, the personal cuts, favorites and the team
  * structure (ported from the prototype). Adaptations are data-source only:
  * operates on `TicketRow`, `today` by parameter, names via `resolveName`
- * (PD-060), inbox ids handed in (PD-109).
+ * (PD-060), inbox ids handed in (PD-080b).
  *
  * The invariant this module exists to keep: a node's count equals the list the
  * screen builds when selecting it. Every count comes from the same alive+awake
@@ -92,7 +92,7 @@ export interface BuildTreeOptions {
   viewerGroupId: string | null
   structure: StructureState
   today: string
-  /** Tickets with an outside message awaiting reply. Empty until PD-109. */
+  /** Tickets with an outside message awaiting reply. */
   inboxTicketIds?: string[]
   /** Display name. Defaults to the id itself until the users module exists. */
   resolveName?: (userId: string) => string

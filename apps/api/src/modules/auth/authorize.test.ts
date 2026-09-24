@@ -283,6 +283,7 @@ describe('the policy each route requires', () => {
     ['GET /api/tickets/:id', TICKET],
     ['GET /api/tickets/:id/comments', TICKET],
     ['GET /api/tickets/:id/timeline', TICKET],
+    ['GET /api/tickets/inbox', TICKET],
     ['GET /api/tickets/rows', TICKET],
     ['GET /api/users', [TICKET, STRUCTURE]],
     ['PATCH /api/groups/:id', STRUCTURE],

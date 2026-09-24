@@ -18,7 +18,7 @@ type Eb = ExpressionBuilder<Database, 'tickets'>
 const businessMidnight = (isoDate: string): RawBuilder<unknown> =>
   sql`${startOfBusinessDay(isoDate)}::timestamptz`
 
-const plusDays = (isoDate: string, days: number): string =>
+export const plusDays = (isoDate: string, days: number): string =>
   new Date(Date.parse(`${isoDate}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10)
 
 /** `@me` is resolved here, never stored: the token means "the caller", so a
