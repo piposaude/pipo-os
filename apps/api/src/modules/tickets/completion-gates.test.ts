@@ -446,6 +446,21 @@ describe('completionFailures · a life whose tax id has no digits', () => {
     ])
   })
 
+  it('refuses a life that came with no tax id at all, as it refuses one with no digits', () => {
+    const subject = inclusionOf({
+      member_type: 'primary',
+      primary: { profile: { tax_id: '111' } },
+      dependents: [{ profile: {} }],
+    })
+    const members = [
+      { taxId: '111', idCardNumber: 'card', startDate: '2026-04-01' },
+      { taxId: '999', idCardNumber: 'card', startDate: '2026-04-01' },
+    ]
+    expect(named(completionFailures(subject, { members }))).toEqual([
+      'enrollmentSnapshot:unknown_lives',
+    ])
+  })
+
   it('does not let two unreadable lives collapse into one', () => {
     const subject = inclusionOf({
       member_type: 'primary',
@@ -526,6 +541,14 @@ describe('completionFailures · a life the movement does not carry', () => {
       ],
     }
     expect(named(completionFailures(subject, answer))).toEqual(['members:unknown_member'])
+  })
+
+  it('does not count an absent holder as a life without tax id', () => {
+    const subject = subjectOf({
+      forceCompletion: true,
+      enrollmentSnapshot: { member_type: 'primary', dependents: [{ profile: { tax_id: '222' } }] },
+    })
+    expect(named(completionFailures(subject, stranger))).toEqual(['members[999]:unknown_member'])
   })
 
   it('lets a forced ticket through when the snapshot names no life to compare with', () => {

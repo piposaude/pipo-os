@@ -238,7 +238,7 @@ export function snapshotLivesOf(snapshot: unknown): (string | null)[] {
     return [taxIdOf(pointed ?? soleDependent)]
   }
 
-  return [primary, ...list].map(taxIdOf)
+  return [primary, ...list].filter(isRecord).map(taxIdOf)
 }
 
 export function completionContextOf(snapshot: unknown): CompletionContext {
