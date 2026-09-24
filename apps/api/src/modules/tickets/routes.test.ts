@@ -482,7 +482,7 @@ describe('tickets routes', () => {
         const created = await app.inject({
           method: 'POST',
           url: '/api/tickets',
-          payload: validTicketBody,
+          payload: { ...validTicketBody, forceCompletion: true },
           cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
         })
         const { id } = created.json()
@@ -1764,7 +1764,7 @@ describe('tickets routes', () => {
         const created = await app.inject({
           method: 'POST',
           url: '/api/tickets',
-          payload: { ...validTicketBody, ...(assigneeId && { assigneeId }) },
+          payload: { ...validTicketBody, forceCompletion: true, ...(assigneeId && { assigneeId }) },
           cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
         })
         return created.json().id
@@ -1924,7 +1924,7 @@ describe('tickets routes', () => {
         const created = await app.inject({
           method: 'POST',
           url: '/api/tickets',
-          payload: { ...validTicketBody, assigneeId: 'ana@pipo.health' },
+          payload: { ...validTicketBody, forceCompletion: true, assigneeId: 'ana@pipo.health' },
           cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
         })
         const { id, groupId } = created.json()
@@ -2130,7 +2130,7 @@ describe('tickets routes', () => {
         method: 'POST',
         url: '/api/tickets',
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload: validTicketBody,
+        payload: { ...validTicketBody, forceCompletion: true },
       })
       const { id } = created.json()
 
@@ -2153,7 +2153,7 @@ describe('tickets routes', () => {
           method: 'POST',
           url: '/api/tickets',
           cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-          payload: validTicketBody,
+          payload: { ...validTicketBody, forceCompletion: true },
         })
         const { id } = created.json()
 
@@ -2175,6 +2175,383 @@ describe('tickets routes', () => {
         expect(response.json().error).toBe('UnprocessableEntityError')
       },
     )
+
+    describe('o bloco da conclusão, na entrada', () => {
+      const member = (taxId: string) => ({
+        taxId,
+        idCardNumber: '0001234500018',
+        startDate: '2026-10-01',
+      })
+
+      const patchStatus = async (payload: object) => {
+        const created = await app.inject({
+          method: 'POST',
+          url: '/api/tickets',
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+          payload: validTicketBody,
+        })
+        return app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${created.json().id}/status`,
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+          payload,
+        })
+      }
+
+      const fieldsOf = (response: { json: () => { details?: { field: string }[] } }) =>
+        response.json().details?.map((detail) => detail.field)
+
+      it.each(['cancelled', 'carrier-processing'])(
+        'recusa com 400 o bloco junto do status %s',
+        async (status) => {
+          const response = await patchStatus({ status, completion: { endDate: '2026-10-31' } })
+
+          expect(response.statusCode).toBe(400)
+          expect(fieldsOf(response)).toEqual(['completion'])
+        },
+      )
+
+      it('recusa com 400 o mesmo CPF duas vezes', async () => {
+        const response = await patchStatus({
+          status: 'completed',
+          completion: { members: [member('11111111111'), member('11111111111')] },
+        })
+
+        expect(response.statusCode).toBe(400)
+        expect(fieldsOf(response)).toEqual(['completion.members.1.taxId'])
+      })
+
+      it('recusa com 400 mais de 50 vidas', async () => {
+        const members = Array.from({ length: 51 }, (_, i) => member(String(i).padStart(11, '0')))
+
+        const response = await patchStatus({ status: 'completed', completion: { members } })
+
+        expect(response.statusCode).toBe(400)
+        expect(fieldsOf(response)).toEqual(['completion.members'])
+      })
+
+      it.each([
+        ['o início de vigência como número', { startDate: 20261001 }, 'startDate'],
+        ['a data fora de YYYY-MM-DD', { startDate: '01/10/2026' }, 'startDate'],
+        ['o CPF com pontuação', { taxId: '111.111.111-11' }, 'taxId'],
+      ])('recusa com 400 %s', async (_, override, field) => {
+        const response = await patchStatus({
+          status: 'completed',
+          completion: { members: [{ ...member('11111111111'), ...override }] },
+        })
+
+        expect(response.statusCode).toBe(400)
+        expect(fieldsOf(response)).toEqual([`completion.members.0.${field}`])
+      })
+
+      it('recusa com 400 um campo que o bloco não conhece', async () => {
+        const response = await patchStatus({
+          status: 'completed',
+          completion: { endDate: '2026-10-31', closedAt: '2026-10-31' },
+        })
+
+        expect(response.statusCode).toBe(400)
+        expect(fieldsOf(response)).toEqual(['completion'])
+      })
+    })
+
+    describe('a régua da conclusão', () => {
+      const familySnapshot = {
+        member_type: 'primary',
+        primary: {
+          profile: { tax_id: '222.222.222-22' },
+          employment: { admission_date: '2026-10-01' },
+        },
+        dependents: [
+          { profile: { tax_id: '333.333.333-33' } },
+          { profile: { tax_id: '111.111.111-11' } },
+        ],
+      }
+
+      const member = (taxId: string, overrides: object = {}) => ({
+        taxId,
+        idCardNumber: `C-${taxId}`,
+        startDate: '2026-10-01',
+        ...overrides,
+      })
+
+      const openTicket = async (overrides: object = {}): Promise<string> => {
+        const created = await app.inject({
+          method: 'POST',
+          url: '/api/tickets',
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+          payload: { ...validTicketBody, enrollmentSnapshot: familySnapshot, ...overrides },
+        })
+        const { id } = created.json()
+        await app.db
+          .updateTable('tickets')
+          .set({ status: 'carrier-processing' })
+          .where('id', '=', id)
+          .execute()
+        return id
+      }
+
+      const complete = (id: string, completion?: object) =>
+        app.inject({
+          method: 'PATCH',
+          url: `/api/tickets/${id}/status`,
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+          payload: { status: 'completed', ...(completion && { completion }) },
+        })
+
+      const historyOf = (id: string) =>
+        app.db.selectFrom('ticket_status_history').selectAll().where('ticket_id', '=', id).execute()
+
+      it('devolve todas as falhas num 422 só, e o chamado continua aberto e sem histórico', async () => {
+        const id = await openTicket()
+
+        const response = await complete(id, {
+          members: [
+            member('22222222222', { idCardNumber: '' }),
+            member('33333333333'),
+            member('11111111111', { startDate: '2026-08-01' }),
+            member('99999999999'),
+          ],
+        })
+
+        expect(response.statusCode).toBe(422)
+        expect(response.json().error).toBe('ValidationFailedError')
+        expect(
+          response.json().details.map((d: { field: string; code: string }) => [d.field, d.code]),
+        ).toEqual([
+          ['members[22222222222].idCardNumber', 'required'],
+          ['members[11111111111].startDate', 'before_admission'],
+          ['members[99999999999]', 'unknown_member'],
+        ])
+        const ticket = await app.db
+          .selectFrom('tickets')
+          .select(['status', 'closed_at'])
+          .where('id', '=', id)
+          .executeTakeFirstOrThrow()
+        expect(ticket).toEqual({ status: 'carrier-processing', closed_at: null })
+        expect(await historyOf(id)).toEqual([])
+      })
+
+      it('recusa sem bloco a inclusão que traz vidas', async () => {
+        const id = await openTicket()
+
+        const response = await complete(id)
+
+        expect(response.statusCode).toBe(422)
+        expect(response.json().details).toHaveLength(6)
+      })
+
+      it('recusa concluir a partir de um status do qual não se conclui', async () => {
+        const id = await openTicket({ enrollmentType: 'registration_data_change' })
+        await app.db
+          .updateTable('tickets')
+          .set({ status: 'broker-processing', enrollment_type: 'exclusion' })
+          .where('id', '=', id)
+          .execute()
+
+        const response = await complete(id, { endDate: '2026-10-31' })
+
+        expect(response.statusCode).toBe(422)
+        expect(response.json().details).toEqual([
+          expect.objectContaining({ field: 'status', code: 'invalid_status' }),
+        ])
+      })
+
+      it('recusa o chamado cujo tipo gravado não é uma palavra que a régua conhece', async () => {
+        const id = await openTicket()
+        await app.db
+          .updateTable('tickets')
+          .set({ enrollment_type: 'Inclusão' })
+          .where('id', '=', id)
+          .execute()
+
+        const response = await complete(id)
+
+        expect(response.statusCode).toBe(422)
+        expect(response.json().details).toEqual([
+          expect.objectContaining({ field: 'enrollmentType', code: 'invalid' }),
+        ])
+      })
+
+      it('conclui com force_completion o chamado cujo tipo gravado a régua não conhece', async () => {
+        const id = await openTicket({ forceCompletion: true })
+        await app.db
+          .updateTable('tickets')
+          .set({ enrollment_type: 'Inclusão' })
+          .where('id', '=', id)
+          .execute()
+
+        const response = await complete(id)
+
+        expect(response.statusCode).toBe(200)
+      })
+
+      it('recusa com force_completion a vida que a movimentação não traz, e não grava nada', async () => {
+        const id = await openTicket({ forceCompletion: true })
+
+        const response = await complete(id, { members: [member('99999999999')] })
+
+        expect(response.statusCode).toBe(422)
+        expect(response.json().details).toEqual([
+          expect.objectContaining({ field: 'members[99999999999]', code: 'unknown_member' }),
+        ])
+        const answers = await app.db
+          .selectFrom('ticket_completion_members')
+          .select('tax_id')
+          .where('ticket_id', '=', id)
+          .execute()
+        expect(answers).toEqual([])
+      })
+
+      it('recusa a vida estranha também no chamado forçado cujo tipo a régua não conhece', async () => {
+        const id = await openTicket({ forceCompletion: true })
+        await app.db
+          .updateTable('tickets')
+          .set({ enrollment_type: 'Inclusão' })
+          .where('id', '=', id)
+          .execute()
+
+        const response = await complete(id, { members: [member('99999999999')] })
+
+        expect(response.statusCode).toBe(422)
+        expect(response.json().details).toEqual([
+          expect.objectContaining({ field: 'members[99999999999]', code: 'unknown_member' }),
+        ])
+      })
+
+      it('grava a carteirinha sem os espaços em volta', async () => {
+        const id = await openTicket()
+
+        await complete(id, {
+          members: [
+            member('22222222222', { idCardNumber: '  C-2 ' }),
+            member('33333333333'),
+            member('11111111111'),
+          ],
+        })
+
+        const row = await app.db
+          .selectFrom('ticket_completion_members')
+          .select('id_card_number')
+          .where('ticket_id', '=', id)
+          .where('tax_id', '=', '22222222222')
+          .executeTakeFirstOrThrow()
+        expect(row.id_card_number).toBe('C-2')
+      })
+
+      it('conclui sem bloco a alteração de cadastro', async () => {
+        const id = await openTicket({ enrollmentType: 'registration_data_change' })
+
+        const response = await complete(id)
+
+        expect(response.statusCode).toBe(200)
+        expect(response.json().status).toBe('completed')
+      })
+
+      it('grava o bloco e o GET devolve na mesma forma', async () => {
+        const id = await openTicket()
+        const members = [member('22222222222'), member('33333333333'), member('11111111111')]
+
+        const response = await complete(id, {
+          members: [members[2], members[0], members[1]],
+          hasGracePeriod: false,
+          carrierTrackingNumber: 'PROT-9',
+        })
+
+        expect(response.statusCode).toBe(200)
+        expect(response.json().status).toBe('completed')
+        expect(response.json().closedAt).not.toBeNull()
+        const read = await app.inject({
+          method: 'GET',
+          url: `/api/tickets/${id}`,
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+        expect(read.json().completion).toEqual({
+          members,
+          endDate: null,
+          effectiveDate: null,
+          mecsasCompanyCode: null,
+          hasGracePeriod: false,
+          carrierTrackingNumber: 'PROT-9',
+          documentTypes: null,
+        })
+      })
+
+      it('grava a data de fim da exclusão', async () => {
+        const id = await openTicket({ enrollmentType: 'exclusion' })
+
+        const response = await complete(id, { endDate: '2026-10-31' })
+
+        expect(response.statusCode).toBe(200)
+        const row = await app.db
+          .selectFrom('tickets')
+          .select(sql<string>`end_date::text`.as('end_date'))
+          .where('id', '=', id)
+          .executeTakeFirstOrThrow()
+        expect(row.end_date).toBe('2026-10-31')
+      })
+
+      it('deixa um vencedor só entre duas conclusões concorrentes', async () => {
+        const id = await openTicket()
+        const completion = {
+          members: [member('22222222222'), member('33333333333'), member('11111111111')],
+        }
+
+        let release!: () => void
+        const released = new Promise<void>((resolve) => (release = resolve))
+        let held!: (pid: number) => void
+        const locked = new Promise<number>((resolve) => (held = resolve))
+        const holder = app.db.transaction().execute(async (trx) => {
+          await trx.selectFrom('tickets').select('id').where('id', '=', id).forUpdate().execute()
+          const { rows } = await sql<{ pid: number }>`SELECT pg_backend_pid() AS pid`.execute(trx)
+          held(rows[0]!.pid)
+          await released
+        })
+        const holderPid = await locked
+
+        const pending = Promise.all([complete(id, completion), complete(id, completion)])
+        let waiting = 0
+        for (let tries = 0; waiting < 2 && tries < 300; tries++) {
+          await new Promise((resolve) => setTimeout(resolve, 10))
+          const { rows } = await sql<{ count: number }>`
+            WITH queue AS (
+              SELECT pid FROM pg_stat_activity
+              WHERE pg_blocking_pids(pid) @> ARRAY[${holderPid}::int]
+            )
+            SELECT count(*)::int AS count FROM pg_stat_activity
+            WHERE pg_blocking_pids(pid) && (ARRAY[${holderPid}::int] || ARRAY(SELECT pid FROM queue))
+          `.execute(app.db)
+          waiting = rows[0]!.count
+        }
+        release()
+        await holder
+        const responses = await pending
+
+        expect(waiting).toBe(2)
+
+        expect(responses.map((r) => r.statusCode).sort()).toEqual([200, 422])
+        expect(responses.find((r) => r.statusCode === 422)!.json().error).toBe(
+          'UnprocessableEntityError',
+        )
+        expect((await historyOf(id)).map((row) => row.to_status)).toEqual(['completed'])
+        const answers = await app.db
+          .selectFrom('ticket_completion_members')
+          .select('tax_id')
+          .where('ticket_id', '=', id)
+          .execute()
+        expect(answers).toHaveLength(3)
+      })
+
+      it('conclui sem bloco o chamado com force_completion', async () => {
+        const id = await openTicket({ forceCompletion: true })
+
+        const response = await complete(id)
+
+        expect(response.statusCode).toBe(200)
+        expect(response.json().closedAt).not.toBeNull()
+        expect((await historyOf(id)).map((row) => row.to_status)).toEqual(['completed'])
+      })
+    })
   })
 
   // ---------------------------------------------------------------------------
@@ -2302,7 +2679,7 @@ describe('tickets routes', () => {
         method: 'POST',
         url: '/api/tickets',
         cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-        payload: validTicketBody,
+        payload: { ...validTicketBody, forceCompletion: true },
       })
       const { id } = created.json()
 

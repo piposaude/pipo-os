@@ -89,11 +89,14 @@ export class TicketsService {
       closedAt,
       authorId,
       data.reason,
+      data.completion,
     )
 
     if (result.kind === 'not-found') throw new NotFoundError(`Ticket ${id} not found`)
     if (result.kind === 'already-closed')
       throw new UnprocessableEntityError(`Ticket ${id} is already closed`)
+    if (result.kind === 'refused')
+      throw new ValidationFailedError(`Ticket ${id} cannot be completed`, result.failures)
     return result.ticket
   }
 

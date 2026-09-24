@@ -3008,6 +3008,22 @@ export interface components {
             carrierTrackingNumber: string | null;
             documentTypes: string[] | null;
         };
+        TicketCompletionBodyInput: {
+            members?: {
+                taxId: string;
+                idCardNumber: string;
+                /** Format: date */
+                startDate: string;
+            }[];
+            /** Format: date */
+            endDate?: string;
+            /** Format: date */
+            effectiveDate?: string;
+            mecsasCompanyCode?: string;
+            hasGracePeriod?: boolean;
+            carrierTrackingNumber?: string;
+            documentTypes?: string[];
+        };
         TicketCompletionMember: {
             taxId: string;
             idCardNumber: string;
@@ -3253,6 +3269,8 @@ export interface components {
         UpdateTicketStatusBodyInput: {
             status: components["schemas"]["TicketStatusInput"];
             reason?: string;
+            /** @description Só junto de status completed */
+            completion?: components["schemas"]["TicketCompletionBodyInput"];
         };
         /** @description Every Pipo member, unpaginated on purpose: the queue needs the whole e-mail to name map to draw a page of tickets. Bounded at 5.000 by the client that fills it. */
         UserList: {

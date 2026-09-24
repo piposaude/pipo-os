@@ -175,12 +175,51 @@ export const updateTicketBodySchema = z
   .refine((b) => Object.keys(b).length > 0, { message: 'At least one field is required' })
   .meta({ id: 'UpdateTicketBody', minProperties: 1 })
 
+export const completionBodySchema = z
+  .object({
+    members: z
+      .array(completionMemberSchema.strict())
+      .max(50)
+      .superRefine((members, ctx) => {
+        const seen = new Set<string>()
+        members.forEach((member, index) => {
+          if (seen.has(member.taxId)) {
+            ctx.addIssue({
+              code: 'custom',
+              path: [index, 'taxId'],
+              message: 'The same tax id cannot be answered twice',
+            })
+          }
+          seen.add(member.taxId)
+        })
+      })
+      .optional(),
+    endDate: z.iso.date().optional(),
+    effectiveDate: z.iso.date().optional(),
+    mecsasCompanyCode: z.string().optional(),
+    hasGracePeriod: z.boolean().optional(),
+    carrierTrackingNumber: z.string().optional(),
+    documentTypes: z.array(z.string()).optional(),
+  })
+  .strict()
+  .meta({ id: 'TicketCompletionBody' })
+
 export const updateTicketStatusBodySchema = z
   .object({
     status: ticketStatusSchema,
     reason: z.string().min(1).optional(),
+    completion: completionBodySchema.describe('Só junto de status completed').optional(),
   })
   .strict()
+  .superRefine((body, ctx) => {
+    if (body.completion !== undefined && body.status !== 'completed') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['completion'],
+        message: 'completion is only accepted with status completed',
+      })
+    }
+  })
   .meta({ id: 'UpdateTicketStatusBody' })
 
 export const listTicketsQuerySchema = z.object({
@@ -238,6 +277,7 @@ export const ticketListSchema = z
 export type TicketStatus = z.infer<typeof ticketStatusSchema>
 export type Ticket = z.infer<typeof ticketSchema>
 export type TicketCompletion = z.infer<typeof completionSchema>
+export type TicketCompletionBody = z.infer<typeof completionBodySchema>
 export type TicketDetail = z.infer<typeof ticketDetailSchema>
 export type TicketParams = z.infer<typeof ticketParamsSchema>
 export type CreateTicketBody = z.infer<typeof createTicketBodySchema>

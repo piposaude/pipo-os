@@ -1,24 +1,11 @@
 import type { ErrorDetail } from '../../shared/errors.js'
 import { digitsOf } from '../../shared/text.js'
-import { completionContextOf } from './enrollment-snapshot.js'
+import { completionContextOf, snapshotLivesOf, snapshotPeopleOf } from './enrollment-snapshot.js'
 import type { CanonicalEnrollmentType } from './enrollment-type.js'
-import type { TicketStatus } from './schemas.js'
+import type { TicketCompletionBody, TicketStatus } from './schemas.js'
 
-export interface CompletionMember {
-  readonly taxId: string
-  readonly idCardNumber: string
-  readonly startDate: string
-}
-
-export interface CompletionData {
-  readonly members?: readonly CompletionMember[]
-  readonly endDate?: string
-  readonly effectiveDate?: string
-  readonly mecsasCompanyCode?: string
-  readonly hasGracePeriod?: boolean
-  readonly carrierTrackingNumber?: string
-  readonly documentTypes?: string[]
-}
+export type CompletionData = TicketCompletionBody
+export type CompletionMember = NonNullable<CompletionData['members']>[number]
 
 export interface CompletionSubject {
   readonly enrollmentType: CanonicalEnrollmentType
@@ -75,8 +62,8 @@ function inclusionFailures(
   subject: CompletionSubject,
   members: readonly CompletionMember[],
 ): ErrorDetail[] {
-  const { memberTaxIds, admissionDate } = completionContextOf(subject.enrollmentSnapshot)
-  const digits = memberTaxIds.map(digitsOf)
+  const { admissionDate } = completionContextOf(subject.enrollmentSnapshot)
+  const digits = snapshotLivesOf(subject.enrollmentSnapshot).map((taxId) => digitsOf(taxId ?? ''))
   const lives = [...new Set(digits)].filter((taxId) => taxId !== '')
   const unreadable = digits.some((taxId) => taxId === '')
 
@@ -123,31 +110,51 @@ function inclusionFailures(
     }
   }
 
-  if (unreadable) return failures
+  return failures
+}
 
-  const carried = new Set(lives)
-  const reported = new Set<string>()
+export function unknownMemberFailures(
+  enrollmentSnapshot: unknown,
+  members: readonly CompletionMember[],
+): ErrorDetail[] {
+  const moved = snapshotLivesOf(enrollmentSnapshot)
+  const carried = (moved.length > 0 ? moved : snapshotPeopleOf(enrollmentSnapshot)).map((taxId) =>
+    digitsOf(taxId ?? ''),
+  )
+  if (carried.length === 0) return []
+
+  const lives = new Set(carried.filter((taxId) => taxId !== ''))
+  const unidentified = carried.filter((taxId) => taxId === '').length
+  const strangers = new Set<string>()
   for (const member of members) {
     const taxId = digitsOf(member.taxId)
-    if (carried.has(taxId)) continue
-    const label = taxId === '' ? member.taxId.trim() : taxId
-    if (reported.has(label)) continue
-    reported.add(label)
-    failures.push({
-      field: label === '' ? 'members' : `members[${label}]`,
-      message: 'This tax id is not one of the lives the movement carries',
-      code: 'unknown_member',
-    })
+    if (lives.has(taxId)) continue
+    strangers.add(taxId === '' ? member.taxId.trim() : taxId)
   }
+  if (strangers.size <= unidentified) return []
 
-  return failures
+  if (unidentified > 0) {
+    return [
+      {
+        field: 'members',
+        message: 'The block answers more lives than the movement carries',
+        code: 'unknown_member',
+      },
+    ]
+  }
+  return [...strangers].map((label) => ({
+    field: label === '' ? 'members' : `members[${label}]`,
+    message: 'This tax id is not one of the lives the movement carries',
+    code: 'unknown_member',
+  }))
 }
 
 export function completionFailures(
   subject: CompletionSubject,
   completion: CompletionData | undefined,
 ): ErrorDetail[] {
-  if (subject.forceCompletion || EXEMPT.has(subject.enrollmentType)) return []
+  const strangers = unknownMemberFailures(subject.enrollmentSnapshot, completion?.members ?? [])
+  if (subject.forceCompletion || EXEMPT.has(subject.enrollmentType)) return strangers
 
   const failures: ErrorDetail[] = []
 
@@ -177,5 +184,5 @@ export function completionFailures(
     if (failure) failures.push(failure)
   }
 
-  return failures
+  return [...failures, ...strangers]
 }

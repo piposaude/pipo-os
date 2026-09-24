@@ -446,6 +446,21 @@ describe('completionFailures · a life whose tax id has no digits', () => {
     ])
   })
 
+  it('refuses a life that came with no tax id at all, as it refuses one with no digits', () => {
+    const subject = inclusionOf({
+      member_type: 'primary',
+      primary: { profile: { tax_id: '111' } },
+      dependents: [{ profile: {} }],
+    })
+    const members = [
+      { taxId: '111', idCardNumber: 'card', startDate: '2026-04-01' },
+      { taxId: '999', idCardNumber: 'card', startDate: '2026-04-01' },
+    ]
+    expect(named(completionFailures(subject, { members }))).toEqual([
+      'enrollmentSnapshot:unknown_lives',
+    ])
+  })
+
   it('does not let two unreadable lives collapse into one', () => {
     const subject = inclusionOf({
       member_type: 'primary',
@@ -455,5 +470,111 @@ describe('completionFailures · a life whose tax id has no digits', () => {
     expect(named(completionFailures(subject, { members: [] }))).toEqual([
       'enrollmentSnapshot:unknown_lives',
     ])
+  })
+})
+
+describe('completionFailures · a life the movement does not carry', () => {
+  const family = {
+    member_type: 'primary',
+    primary: { profile: { tax_id: '111' } },
+    dependents: [],
+  }
+  const stranger: CompletionData = {
+    members: [{ taxId: '999', idCardNumber: 'card', startDate: '2026-04-01' }],
+  }
+
+  it('refuses it on a ticket the analyst forced', () => {
+    const subject = subjectOf({ forceCompletion: true, enrollmentSnapshot: family })
+    expect(named(completionFailures(subject, stranger))).toEqual(['members[999]:unknown_member'])
+  })
+
+  it('refuses it on a registration data change', () => {
+    const subject = subjectOf({
+      enrollmentType: 'registration_data_change',
+      enrollmentSnapshot: family,
+    })
+    expect(named(completionFailures(subject, stranger))).toEqual(['members[999]:unknown_member'])
+  })
+
+  it('refuses it on an exclusion, after what the exclusion itself lacks', () => {
+    const subject = subjectOf({ enrollmentSnapshot: family })
+    expect(named(completionFailures(subject, stranger))).toEqual([
+      'endDate:required',
+      'members[999]:unknown_member',
+    ])
+  })
+
+  it('lets a forced ticket through when a life of the snapshot has no tax id', () => {
+    const subject = subjectOf({
+      forceCompletion: true,
+      enrollmentSnapshot: { ...family, dependents: [{ profile: {} }] },
+    })
+    const answer: CompletionData = {
+      members: [{ taxId: '222', idCardNumber: 'card', startDate: '2026-04-01' }],
+    }
+    expect(completionFailures(subject, answer)).toEqual([])
+  })
+
+  it('refuses more unknown tax ids than the snapshot has lives without one', () => {
+    const subject = subjectOf({
+      forceCompletion: true,
+      enrollmentSnapshot: { ...family, dependents: [{ profile: {} }] },
+    })
+    const answer: CompletionData = {
+      members: [
+        { taxId: '222', idCardNumber: 'card', startDate: '2026-04-01' },
+        { taxId: '333', idCardNumber: 'card', startDate: '2026-04-01' },
+      ],
+    }
+    expect(named(completionFailures(subject, answer))).toEqual(['members:unknown_member'])
+  })
+
+  it('counts an answer with no digits as unknown, not as the life without tax id', () => {
+    const subject = subjectOf({
+      forceCompletion: true,
+      enrollmentSnapshot: { ...family, dependents: [{ profile: {} }] },
+    })
+    const answer: CompletionData = {
+      members: [
+        { taxId: 'x', idCardNumber: 'card', startDate: '2026-04-01' },
+        { taxId: '333', idCardNumber: 'card', startDate: '2026-04-01' },
+      ],
+    }
+    expect(named(completionFailures(subject, answer))).toEqual(['members:unknown_member'])
+  })
+
+  it('does not count an absent holder as a life without tax id', () => {
+    const subject = subjectOf({
+      forceCompletion: true,
+      enrollmentSnapshot: { member_type: 'primary', dependents: [{ profile: { tax_id: '222' } }] },
+    })
+    expect(named(completionFailures(subject, stranger))).toEqual(['members[999]:unknown_member'])
+  })
+
+  describe('on a forced ticket of a dependent that does not say which of several', () => {
+    const subject = subjectOf({
+      forceCompletion: true,
+      enrollmentSnapshot: {
+        member_type: 'dependent',
+        member_id: 'absent',
+        primary: { profile: { tax_id: '111' } },
+        dependents: [{ profile: { tax_id: '222' } }, { profile: { tax_id: '333' } }],
+      },
+    })
+
+    it('refuses a tax id the snapshot does not carry', () => {
+      expect(named(completionFailures(subject, stranger))).toEqual(['members[999]:unknown_member'])
+    })
+
+    it('accepts a tax id the snapshot carries', () => {
+      const answer: CompletionData = {
+        members: [{ taxId: '333', idCardNumber: 'card', startDate: '2026-04-01' }],
+      }
+      expect(completionFailures(subject, answer)).toEqual([])
+    })
+  })
+
+  it('lets a forced ticket through when the snapshot names no life to compare with', () => {
+    expect(completionFailures(subjectOf({ forceCompletion: true }), stranger)).toEqual([])
   })
 })

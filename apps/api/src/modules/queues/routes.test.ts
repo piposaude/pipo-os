@@ -731,7 +731,11 @@ describe('queues routes', () => {
         method: 'POST',
         url: '/api/tickets',
         cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
-        payload: { ...validTicketBody, enrollmentId: '00000000-0000-4000-8000-000000000051' },
+        payload: {
+          ...validTicketBody,
+          forceCompletion: true,
+          enrollmentId: '00000000-0000-4000-8000-000000000051',
+        },
       })
       await app.inject({
         method: 'PATCH',
@@ -1403,7 +1407,11 @@ describe('queues routes', () => {
         method: 'POST',
         url: '/api/tickets',
         cookies: { [SESSION_COOKIE_NAME]: ticketSessionCookie },
-        payload: { ...validTicketBody, enrollmentId: '00000000-0000-4000-8000-000000000062' },
+        payload: {
+          ...validTicketBody,
+          forceCompletion: true,
+          enrollmentId: '00000000-0000-4000-8000-000000000062',
+        },
       })
       await app.inject({
         method: 'PATCH',

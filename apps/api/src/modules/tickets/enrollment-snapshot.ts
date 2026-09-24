@@ -220,17 +220,20 @@ export interface CompletionContext {
 const taxIdOf = (member: unknown): string | null =>
   isRecord(member) ? readString(member, ['profile', 'tax-id']) : null
 
-export function completionContextOf(snapshot: unknown): CompletionContext {
-  if (!isRecord(snapshot)) return { memberTaxIds: [], admissionDate: null }
-
-  const primary = readPath(snapshot, ['primary'])
-  const admissionDate = isRecord(primary)
-    ? readString(primary, ['employment', 'admission-date'])
-    : null
-
+const dependentsOf = (snapshot: Record<string, unknown>): unknown[] => {
   const dependents = readPath(snapshot, ['dependents'])
-  const list = Array.isArray(dependents) ? dependents : []
+  return Array.isArray(dependents) ? dependents : []
+}
 
+export function snapshotPeopleOf(snapshot: unknown): (string | null)[] {
+  if (!isRecord(snapshot)) return []
+  return [readPath(snapshot, ['primary']), ...dependentsOf(snapshot)].filter(isRecord).map(taxIdOf)
+}
+
+export function snapshotLivesOf(snapshot: unknown): (string | null)[] {
+  if (!isRecord(snapshot)) return []
+
+  const list = dependentsOf(snapshot)
   const memberType = readString(snapshot, ['member-type'], ['primary', 'member-type'])
   if (memberType?.toLowerCase() === 'dependent' && list.length > 0) {
     const memberId = readString(snapshot, ['member-id'])
@@ -239,10 +242,17 @@ export function completionContextOf(snapshot: unknown): CompletionContext {
         ? undefined
         : list.find((member) => isRecord(member) && readString(member, ['member-id']) === memberId)
     const soleDependent = list.length === 1 ? list[0] : undefined
-    const taxId = taxIdOf(pointed ?? soleDependent)
-    return { memberTaxIds: taxId === null ? [] : [taxId], admissionDate }
+    return [pointed ?? soleDependent].filter(isRecord).map(taxIdOf)
   }
 
-  const taxIds = [primary, ...list].map(taxIdOf)
-  return { memberTaxIds: taxIds.filter((taxId) => taxId !== null), admissionDate }
+  return snapshotPeopleOf(snapshot)
+}
+
+export function completionContextOf(snapshot: unknown): CompletionContext {
+  const primary = isRecord(snapshot) ? readPath(snapshot, ['primary']) : undefined
+  const admissionDate = isRecord(primary)
+    ? readString(primary, ['employment', 'admission-date'])
+    : null
+  const memberTaxIds = snapshotLivesOf(snapshot).filter((taxId) => taxId !== null)
+  return { memberTaxIds, admissionDate }
 }
