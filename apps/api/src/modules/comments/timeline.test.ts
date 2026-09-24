@@ -192,6 +192,68 @@ describe('GET /api/tickets/:id/timeline', () => {
      is free to hand them back in either order, differently each call. That
      also breaks the keyset, which assumes the pair is a total order. Drop
      `, t.id` from the query and this test fails; every other one still passes. */
+  describe('the submission an item came from', () => {
+    const submit = (payload: object) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/tickets/${ticketId}/submissions`,
+        cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        payload,
+      })
+
+    it('carries the submission id on the comments and the status change it wrote', async () => {
+      const sent = await submit({
+        parts: [
+          { channel: 'internal', body: 'enviado' },
+          { channel: 'platform', body: 'enviado' },
+        ],
+        status: { status: 'carrier-processing' },
+      })
+      const { submissionId } = sent.json()
+
+      const items = (await getTimeline()).json().data
+
+      expect(items).toHaveLength(3)
+      for (const item of items) expect(item.submissionId).toBe(submissionId)
+      expect(
+        items.filter((i: { type: string }) => i.type === 'comment').map((i: object) => i),
+      ).toMatchObject([{ inReplyTo: null }, { inReplyTo: null }])
+    })
+
+    it('carries the submission a reply answers', async () => {
+      const first = await submit({ status: { status: 'missing-documents' } })
+      await submit({
+        parts: [{ channel: 'platform', body: 'recebemos o RG' }],
+        inReplyTo: first.json().submissionId,
+      })
+
+      const items = (await getTimeline()).json().data
+
+      expect(items.find((i: { type: string }) => i.type === 'comment')).toMatchObject({
+        inReplyTo: first.json().submissionId,
+      })
+    })
+
+    it('is null on items no submission wrote', async () => {
+      await addComment('avulso')
+      await changeStatus('carrier-processing')
+      await insertEvent(
+        app.db,
+        { ticketId, eventType: 'priority_changed', body: 'Prioridade alterada' },
+        { id: DEV_LOGIN_USER_ID, type: 'user' },
+      )
+
+      const items = (await getTimeline()).json().data
+
+      expect(items.map((i: { submissionId: unknown }) => i.submissionId)).toEqual([
+        null,
+        null,
+        null,
+      ])
+      expect(items.find((i: { type: string }) => i.type === 'comment').inReplyTo).toBeNull()
+    })
+  })
+
   it('keeps the same order across two calls when items share a created_at', async () => {
     const shared = '2026-09-01T10:00:00.000000Z'
     await seedCommentAtMicro('um', shared)
@@ -419,6 +481,8 @@ describe('the author type the chronology publishes', () => {
     channel: 'internal',
     visibility: 'public',
     body: 'texto',
+    submissionId: null,
+    inReplyTo: null,
   }
 
   it.each(['user', 'service', 'system'])('names %s', (authorType) => {

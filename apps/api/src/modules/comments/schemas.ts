@@ -160,6 +160,7 @@ const timelineItemBase = {
      line the automation left, and the author id alone does not say which —
      `svc:` is a prefix, not a type. */
   authorType: authorTypeSchema,
+  submissionId: z.uuid().nullable(),
   createdAt: z.string(),
 }
 
@@ -170,6 +171,7 @@ export const timelineCommentSchema = z
     channel: z.enum(['internal', 'email']),
     visibility: z.enum(['public', 'private']),
     body: z.string(),
+    inReplyTo: z.uuid().nullable(),
   })
   .meta({ id: 'TimelineComment' })
 
