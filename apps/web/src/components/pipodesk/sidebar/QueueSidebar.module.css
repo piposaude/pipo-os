@@ -372,7 +372,13 @@
   padding: var(--pipo-space-xsmall);
 }
 
+.renaming {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .rename {
+  width: 100%;
   min-width: 0;
   flex: 1 1 auto;
   border: none;

@@ -196,7 +196,7 @@ function Node(props: NodeProps) {
         onContextMenu={openMenuOnRightClick}
       >
         {renaming ? (
-          <div className={`${styles.item} ${styles.branch}`}>
+          <div className={`${styles.item} ${styles.renaming}`}>
             {iconKind && <SidebarIcon kind={iconKind} />}
             <InlineRename
               value={node.label}
@@ -216,7 +216,7 @@ function Node(props: NodeProps) {
             {iconAndLabel}
           </button>
         )}
-        {canRename && (
+        {canRename && !renaming && (
           <RowMenu
             label={node.label}
             onRename={() => setRenaming(true)}

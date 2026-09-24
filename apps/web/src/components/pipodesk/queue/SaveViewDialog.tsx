@@ -35,6 +35,7 @@ export function SaveViewDialog({
   const [name, setName] = useState('')
   const [missing, setMissing] = useState(false)
   const [refused, setRefused] = useState(false)
+  const saving = useRef(false)
   const [scope, setScope] = useState(scopeId ?? root?.id ?? '')
   const input = useRef<HTMLInputElement>(null)
 
@@ -48,7 +49,10 @@ export function SaveViewDialog({
       input.current?.focus()
       return
     }
+    if (saving.current) return
+    saving.current = true
     const saved = await onSave({ name: name.trim(), groupId: scope, filter, sort, groupBy })
+    saving.current = false
     if (saved) onClose()
     else setRefused(true)
   }

@@ -15,6 +15,7 @@ export function InlineRename({ value, onCommit, onCancel }: InlineRenameProps) {
   const done = useRef(false)
 
   useEffect(() => {
+    field.current?.focus()
     field.current?.select()
   }, [])
 
