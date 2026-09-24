@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { Button, Modal, TextInput } from '@piposaude/design-system'
-import { useDesk } from '@/components/pipodesk/shell/desk-context'
+import { useDesk, type NewView } from '@/components/pipodesk/shell/desk-context'
 import { childGroupsOf, rootGroupOf } from '@/lib/pipodesk/permissions'
 import type { TicketFilter } from '@/lib/pipodesk/filter'
 import type { GroupBy } from '@/lib/pipodesk/group'
@@ -16,6 +16,7 @@ export interface SaveViewDialogProps {
   filter: TicketFilter
   sort: TicketSort
   groupBy: GroupBy
+  onSave: (view: NewView) => void
   onClose: () => void
 }
 
@@ -25,9 +26,10 @@ export function SaveViewDialog({
   filter,
   sort,
   groupBy,
+  onSave,
   onClose,
 }: SaveViewDialogProps) {
-  const { structure, createView } = useDesk()
+  const { structure } = useDesk()
   const root = rootGroupOf(structure)
   const scopes = root ? [root, ...childGroupsOf(structure, root.id)] : []
   const [name, setName] = useState('')
@@ -41,7 +43,7 @@ export function SaveViewDialog({
       input.current?.focus()
       return
     }
-    createView({ name: name.trim(), groupId: scope, filter, sort, groupBy })
+    onSave({ name: name.trim(), groupId: scope, filter, sort, groupBy })
     onClose()
   }
 

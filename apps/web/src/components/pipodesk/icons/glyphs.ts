@@ -350,6 +350,23 @@ export const GLYPHS: Record<string, Glyph> = {
       },
     ],
   },
+  more: {
+    viewBox: '0 0 24 24',
+    nodes: [
+      {
+        tag: 'circle',
+        attrs: { cx: '12', cy: '12', r: '1', stroke: 'currentColor', strokeWidth: '2' },
+      },
+      {
+        tag: 'circle',
+        attrs: { cx: '19', cy: '12', r: '1', stroke: 'currentColor', strokeWidth: '2' },
+      },
+      {
+        tag: 'circle',
+        attrs: { cx: '5', cy: '12', r: '1', stroke: 'currentColor', strokeWidth: '2' },
+      },
+    ],
+  },
   cube: {
     viewBox: '0 0 16 16',
     nodes: [

@@ -1,14 +1,15 @@
-import { useState, type CSSProperties, useRef } from 'react'
+import { useState, type CSSProperties, type MouseEvent, useRef } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Button, Text } from '@piposaude/design-system'
 import { PipoOsWordmark } from '@/components/pipodesk/shell/PipoOsWordmark'
 import { Popover } from '@/components/pipodesk/primitives'
 import constants from '@/constants/pipodesk/sidebar'
 import { formatCount, shortSidebarLabel } from '@/lib/pipodesk/format'
-import { canEditQueue } from '@/lib/pipodesk/permissions'
+import { canEditQueue, canEditStructure } from '@/lib/pipodesk/permissions'
 import type { StructureState } from '@/lib/pipodesk/structure'
 import { isPodCut, type TreeNode, type TreeSection } from '@/lib/pipodesk/tree'
 import { InlineRename } from './InlineRename'
+import { RowMenu } from './RowMenu'
 import { SidebarIcon } from './SidebarIcon'
 import { sidebarIconKindFor } from './sidebar-icon-kind'
 import styles from './QueueSidebar.module.css'
@@ -18,7 +19,8 @@ import styles from './QueueSidebar.module.css'
  * look like detail and are not: (1) a group row never navigates — it expands;
  * the child "Chamados" opens the list; (2) subteams do not collapse with the
  * group's items; (3) containers draw no count — a number the click cannot
- * open is a broken promise. Missing: row menu and favorite star (PD-104/105/109).
+ * open is a broken promise. Missing: the group items of the row menu (PD-105)
+ * and the favorite star (PD-109).
  */
 
 export interface QueueSidebarProps {
@@ -28,6 +30,8 @@ export interface QueueSidebarProps {
   structure: StructureState
   viewerId: string
   onRenameView: (queueId: string, name: string) => void
+  onDeleteView: (queueId: string) => void
+  onNewView: (groupId: string) => void
   /** Viewer initials for the footer. */
   viewerInitials: string
   viewerName: string
@@ -130,10 +134,20 @@ interface NodeProps {
   structure: StructureState
   viewerId: string
   onRenameView: (queueId: string, name: string) => void
+  onDeleteView: (queueId: string) => void
+  onNewView: (groupId: string) => void
+}
+
+const openMenuOnRightClick = (event: MouseEvent<HTMLDivElement>) => {
+  const trigger = event.currentTarget.querySelector<HTMLButtonElement>('[data-row-menu]')
+  if (!trigger) return
+  event.preventDefault()
+  trigger.click()
 }
 
 function Node(props: NodeProps) {
-  const { node, activeId, onSelect, structure, viewerId, onRenameView } = props
+  const { node, activeId, onSelect, structure, viewerId, onRenameView, onDeleteView, onNewView } =
+    props
   const style = { '--depth': node.depth } as CSSProperties
   const isActive = node.id === activeId
   const nodeGroup = groupOfNode(node.id, structure)
@@ -178,6 +192,7 @@ function Node(props: NodeProps) {
         onDoubleClick={() => {
           if (canRename) setRenaming(true)
         }}
+        onContextMenu={openMenuOnRightClick}
       >
         {renaming ? (
           <div className={`${styles.item} ${styles.branch}`}>
@@ -199,6 +214,13 @@ function Node(props: NodeProps) {
           >
             {iconAndLabel}
           </button>
+        )}
+        {canRename && (
+          <RowMenu
+            label={node.label}
+            onRename={() => setRenaming(true)}
+            onDelete={() => onDeleteView(queue.id)}
+          />
         )}
         <span className={styles.count}>{formatCount(node.count)}</span>
       </div>
@@ -232,7 +254,12 @@ function Node(props: NodeProps) {
     <div className={node.crossCut ? styles.crossCut : undefined} style={style}>
       {/* Chevron and label are siblings — button-in-button is invalid HTML. The
                  row owns selection; the chevron stops propagation to only toggle. */}
-      <div className={styles.row} style={style} onClick={activate}>
+      <div
+        className={styles.row}
+        style={style}
+        onClick={activate}
+        onContextMenu={openMenuOnRightClick}
+      >
         <button
           type="button"
           className={`${styles.item} ${styles.branch}`}
@@ -267,6 +294,9 @@ function Node(props: NodeProps) {
             />
           </svg>
         </button>
+        {nodeGroup !== undefined && canEditStructure(structure, viewerId, nodeGroup.id) && (
+          <RowMenu label={node.label} onNewView={() => onNewView(nodeGroup.id)} />
+        )}
         {isContainer ? null : <span className={styles.count}>{formatCount(node.count)}</span>}
       </div>
 
@@ -374,6 +404,8 @@ export function QueueSidebar({
   structure,
   viewerId,
   onRenameView,
+  onDeleteView,
+  onNewView,
   viewerInitials,
   viewerName,
   viewerEmail,
@@ -433,6 +465,8 @@ export function QueueSidebar({
                     structure={structure}
                     viewerId={viewerId}
                     onRenameView={onRenameView}
+                    onDeleteView={onDeleteView}
+                    onNewView={onNewView}
                   />
                 ))
               )}

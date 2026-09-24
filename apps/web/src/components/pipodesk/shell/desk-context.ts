@@ -48,7 +48,7 @@ export interface DeskContextValue {
    *  real PATCH exists, when this becomes optimistic cache. */
   applyPatch: (ids: string[], patch: TicketPatch) => void
   patchRow: (row: TicketRow) => TicketRow
-  createView: (view: NewView) => void
+  openSaveView: (groupId?: string) => void
 }
 
 export const DeskContext = createContext<DeskContextValue | null>(null)

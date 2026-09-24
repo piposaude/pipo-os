@@ -3,7 +3,12 @@ import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from '@/routeTree.gen'
 import { useSessionStore } from '@/stores/session'
-import { ROOT_GROUP_ID, VIEWER_GROUP_ID, VIEWER_ID } from '@/fixtures/pipodesk/dataset'
+import {
+  ROOT_GROUP_ID,
+  VIEWER_GROUP_ID,
+  VIEWER_ID,
+  structureFixture,
+} from '@/fixtures/pipodesk/dataset'
 import { DEFAULT_SORT } from '@/lib/pipodesk/sort'
 import { fixtureStructureRoutes, page, type ApiMock } from '../../helpers/api'
 
@@ -45,6 +50,11 @@ async function renderDesk(
         const id = path.split('/').pop()
         views = views.map((view) => (view.id === id ? { ...view, ...body } : view))
         return { status: 200, body: views.find((view) => view.id === id) }
+      },
+      'DELETE /api/queues/:id': (_body: unknown, path: string) => {
+        const id = path.split('/').pop()
+        views = views.filter((view) => view.id !== id)
+        return { status: 204 }
       },
       ...writes,
     },
@@ -232,5 +242,94 @@ describe('renomear uma visão na sidebar', () => {
       'Não foi possível salvar a alteração.',
     )
     expect(within(sidebar()).getByText('Minhas urgentes')).toBeInTheDocument()
+  })
+})
+
+describe('o menu … da linha da sidebar', () => {
+  it('should offer the menu only on what the viewer may edit, and never on a MOV', async () => {
+    await renderDesk()
+    const user = userEvent.setup()
+    await openViewerPod(user)
+
+    expect(
+      within(sidebar()).getByRole('button', { name: 'Ações de Minhas urgentes' }),
+    ).toBeInTheDocument()
+    expect(
+      within(sidebar()).queryByRole('button', { name: /^Ações de Meus e livres/ }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(sidebar()).queryByRole('button', { name: /^Ações de (MOV|POD)/ }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('should delete the view at once, with no confirmation', async () => {
+    await renderDesk()
+    const user = userEvent.setup()
+    await openViewerPod(user)
+
+    await user.click(within(sidebar()).getByRole('button', { name: 'Ações de Minhas urgentes' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Apagar view' }))
+
+    expect(desk.calls.find((call) => call.method === 'DELETE')?.path).toBe('/api/queues/view-mine')
+    expect(within(sidebar()).queryByText('Minhas urgentes')).not.toBeInTheDocument()
+  })
+
+  it('should land on the list of the group when the open view is deleted', async () => {
+    await renderDesk()
+    const user = userEvent.setup()
+    await openViewerPod(user)
+    await user.click(within(sidebar()).getByText('Minhas urgentes'))
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Minhas urgentes')
+
+    await user.click(within(sidebar()).getByRole('button', { name: 'Ações de Minhas urgentes' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Apagar view' }))
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Chamados')
+  })
+
+  it('should open the same menu on a right click, and rename from it', async () => {
+    await renderDesk()
+    const user = userEvent.setup()
+    await openViewerPod(user)
+
+    await user.pointer({
+      keys: '[MouseRight]',
+      target: within(sidebar()).getByText('Minhas urgentes'),
+    })
+    await user.click(screen.getByRole('menuitem', { name: 'Renomear' }))
+
+    expect(
+      within(sidebar()).getByRole('textbox', { name: 'Renomear Minhas urgentes' }),
+    ).toBeInTheDocument()
+  })
+
+  it('should bring the view back when the API refuses to delete it', async () => {
+    await renderDesk({
+      'DELETE /api/queues/:id': () => ({ status: 409, body: { message: 'não' } }),
+    })
+    const user = userEvent.setup()
+    await openViewerPod(user)
+
+    await user.click(within(sidebar()).getByRole('button', { name: 'Ações de Minhas urgentes' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Apagar view' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível salvar a alteração.',
+    )
+    expect(within(sidebar()).getByText('Minhas urgentes')).toBeInTheDocument()
+  })
+
+  it('should let the coordination start a view inside a pod, with the place locked', async () => {
+    await renderDesk({}, 'coordination')
+    const user = userEvent.setup()
+    const podName = structureFixture.groups.find((group) => group.id === VIEWER_GROUP_ID)!.name
+
+    await user.click(within(sidebar()).getByRole('button', { name: `Ações de ${podName}` }))
+    await user.click(screen.getByRole('menuitem', { name: 'Nova view aqui' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Salvar visão' })
+    const where = within(dialog).getByRole('combobox', { name: 'Onde ela mora' })
+    expect(where).toBeDisabled()
+    expect(where).toHaveValue(VIEWER_GROUP_ID)
   })
 })

@@ -13,6 +13,8 @@ import {
 } from '@/lib/pipodesk/queue-view'
 import { applyPatches, type TicketPatch } from '@/lib/pipodesk/patches'
 import { SearchPalette } from '@/components/pipodesk/queue/SearchPalette'
+import { SaveViewDialog } from '@/components/pipodesk/queue/SaveViewDialog'
+import { rootGroupOf } from '@/lib/pipodesk/permissions'
 import { toQueueNode } from '@/lib/pipodesk/queue-node'
 import { DeskContext, type NewView } from './desk-context'
 import { displayNameFromEmail } from '@/lib/pipodesk/format'
@@ -418,6 +420,43 @@ export function DeskShell() {
     [dispatch, navigate],
   )
 
+  const deleteView = useCallback(
+    (id: string) => {
+      const doomed = structure.queues.find((queue) => queue.id === id)
+      if (!doomed) return
+      if (view.nodeId === id) {
+        const home =
+          doomed.groupId === rootGroupOf(structure)?.id
+            ? `node-${doomed.groupId}`
+            : `node-${doomed.groupId}-chamados`
+        const landing = findNode(sections, home)
+        if (landing) selectNode(landing)
+      }
+      void (async () => {
+        await queryClient.cancelQueries({ queryKey: QUEUES_KEY })
+        const before = queryClient.getQueryData<ApiQueue[]>(QUEUES_KEY)
+        queryClient.setQueryData<ApiQueue[]>(QUEUES_KEY, (current) =>
+          current?.filter((queue) => queue.id !== id),
+        )
+        try {
+          await client.DELETE('/api/queues/{id}', { params: { path: { id } } })
+        } catch {
+          queryClient.setQueryData(QUEUES_KEY, before)
+          setWriteFailed(true)
+          return
+        }
+        await queryClient.invalidateQueries({ queryKey: QUEUES_KEY })
+      })()
+    },
+    [structure, view.nodeId, sections, selectNode, queryClient],
+  )
+
+  const [saveView, setSaveView] = useState<{ lockedTo: string | null } | null>(null)
+  const openSaveView = useCallback(
+    (groupId?: string) => setSaveView({ lockedTo: groupId ?? null }),
+    [setSaveView],
+  )
+
   /* `async` behind a `() => void` prop would leave the promise floating — the
      repo's eslint is not type-checked, so nothing would catch it. */
   const handleLogout = () => {
@@ -459,10 +498,10 @@ export function DeskShell() {
       resolveName,
       sidebarCollapsed,
       toggleSidebar,
-      createView,
+      openSaveView,
     }),
     [
-      createView,
+      openSaveView,
       sections,
       view,
       dispatch,
@@ -507,6 +546,8 @@ export function DeskShell() {
               structure={structure}
               viewerId={viewerId}
               onRenameView={renameView}
+              onDeleteView={deleteView}
+              onNewView={openSaveView}
               viewerInitials={iniciaisDe(viewerName)}
               viewerName={viewerName}
               viewerEmail={email}
@@ -522,6 +563,17 @@ export function DeskShell() {
             </div>
           }
         />
+        {saveView && (
+          <SaveViewDialog
+            scopeId={saveView.lockedTo ?? view.groupId}
+            lockScope={saveView.lockedTo !== null}
+            filter={view.filter}
+            sort={view.sort}
+            groupBy={view.groupBy}
+            onSave={createView}
+            onClose={() => setSaveView(null)}
+          />
+        )}
         {/* Mounted only while open: closing unmounts, so reopening resets query and
             cursor without an effect. */}
         {searchOpen && (
