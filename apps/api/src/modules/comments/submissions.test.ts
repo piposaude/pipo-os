@@ -241,6 +241,20 @@ describe('POST /api/tickets/:id/submissions', () => {
     expect(await commentsOf(id)).toHaveLength(2)
   })
 
+  it('takes two parts at the longest body the schema accepts, in three-byte characters', async () => {
+    const id = await openTicket()
+    const longest = '€'.repeat(50_000)
+
+    const response = await submit(id, {
+      parts: [
+        { channel: 'internal', body: longest },
+        { channel: 'platform', body: longest },
+      ],
+    })
+
+    expect(response.statusCode).toBe(201)
+  })
+
   it('answers 404 for a ticket that does not exist', async () => {
     const response = await submit('00000000-0000-4000-8000-0000000004ff', {
       parts: [bothChannels[0]],

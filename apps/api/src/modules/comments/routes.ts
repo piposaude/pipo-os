@@ -129,7 +129,7 @@ export function registerCommentRoutes(app: FastifyInstance, service: CommentsSer
     '/api/tickets/:id/submissions',
     {
       config: { policy: TICKET_POLICY },
-      bodyLimit: 262_144,
+      bodyLimit: 524_288,
       schema: {
         params: ticketParamsSchema,
         body: createSubmissionBodySchema,
