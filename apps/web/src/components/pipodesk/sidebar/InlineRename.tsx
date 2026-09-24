@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import constants from '@/constants/pipodesk/sidebar'
 import styles from './QueueSidebar.module.css'
 
 export interface InlineRenameProps {
@@ -34,7 +35,7 @@ export function InlineRename({ value, onCommit, onCancel }: InlineRenameProps) {
     <input
       ref={field}
       type="text"
-      aria-label={`Renomear ${value}`}
+      aria-label={constants.rowMenu.renameField(value)}
       className={styles.rename}
       value={draft}
       onChange={(event) => setDraft(event.target.value)}

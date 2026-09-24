@@ -41,6 +41,8 @@
   --desk-row-action-hover: #2e2e30;
   --desk-menu-line: #e8e8e8;
   --desk-menu-hover: #f1f1f1;
+  --desk-shadow-menu:
+    0 6px 18px 0 rgb(0 0 0 / 2%), 0 3px 9px 0 rgb(0 0 0 / 4%), 0 1px 1px 0 rgb(0 0 0 / 4%);
 
   /* Logical 1px, 0.5px on high-dpi — a dense table grid gets too heavy otherwise. */
   --desk-hairline: 1px;
