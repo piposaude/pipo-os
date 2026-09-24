@@ -200,6 +200,25 @@ describe('webhook deliveries of a status change', () => {
     expect((await deliveries()).map((row) => row.id)).toEqual([first!.id])
   })
 
+  it('stamps the change when it takes the ticket, not when it started waiting for it', async () => {
+    await createConfig('ei')
+    const id = await openTicket()
+    let pending: ReturnType<typeof patchStatus> | undefined
+    let released = 0
+
+    await app.db.transaction().execute(async (trx) => {
+      await trx.selectFrom('tickets').select('id').where('id', '=', id).forUpdate().execute()
+      pending = patchStatus(id, { status: 'broker-open-issue' })
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      released = Date.now()
+    })
+
+    expect((await pending!).statusCode).toBe(200)
+    const [row] = await deliveries()
+    const occurredAt = Date.parse((row!.payload as { occurred_at: string }).occurred_at)
+    expect(occurredAt).toBeGreaterThanOrEqual(released - 50)
+  })
+
   it('undoes the whole transition when the delivery cannot be written', async () => {
     await createConfig('ei')
     const id = await openTicket()

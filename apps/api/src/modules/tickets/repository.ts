@@ -747,6 +747,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
           author_id: authorId,
           author_type: 'user',
           reason: reason ?? null,
+          created_at: sql<Date>`clock_timestamp()`,
         })
         .returning(['id', 'created_at'])
         .executeTakeFirstOrThrow()
