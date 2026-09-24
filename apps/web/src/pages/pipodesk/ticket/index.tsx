@@ -69,6 +69,10 @@ function Fact({ label, value }: { label: string; value: string }) {
  */
 export default function TicketPage() {
   const { id } = useParams({ from: '/_auth/_desk/tickets/$id' })
+  return <TicketDetail key={id} id={id} />
+}
+
+function TicketDetail({ id }: { id: string }) {
   const { view, structure, rows, today, resolveName, applyPatch, patchRow } = useDesk()
 
   const ticketQuery = useQuery({
@@ -102,11 +106,7 @@ export default function TicketPage() {
   const ownerTrigger = useRef<HTMLButtonElement>(null)
   const [channel, setChannel] = useState<CommentChannel>('internal')
   const [draft, setDraft] = useState('')
-  /* Keyed by ticket: the page does not remount between tickets, and a person
-     picked on one must not leak into the next. */
-  const [shownPerson, setShownPerson] = useState<{ ticketId: string; personId: string } | null>(
-    null,
-  )
+  const [shownPerson, setShownPerson] = useState<string | null>(null)
 
   const timelineQuery = useQuery({
     queryKey: ['get', '/api/tickets/{id}/timeline', id],
@@ -165,8 +165,7 @@ export default function TicketPage() {
 
   const personName = ticket.beneficiaryName ?? ticket.subject
   const movement = records.movementOf(ticket.id)
-  const shownPersonId =
-    shownPerson?.ticketId === ticket.id ? shownPerson.personId : (movement?.beneficiaryId ?? null)
+  const shownPersonId = shownPerson ?? movement?.beneficiaryId ?? null
   /* `null` for no action date AND for one that cannot be read — an unreadable
      date is not an overdue deadline. */
   const overdue = ticket.actionDate === null ? null : daysOverdue(ticket.actionDate, today)
@@ -463,7 +462,7 @@ export default function TicketPage() {
         personId={shownPersonId}
         records={records}
         capturedAt={ticket.createdAt}
-        onSelectPerson={(personId) => setShownPerson({ ticketId: ticket.id, personId })}
+        onSelectPerson={setShownPerson}
       />
     )
 

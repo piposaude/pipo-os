@@ -329,6 +329,17 @@ describe('detalhe do chamado', () => {
     )
   })
 
+  it('should not carry the draft of one ticket into the next', async () => {
+    const router = await renderAt('/tickets/700003')
+    const user = userEvent.setup()
+
+    await user.type(await screen.findByPlaceholderText('Escreva…'), 'Só do 700003.')
+    await router.navigate({ to: '/tickets/$id', params: { id: '700002' } })
+
+    await screen.findByText('700002')
+    expect(screen.getByPlaceholderText('Escreva…')).toHaveValue('')
+  })
+
   it('should keep the draft and say so when the comment is refused', async () => {
     desk.restore()
     desk = (await import('../../helpers/desk')).mountDeskFixture({
