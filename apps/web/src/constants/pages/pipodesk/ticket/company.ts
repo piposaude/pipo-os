@@ -50,7 +50,6 @@ export default {
     passwordLabel: 'senha do portal',
     copyPassword: 'Copiar a senha do portal',
     passwordUpdated: (date: string) => `Senha atualizada em ${date}`,
-    noAccess: 'Sem acesso ao portal cadastrado neste contrato',
     note: [
       'O número do contrato é o que o Backoffice mostra, e é o dado que o analista confere antes de movimentar. ',
       'Qual campo do BO ele é segue pergunta aberta',
@@ -70,7 +69,6 @@ export default {
       'A apólice deste chamado não está entre as desta empresa, então a lista abaixo é a da empresa inteira — não o prêmio do chamado.',
   },
   files: {
-    empty: 'Nenhum arquivo da empresa.',
     size: (kb: number | null) => (kb === null ? '' : `${kb} KB`),
     note: 'Estes são os documentos da empresa. Os da movimentação estão na aba Documentos, e os de contrato ficam com o contrato acima.',
   },

@@ -213,17 +213,10 @@ export function contractExpired(endDate: string | null, today: string): boolean 
   return days !== null && days > 0
 }
 
-/** Every ticket of the same beneficiary, open and closed, newest first —
- *  the current one included, so the table shows where the person is now. */
-export function historyOf(
-  rows: TicketRow[],
-  records: TicketRecords,
-  ticketId: string,
-): TicketRow[] {
-  const movement = records.movementOf(ticketId)
-  if (!movement) return []
-  const ids = new Set(records.ticketIdsOf(movement.beneficiaryId))
-  return rows
-    .filter((row) => ids.has(row.id))
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+export function historyOf(rows: TicketRow[], ticket: TicketRow): TicketRow[] {
+  const others =
+    ticket.taxId === null
+      ? []
+      : rows.filter((row) => row.taxId === ticket.taxId && row.id !== ticket.id)
+  return [...others, ticket].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 }

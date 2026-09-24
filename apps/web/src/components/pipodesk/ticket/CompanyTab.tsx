@@ -58,38 +58,36 @@ function ContractCard({
         {formatLongDateWithYear(contract.startDate)} — {formatLongDateWithYear(contract.endDate)}
       </p>
       {expired && <p className={styles.warn}>{copy.contract.expiredWarning}</p>}
-      <p className={styles.muted}>
-        {copy.contract.files(attached)}
-        {contract.hasPendingFile && (
-          <span className={styles.warn}>{copy.contract.pendingFile}</span>
-        )}
-      </p>
-      <div className={styles.vault}>
-        {access ? (
-          <>
-            <p className={styles.line}>
-              {copy.contract.portal} <span className={styles.value}>{carrier?.portal ?? '—'}</span>
-              {carrier?.portal && (
-                <CopyButton value={carrier.portal} label={copy.contract.copyPortal} />
-              )}
-            </p>
-            <p className={styles.line}>
-              {copy.contract.login} <span className={styles.value}>{access.login}</span>
-              <CopyButton value={access.login} label={copy.contract.copyLogin} />
-            </p>
-            <p className={styles.line}>
-              {copy.contract.password}{' '}
-              <Secret value={access.password} label={copy.contract.passwordLabel} />
-              <CopyButton value={access.password} label={copy.contract.copyPassword} />
-            </p>
-            <p className={styles.muted}>
-              {copy.contract.passwordUpdated(formatLongDateWithYear(access.updatedAt))}
-            </p>
-          </>
-        ) : (
-          <p className={styles.warn}>{copy.contract.noAccess}</p>
-        )}
-      </div>
+      {(attached > 0 || contract.hasPendingFile) && (
+        <p className={styles.muted}>
+          {copy.contract.files(attached)}
+          {contract.hasPendingFile && (
+            <span className={styles.warn}>{copy.contract.pendingFile}</span>
+          )}
+        </p>
+      )}
+      {access && (
+        <div className={styles.vault}>
+          <p className={styles.line}>
+            {copy.contract.portal} <span className={styles.value}>{carrier?.portal ?? '—'}</span>
+            {carrier?.portal && (
+              <CopyButton value={carrier.portal} label={copy.contract.copyPortal} />
+            )}
+          </p>
+          <p className={styles.line}>
+            {copy.contract.login} <span className={styles.value}>{access.login}</span>
+            <CopyButton value={access.login} label={copy.contract.copyLogin} />
+          </p>
+          <p className={styles.line}>
+            {copy.contract.password}{' '}
+            <Secret value={access.password} label={copy.contract.passwordLabel} />
+            <CopyButton value={access.password} label={copy.contract.copyPassword} />
+          </p>
+          <p className={styles.muted}>
+            {copy.contract.passwordUpdated(formatLongDateWithYear(access.updatedAt))}
+          </p>
+        </div>
+      )}
     </li>
   )
 }
@@ -181,10 +179,8 @@ export function CompanyTab({ companyId, policyId, records, capturedAt, today }: 
         {plansNotCut && <RecordNote>{copy.plans.otherCompany}</RecordNote>}
       </RecordSection>
 
-      <RecordSection level="h2" title={copy.sections.files}>
-        {files.length === 0 ? (
-          <RecordEmpty>{copy.files.empty}</RecordEmpty>
-        ) : (
+      {files.length > 0 && (
+        <RecordSection level="h2" title={copy.sections.files}>
           <ul className={styles.list}>
             {files.map((file) => (
               <li key={file.id} className={styles.row}>
@@ -194,9 +190,9 @@ export function CompanyTab({ companyId, policyId, records, capturedAt, today }: 
               </li>
             ))}
           </ul>
-        )}
-        <RecordNote>{copy.files.note}</RecordNote>
-      </RecordSection>
+          <RecordNote>{copy.files.note}</RecordNote>
+        </RecordSection>
+      )}
     </div>
   )
 }

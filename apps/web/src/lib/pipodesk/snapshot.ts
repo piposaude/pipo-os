@@ -205,6 +205,14 @@ function documentsOf(people: unknown[], ticket: Ticket): RecordDocument[] {
     })
 }
 
+function movedDependent(snapshot: unknown, dependents: Person[]): Person | undefined {
+  if (readString(snapshot, ['member-type']) !== 'dependent') return undefined
+  const memberId = readString(snapshot, ['member-id'])
+  const named = dependents.find((dependent) => dependent.id === memberId)
+  if (named) return named
+  return dependents.length === 1 ? dependents[0] : undefined
+}
+
 export function recordsFromTicket(ticket: Ticket): TicketRecords {
   const snapshot = ticket.enrollmentSnapshot
   const carrierId = ticket.carrierId ?? readString(snapshot, ['carrier-id']) ?? ''
@@ -287,12 +295,13 @@ export function recordsFromTicket(ticket: Ticket): TicketRecords {
         ]
 
   const carrierName = ticket.carrierName ?? readString(snapshot, ['carrier-name'])
+  const moved = movedDependent(snapshot, dependents)
   const movements: Movement[] = holder
     ? [
         {
           id: ticket.id,
-          beneficiaryId: holder.id,
-          dependentIds: dependents.map((dependent) => dependent.id),
+          beneficiaryId: moved?.id ?? holder.id,
+          dependentIds: moved ? [] : dependents.map((dependent) => dependent.id),
           policyId,
           pendingDocumentation: ticket.pendingDocumentation,
         },

@@ -16,10 +16,10 @@ import { DISPLAY_STATUS_COPY } from '@/constants/pipodesk/status'
 import copy from '@/constants/pages/pipodesk/ticket/history'
 import { formatNumericDate } from '@/lib/pipodesk/format'
 import { clickedControl, opensElsewhere } from '@/lib/pipodesk/row-click'
-import { historyOf, type TicketRecords } from '@/lib/pipodesk/record'
+import { historyOf } from '@/lib/pipodesk/record'
 import { sortTickets, type SortField, type TicketSort } from '@/lib/pipodesk/sort'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
-import { RecordEmpty } from './RecordSection'
+import { RecordNote } from './RecordSection'
 import detail from './DetailTable.module.css'
 import styles from './HistoryTab.module.css'
 
@@ -27,7 +27,6 @@ export interface HistoryTabProps {
   ticket: TicketRow
   /** The queue rows as patched in this session, so a status change shows here too. */
   rows: TicketRow[]
-  records: TicketRecords
 }
 
 const movementOf = (row: TicketRow): string => {
@@ -39,13 +38,11 @@ const movementOf = (row: TicketRow): string => {
 const DEFAULT_SORT: TicketSort = { by: 'createdAt', direction: 'desc' }
 
 /** Always the ticket's beneficiary, never the person shown in Dados pessoais. */
-export function HistoryTab({ ticket, rows, records }: HistoryTabProps) {
+export function HistoryTab({ ticket, rows }: HistoryTabProps) {
   const navigate = useNavigate()
   const [sort, setSort] = useState<TicketSort>(DEFAULT_SORT)
-  const history = useMemo(() => historyOf(rows, records, ticket.id), [rows, records, ticket.id])
+  const history = useMemo(() => historyOf(rows, ticket), [rows, ticket])
   const ordered = useMemo(() => sortTickets(history, sort), [history, sort])
-
-  if (history.length === 0) return <RecordEmpty>{copy.empty}</RecordEmpty>
 
   const stateOf = (field: SortField): SortState => {
     if (sort.by !== field) return 'none'
@@ -128,6 +125,7 @@ export function HistoryTab({ ticket, rows, records }: HistoryTabProps) {
           })}
         </TableBody>
       </Table>
+      <RecordNote>{copy.openOnly}</RecordNote>
     </div>
   )
 }

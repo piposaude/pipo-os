@@ -1,5 +1,7 @@
 import { FIXTURE_USER_NAMES, queueSeed, structureFixture } from '@/fixtures/pipodesk/dataset'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
+import type { Person } from '@/lib/pipodesk/record'
+import { records } from '@/fixtures/pipodesk/records'
 
 /** Answer for any ticket id without a route of its own. */
 export const TICKET_ROUTE = '/api/tickets/:id'
@@ -152,10 +154,20 @@ export function fixtureStructureRoutes(viewerId?: string): Record<string, unknow
  *  per request would dominate the run. */
 let rowsBody: string | null = null
 
+/** The holder's CPF, which the API reads off the snapshot into every row. */
+export function taxIdOf(ticketId: string): string | null {
+  const movement = records.movementOf(ticketId)
+  const moved = movement ? records.personById.get(movement.beneficiaryId) : undefined
+  const holder =
+    moved?.role === 'dependent' && moved.holderId ? records.personById.get(moved.holderId) : moved
+  return holder?.cpf ?? null
+}
+
 export function fixtureRowsRoute(): string {
   rowsBody ??= JSON.stringify({
     data: queueSeed.map((row) => ({
       ...row,
+      taxId: taxIdOf(row.id),
       title: row.subject,
       displayNumber: row.displayNumber ?? row.id,
       // The projection sends an instant, never a day: noon in São Paulo, so the
@@ -168,7 +180,7 @@ export function fixtureRowsRoute(): string {
 }
 
 /** The ticket as `GET /api/tickets/:id` sends it, over a queue row; the
- *  snapshot carries only the names the row read from it. */
+ *  snapshot is the prototype record in the EI's shape, minus what the EI never sends. */
 export function apiTicketOf(row: TicketRow): Record<string, unknown> {
   return {
     ...row,
@@ -176,16 +188,128 @@ export function apiTicketOf(row: TicketRow): Record<string, unknown> {
     displayNumber: row.displayNumber ?? row.id,
     actionDate: row.actionDate === null ? null : `${row.actionDate}T12:00:00-03:00`,
     queueId: null,
-    pendingDocumentation: [],
+    pendingDocumentation: records.movementOf(row.id)?.pendingDocumentation ?? [],
     requester: null,
     collaborators: [],
     forceCompletion: false,
     origin: null,
     parentTicketId: null,
     completion: null,
-    enrollmentSnapshot: {
-      primary: { profile: { name: row.beneficiaryName, tax_id: row.taxId } },
-      company: { company_name: row.companyName },
+    enrollmentSnapshot: snapshotOf(row),
+  }
+}
+
+const personPayload = (person: Person, product: string | null) => {
+  const card = person.cards.find((c) => c.product === product) ?? person.cards[0]
+  return {
+    member_id: person.id,
+    profile: {
+      tax_id: person.cpf,
+      name: person.name,
+      preferred_name: person.socialName ?? undefined,
+      mothers_name: person.motherName ?? undefined,
+      date_of_birth: person.birthDate ?? undefined,
+      gender: person.sex === 'f' ? 'female' : person.sex === 'm' ? 'male' : undefined,
+      marital_status: person.maritalStatus ?? undefined,
+    },
+    contact: {
+      email: person.email ?? undefined,
+      phone: person.phone ?? undefined,
+      address: person.address && {
+        postal_code: person.address.zip,
+        street: person.address.street,
+        number: person.address.number,
+        complement: person.address.complement ?? undefined,
+        neighborhood: person.address.district,
+        city: person.address.city,
+        state: person.address.uf,
+      },
+    },
+    health_info: {
+      weight_kg: person.weightKg ?? undefined,
+      height_cm: person.heightCm ?? undefined,
+    },
+    benefit: card && { id_card_number: card.number, start_date: card.validFrom ?? undefined },
+    bank_data: person.bankAccount && {
+      bank_number: person.bankAccount.bank,
+      branch_number: person.bankAccount.agency,
+      account_number: person.bankAccount.account,
+      account_owners_tax_id: person.bankAccount.holderCpf,
+      account_owners_name: person.bankAccount.holderName,
+    },
+    employment: person.role === 'holder' &&
+      person.link && {
+        admission_date: person.link.admissionDate ?? undefined,
+        employee_id: person.link.registration ?? undefined,
+        contract_type: person.link.contractType ?? undefined,
+        job_title: person.link.jobTitle ?? undefined,
+        monthly_salary:
+          person.link.salaryCents === null ? undefined : person.link.salaryCents / 100,
+        cost_center: person.link.costCenter ?? undefined,
+      },
+    documents: [] as { type: string; path: string }[],
+  }
+}
+
+function snapshotOf(row: TicketRow): Record<string, unknown> {
+  const movement = records.movementOf(row.id)
+  const company = records.companyById.get(row.companyId)
+  const parent = row.parentCompanyId ? records.companyById.get(row.parentCompanyId) : undefined
+  const snapshot: Record<string, unknown> = {
+    company: {
+      company_name: company?.tradeName ?? row.companyName ?? undefined,
+      company_tax_id: company?.cnpj ?? undefined,
+      company_size: company?.porte ?? undefined,
+      parent_company_name: parent?.tradeName ?? row.parentCompanyName ?? undefined,
+      parent_company_tax_id: parent?.cnpj ?? undefined,
+    },
+  }
+  if (!movement) {
+    snapshot.primary = { profile: { name: row.beneficiaryName, tax_id: row.taxId } }
+    return snapshot
+  }
+
+  const moved = records.personById.get(movement.beneficiaryId)
+  const holder =
+    moved?.role === 'dependent' && moved.holderId ? records.personById.get(moved.holderId) : moved
+  const dependentIds =
+    moved && moved !== holder ? [moved.id, ...movement.dependentIds] : movement.dependentIds
+  const policy = records.policyById.get(movement.policyId)
+  const contract = policy
+    ? records
+        .contractsOf(policy.companyId)
+        .find((c) => c.carrierId === policy.carrierId && c.product === policy.product)
+    : undefined
+  const ticketDocs = records
+    .documentsOf('ticket', row.id)
+    .filter((doc) => doc.origin === 'client')
+    .map((doc) => ({
+      type: doc.kind,
+      path: `s3://enrollment/${row.id}/${doc.name}`,
+    }))
+  const primary = holder
+    ? { ...personPayload(holder, row.product), documents: ticketDocs }
+    : { profile: {} }
+
+  return {
+    ...snapshot,
+    member_type: moved && moved !== holder ? 'dependent' : 'primary',
+    member_id: moved?.id,
+    primary,
+    dependents: dependentIds
+      .map((id) => records.personById.get(id))
+      .filter((person): person is Person => person !== undefined)
+      .map((person) => personPayload(person, row.product)),
+    contract: policy && {
+      id: policy.id,
+      contract_number: contract?.number,
+      plan_code: policy.code ?? undefined,
+      product_type: policy.product,
+      product_name: policy.name ?? undefined,
+    },
+    benefit_policy: contract && {
+      coverage_start_date: contract.startDate ?? undefined,
+      coverage_end_date: contract.endDate ?? undefined,
     },
   }
 }

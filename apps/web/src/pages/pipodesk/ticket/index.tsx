@@ -30,7 +30,6 @@ import {
 } from '@/constants/pipodesk/domain'
 import { ORIGIN_COPY } from '@/lib/pipodesk/filter-copy'
 import { analystsOf } from '@/lib/pipodesk/permissions'
-import { records } from '@/fixtures/pipodesk/records'
 import { daysOverdue, formatDate, formatDayMonth, formatLongDate } from '@/lib/pipodesk/format'
 import {
   CHANNELS,
@@ -41,6 +40,7 @@ import {
   type CommentChannel,
 } from '@/lib/pipodesk/timeline'
 import { isApiStatus } from '@/lib/pipodesk/status'
+import { recordsFromTicket } from '@/lib/pipodesk/snapshot'
 import { PRIORITIES, toTicketRow } from '@/lib/pipodesk/ticket-row'
 import { ApiError, client } from '@/lib/api'
 import constants from '@/constants/pages/pipodesk/ticket'
@@ -84,6 +84,10 @@ export default function TicketPage() {
     },
   })
   const unreadable = ticketQuery.data ? !isApiStatus(ticketQuery.data.status) : false
+  const records = useMemo(
+    () => (ticketQuery.data ? recordsFromTicket(ticketQuery.data) : null),
+    [ticketQuery.data],
+  )
   const ticket = useMemo(
     () =>
       ticketQuery.data && isApiStatus(ticketQuery.data.status)
@@ -145,7 +149,7 @@ export default function TicketPage() {
     [structure, ticket?.groupId],
   )
 
-  if (!ticket) {
+  if (!ticket || !records) {
     return (
       <div className={`${styles.screen} ${styles.missing}`}>
         {ticketQuery.isPending ? (
@@ -173,9 +177,8 @@ export default function TicketPage() {
     : DISPLAY_STATUS_COPY[ticket.display]
 
   const company = records.companyById.get(ticket.companyId)
-  /* The row's own column decides it, not whether the record resolved: rows and
-     records are separate snapshots, and a missing one would make a branch
-     ticket claim the movement is the parent's. */
+  /* The ticket's own column decides it, not whether the record resolved: a
+     snapshot without the parent would make a branch ticket claim the parent's. */
   const isBranch = ticket.parentCompanyId !== null
   const parentCompany = ticket.parentCompanyId
     ? records.companyById.get(ticket.parentCompanyId)
@@ -482,7 +485,7 @@ export default function TicketPage() {
     />
   )
 
-  const historico = <HistoryTab ticket={ticket} rows={rows} records={records} />
+  const historico = <HistoryTab ticket={ticket} rows={rows} />
 
   return (
     <div className={styles.screen}>

@@ -6,14 +6,13 @@ import { queueSeed } from '@/fixtures/pipodesk/dataset'
 import { records } from '@/fixtures/pipodesk/records'
 import { displayNameOf, historyOf } from '@/lib/pipodesk/record'
 import { sortTickets } from '@/lib/pipodesk/sort'
-import { formatCpf, formatLongDate, formatNumericDate } from '@/lib/pipodesk/format'
+import { formatCpf, formatNumericDate } from '@/lib/pipodesk/format'
 import { documentLabel } from '@/lib/pipodesk/document'
 import companyCopy from '@/constants/pages/pipodesk/ticket/company'
 import documentsCopy from '@/constants/pages/pipodesk/ticket/documents'
 import historyCopy from '@/constants/pages/pipodesk/ticket/history'
 import personCopy from '@/constants/pages/pipodesk/ticket/person'
-import recordCopy from '@/constants/pages/pipodesk/ticket/record'
-import secretCopy from '@/constants/pipodesk/secret'
+import { taxIdOf } from '../../helpers/api'
 
 // This route loads on demand: the first `findBy` after entering it includes a
 // dynamic import, and the 1s default is not enough under parallel workers.
@@ -44,6 +43,7 @@ async function openTab(path: string, tab: string) {
 }
 
 const rowOf = (ticketId: string) => queueSeed.find((row) => row.id === ticketId)!
+const shellRows = queueSeed.map((row) => ({ ...row, taxId: taxIdOf(row.id) }))
 const personOf = (ticketId: string) =>
   records.personById.get(records.movementOf(ticketId)!.beneficiaryId)!
 
@@ -160,16 +160,6 @@ describe('aba Dados pessoais', () => {
     expect(fieldValue(panel, personCopy.fields.name)).toHaveTextContent(person.name)
   })
 
-  it('should warn that the record is a saved picture when the Backoffice is down for the company', async () => {
-    const { panel } = await openTab('/tickets/700127', 'Dados pessoais')
-
-    expect(records.isBackofficeDown(rowOf('700127').companyId)).toBe(true)
-    expect(within(panel).getByText(recordCopy.outage.title)).toBeInTheDocument()
-    expect(
-      within(panel).getByText(recordCopy.outage.body(formatLongDate(rowOf('700127').createdAt))),
-    ).toBeInTheDocument()
-  })
-
   it('should keep the context column beside the record', async () => {
     const { panel } = await openTab('/tickets/705639', 'Dados pessoais')
 
@@ -180,62 +170,46 @@ describe('aba Dados pessoais', () => {
 })
 
 describe('aba Sobre a empresa', () => {
-  /** Caiçara Metalurgia (705639): a parent with branches, two contracts — one
-   *  expired with a pending file, one active — two plans and the two company
-   *  files the Backoffice generates. */
-  it('should show the company data, the contract of the ticket with a derived badge and the vault', async () => {
-    const { panel, user } = await openTab('/tickets/705639', 'Sobre a empresa')
+  /** Caiçara Metalurgia (705639): a parent with branches and two contracts of
+   *  other carriers; the ticket moves the expired Unimed Mineira one. */
+  it('should show the company data, the contract of the ticket with a derived badge and its plan', async () => {
+    const { panel } = await openTab('/tickets/705639', 'Sobre a empresa')
     const company = records.companyById.get(rowOf('705639').companyId)!
 
-    // Straight under the page's h1: the tab has no card of its own to carry an h2.
     for (const title of [
       companyCopy.sections.data,
       companyCopy.sections.ticketContract,
       companyCopy.sections.plans,
-      companyCopy.sections.files,
     ]) {
       expect(within(panel).getByRole('heading', { level: 2, name: title })).toBeInTheDocument()
     }
-    expect(fieldValue(panel, companyCopy.fields.legalName)).toHaveTextContent(company.legalName!)
     expect(fieldValue(panel, companyCopy.fields.cnpj)).toHaveTextContent(company.cnpj!)
     expect(fieldValue(panel, companyCopy.fields.porte)).toHaveTextContent('Empresarial')
     expect(fieldValue(panel, companyCopy.fields.structure)).toHaveTextContent(
       companyCopy.structure.parent,
     )
 
-    // The badge is derived from the term, never stored: 957445 ended in 2025.
     const expired = within(panel).getByText('957445').closest('li')!
     expect(within(expired).getByText(companyCopy.contract.expired)).toBeInTheDocument()
     expect(within(expired).getByText(companyCopy.contract.expiredWarning)).toBeInTheDocument()
-    expect(within(expired).getByText(/Sem arquivo anexado/)).toHaveTextContent('Arquivo pendente')
     expect(
       within(expired).getByRole('button', { name: companyCopy.contract.copyNumber('957445') }),
     ).toBeInTheDocument()
-    // 124588 is the Petlove contract of the same company — another carrier.
     expect(within(panel).queryByText('124588')).not.toBeInTheDocument()
 
-    // The vault: portal and login copyable, the password masked until the eye.
-    expect(within(expired).getByText('portal.unimedmineira.com.br/rh')).toBeInTheDocument()
-    expect(within(expired).getByText('pipo.caicara-metalurgia')).toBeInTheDocument()
-    expect(within(expired).queryByText('34q5-EM7J-68!')).not.toBeInTheDocument()
-    await user.click(
-      within(expired).getByRole('button', {
-        name: secretCopy.show(companyCopy.contract.passwordLabel),
-      }),
-    )
-    expect(within(expired).getByText('34q5-EM7J-68!')).toBeInTheDocument()
-    expect(
-      within(expired).getByRole('button', { name: companyCopy.contract.copyPassword }),
-    ).toBeInTheDocument()
-    expect(within(expired).getByText('Senha atualizada em 26 de Julho de 2025')).toBeInTheDocument()
-
-    // Prêmios shows only the policy this ticket moves, not every plan of the company.
     expect(within(panel).getByText('Unimed Mineira — Básico E4')).toBeInTheDocument()
     expect(within(panel).getByText('6082')).toBeInTheDocument()
     expect(within(panel).queryByText('Petlove — Pleno A2')).not.toBeInTheDocument()
+  })
 
-    expect(within(panel).getByText('Cartão CNPJ — Caiçara Metalurgia.pdf')).toBeInTheDocument()
-    expect(within(panel).getByText('798 KB')).toBeInTheDocument()
+  it('should leave out the vault and the company files, which the snapshot does not carry', async () => {
+    const { panel } = await openTab('/tickets/705639', 'Sobre a empresa')
+
+    expect(within(panel).queryByText(companyCopy.contract.login)).not.toBeInTheDocument()
+    expect(within(panel).queryByText(/sem acesso ao portal/i)).not.toBeInTheDocument()
+    expect(
+      within(panel).queryByRole('heading', { name: companyCopy.sections.files }),
+    ).not.toBeInTheDocument()
   })
 
   it('should name the parent of a branch and say the contracts shown belong to the branch', async () => {
@@ -256,26 +230,6 @@ describe('aba Sobre a empresa', () => {
     const [firstBranch] = records.branchesOf(rowOf('705639').companyId)
 
     expect(within(panel).queryByText(firstBranch.legalName!)).not.toBeInTheDocument()
-  })
-
-  it('should say a contract has no vault instead of showing empty lines', async () => {
-    const { panel } = await openTab('/tickets/700002', 'Sobre a empresa')
-
-    expect(within(panel).getAllByText(companyCopy.contract.noAccess).length).toBeGreaterThan(0)
-  })
-
-  it('should tell the contractual SLA apart as a spreadsheet fact, not a system field', async () => {
-    const { panel } = await openTab('/tickets/700032', 'Sobre a empresa')
-
-    const lead = within(panel).getByText(companyCopy.slaNote(48, true)[1])
-    expect(lead.tagName).toBe('STRONG')
-    expect(lead.closest('p')).toHaveTextContent('com multa')
-  })
-
-  it('should warn about the saved picture when the Backoffice is down for the company', async () => {
-    const { panel } = await openTab('/tickets/700127', 'Sobre a empresa')
-
-    expect(within(panel).getByText(recordCopy.outage.title)).toBeInTheDocument()
   })
 })
 
@@ -298,18 +252,12 @@ describe('aba Documentos', () => {
       .getByRole('heading', { level: 2, name: documentsCopy.fromClient.title })
       .closest('section')!
     expect(within(received).getByText('RG.jpg')).toBeInTheDocument()
-    expect(within(received).getByText('1590 KB')).toBeInTheDocument()
     expect(
       within(received).getByRole('button', {
         name: documentsCopy.download('RG.jpg', null, '700002-camila-machado-dantas-rg.jpg'),
       }),
     ).toHaveAttribute('aria-disabled', 'true')
     expect(within(panel).getByText(documentsCopy.downloadUnavailable)).toBeInTheDocument()
-
-    const generated = within(panel)
-      .getByRole('heading', { level: 2, name: documentsCopy.fromPipo.title })
-      .closest('section')!
-    expect(within(generated).getByText('Ficha de adesão.pdf')).toBeInTheDocument()
   })
 
   /** 700026 has two RGs: the one from 22 May stands, the one from 14 May was
@@ -327,7 +275,6 @@ describe('aba Documentos', () => {
     ).getAllByRole('listitem')
     expect(versions[0]?.textContent).toContain(documentsCopy.version.current)
     expect(versions[1]?.textContent).toContain(documentsCopy.version.superseded)
-    expect(within(received).getByText('Desatualizado — vencido')).toBeInTheDocument()
   })
 
   it('should offer the name the file would be born with, since a later rename breaks validation', async () => {
@@ -365,17 +312,6 @@ describe('aba Documentos', () => {
     await user.type(within(panel).getAllByRole('textbox')[0]!, 'reenviado pelo RH{Enter}')
 
     expect(within(panel).getByText('reenviado pelo RH')).toBeInTheDocument()
-  })
-
-  it('should clear a seeded observation when it is emptied', async () => {
-    const { panel } = await openTab('/tickets/700026', 'Documentos')
-    const user = userEvent.setup()
-
-    await user.click(within(panel).getByRole('button', { name: 'Desatualizado — vencido' }))
-    await user.clear(within(panel).getAllByRole('textbox')[0]!)
-    await user.keyboard('{Enter}')
-
-    expect(within(panel).queryByText('Desatualizado — vencido')).not.toBeInTheDocument()
   })
 
   it('should drop an edit abandoned with Escape, not save it on the way out', async () => {
@@ -427,20 +363,12 @@ describe('aba Documentos', () => {
       within(panel).getByText(documentsCopy.fromPipo.notInclusion('Exclusão')),
     ).toBeInTheDocument()
   })
-
-  it('should warn about the saved picture when the Backoffice is down for the company', async () => {
-    const { panel } = await openTab('/tickets/700127', 'Documentos')
-
-    expect(within(panel).getByText(recordCopy.outage.title)).toBeInTheDocument()
-  })
 })
 
 describe('aba Histórico', () => {
-  /** Every ticket of the same person, open and closed, newest first — the
-   *  current one marked and not a link, the others links to their pages. */
   it('should list the tickets of the beneficiary newest first, with the current one marked', async () => {
     const { panel } = await openTab('/tickets/705639', 'Histórico')
-    const expected = historyOf(queueSeed, records, '705639')
+    const expected = historyOf(shellRows, { ...rowOf('705639'), taxId: taxIdOf('705639') })
     expect(expected.length).toBeGreaterThan(1)
 
     const table = within(panel).getByRole('table')
@@ -464,11 +392,12 @@ describe('aba Histórico', () => {
     expect(closedRow).toHaveTextContent(historyCopy.closedAt(formatNumericDate(closed.closedAt)))
     const openRow = within(table).getByText('705639').closest('tr')!
     expect(openRow).not.toHaveTextContent(/^.*em \d\d\/\d\d\/\d\d$/)
+    expect(within(panel).getByText(historyCopy.openOnly)).toBeInTheDocument()
   })
 
   it('should reorder by Situação when its title is clicked, and flip on the second click', async () => {
     const { panel, user } = await openTab('/tickets/705639', 'Histórico')
-    const expected = historyOf(queueSeed, records, '705639')
+    const expected = historyOf(shellRows, { ...rowOf('705639'), taxId: taxIdOf('705639') })
     const idsOf = () =>
       within(within(panel).getByRole('table'))
         .getAllByRole('row')
@@ -488,7 +417,9 @@ describe('aba Histórico', () => {
 
   it('should open another ticket from anywhere on its row, and leave the current one inert', async () => {
     const { panel, user, router } = await openTab('/tickets/705639', 'Histórico')
-    const other = historyOf(queueSeed, records, '705639').find((row) => row.id !== '705639')!
+    const other = historyOf(shellRows, { ...rowOf('705639'), taxId: taxIdOf('705639') }).find(
+      (row) => row.id !== '705639',
+    )!
     const table = within(panel).getByRole('table')
 
     await user.click(
@@ -504,7 +435,9 @@ describe('aba Histórico', () => {
 
   it('should stand aside on a meta-click, so the row does not steal the tab from the link', async () => {
     const { panel, user, router } = await openTab('/tickets/705639', 'Histórico')
-    const other = historyOf(queueSeed, records, '705639').find((row) => row.id !== '705639')!
+    const other = historyOf(shellRows, { ...rowOf('705639'), taxId: taxIdOf('705639') }).find(
+      (row) => row.id !== '705639',
+    )!
     const table = within(panel).getByRole('table')
 
     await user.keyboard('{Meta>}')
@@ -518,7 +451,9 @@ describe('aba Histórico', () => {
 
   it('should open another ticket of the person from its id', async () => {
     const { panel, user, router } = await openTab('/tickets/705639', 'Histórico')
-    const other = historyOf(queueSeed, records, '705639').find((row) => row.id !== '705639')!
+    const other = historyOf(shellRows, { ...rowOf('705639'), taxId: taxIdOf('705639') }).find(
+      (row) => row.id !== '705639',
+    )!
 
     await user.click(within(panel).getByRole('link', { name: other.id }))
 
