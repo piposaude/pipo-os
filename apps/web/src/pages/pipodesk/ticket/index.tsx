@@ -172,10 +172,11 @@ function TicketDetail({ id }: { id: string }) {
   const overdue = ticket.actionDate === null ? null : daysOverdue(ticket.actionDate, today)
   const activeChannel = CHANNELS[channel]
 
-  const saveDate = () => {
+  const saveDate = (field: HTMLInputElement) => {
     if (dateDraft === null) return
     const next = dateDraft || null
     setDateDraft(null)
+    if (field.validity.badInput) return
     if (next !== ticket.actionDate) applyPatch([ticket.id], { actionDate: next })
   }
 
@@ -413,9 +414,9 @@ function TicketDetail({ id }: { id: string }) {
             }
             onClick={(event) => event.currentTarget.showPicker?.()}
             onChange={(event) => setDateDraft(event.target.value)}
-            onBlur={saveDate}
+            onBlur={(event) => saveDate(event.currentTarget)}
             onKeyDown={(event) => {
-              if (event.key === 'Enter') saveDate()
+              if (event.key === 'Enter') saveDate(event.currentTarget)
             }}
           />
         </div>

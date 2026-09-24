@@ -459,6 +459,23 @@ describe('detalhe do chamado', () => {
     expect(campo).toHaveValue('')
   })
 
+  it('should keep the date when the field is left half-erased', async () => {
+    await renderAt('/tickets/700003')
+
+    const contexto = await screen.findByRole('complementary', { name: 'Contexto do chamado' })
+    const campo = within(contexto).getByLabelText(/data de ação/i)
+    fireEvent.change(campo, { target: { value: '2026-12-15' } })
+    fireEvent.blur(campo)
+    Object.defineProperty(campo, 'validity', { value: { badInput: true }, configurable: true })
+    fireEvent.change(campo, { target: { value: '' } })
+    fireEvent.blur(campo)
+
+    await waitFor(() => expect(campo).toHaveValue('2026-12-15'))
+    expect(desk.calls.filter((call) => call.method === 'PATCH').map((call) => call.body)).toEqual([
+      { actionDate: '2026-12-15T03:00:00.000Z' },
+    ])
+  })
+
   /** Every seeded ticket starts with no priority, so the round trip is the only
    *  way to reach the patch that clears it — and "Sem prioridade" is disabled
    *  exactly while it is already the value. */
