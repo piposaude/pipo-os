@@ -4,7 +4,7 @@ import type { TicketFilter } from '../tickets/filter-schema.js'
 import type { TicketsRepositoryPort } from '../tickets/repository.js'
 import type { TicketList } from '../tickets/schemas.js'
 import { editRefusal, type Viewer, type ViewOwnership } from './permissions.js'
-import type { QueuesRepositoryPort } from './repository.js'
+import type { QueuesRepositoryPort, StoredView } from './repository.js'
 import type {
   CreateQueueBody,
   ListQueueTicketsQuery,
@@ -33,6 +33,12 @@ function assertOwnsIt(ownerId: string | null | undefined, viewerId: string): voi
   }
 }
 
+/** Twin of MOV_LABELS in web/src/lib/pipodesk/tree.ts, which finds these three
+ *  views of a pod by name: renaming or moving one detaches it from the pod. */
+const POD_CUTS: ReadonlySet<string> = new Set(['MOV CLT', 'MOV PJ', 'MOV MB'])
+
+const isPodCut = (view: StoredView): boolean => view.groupId !== null && POD_CUTS.has(view.name)
+
 export class QueuesService {
   constructor(
     private readonly repository: QueuesRepositoryPort,
@@ -47,6 +53,7 @@ export class QueuesService {
       { ownerId: data.ownerId ?? null, groupId: data.groupId ?? null },
       viewer,
     )
+    await this.assertCutNameFree(data.groupId ?? null, data.name)
     return this.repository.create(data, viewer.id)
   }
 
@@ -76,6 +83,11 @@ export class QueuesService {
     assertOwnsIt(data.ownerId, viewer.id)
     const current = await this.ownershipOf(id)
     await this.assertMayEdit(current, viewer)
+    const renamed = data.name !== undefined && data.name !== current.name
+    const regrouped = data.groupId !== undefined && data.groupId !== current.groupId
+    if (isPodCut(current) && (renamed || regrouped)) {
+      throw new ConflictError(`${current.name} is found by the pod by its name and group`)
+    }
 
     // The view it becomes is checked too, or handing a personal view to the
     // team would be a way around the rule the team view answers to.
@@ -91,6 +103,9 @@ export class QueuesService {
     if (moved.ownerId !== current.ownerId || moved.groupId !== current.groupId) {
       await this.assertMayEdit(moved, viewer)
     }
+    if (renamed || regrouped) {
+      await this.assertCutNameFree(moved.groupId, data.name ?? current.name, id)
+    }
 
     const queue = await this.repository.update(id, data, viewer.id)
     if (!queue) throw new NotFoundError(`Queue ${id} not found`)
@@ -102,12 +117,26 @@ export class QueuesService {
    *  forever. Reading and editing it stay closed. */
   async delete(id: string, viewer: Viewer): Promise<void> {
     const view = await this.ownershipOf(id)
-    if (!viewer.structureAdmin) await this.assertMayEdit(view, viewer)
+    if (!viewer.structureAdmin) {
+      await this.assertMayEdit(view, viewer)
+      if (isPodCut(view)) throw new ConflictError(`${view.name} is deleted with its pod`)
+    }
     const deleted = await this.repository.delete(id)
     if (!deleted) throw new NotFoundError(`Queue ${id} not found`)
   }
 
-  private async ownershipOf(id: string): Promise<ViewOwnership> {
+  private async assertCutNameFree(
+    groupId: string | null,
+    name: string,
+    exceptId?: string,
+  ): Promise<void> {
+    if (groupId === null || !POD_CUTS.has(name)) return
+    if (await this.repository.isNameTaken(groupId, name, exceptId)) {
+      throw new ConflictError(`The group already has a view named ${name}`)
+    }
+  }
+
+  private async ownershipOf(id: string): Promise<StoredView> {
     const view = await this.repository.findOwnership(id)
     if (!view) throw new NotFoundError(`Queue ${id} not found`)
     return view

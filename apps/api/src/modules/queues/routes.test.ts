@@ -1319,6 +1319,122 @@ describe('queues routes', () => {
       })
       expect(unblocked.statusCode).toBe(204)
     })
+
+    describe('the three MOVs the pod finds by name', () => {
+      it('refuses renaming a MOV, even for the coordination of the pod', async () => {
+        const id = await queue({ name: 'MOV CLT', groupId: pod })
+
+        const response = await app.inject({
+          method: 'PATCH',
+          url: `/api/queues/${id}`,
+          cookies: { [SESSION_COOKIE_NAME]: podLead },
+          payload: { name: 'CLT do POD 5' },
+        })
+
+        expect(response.statusCode).toBe(409)
+      })
+
+      it('refuses moving a MOV to another group', async () => {
+        const id = await queue({ name: 'MOV PJ', groupId: pod })
+
+        const response = await app.inject({
+          method: 'PATCH',
+          url: `/api/queues/${id}`,
+          cookies: { [SESSION_COOKIE_NAME]: gebenLead },
+          payload: { groupId: geben },
+        })
+
+        expect(response.statusCode).toBe(409)
+      })
+
+      it('still lets the coordination change what a MOV selects and how it sorts', async () => {
+        const id = await queue({ name: 'MOV MB', groupId: pod })
+
+        const response = await app.inject({
+          method: 'PATCH',
+          url: `/api/queues/${id}`,
+          cookies: { [SESSION_COOKIE_NAME]: podLead },
+          payload: { name: 'MOV MB', sort: { by: 'updatedAt', direction: 'desc' } },
+        })
+
+        expect(response.statusCode).toBe(200)
+      })
+
+      it('refuses the coordination deleting a MOV', async () => {
+        const id = await queue({ name: 'MOV CLT', groupId: pod })
+
+        const response = await app.inject({
+          method: 'DELETE',
+          url: `/api/queues/${id}`,
+          cookies: { [SESSION_COOKIE_NAME]: podLead },
+        })
+
+        expect(response.statusCode).toBe(409)
+      })
+
+      it('lets the structure policy delete a MOV, which deleting the pod needs', async () => {
+        const id = await queue({ name: 'MOV CLT', groupId: pod })
+
+        const response = await app.inject({
+          method: 'DELETE',
+          url: `/api/queues/${id}`,
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+        })
+
+        expect(response.statusCode).toBe(204)
+      })
+
+      it('creates a MOV in a pod that has none', async () => {
+        const response = await app.inject({
+          method: 'POST',
+          url: '/api/queues',
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+          payload: { name: 'MOV CLT', groupId: pod },
+        })
+
+        expect(response.statusCode).toBe(201)
+      })
+
+      it('refuses a personal view taking the name of a MOV of the pod', async () => {
+        await queue({ name: 'MOV CLT', groupId: pod })
+
+        const response = await app.inject({
+          method: 'POST',
+          url: '/api/queues',
+          cookies: { [SESSION_COOKIE_NAME]: analyst },
+          payload: { name: 'MOV CLT', groupId: pod, ownerId: ANALYST },
+        })
+
+        expect(response.statusCode).toBe(409)
+      })
+
+      it('refuses renaming another view to the name of a MOV of the pod', async () => {
+        await queue({ name: 'MOV PJ', groupId: pod })
+        const id = await queue({ name: 'Livres', groupId: pod })
+
+        const response = await app.inject({
+          method: 'PATCH',
+          url: `/api/queues/${id}`,
+          cookies: { [SESSION_COOKIE_NAME]: podLead },
+          payload: { name: 'MOV PJ' },
+        })
+
+        expect(response.statusCode).toBe(409)
+      })
+
+      it('lets a view of another pod carry the same name', async () => {
+        await queue({ name: 'MOV CLT', groupId: pod })
+
+        const response = await app.inject({
+          method: 'POST',
+          url: '/api/queues',
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+          payload: { name: 'MOV CLT', groupId: geben },
+        })
+
+        expect(response.statusCode).toBe(201)
+      })
+    })
   })
 
   // ---------------------------------------------------------------------------
