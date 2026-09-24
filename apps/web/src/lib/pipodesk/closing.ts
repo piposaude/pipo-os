@@ -57,7 +57,7 @@ export function livesOf(ticket: TicketRow, records: TicketRecords): Person[] {
   if (!movement) return []
   return [movement.beneficiaryId, ...movement.dependentIds]
     .map((id) => records.personById.get(id))
-    .filter((person): person is Person => person !== undefined && person.cpf !== '')
+    .filter((person): person is Person => person !== undefined)
 }
 
 const firstNameOf = (person: Person): string => displayNameOf(person).split(/\s+/)[0]

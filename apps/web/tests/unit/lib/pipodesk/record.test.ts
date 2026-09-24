@@ -209,12 +209,6 @@ describe('historyOf', () => {
     expect(historyOf(rows, current).find((r) => r.id === '700003')?.priority).toBe('urgent')
   })
 
-  it('should match the CPF by its digits, masked or not', () => {
-    const masked = { ...ana('700006', '2026-09-01T12:00:00.000Z'), taxId: '111.222.333-44' }
-
-    expect(historyOf(rows, masked).map((r) => r.id)).toEqual(['700006', '700003', '700001'])
-  })
-
   it('should return only the current ticket when it has no CPF', () => {
     expect(historyOf(rows, rows[3]!).map((r) => r.id)).toEqual(['700005'])
   })

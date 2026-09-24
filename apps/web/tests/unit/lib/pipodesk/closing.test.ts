@@ -16,18 +16,14 @@ import { link, person, recordsWith } from '../../../helpers/records'
 const ticket = (enrollmentType: string): TicketRow =>
   ({ id: 'T-1', enrollmentType }) as unknown as TicketRow
 
-const family = (dependentCpf?: string) =>
+const family = () =>
   recordsWith({
     beneficiaries: [
       person('holder', {
         name: 'Ana Souza',
         link: link({ admissionDate: '2023-11-22' }),
       }),
-      person('dep', {
-        role: 'dependent',
-        holderId: 'holder',
-        ...(dependentCpf === undefined ? {} : { cpf: dependentCpf }),
-      }),
+      person('dep', { role: 'dependent', holderId: 'holder' }),
       person('out', { role: 'dependent', holderId: 'holder' }),
     ],
     // `Movement.id` is the ticket id: the record indexes movements by it.
@@ -80,10 +76,6 @@ describe('oneMonthBefore', () => {
 describe('livesOf', () => {
   it('should take the holder first and only the dependents of this movement', () => {
     expect(livesOf(ticket('inclusion'), family()).map((life) => life.id)).toEqual(['holder', 'dep'])
-  })
-
-  it('should leave out a life without CPF, as the API does', () => {
-    expect(livesOf(ticket('inclusion'), family('')).map((life) => life.id)).toEqual(['holder'])
   })
 
   it('should take no life when the movement is not an inclusion', () => {

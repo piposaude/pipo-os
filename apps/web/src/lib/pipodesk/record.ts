@@ -213,11 +213,10 @@ export function contractExpired(endDate: string | null, today: string): boolean 
   return days !== null && days > 0
 }
 
-const cpfDigitsOf = (taxId: string | null): string => taxId?.replace(/\D/g, '') ?? ''
-
 export function historyOf(rows: TicketRow[], ticket: TicketRow): TicketRow[] {
-  const cpf = cpfDigitsOf(ticket.taxId)
   const others =
-    cpf === '' ? [] : rows.filter((row) => row.id !== ticket.id && cpfDigitsOf(row.taxId) === cpf)
+    ticket.taxId === null
+      ? []
+      : rows.filter((row) => row.taxId === ticket.taxId && row.id !== ticket.id)
   return [...others, ticket].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 }
