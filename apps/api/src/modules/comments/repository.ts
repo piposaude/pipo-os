@@ -239,8 +239,6 @@ export class CommentsRepository implements CommentsRepositoryPort {
       .values({
         ticket_id: ticketId,
         kind: 'manual',
-        // Still the only channel anyone writes. `platform` — the HR side of the
-        // composer — comes with the submission, in the second half of PD-040.
         channel: 'internal',
         visibility: data.visibility,
         body: data.body,
