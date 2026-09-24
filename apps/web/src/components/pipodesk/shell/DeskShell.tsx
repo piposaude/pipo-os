@@ -13,6 +13,7 @@ import {
 } from '@/lib/pipodesk/queue-view'
 import { applyPatches, type TicketPatch } from '@/lib/pipodesk/patches'
 import { SearchPalette } from '@/components/pipodesk/queue/SearchPalette'
+import { companyRegistryOf } from '@/lib/pipodesk/search'
 import { toQueueNode } from '@/lib/pipodesk/queue-node'
 import { DeskContext } from './desk-context'
 import { displayNameFromEmail } from '@/lib/pipodesk/format'
@@ -24,7 +25,6 @@ import { structureFromApi } from '@/lib/pipodesk/structure-from-api'
 import { rowsFromApi } from '@/lib/pipodesk/rows-from-api'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 import { businessToday } from '@/lib/date'
-import { COMPANY_REGISTRY } from '@/fixtures/pipodesk/dataset'
 import '@/styles/pipodesk-tokens.css'
 
 const DETAIL_KEY = ['get', '/api/tickets/{id}']
@@ -258,6 +258,7 @@ export function DeskShell() {
     staleTime: STRUCTURE_STALE_MS,
   })
 
+  const companies = useMemo(() => companyRegistryOf(rows), [rows])
   const structure = useMemo(
     () => structureFromApi(groupsQuery.data ?? [], queuesQuery.data ?? [], viewerId),
     [groupsQuery.data, queuesQuery.data, viewerId],
@@ -480,7 +481,7 @@ export function DeskShell() {
             onClose={() => setSearchOpen(false)}
             rows={rows}
             sections={sections}
-            companies={COMPANY_REGISTRY}
+            companies={companies}
             onSelect={(node) => {
               dispatch({ type: 'select-node', node })
               navigate({ to: '/' })

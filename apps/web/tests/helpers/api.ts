@@ -168,6 +168,7 @@ export function fixtureRowsRoute(): string {
     data: queueSeed.map((row) => ({
       ...row,
       taxId: taxIdOf(row.id),
+      companyTaxId: records.companyById.get(row.companyId)?.cnpj ?? null,
       title: row.subject,
       displayNumber: row.displayNumber ?? row.id,
       // The projection sends an instant, never a day: noon in São Paulo, so the

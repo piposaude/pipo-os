@@ -67,6 +67,15 @@ export interface CompanyRecord {
 
 const digitsOf = (text: string): string => text.replace(/\D/g, '')
 
+export function companyRegistryOf(rows: TicketRow[]): Record<string, CompanyRecord> {
+  const registry: Record<string, CompanyRecord> = {}
+  for (const row of rows) {
+    if (!row.companyName || registry[row.companyId]?.cnpj) continue
+    registry[row.companyId] = { legalName: row.companyName, cnpj: row.companyTaxId ?? '' }
+  }
+  return registry
+}
+
 /** Trade name, legal name, or the digits of the CNPJ — the dataset shares a
  *  trade name between companies, so the other two are how they are told apart. */
 const matchesCompany = (

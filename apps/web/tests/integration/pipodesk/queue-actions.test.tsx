@@ -343,11 +343,10 @@ describe('busca global', () => {
     // whole query at once keeps the 5-per-category cap from hiding the target.
     await user.click(within(palette).getByRole('combobox'))
     await user.paste('guaporé agropecuária')
-    await user.click(
-      await within(palette).findByRole('option', {
-        name: /^Guaporé Agropecuária LTDA Matriz · \d/,
-      }),
-    )
+    const [guapore] = await within(palette).findAllByRole('option', {
+      name: /^Guaporé Agropecuária Matriz · \d/,
+    })
+    await user.click(guapore!)
 
     // The queue became the company's cut, with the search exit visible…
     expect(screen.getByRole('navigation', { name: /breadcrumb/i })).toHaveTextContent(/Guaporé/)
@@ -394,11 +393,10 @@ describe('busca global', () => {
     const palette = await screen.findByRole('dialog', { name: /busca/i })
     await user.click(within(palette).getByRole('combobox'))
     await user.paste('guaporé agropecuária')
-    await user.click(
-      await within(palette).findByRole('option', {
-        name: /^Guaporé Agropecuária LTDA Matriz · \d/,
-      }),
-    )
+    const [guapore] = await within(palette).findAllByRole('option', {
+      name: /^Guaporé Agropecuária Matriz · \d/,
+    })
+    await user.click(guapore!)
 
     await user.click(screen.getByRole('button', { name: 'Sair da busca' }))
 
