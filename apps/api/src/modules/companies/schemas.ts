@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-/** 100 is the upstream's own batch, so one request here is one call there. */
+/** A GET past ~300 uuids is cut by the ingress (414) before reaching the API. */
 export const MAX_COMPANY_IDS = 100
 
 export const companySummarySchema = z
