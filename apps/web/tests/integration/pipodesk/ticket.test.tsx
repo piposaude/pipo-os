@@ -577,7 +577,7 @@ describe('detalhe do chamado', () => {
     expect(reads.filter((path) => path.startsWith('/api/tickets/700002')).length).toBe(before)
   })
 
-  it('should keep the saved priority on screen when rereading the ticket fails', async () => {
+  it('should keep the saved priority while the ticket fails to reload, across later rereads of the rows', async () => {
     const row = byId('700003')
     desk.restore()
     desk = (await import('../../helpers/desk')).mountDeskFixture(
@@ -601,6 +601,19 @@ describe('detalhe do chamado', () => {
     )
 
     await waitFor(() => expect(desk.calls.some((call) => call.method === 'PATCH')).toBe(true))
+    await act(() => vi.advanceTimersByTimeAsync(10_000))
+    await act(() => vi.advanceTimersByTimeAsync(100))
+    expect(screen.getByRole('button', { name: /^Prioridade: Urgente/ })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^Dono:/ }))
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Dono' }))
+        .getAllByRole('button')
+        .find((button) => !button.hasAttribute('disabled'))!,
+    )
+    await waitFor(() =>
+      expect(desk.calls.filter((call) => call.method === 'PATCH')).toHaveLength(2),
+    )
     await act(() => vi.advanceTimersByTimeAsync(10_000))
     await act(() => vi.advanceTimersByTimeAsync(100))
     expect(screen.getByRole('button', { name: /^Prioridade: Urgente/ })).toBeInTheDocument()

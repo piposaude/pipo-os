@@ -27,6 +27,8 @@ import { businessToday } from '@/lib/date'
 import { COMPANY_REGISTRY } from '@/fixtures/pipodesk/dataset'
 import '@/styles/pipodesk-tokens.css'
 
+const DETAIL_KEY = ['get', '/api/tickets/{id}']
+
 /**
  * The Pipodesk shell: tree left, content right. `.desk-root` scopes the
  * operation tokens (login carries none). Rows, structure, names and the inbox
@@ -180,13 +182,22 @@ export function DeskShell() {
     [],
   )
 
+  const detailFailed = useCallback(
+    () =>
+      queryClient
+        .getQueryCache()
+        .findAll({ queryKey: DETAIL_KEY, type: 'active' })
+        .some((query) => query.state.status === 'error'),
+    [queryClient],
+  )
+
   const awaitingRead = useRef(new Set<string>())
   useEffect(() => {
-    if (awaitingRead.current.size === 0 || rowsFailed || inboxFailed) return
+    if (awaitingRead.current.size === 0 || rowsFailed || inboxFailed || detailFailed()) return
     const confirmed = [...awaitingRead.current]
     awaitingRead.current.clear()
     dropPatches(confirmed)
-  }, [rowsUpdatedAt, inboxUpdatedAt, rowsFailed, inboxFailed, dropPatches])
+  }, [rowsUpdatedAt, inboxUpdatedAt, rowsFailed, inboxFailed, detailFailed, dropPatches])
 
   const applyPatch = useCallback(
     (ids: string[], patch: TicketPatch) => {
@@ -205,23 +216,18 @@ export function DeskShell() {
         const saved = ids.filter((id) => !refused.includes(id))
         if (saved.length === 0) return
 
-        const detail = ['get', '/api/tickets/{id}']
         const [rowsRead, inboxRead] = await Promise.all([
           refetchRows(),
           refetchInbox(),
-          queryClient.invalidateQueries({ queryKey: detail }),
+          queryClient.invalidateQueries({ queryKey: DETAIL_KEY }),
           queryClient.invalidateQueries({ queryKey: ['get', '/api/tickets/{id}/timeline'] }),
         ])
-        const detailFailed = queryClient
-          .getQueryCache()
-          .findAll({ queryKey: detail, type: 'active' })
-          .some((query) => query.state.status === 'error')
-        if (rowsRead.isError || inboxRead.isError || detailFailed)
+        if (rowsRead.isError || inboxRead.isError || detailFailed())
           for (const id of saved) awaitingRead.current.add(id)
         else dropPatches(saved)
       })
     },
-    [refetchRows, refetchInbox, dropPatches, queryClient],
+    [refetchRows, refetchInbox, dropPatches, queryClient, detailFailed],
   )
 
   const patchRow = useCallback(
