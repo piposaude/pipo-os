@@ -71,7 +71,7 @@ export default {
   },
   files: {
     empty: 'Nenhum arquivo da empresa.',
-    size: (kb: number) => `${kb} KB`,
+    size: (kb: number | null) => (kb === null ? '' : `${kb} KB`),
     note: 'Estes são os documentos da empresa. Os da movimentação estão na aba Documentos, e os de contrato ficam com o contrato acima.',
   },
 }

@@ -99,7 +99,7 @@ export function closingFields(ticket: TicketRow, records: TicketRecords): Closin
           kind: 'date' as const,
           person,
           personName: names.get(person.id),
-          floor: oneMonthBefore(person.link.admissionDate),
+          floor: person.link?.admissionDate ? oneMonthBefore(person.link.admissionDate) : undefined,
         },
       ])
     }

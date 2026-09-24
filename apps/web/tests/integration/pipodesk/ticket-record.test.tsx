@@ -195,8 +195,8 @@ describe('aba Sobre a empresa', () => {
     ]) {
       expect(within(panel).getByRole('heading', { level: 2, name: title })).toBeInTheDocument()
     }
-    expect(fieldValue(panel, companyCopy.fields.legalName)).toHaveTextContent(company.legalName)
-    expect(fieldValue(panel, companyCopy.fields.cnpj)).toHaveTextContent(company.cnpj)
+    expect(fieldValue(panel, companyCopy.fields.legalName)).toHaveTextContent(company.legalName!)
+    expect(fieldValue(panel, companyCopy.fields.cnpj)).toHaveTextContent(company.cnpj!)
     expect(fieldValue(panel, companyCopy.fields.porte)).toHaveTextContent('Empresarial')
     expect(fieldValue(panel, companyCopy.fields.structure)).toHaveTextContent(
       companyCopy.structure.parent,
@@ -254,7 +254,7 @@ describe('aba Sobre a empresa', () => {
     const { panel } = await openTab('/tickets/705639', 'Sobre a empresa')
     const [firstBranch] = records.branchesOf(rowOf('705639').companyId)
 
-    expect(within(panel).queryByText(firstBranch.legalName)).not.toBeInTheDocument()
+    expect(within(panel).queryByText(firstBranch.legalName!)).not.toBeInTheDocument()
   })
 
   it('should say a contract has no vault instead of showing empty lines', async () => {

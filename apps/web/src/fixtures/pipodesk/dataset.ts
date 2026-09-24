@@ -72,7 +72,7 @@ export const COMPANY_NAMES: Record<string, string> = Object.fromEntries(
 export const COMPANY_REGISTRY: Record<string, CompanyRecord> = Object.fromEntries(
   data.companies.map((company) => [
     company.id,
-    { legalName: company.legalName, cnpj: company.cnpj },
+    { legalName: company.legalName ?? '', cnpj: company.cnpj ?? '' },
   ]),
 )
 

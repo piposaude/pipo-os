@@ -3,7 +3,7 @@ import { COMPANY_SIZE_COPY, PRODUCT_COPY } from '@/constants/pipodesk/domain'
 import copy from '@/constants/pages/pipodesk/ticket/company'
 import recordCopy from '@/constants/pages/pipodesk/ticket/record'
 import { carrierSlug } from '@/lib/pipodesk/carrier'
-import { formatLongDate, formatLongDateWithYear } from '@/lib/pipodesk/format'
+import { formatLongDate, formatLongDateWithYear, RECORD_EMPTY } from '@/lib/pipodesk/format'
 import { contractExpired, type Contract, type TicketRecords } from '@/lib/pipodesk/record'
 import { CopyButton } from './CopyButton'
 import { OutageNotice } from './OutageNotice'
@@ -122,11 +122,13 @@ export function CompanyTab({ companyId, policyId, records, capturedAt, today }: 
 
       <RecordSection level="h2" title={copy.sections.data}>
         <DescriptionList>
-          <DescriptionItem label={copy.fields.legalName}>{company.legalName}</DescriptionItem>
+          <DescriptionItem label={copy.fields.legalName}>
+            {company.legalName ?? RECORD_EMPTY}
+          </DescriptionItem>
           <DescriptionItem label={copy.fields.tradeName}>{company.tradeName}</DescriptionItem>
-          <DescriptionItem label={copy.fields.cnpj}>{company.cnpj}</DescriptionItem>
+          <DescriptionItem label={copy.fields.cnpj}>{company.cnpj ?? RECORD_EMPTY}</DescriptionItem>
           <DescriptionItem label={copy.fields.porte}>
-            {COMPANY_SIZE_COPY[company.porte] ?? company.porte}
+            {company.porte ? (COMPANY_SIZE_COPY[company.porte] ?? company.porte) : RECORD_EMPTY}
           </DescriptionItem>
           <DescriptionItem label={copy.fields.structure}>
             {parent ? copy.structure.branchOf(parent.tradeName) : copy.structure.parent}

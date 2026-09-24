@@ -11,7 +11,7 @@ import {
   startKey,
 } from '@/lib/pipodesk/closing'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
-import { person, recordsWith } from '../../../helpers/records'
+import { link, person, recordsWith } from '../../../helpers/records'
 
 const ticket = (enrollmentType: string): TicketRow =>
   ({ id: 'T-1', enrollmentType }) as unknown as TicketRow
@@ -21,7 +21,7 @@ const family = () =>
     beneficiaries: [
       person('holder', {
         name: 'Ana Souza',
-        link: { ...person('holder').link, admissionDate: '2023-11-22' },
+        link: link({ admissionDate: '2023-11-22' }),
       }),
       person('dep', { role: 'dependent', holderId: 'holder' }),
       person('out', { role: 'dependent', holderId: 'holder' }),

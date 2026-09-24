@@ -20,7 +20,7 @@ describe('vocabulário das fixtures commitadas', () => {
     expect(
       offenders(people, (p) =>
         ['single', 'married', 'divorced', 'widowed', 'domestic-partnership'].includes(
-          p.maritalStatus,
+          p.maritalStatus!,
         ),
       ).map((p) => p.id),
     ).toEqual([])
