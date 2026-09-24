@@ -81,11 +81,13 @@ export function PersonTab({ personId, records, capturedAt, onSelectPerson }: Per
   // tab says so — but only when the account really is the holder's, not by role.
   const account = person.bankAccount ?? holder?.bankAccount ?? null
   const accountIsHolders = person.bankAccount === null && account !== null
+  const outageCompanyId = (holderLink ?? person.link)?.companyId
+  const address = person.address
 
   return (
     <div className={styles.tab}>
       {/* The holder's company when it is known; without it, the only one on record. */}
-      {records.isBackofficeDown((holderLink ?? person.link).companyId) && (
+      {outageCompanyId !== undefined && records.isBackofficeDown(outageCompanyId) && (
         <OutageNotice capturedAt={capturedAt} />
       )}
 
@@ -130,13 +132,17 @@ export function PersonTab({ personId, records, capturedAt, onSelectPerson }: Per
           <RecordField label={copy.fields.cpf}>{formatCpf(person.cpf)}</RecordField>
           {/* The `??` looks dead against the union, but the fixture enters by cast:
               a JSON not regenerated can still carry a value the union dropped. */}
-          <RecordField label={copy.fields.sex}>{SEX_COPY[person.sex] ?? person.sex}</RecordField>
+          <RecordField label={copy.fields.sex}>
+            {person.sex ? (SEX_COPY[person.sex] ?? person.sex) : RECORD_EMPTY}
+          </RecordField>
           <RecordField label={copy.fields.maritalStatus}>
-            {MARITAL_STATUS_COPY[person.maritalStatus] ?? person.maritalStatus}
+            {person.maritalStatus
+              ? (MARITAL_STATUS_COPY[person.maritalStatus] ?? person.maritalStatus)
+              : RECORD_EMPTY}
           </RecordField>
           <RecordField label={copy.fields.weight}>{formatWeight(person.weightKg)}</RecordField>
           <RecordField label={copy.fields.height}>{formatHeight(person.heightCm)}</RecordField>
-          <RecordField label={copy.fields.motherName}>{person.motherName}</RecordField>
+          <RecordField label={copy.fields.motherName}>{or(person.motherName)}</RecordField>
         </RecordFields>
         {person.socialName && (
           <RecordNote>
@@ -156,12 +162,14 @@ export function PersonTab({ personId, records, capturedAt, onSelectPerson }: Per
               {formatLongDateWithYear(holderLink.admissionDate)}
             </RecordField>
             <RecordField label={copy.fields.contractType}>
-              {holderLink.contractType.toUpperCase()}
+              {or(holderLink.contractType?.toUpperCase())}
             </RecordField>
             <RecordField label={copy.fields.salary}>
               {formatSalary(holderLink.salaryCents)}
             </RecordField>
-            <RecordField label={copy.fields.registration}>{holderLink.registration}</RecordField>
+            <RecordField label={copy.fields.registration}>
+              {or(holderLink.registration)}
+            </RecordField>
             <RecordField label={copy.fields.jobTitle}>{or(holderLink.jobTitle)}</RecordField>
             <RecordField label={copy.fields.costCenter}>{or(holderLink.costCenter)}</RecordField>
           </RecordFields>
@@ -171,15 +179,17 @@ export function PersonTab({ personId, records, capturedAt, onSelectPerson }: Per
       <RecordSection title={copy.sections.contact}>
         <RecordFields>
           {/* The record fabricates a contact for dependents; it is nobody's. */}
-          {!isDependent && <RecordField label={copy.fields.email}>{person.email}</RecordField>}
-          {!isDependent && <RecordField label={copy.fields.phone}>{person.phone}</RecordField>}
-          <RecordField label={copy.fields.zip}>{formatZip(person.address.zip)}</RecordField>
-          <RecordField label={copy.fields.street}>{person.address.street}</RecordField>
-          <RecordField label={copy.fields.district}>{person.address.district}</RecordField>
-          <RecordField label={copy.fields.number}>{person.address.number}</RecordField>
-          <RecordField label={copy.fields.complement}>{or(person.address.complement)}</RecordField>
-          <RecordField label={copy.fields.uf}>{person.address.uf}</RecordField>
-          <RecordField label={copy.fields.city}>{person.address.city}</RecordField>
+          {!isDependent && <RecordField label={copy.fields.email}>{or(person.email)}</RecordField>}
+          {!isDependent && <RecordField label={copy.fields.phone}>{or(person.phone)}</RecordField>}
+          <RecordField label={copy.fields.zip}>
+            {address?.zip ? formatZip(address.zip) : RECORD_EMPTY}
+          </RecordField>
+          <RecordField label={copy.fields.street}>{or(address?.street)}</RecordField>
+          <RecordField label={copy.fields.district}>{or(address?.district)}</RecordField>
+          <RecordField label={copy.fields.number}>{or(address?.number)}</RecordField>
+          <RecordField label={copy.fields.complement}>{or(address?.complement)}</RecordField>
+          <RecordField label={copy.fields.uf}>{or(address?.uf)}</RecordField>
+          <RecordField label={copy.fields.city}>{or(address?.city)}</RecordField>
         </RecordFields>
       </RecordSection>
 

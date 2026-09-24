@@ -9,6 +9,8 @@ import {
   Tabs,
 } from '@piposaude/design-system'
 import { Link, useParams } from '@tanstack/react-router'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import type { components } from '@pipo-os/api-client'
 import { useDesk } from '@/components/pipodesk/shell/desk-context'
 import { SidebarToggle } from '@/components/pipodesk/shell/SidebarToggle'
 import { CompanyTab } from '@/components/pipodesk/ticket/CompanyTab'
@@ -28,19 +30,26 @@ import {
 } from '@/constants/pipodesk/domain'
 import { ORIGIN_COPY } from '@/lib/pipodesk/filter-copy'
 import { analystsOf } from '@/lib/pipodesk/permissions'
-import { records } from '@/fixtures/pipodesk/records'
 import { daysOverdue, formatDate, formatDayMonth, formatLongDate } from '@/lib/pipodesk/format'
 import {
   CHANNELS,
   CHANNEL_LABEL,
   CHANNEL_ORDER,
-  timelineOf,
+  commentBodyOf,
+  timelineFromApi,
   type CommentChannel,
 } from '@/lib/pipodesk/timeline'
-import { PRIORITIES } from '@/lib/pipodesk/ticket-row'
+import { isApiStatus } from '@/lib/pipodesk/status'
+import { recordsFromTicket } from '@/lib/pipodesk/snapshot'
+import { PRIORITIES, toTicketRow } from '@/lib/pipodesk/ticket-row'
+import { ApiError, client } from '@/lib/api'
 import constants from '@/constants/pages/pipodesk/ticket'
 import recordCopy from '@/constants/pages/pipodesk/ticket/record'
 import styles from './style.module.css'
+
+type TimelineItem = components['schemas']['TimelineItem']
+
+const TIMELINE_PAGE = 200
 
 /** One fact: label above, value below. */
 function Fact({ label, value }: { label: string; value: string }) {
@@ -60,21 +69,36 @@ function Fact({ label, value }: { label: string; value: string }) {
  */
 export default function TicketPage() {
   const { id } = useParams({ from: '/_auth/_desk/tickets/$id' })
-  const {
-    view,
-    structure,
-    rows,
-    rowsPending,
-    rowsTotal,
-    rowsTruncated,
-    today,
-    resolveName,
-    applyPatch,
-    comments,
-    addComment,
-  } = useDesk()
+  return <TicketDetail key={id} id={id} />
+}
 
-  const ticket = useMemo(() => rows.find((row) => row.id === id), [rows, id])
+function TicketDetail({ id }: { id: string }) {
+  const { view, structure, rows, today, resolveName, applyPatch, patchRow } = useDesk()
+
+  const ticketQuery = useQuery({
+    queryKey: ['get', '/api/tickets/{id}', id],
+    queryFn: async () => {
+      try {
+        const { data } = await client.GET('/api/tickets/{id}', { params: { path: { id } } })
+        return data ?? null
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 404) return null
+        throw error
+      }
+    },
+  })
+  const unreadable = ticketQuery.data ? !isApiStatus(ticketQuery.data.status) : false
+  const records = useMemo(
+    () => (ticketQuery.data ? recordsFromTicket(ticketQuery.data) : null),
+    [ticketQuery.data],
+  )
+  const ticket = useMemo(
+    () =>
+      ticketQuery.data && isApiStatus(ticketQuery.data.status)
+        ? patchRow(toTicketRow(ticketQuery.data))
+        : undefined,
+    [ticketQuery.data, patchRow],
+  )
 
   const [priorityOpen, setPriorityOpen] = useState(false)
   const [ownerOpen, setOwnerOpen] = useState(false)
@@ -82,16 +106,38 @@ export default function TicketPage() {
   const ownerTrigger = useRef<HTMLButtonElement>(null)
   const [channel, setChannel] = useState<CommentChannel>('internal')
   const [draft, setDraft] = useState('')
-  /* Keyed by ticket: the page does not remount between tickets, and a person
-     picked on one must not leak into the next. */
-  const [shownPerson, setShownPerson] = useState<{ ticketId: string; personId: string } | null>(
-    null,
+  const [shownPerson, setShownPerson] = useState<string | null>(null)
+
+  const timelineQuery = useQuery({
+    queryKey: ['get', '/api/tickets/{id}/timeline', id],
+    queryFn: async () => {
+      const items: TimelineItem[] = []
+      let cursor: string | undefined
+      do {
+        const { data } = await client.GET('/api/tickets/{id}/timeline', {
+          params: { path: { id }, query: { limit: TIMELINE_PAGE, cursor } },
+        })
+        if (!data) break
+        items.push(...data.data)
+        cursor = data.nextCursor
+      } while (cursor)
+      return items
+    },
+  })
+  const { refetch: refetchTimeline } = timelineQuery
+  const events = useMemo(
+    () => (ticket ? timelineFromApi(ticket, timelineQuery.data ?? [], resolveName) : []),
+    [ticket, timelineQuery.data, resolveName],
   )
 
-  const events = useMemo(
-    () => (ticket ? timelineOf(ticket, comments, resolveName) : []),
-    [ticket, comments, resolveName],
-  )
+  const comment = useMutation({
+    mutationFn: (body: ReturnType<typeof commentBodyOf>) =>
+      client.POST('/api/tickets/{id}/comments', { params: { path: { id } }, body }),
+    onSuccess: async (_, sent) => {
+      setDraft((current) => (current.trim() === sent.body ? '' : current))
+      await refetchTimeline()
+    },
+  })
 
   /** Analysts of the ticket's pod, from the structure — the same source the
    *  queue's batch reassign uses. Deriving it from who currently HOLDS a
@@ -103,13 +149,13 @@ export default function TicketPage() {
     [structure, ticket?.groupId],
   )
 
-  if (!ticket) {
+  if (!ticket || !records) {
     return (
       <div className={`${styles.screen} ${styles.missing}`}>
-        {rowsPending ? (
+        {ticketQuery.isPending ? (
           <Loading show variant="contained" role="status" />
-        ) : rowsTruncated ? (
-          <p>{constants.outsideSlice(id, rows.length, rowsTotal)}</p>
+        ) : ticketQuery.isError || unreadable ? (
+          <p>{constants.loadFailed(id)}</p>
         ) : (
           <p>{constants.notFound(id)}</p>
         )}
@@ -119,8 +165,7 @@ export default function TicketPage() {
 
   const personName = ticket.beneficiaryName ?? ticket.subject
   const movement = records.movementOf(ticket.id)
-  const shownPersonId =
-    shownPerson?.ticketId === ticket.id ? shownPerson.personId : (movement?.beneficiaryId ?? null)
+  const shownPersonId = shownPerson ?? movement?.beneficiaryId ?? null
   /* `null` for no action date AND for one that cannot be read — an unreadable
      date is not an overdue deadline. */
   const overdue = ticket.actionDate === null ? null : daysOverdue(ticket.actionDate, today)
@@ -131,9 +176,8 @@ export default function TicketPage() {
     : DISPLAY_STATUS_COPY[ticket.display]
 
   const company = records.companyById.get(ticket.companyId)
-  /* The row's own column decides it, not whether the record resolved: rows and
-     records are separate snapshots, and a missing one would make a branch
-     ticket claim the movement is the parent's. */
+  /* The ticket's own column decides it, not whether the record resolved: a
+     snapshot without the parent would make a branch ticket claim the parent's. */
   const isBranch = ticket.parentCompanyId !== null
   const parentCompany = ticket.parentCompanyId
     ? records.companyById.get(ticket.parentCompanyId)
@@ -207,6 +251,9 @@ export default function TicketPage() {
   const timeline = (
     <section className={styles.block}>
       <h2 className={styles.blockTitle}>{constants.timeline.heading}</h2>
+      {timelineQuery.isError && (
+        <p className={styles.composerHint}>{constants.timeline.loadFailed}</p>
+      )}
       <ol className={styles.timeline}>
         {events.map((event) => (
           <li key={event.id} className={styles.timelineItem}>
@@ -258,13 +305,18 @@ export default function TicketPage() {
           placeholder={constants.timeline.placeholder[channel]}
           rows={4}
         />
+        {comment.isError && (
+          <p role="alert" className={styles.composerHint}>
+            {constants.timeline.sendFailed}
+          </p>
+        )}
         <div className={styles.composerActions}>
           <Button
             variant="primary"
-            disabled={draft.trim().length === 0}
+            disabled={draft.trim().length === 0 || comment.isPending}
             onClick={() => {
-              addComment(ticket.id, channel, draft.trim())
-              setDraft('')
+              if (channel === 'email') return
+              comment.mutate(commentBodyOf(channel, draft.trim()))
             }}
           >
             {constants.timeline.submit[channel]}
@@ -410,7 +462,7 @@ export default function TicketPage() {
         personId={shownPersonId}
         records={records}
         capturedAt={ticket.createdAt}
-        onSelectPerson={(personId) => setShownPerson({ ticketId: ticket.id, personId })}
+        onSelectPerson={setShownPerson}
       />
     )
 
@@ -432,7 +484,7 @@ export default function TicketPage() {
     />
   )
 
-  const historico = <HistoryTab ticket={ticket} rows={rows} records={records} />
+  const historico = <HistoryTab ticket={ticket} rows={rows} />
 
   return (
     <div className={styles.screen}>

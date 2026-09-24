@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { Outlet, useNavigate, useRouterState, useSearch } from '@tanstack/react-router'
 import { SidebarMainLayout } from '@piposaude/design-system'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { QueueSidebar } from '@/components/pipodesk/sidebar/QueueSidebar'
 import { HOME_NODE_ID, buildTree, type TreeNode, type TreeSection } from '@/lib/pipodesk/tree'
 import {
@@ -13,7 +13,6 @@ import {
 } from '@/lib/pipodesk/queue-view'
 import { applyPatches, type TicketPatch } from '@/lib/pipodesk/patches'
 import { SearchPalette } from '@/components/pipodesk/queue/SearchPalette'
-import type { CommentChannel, TicketComment } from '@/lib/pipodesk/timeline'
 import { toQueueNode } from '@/lib/pipodesk/queue-node'
 import { DeskContext } from './desk-context'
 import { displayNameFromEmail } from '@/lib/pipodesk/format'
@@ -23,9 +22,12 @@ import { useSessionStore } from '@/stores/session'
 import { api, client } from '@/lib/api'
 import { structureFromApi } from '@/lib/pipodesk/structure-from-api'
 import { rowsFromApi } from '@/lib/pipodesk/rows-from-api'
+import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 import { businessToday } from '@/lib/date'
 import { COMPANY_REGISTRY } from '@/fixtures/pipodesk/dataset'
 import '@/styles/pipodesk-tokens.css'
+
+const DETAIL_KEY = ['get', '/api/tickets/{id}']
 
 /**
  * The Pipodesk shell: tree left, content right. `.desk-root` scopes the
@@ -152,6 +154,7 @@ export function DeskShell() {
   /* Prototype model: the base never changes; actions become patches applied
        on read. When the backend lands, the patch becomes the PATCH body. */
   const [patches, setPatches] = useState<Record<string, TicketPatch>>({})
+  const queryClient = useQueryClient()
   const today = businessToday()
   const rows = useMemo(() => {
     if (!rowsQuery.data) return []
@@ -163,24 +166,6 @@ export function DeskShell() {
   const inboxTicketIds = useMemo(
     () => (rowsQuery.data ? (inboxQuery.data?.data ?? []).map((row) => row.id) : []),
     [rowsQuery.data, inboxQuery.data],
-  )
-
-  const [comments, setComments] = useState<TicketComment[]>([])
-  const addComment = useCallback(
-    (ticketId: string, channel: CommentChannel, body: string) => {
-      setComments((current) => [
-        ...current,
-        {
-          id: `local-${current.length + 1}`,
-          ticketId,
-          channel,
-          body,
-          at: new Date().toISOString(),
-          author: email || 'você',
-        },
-      ])
-    },
-    [email],
   )
 
   const [writeFailed, setWriteFailed] = useState(false)
@@ -197,13 +182,22 @@ export function DeskShell() {
     [],
   )
 
+  const detailFailed = useCallback(
+    () =>
+      queryClient
+        .getQueryCache()
+        .findAll({ queryKey: DETAIL_KEY, type: 'active' })
+        .some((query) => query.state.status === 'error'),
+    [queryClient],
+  )
+
   const awaitingRead = useRef(new Set<string>())
   useEffect(() => {
-    if (awaitingRead.current.size === 0 || rowsFailed || inboxFailed) return
+    if (awaitingRead.current.size === 0 || rowsFailed || inboxFailed || detailFailed()) return
     const confirmed = [...awaitingRead.current]
     awaitingRead.current.clear()
     dropPatches(confirmed)
-  }, [rowsUpdatedAt, inboxUpdatedAt, rowsFailed, inboxFailed, dropPatches])
+  }, [rowsUpdatedAt, inboxUpdatedAt, rowsFailed, inboxFailed, detailFailed, dropPatches])
 
   const applyPatch = useCallback(
     (ids: string[], patch: TicketPatch) => {
@@ -222,12 +216,23 @@ export function DeskShell() {
         const saved = ids.filter((id) => !refused.includes(id))
         if (saved.length === 0) return
 
-        const reads = await Promise.all([refetchRows(), refetchInbox()])
-        if (reads.some((read) => read.isError)) for (const id of saved) awaitingRead.current.add(id)
+        const [rowsRead, inboxRead] = await Promise.all([
+          refetchRows(),
+          refetchInbox(),
+          queryClient.invalidateQueries({ queryKey: DETAIL_KEY }),
+          queryClient.invalidateQueries({ queryKey: ['get', '/api/tickets/{id}/timeline'] }),
+        ])
+        if (rowsRead.isError || inboxRead.isError || detailFailed())
+          for (const id of saved) awaitingRead.current.add(id)
         else dropPatches(saved)
       })
     },
-    [refetchRows, refetchInbox, dropPatches],
+    [refetchRows, refetchInbox, dropPatches, queryClient, detailFailed],
+  )
+
+  const patchRow = useCallback(
+    (row: TicketRow) => applyPatches([row], patches, today)[0] ?? row,
+    [patches, today],
   )
 
   const groupsQuery = useQuery({
@@ -401,10 +406,9 @@ export function DeskShell() {
       rowsPending,
       today,
       applyPatch,
+      patchRow,
       rowsTotal,
       rowsTruncated,
-      comments,
-      addComment,
       viewerId,
       resolveName,
       sidebarCollapsed,
@@ -420,10 +424,9 @@ export function DeskShell() {
       rows,
       rowsPending,
       applyPatch,
+      patchRow,
       rowsTotal,
       rowsTruncated,
-      comments,
-      addComment,
       viewerId,
       today,
       resolveName,

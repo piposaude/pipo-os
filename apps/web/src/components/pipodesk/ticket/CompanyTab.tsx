@@ -3,7 +3,7 @@ import { COMPANY_SIZE_COPY, PRODUCT_COPY } from '@/constants/pipodesk/domain'
 import copy from '@/constants/pages/pipodesk/ticket/company'
 import recordCopy from '@/constants/pages/pipodesk/ticket/record'
 import { carrierSlug } from '@/lib/pipodesk/carrier'
-import { formatLongDate, formatLongDateWithYear } from '@/lib/pipodesk/format'
+import { formatLongDate, formatLongDateWithYear, RECORD_EMPTY } from '@/lib/pipodesk/format'
 import { contractExpired, type Contract, type TicketRecords } from '@/lib/pipodesk/record'
 import { CopyButton } from './CopyButton'
 import { OutageNotice } from './OutageNotice'
@@ -58,38 +58,36 @@ function ContractCard({
         {formatLongDateWithYear(contract.startDate)} — {formatLongDateWithYear(contract.endDate)}
       </p>
       {expired && <p className={styles.warn}>{copy.contract.expiredWarning}</p>}
-      <p className={styles.muted}>
-        {copy.contract.files(attached)}
-        {contract.hasPendingFile && (
-          <span className={styles.warn}>{copy.contract.pendingFile}</span>
-        )}
-      </p>
-      <div className={styles.vault}>
-        {access ? (
-          <>
-            <p className={styles.line}>
-              {copy.contract.portal} <span className={styles.value}>{carrier?.portal ?? '—'}</span>
-              {carrier?.portal && (
-                <CopyButton value={carrier.portal} label={copy.contract.copyPortal} />
-              )}
-            </p>
-            <p className={styles.line}>
-              {copy.contract.login} <span className={styles.value}>{access.login}</span>
-              <CopyButton value={access.login} label={copy.contract.copyLogin} />
-            </p>
-            <p className={styles.line}>
-              {copy.contract.password}{' '}
-              <Secret value={access.password} label={copy.contract.passwordLabel} />
-              <CopyButton value={access.password} label={copy.contract.copyPassword} />
-            </p>
-            <p className={styles.muted}>
-              {copy.contract.passwordUpdated(formatLongDateWithYear(access.updatedAt))}
-            </p>
-          </>
-        ) : (
-          <p className={styles.warn}>{copy.contract.noAccess}</p>
-        )}
-      </div>
+      {(attached > 0 || contract.hasPendingFile) && (
+        <p className={styles.muted}>
+          {copy.contract.files(attached)}
+          {contract.hasPendingFile && (
+            <span className={styles.warn}>{copy.contract.pendingFile}</span>
+          )}
+        </p>
+      )}
+      {access && (
+        <div className={styles.vault}>
+          <p className={styles.line}>
+            {copy.contract.portal} <span className={styles.value}>{carrier?.portal ?? '—'}</span>
+            {carrier?.portal && (
+              <CopyButton value={carrier.portal} label={copy.contract.copyPortal} />
+            )}
+          </p>
+          <p className={styles.line}>
+            {copy.contract.login} <span className={styles.value}>{access.login}</span>
+            <CopyButton value={access.login} label={copy.contract.copyLogin} />
+          </p>
+          <p className={styles.line}>
+            {copy.contract.password}{' '}
+            <Secret value={access.password} label={copy.contract.passwordLabel} />
+            <CopyButton value={access.password} label={copy.contract.copyPassword} />
+          </p>
+          <p className={styles.muted}>
+            {copy.contract.passwordUpdated(formatLongDateWithYear(access.updatedAt))}
+          </p>
+        </div>
+      )}
     </li>
   )
 }
@@ -122,11 +120,13 @@ export function CompanyTab({ companyId, policyId, records, capturedAt, today }: 
 
       <RecordSection level="h2" title={copy.sections.data}>
         <DescriptionList>
-          <DescriptionItem label={copy.fields.legalName}>{company.legalName}</DescriptionItem>
+          <DescriptionItem label={copy.fields.legalName}>
+            {company.legalName ?? RECORD_EMPTY}
+          </DescriptionItem>
           <DescriptionItem label={copy.fields.tradeName}>{company.tradeName}</DescriptionItem>
-          <DescriptionItem label={copy.fields.cnpj}>{company.cnpj}</DescriptionItem>
+          <DescriptionItem label={copy.fields.cnpj}>{company.cnpj ?? RECORD_EMPTY}</DescriptionItem>
           <DescriptionItem label={copy.fields.porte}>
-            {COMPANY_SIZE_COPY[company.porte] ?? company.porte}
+            {company.porte ? (COMPANY_SIZE_COPY[company.porte] ?? company.porte) : RECORD_EMPTY}
           </DescriptionItem>
           <DescriptionItem label={copy.fields.structure}>
             {parent ? copy.structure.branchOf(parent.tradeName) : copy.structure.parent}
@@ -169,8 +169,8 @@ export function CompanyTab({ companyId, policyId, records, capturedAt, today }: 
           <ul className={styles.list}>
             {plans.map((plan) => (
               <li key={plan.id} className={styles.row}>
-                <span>{plan.name}</span>
-                <span className={styles.code}>{plan.code}</span>
+                <span>{plan.name ?? RECORD_EMPTY}</span>
+                <span className={styles.code}>{plan.code ?? RECORD_EMPTY}</span>
                 <span>{PRODUCT_COPY[plan.product] ?? plan.product}</span>
               </li>
             ))}
@@ -179,10 +179,8 @@ export function CompanyTab({ companyId, policyId, records, capturedAt, today }: 
         {plansNotCut && <RecordNote>{copy.plans.otherCompany}</RecordNote>}
       </RecordSection>
 
-      <RecordSection level="h2" title={copy.sections.files}>
-        {files.length === 0 ? (
-          <RecordEmpty>{copy.files.empty}</RecordEmpty>
-        ) : (
+      {files.length > 0 && (
+        <RecordSection level="h2" title={copy.sections.files}>
           <ul className={styles.list}>
             {files.map((file) => (
               <li key={file.id} className={styles.row}>
@@ -192,9 +190,9 @@ export function CompanyTab({ companyId, policyId, records, capturedAt, today }: 
               </li>
             ))}
           </ul>
-        )}
-        <RecordNote>{copy.files.note}</RecordNote>
-      </RecordSection>
+          <RecordNote>{copy.files.note}</RecordNote>
+        </RecordSection>
+      )}
     </div>
   )
 }

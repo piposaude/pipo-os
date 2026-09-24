@@ -144,8 +144,10 @@ export function formatZip(zip: string): string {
   return `${digits.slice(0, 5)}-${digits.slice(5)}`
 }
 
-export const formatSalary = (cents: number): string =>
-  (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+export const formatSalary = (cents: number | null): string =>
+  cents === null
+    ? RECORD_EMPTY
+    : (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
 export const formatWeight = (kg: number | null): string => (kg === null ? RECORD_EMPTY : `${kg} kg`)
 

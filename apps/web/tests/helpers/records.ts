@@ -1,10 +1,22 @@
 import {
   indexRecords,
   type Company,
+  type EmploymentLink,
   type Person,
   type RecordSource,
   type TicketRecords,
 } from '@/lib/pipodesk/record'
+
+export const link = (overrides: Partial<EmploymentLink> = {}): EmploymentLink => ({
+  companyId: 'company-1',
+  contractType: 'clt',
+  admissionDate: '2020-01-01',
+  salaryCents: 0,
+  registration: '1',
+  jobTitle: null,
+  costCenter: null,
+  ...overrides,
+})
 
 export const person = (id: string, overrides: Partial<Person> = {}): Person => ({
   id,
@@ -31,15 +43,7 @@ export const person = (id: string, overrides: Partial<Person> = {}): Person => (
   bankAccount: null,
   role: 'holder',
   holderId: null,
-  link: {
-    companyId: 'company-1',
-    contractType: 'clt',
-    admissionDate: '2020-01-01',
-    salaryCents: 0,
-    registration: '1',
-    jobTitle: null,
-    costCenter: null,
-  },
+  link: link(),
   cards: [],
   ...overrides,
 })

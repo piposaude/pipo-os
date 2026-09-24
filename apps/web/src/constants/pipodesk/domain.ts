@@ -47,7 +47,7 @@ export const MARITAL_STATUS_COPY: Record<MaritalStatus, string> = {
 }
 
 /** The Backoffice label is "Sexo atribuído ao nascimento"; the values are these two. */
-export const SEX_COPY: Record<Person['sex'], string> = {
+export const SEX_COPY: Record<NonNullable<Person['sex']>, string> = {
   f: 'Feminino',
   m: 'Masculino',
 }

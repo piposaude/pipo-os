@@ -1,10 +1,11 @@
-import { configure, render, screen, within } from '@testing-library/react'
+import { act, configure, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from '@/routeTree.gen'
 import {
   DATASET_TODAY,
   FIXTURE_USER_NAMES,
+  VIEWER_ID,
   queueSeed,
   structureFixture,
 } from '@/fixtures/pipodesk/dataset'
@@ -14,7 +15,7 @@ import { analystsOf } from '@/lib/pipodesk/permissions'
 import { records } from '@/fixtures/pipodesk/records'
 import constants from '@/constants/pages/pipodesk/ticket'
 import copyButton from '@/constants/pipodesk/copy-button'
-import { holdGet, truncatedRowsRoute } from '../../helpers/api'
+import { apiTicketOf, holdGet, holdRequest } from '../../helpers/api'
 
 /**
  * The first drawn row — the table is virtualized, so only the visible window
@@ -216,7 +217,67 @@ describe('detalhe do chamado', () => {
     expect(screen.queryByRole('dialog', { name: 'Prioridade' })).not.toBeInTheDocument()
   })
 
-  it('should add an internal note to the timeline through the composer', async () => {
+  it('should draw the timeline the API keeps, in the words of the screen', async () => {
+    desk.restore()
+    desk = (await import('../../helpers/desk')).mountDeskFixture(
+      {},
+      {
+        '/api/tickets/700003/timeline': {
+          data: [
+            {
+              id: 'e1',
+              ticketId: '700003',
+              authorId: 'svc:enrollment-integrations',
+              authorType: 'service',
+              createdAt: '2026-08-05T10:00:00.000Z',
+              type: 'status-changed',
+              fromStatus: 'broker-processing',
+              toStatus: 'carrier-processing',
+              reason: null,
+            },
+            {
+              id: 'c1',
+              ticketId: '700003',
+              authorId: VIEWER_ID,
+              authorType: 'user',
+              createdAt: '2026-08-06T10:00:00.000Z',
+              type: 'comment',
+              channel: 'internal',
+              visibility: 'private',
+              body: 'Liguei na operadora.',
+            },
+          ],
+        },
+      },
+    )
+    await renderAt('/tickets/700003')
+
+    const entry = (await screen.findByText('Liguei na operadora.')).closest('li')!
+    expect(within(entry).getByText(FIXTURE_USER_NAMES[VIEWER_ID]!)).toBeInTheDocument()
+    expect(within(entry).getByText('Anotação interna')).toBeInTheDocument()
+    expect(screen.getByText(/^Situação mudou de .+ para .+\.$/)).toBeInTheDocument()
+  })
+
+  it('should post an internal note and show it once the timeline comes back with it', async () => {
+    const posted: unknown[] = []
+    desk.restore()
+    desk = (await import('../../helpers/desk')).mountDeskFixture(
+      {},
+      {
+        '/api/tickets/700003/timeline': () => ({
+          data: posted.map((body, index) => ({
+            id: `c${index}`,
+            ticketId: '700003',
+            authorId: VIEWER_ID,
+            authorType: 'user',
+            createdAt: '2026-08-06T10:00:00.000Z',
+            type: 'comment',
+            channel: 'internal',
+            ...(body as object),
+          })),
+        }),
+      },
+    )
     await renderAt('/tickets/700003')
     const user = userEvent.setup()
 
@@ -227,16 +288,19 @@ describe('detalhe do chamado', () => {
     )
 
     await user.type(screen.getByPlaceholderText('Escreva…'), 'Liguei na operadora, protocolo 123.')
+    posted.push({ visibility: 'private', body: 'Liguei na operadora, protocolo 123.' })
     await user.click(screen.getByRole('button', { name: 'Comentar' }))
 
-    expect(screen.getByText('Liguei na operadora, protocolo 123.')).toBeInTheDocument()
-    // The field clears for the next note.
+    expect(await screen.findByText('Liguei na operadora, protocolo 123.')).toBeInTheDocument()
+    expect(desk.calls).toContainEqual({
+      method: 'POST',
+      path: '/api/tickets/700003/comments',
+      body: { kind: 'manual', visibility: 'private', body: 'Liguei na operadora, protocolo 123.' },
+    })
     expect(screen.getByPlaceholderText('Escreva…')).toHaveValue('')
   })
 
-  /** The composer writes the channel it is on, and the timeline shows which one
-   *  — the PR claims both work, so both are exercised. */
-  it('should add a public comment on the channel the composer is switched to', async () => {
+  it('should post a public comment on the channel the composer is switched to', async () => {
     await renderAt('/tickets/700003')
     const user = userEvent.setup()
 
@@ -256,9 +320,58 @@ describe('detalhe do chamado', () => {
     await user.type(screen.getByPlaceholderText('Escreva…'), body)
     await user.click(screen.getByRole('button', { name: 'Comentar' }))
 
-    // The entry lands on the public channel, not on the default internal one.
-    const entry = screen.getByText(body).closest('li')!
-    expect(within(entry).getByText('Comentário público')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(desk.calls).toContainEqual({
+        method: 'POST',
+        path: '/api/tickets/700003/comments',
+        body: { kind: 'manual', visibility: 'public', body },
+      }),
+    )
+  })
+
+  it('should not carry the draft of one ticket into the next', async () => {
+    const router = await renderAt('/tickets/700003')
+    const user = userEvent.setup()
+
+    await user.type(await screen.findByPlaceholderText('Escreva…'), 'Só do 700003.')
+    await router.navigate({ to: '/tickets/$id', params: { id: '700002' } })
+
+    await screen.findByText('700002')
+    expect(screen.getByPlaceholderText('Escreva…')).toHaveValue('')
+  })
+
+  it('should keep the draft and say so when the comment is refused', async () => {
+    desk.restore()
+    desk = (await import('../../helpers/desk')).mountDeskFixture({
+      'POST /api/tickets/700003/comments': 503,
+    })
+    await renderAt('/tickets/700003')
+    const user = userEvent.setup()
+
+    await user.type(await screen.findByPlaceholderText('Escreva…'), 'Não pode sumir.')
+    await user.click(screen.getByRole('button', { name: 'Comentar' }))
+
+    expect(await screen.findByText(constants.timeline.sendFailed)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Escreva…')).toHaveValue('Não pode sumir.')
+  })
+
+  it('should keep what was typed while the comment was on its way', async () => {
+    await renderAt('/tickets/700003')
+    const release = holdRequest('POST', '/api/tickets/700003/comments')
+    const user = userEvent.setup()
+    const field = await screen.findByPlaceholderText('Escreva…')
+
+    await user.type(field, 'Primeira parte.')
+    await user.click(screen.getByRole('button', { name: 'Comentar' }))
+    await user.type(field, ' Segunda parte.')
+    release()
+
+    await waitFor(() =>
+      expect(desk.calls).toContainEqual(
+        expect.objectContaining({ method: 'POST', path: '/api/tickets/700003/comments' }),
+      ),
+    )
+    await waitFor(() => expect(field).toHaveValue('Primeira parte. Segunda parte.'))
   })
 
   /**
@@ -370,9 +483,9 @@ describe('detalhe do chamado', () => {
     expect(button).toHaveAttribute('data-copied', 'true')
   })
 
-  it('should wait for the rows before saying the id does not exist', async () => {
+  it('should wait for the ticket before saying the id does not exist', async () => {
     const { id, beneficiaryName, subject } = queueSeed[0]!
-    const release = holdGet('/api/tickets/rows')
+    const release = holdGet(`/api/tickets/${id}`)
     await renderAt(`/tickets/${id}`)
 
     expect(await screen.findByRole('status', { name: 'Carregando' })).toBeInTheDocument()
@@ -390,16 +503,25 @@ describe('detalhe do chamado', () => {
     expect(await screen.findByText(/não existe chamado com o id/i)).toBeInTheDocument()
   })
 
-  it('should not claim the id does not exist when the rows were cut at the limit', async () => {
+  it('should open a closed ticket, which the queue rows do not carry', async () => {
+    const open = queueSeed[0]!
+    const closed = {
+      ...apiTicketOf(open),
+      id: 'closed-1',
+      status: 'completed',
+      closedAt: '2026-08-01T12:00:00.000Z',
+    }
     desk.restore()
     desk = (await import('../../helpers/desk')).mountDeskFixture(
       {},
-      { '/api/tickets/rows': truncatedRowsRoute(99_999) },
+      { '/api/tickets/closed-1': closed },
     )
-    await renderAt('/tickets/000000')
+    await renderAt('/tickets/closed-1')
 
-    expect(await screen.findByText(/não está no recorte carregado/i)).toBeInTheDocument()
-    expect(screen.queryByText(/não existe chamado com o id/i)).not.toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { level: 1, name: open.beneficiaryName ?? open.subject }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('closed-1')).toBeInTheDocument()
   })
 
   /**
@@ -407,6 +529,115 @@ describe('detalhe do chamado', () => {
    * membership — not from whoever happens to hold a ticket right now. An
    * analyst with an empty queue is exactly who you want to hand work to.
    */
+  it('should show the reassignment in the timeline once the write is saved', async () => {
+    const ticket = queueSeed.find((row) => row.groupId !== null && row.id === '700003')!
+    desk.restore()
+    desk = (await import('../../helpers/desk')).mountDeskFixture(
+      {},
+      {
+        [`/api/tickets/${ticket.id}/timeline`]: () => ({
+          data: desk.calls
+            .filter((call) => call.method === 'PATCH' && call.path === `/api/tickets/${ticket.id}`)
+            .map((call, index) => ({
+              id: `e${index}`,
+              ticketId: ticket.id,
+              authorId: VIEWER_ID,
+              authorType: 'user',
+              createdAt: '2026-08-06T10:00:00.000Z',
+              type: 'event',
+              eventType: 'assigned',
+              body: 'Responsável alterado',
+              metadata: call.body as Record<string, unknown>,
+            })),
+        }),
+      },
+    )
+    await renderAt(`/tickets/${ticket.id}`)
+    const user = userEvent.setup()
+    const [analyst] = analystsOf(structureFixture, ticket.groupId!).filter(
+      (membership) => membership.userId !== ticket.assigneeId,
+    )
+    const name = FIXTURE_USER_NAMES[analyst!.userId]!
+
+    await user.click(await screen.findByRole('button', { name: /^Dono:/ }))
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Dono' })).getByRole('button', { name }),
+    )
+
+    expect(await screen.findByText(`Responsável alterado: ${name}`)).toBeInTheDocument()
+  })
+
+  it('should reread only the ticket on screen after a write, not every ticket seen before', async () => {
+    const reads: string[] = []
+    const inner = globalThis.fetch
+    globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+      const request = input instanceof Request ? input : null
+      const method = (init?.method ?? request?.method ?? 'GET').toUpperCase()
+      if (method === 'GET') reads.push(new URL(request?.url ?? String(input), 'http://x').pathname)
+      return inner(input, init)
+    }) as typeof globalThis.fetch
+
+    const router = await renderAt('/tickets/700002')
+    await screen.findByText('700002')
+    await router.navigate({ to: '/tickets/$id', params: { id: '700003' } })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: /^Prioridade:/ }))
+    const before = reads.filter((path) => path.startsWith('/api/tickets/700002')).length
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Prioridade' })).getByRole('button', {
+        name: 'Urgente',
+      }),
+    )
+
+    await waitFor(() => expect(desk.calls.some((call) => call.method === 'PATCH')).toBe(true))
+    await waitFor(() =>
+      expect(reads.filter((path) => path === '/api/tickets/700003').length).toBeGreaterThan(1),
+    )
+    expect(reads.filter((path) => path.startsWith('/api/tickets/700002')).length).toBe(before)
+  })
+
+  it('should keep the saved priority while the ticket fails to reload, across later rereads of the rows', async () => {
+    const row = byId('700003')
+    desk.restore()
+    desk = (await import('../../helpers/desk')).mountDeskFixture(
+      {},
+      {
+        '/api/tickets/inbox': { data: [], total: 0 },
+        '/api/tickets/700003': () => {
+          if (desk.calls.some((call) => call.method === 'PATCH')) throw new TypeError('rede')
+          return apiTicketOf({ ...row, priority: null })
+        },
+      },
+    )
+    await renderAt('/tickets/700003')
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: /^Prioridade:/ }))
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Prioridade' })).getByRole('button', {
+        name: 'Urgente',
+      }),
+    )
+
+    await waitFor(() => expect(desk.calls.some((call) => call.method === 'PATCH')).toBe(true))
+    await act(() => vi.advanceTimersByTimeAsync(10_000))
+    await act(() => vi.advanceTimersByTimeAsync(100))
+    expect(screen.getByRole('button', { name: /^Prioridade: Urgente/ })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^Dono:/ }))
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Dono' }))
+        .getAllByRole('button')
+        .find((button) => !button.hasAttribute('disabled'))!,
+    )
+    await waitFor(() =>
+      expect(desk.calls.filter((call) => call.method === 'PATCH')).toHaveLength(2),
+    )
+    await act(() => vi.advanceTimersByTimeAsync(10_000))
+    await act(() => vi.advanceTimersByTimeAsync(100))
+    expect(screen.getByRole('button', { name: /^Prioridade: Urgente/ })).toBeInTheDocument()
+  })
+
   it('should offer the analysts of the pod, from the structure and not from the load', async () => {
     await renderAt('/')
     const user = userEvent.setup()

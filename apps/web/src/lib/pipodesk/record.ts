@@ -26,10 +26,10 @@ export interface BankAccount {
  *  holder's job, so a dependent has no employment of their own. */
 export interface EmploymentLink {
   companyId: string
-  contractType: string
-  admissionDate: string
-  salaryCents: number
-  registration: string
+  contractType: string | null
+  admissionDate: string | null
+  salaryCents: number | null
+  registration: string | null
   jobTitle: string | null
   costCenter: string | null
 }
@@ -39,7 +39,7 @@ export interface CarrierCard {
   carrierId: string
   product: string
   number: string
-  validFrom: string
+  validFrom: string | null
 }
 
 export type MaritalStatus = 'single' | 'married' | 'divorced' | 'widowed' | 'domestic-partnership'
@@ -49,29 +49,29 @@ export interface Person {
   name: string
   socialName: string | null
   cpf: string
-  birthDate: string
-  sex: 'f' | 'm'
-  email: string
-  phone: string
-  maritalStatus: MaritalStatus
+  birthDate: string | null
+  sex: 'f' | 'm' | null
+  email: string | null
+  phone: string | null
+  maritalStatus: MaritalStatus | null
   weightKg: number | null
   heightCm: number | null
-  motherName: string
-  address: Address
+  motherName: string | null
+  address: Address | null
   bankAccount: BankAccount | null
   role: 'holder' | 'dependent'
   holderId: string | null
-  link: EmploymentLink
+  link: EmploymentLink | null
   cards: CarrierCard[]
 }
 
 export interface Company {
   id: string
   tradeName: string
-  legalName: string
-  cnpj: string
+  legalName: string | null
+  cnpj: string | null
   parentId: string | null
-  porte: string
+  porte: string | null
   contractualSla: ContractualSla | null
 }
 
@@ -87,8 +87,8 @@ export interface Policy {
   companyId: string
   carrierId: string
   product: string
-  name: string
-  code: string
+  name: string | null
+  code: string | null
 }
 
 export interface PortalAccess {
@@ -104,8 +104,8 @@ export interface Contract {
   carrierId: string
   product: string
   /** A day or an instant; every reader goes through the day helpers. */
-  startDate: string
-  endDate: string
+  startDate: string | null
+  endDate: string | null
   hasPendingFile: boolean
   access: PortalAccess | null
 }
@@ -120,7 +120,7 @@ export interface RecordDocument {
   origin: 'pipo' | 'client'
   kind: string
   at: string
-  sizeKb: number
+  sizeKb: number | null
   /** The note is the file's, not the ticket's: the same document comes back in
    *  several versions, and the reason for a resend belongs to one of them. */
   note: string | null
@@ -207,22 +207,17 @@ export const displayNameOf = (person: Pick<Person, 'name' | 'socialName'>): stri
 
 /** Derived from the term, never stored. By day, not by string: an instant
  *  would sort after its own day. Unreadable is not expired. */
-export function contractExpired(endDate: string, today: string): boolean {
+export function contractExpired(endDate: string | null, today: string): boolean {
+  if (endDate === null) return false
   const days = daysBetween(endDate, today)
   return days !== null && days > 0
 }
 
-/** Every ticket of the same beneficiary, open and closed, newest first —
- *  the current one included, so the table shows where the person is now. */
-export function historyOf(
-  rows: TicketRow[],
-  records: TicketRecords,
-  ticketId: string,
-): TicketRow[] {
-  const movement = records.movementOf(ticketId)
-  if (!movement) return []
-  const ids = new Set(records.ticketIdsOf(movement.beneficiaryId))
-  return rows
-    .filter((row) => ids.has(row.id))
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+const cpfDigitsOf = (taxId: string | null): string => taxId?.replace(/\D/g, '') ?? ''
+
+export function historyOf(rows: TicketRow[], ticket: TicketRow): TicketRow[] {
+  const cpf = cpfDigitsOf(ticket.taxId)
+  const others =
+    cpf === '' ? [] : rows.filter((row) => row.id !== ticket.id && cpfDigitsOf(row.taxId) === cpf)
+  return [...others, ticket].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 }

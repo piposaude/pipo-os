@@ -34,5 +34,5 @@ export default {
   download: (name: string, which: string | null, as: string) =>
     `Baixar ${name}${which ? ` (${which})` : ''} como ${as}`,
   downloadUnavailable: 'Ainda não há arquivo para baixar.',
-  size: (kb: number) => `${kb} KB`,
+  size: (kb: number | null) => (kb === null ? '' : `${kb} KB`),
 }

@@ -1,50 +1,11 @@
 // @vitest-environment node
-import type { Ticket } from '@pipo-os/api-client'
 import {
   companyTitleOf,
   principalIdOf,
   principalNameOf,
   toTicketRow,
 } from '@/lib/pipodesk/ticket-row'
-
-function apiTicket(overrides: Partial<Ticket> = {}): Ticket {
-  return {
-    id: 'ticket-1',
-    displayNumber: 'M000001',
-    title: null,
-    enrollmentId: 'enrollment-1',
-    enrollmentType: 'inclusion',
-    carrierId: null,
-    carrierName: null,
-    product: null,
-    contractType: null,
-    companySize: null,
-    parentCompanyId: null,
-    parentCompanyName: null,
-    companyTaxId: null,
-    relationship: null,
-    status: 'broker-processing',
-    priority: null,
-    actionDate: null,
-    queueId: null,
-    groupId: null,
-    assigneeId: null,
-    companyId: 'company-1',
-    tags: [],
-    pendingDocumentation: [],
-    requester: null,
-    collaborators: [],
-    forceCompletion: false,
-    enrollmentSnapshot: {},
-    sourceSystem: 'enrollment-integrations',
-    origin: 'auto-routing',
-    parentTicketId: null,
-    closedAt: null,
-    createdAt: '2026-08-10T14:30:00.000Z',
-    updatedAt: '2026-08-11T09:00:00.000Z',
-    ...overrides,
-  }
-}
+import { apiTicket } from '../../../helpers/ticket'
 
 describe('toTicketRow — campos do próprio ticket', () => {
   it('should carry the ticket identity and dates unchanged', () => {

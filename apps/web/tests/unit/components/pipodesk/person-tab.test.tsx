@@ -5,7 +5,7 @@ import { PersonTab } from '@/components/pipodesk/ticket/PersonTab'
 import copy from '@/constants/pages/pipodesk/ticket/person'
 import recordCopy from '@/constants/pages/pipodesk/ticket/record'
 import { formatNumericDate } from '@/lib/pipodesk/format'
-import { company, person, recordsWith } from '../../../helpers/records'
+import { company, link, person, recordsWith } from '../../../helpers/records'
 
 describe('PersonTab', () => {
   /** The labels say "do titular"; the values must be the holder's even when
@@ -13,11 +13,11 @@ describe('PersonTab', () => {
   it('should show the holder employment in Dados do titular for a dependent', () => {
     const records = recordsWith({
       beneficiaries: [
-        person('holder', { link: { ...person('holder').link, registration: '47865' } }),
+        person('holder', { link: link({ registration: '47865' }) }),
         person('dep', {
           role: 'dependent',
           holderId: 'holder',
-          link: { ...person('dep').link, registration: '99999' },
+          link: link({ registration: '99999' }),
         }),
       ],
     })
@@ -48,7 +48,7 @@ describe('PersonTab', () => {
         person('dep', {
           role: 'dependent',
           holderId: 'holder',
-          link: { ...person('dep').link, companyId: 'company-2' },
+          link: link({ companyId: 'company-2' }),
         }),
       ],
       boOutageCompanyIds: ['company-1'],
@@ -135,7 +135,7 @@ describe('PersonTab', () => {
         person('dep', {
           role: 'dependent',
           holderId: 'quem-nao-esta-no-retrato',
-          link: { ...person('dep').link, registration: '99999' },
+          link: link({ registration: '99999' }),
         }),
       ],
     })

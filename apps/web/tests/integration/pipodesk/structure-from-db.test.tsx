@@ -195,23 +195,18 @@ describe('a árvore da sidebar vem do banco', () => {
     expect(aviso).toHaveTextContent('contagens da árvore valem só para o que está aqui')
   })
 
-  it('should não chamar de recorte a linha que a tela descartou por status desconhecido', async () => {
+  it('should dizer que não carregou o chamado cujo status esta versão não conhece', async () => {
     const rowsRoute = routes['/api/tickets/rows'] as { data: Record<string, unknown>[] }
-    const unknown = {
-      ...rowsRoute.data[0],
-      id: 'a0000000-0000-4000-8000-000000000002',
-      status: 'status-novo',
-    }
+    const id = 'a0000000-0000-4000-8000-000000000002'
     api.restore()
     api = mockApi({
       ...routes,
-      '/api/tickets/rows': { data: [...rowsRoute.data, unknown], total: 2 },
+      [`/api/tickets/${id}`]: { ...rowsRoute.data[0], id, status: 'status-novo' },
     })
-    vi.spyOn(console, 'error').mockImplementation(() => {})
-    await renderDesk(`/tickets/${unknown.id}`)
+    await renderDesk(`/tickets/${id}`)
 
-    expect(await screen.findByText(/não existe chamado com o id/i)).toBeInTheDocument()
-    expect(screen.queryByText(/não está no recorte carregado/i)).not.toBeInTheDocument()
+    expect(await screen.findByText(/não foi possível carregar o chamado/i)).toBeInTheDocument()
+    expect(screen.queryByText(/não existe chamado com o id/i)).not.toBeInTheDocument()
   })
 
   it('should pôr o pod de quem logou na frente dos outros', async () => {
