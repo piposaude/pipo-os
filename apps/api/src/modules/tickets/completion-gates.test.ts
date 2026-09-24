@@ -500,6 +500,34 @@ describe('completionFailures · a life the movement does not carry', () => {
     expect(completionFailures(subject, answer)).toEqual([])
   })
 
+  it('refuses more unknown tax ids than the snapshot has lives without one', () => {
+    const subject = subjectOf({
+      forceCompletion: true,
+      enrollmentSnapshot: { ...family, dependents: [{ profile: {} }] },
+    })
+    const answer: CompletionData = {
+      members: [
+        { taxId: '222', idCardNumber: 'card', startDate: '2026-04-01' },
+        { taxId: '333', idCardNumber: 'card', startDate: '2026-04-01' },
+      ],
+    }
+    expect(named(completionFailures(subject, answer))).toEqual(['members:unknown_member'])
+  })
+
+  it('counts an answer with no digits as unknown, not as the life without tax id', () => {
+    const subject = subjectOf({
+      forceCompletion: true,
+      enrollmentSnapshot: { ...family, dependents: [{ profile: {} }] },
+    })
+    const answer: CompletionData = {
+      members: [
+        { taxId: 'x', idCardNumber: 'card', startDate: '2026-04-01' },
+        { taxId: '333', idCardNumber: 'card', startDate: '2026-04-01' },
+      ],
+    }
+    expect(named(completionFailures(subject, answer))).toEqual(['members:unknown_member'])
+  })
+
   it('lets a forced ticket through when the snapshot names no life to compare with', () => {
     expect(completionFailures(subjectOf({ forceCompletion: true }), stranger)).toEqual([])
   })

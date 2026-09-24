@@ -118,24 +118,32 @@ export function unknownMemberFailures(
   members: readonly CompletionMember[],
 ): ErrorDetail[] {
   const carried = snapshotLivesOf(enrollmentSnapshot).map((taxId) => digitsOf(taxId ?? ''))
-  if (carried.length === 0 || carried.includes('')) return []
+  if (carried.length === 0) return []
 
-  const lives = new Set(carried)
-  const reported = new Set<string>()
-  const failures: ErrorDetail[] = []
+  const lives = new Set(carried.filter((taxId) => taxId !== ''))
+  const unidentified = carried.filter((taxId) => taxId === '').length
+  const strangers = new Set<string>()
   for (const member of members) {
     const taxId = digitsOf(member.taxId)
     if (lives.has(taxId)) continue
-    const label = taxId === '' ? member.taxId.trim() : taxId
-    if (reported.has(label)) continue
-    reported.add(label)
-    failures.push({
-      field: label === '' ? 'members' : `members[${label}]`,
-      message: 'This tax id is not one of the lives the movement carries',
-      code: 'unknown_member',
-    })
+    strangers.add(taxId === '' ? member.taxId.trim() : taxId)
   }
-  return failures
+  if (strangers.size <= unidentified) return []
+
+  if (unidentified > 0) {
+    return [
+      {
+        field: 'members',
+        message: 'The block answers more lives than the movement carries',
+        code: 'unknown_member',
+      },
+    ]
+  }
+  return [...strangers].map((label) => ({
+    field: label === '' ? 'members' : `members[${label}]`,
+    message: 'This tax id is not one of the lives the movement carries',
+    code: 'unknown_member',
+  }))
 }
 
 export function completionFailures(
