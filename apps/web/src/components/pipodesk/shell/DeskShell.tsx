@@ -254,25 +254,23 @@ export function DeskShell() {
   const companies = useMemo(() => companyRegistryOf(rows), [rows])
 
   const createView = useCallback(
-    (draft: NewView) => {
-      void (async () => {
-        try {
-          await client.POST('/api/queues', {
-            body: {
-              name: draft.name,
-              groupId: draft.groupId,
-              ownerId: viewerId,
-              filters: draft.filter,
-              sort: draft.sort,
-              groupBy: draft.groupBy,
-            },
-          })
-        } catch {
-          setWriteFailed(true)
-          return
-        }
-        await queryClient.invalidateQueries({ queryKey: QUEUES_KEY })
-      })()
+    async (draft: NewView): Promise<boolean> => {
+      try {
+        await client.POST('/api/queues', {
+          body: {
+            name: draft.name,
+            groupId: draft.groupId,
+            ownerId: viewerId,
+            filters: draft.filter,
+            sort: draft.sort,
+            groupBy: draft.groupBy,
+          },
+        })
+      } catch {
+        return false
+      }
+      await queryClient.invalidateQueries({ queryKey: QUEUES_KEY })
+      return true
     },
     [viewerId, queryClient],
   )

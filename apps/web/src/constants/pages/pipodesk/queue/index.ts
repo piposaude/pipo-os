@@ -6,6 +6,7 @@ export default {
     name: 'Nome',
     namePlaceholder: 'Exclusões vencidas',
     nameMissing: 'Dê um nome à visão antes de salvar.',
+    refused: 'Não foi possível salvar a visão.',
     where: 'Onde ela mora',
     whereHint:
       'Ela vai aparecer dentro deste time. Para trazê-la para o topo, favorite com a estrela.',

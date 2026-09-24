@@ -157,16 +157,29 @@ describe('salvar a fila como visão', () => {
     expect(post?.body).toMatchObject({ groupId: ROOT_GROUP_ID })
   })
 
-  it('should say so when the API refuses the view', async () => {
-    await renderDesk({ 'POST /api/queues': () => ({ status: 403, body: { message: 'não' } }) })
+  it('should keep the dialog and the name when the API refuses the view', async () => {
+    await renderDesk({ 'POST /api/queues': () => ({ status: 409, body: { message: 'não' } }) })
     const user = userEvent.setup()
     const dialog = await openSaveView(user)
 
     await user.type(within(dialog).getByRole('textbox', { name: 'Nome' }), 'Recusada{Enter}')
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Não foi possível salvar a alteração.',
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Não foi possível salvar a visão.',
     )
+    expect(within(dialog).getByRole('textbox', { name: 'Nome' })).toHaveValue('Recusada')
+  })
+
+  it('should take the name typed right after opening, with no click on the field', async () => {
+    await renderDesk()
+    const user = userEvent.setup()
+    await openSaveView(user)
+
+    await user.keyboard('Exclusões vencidas{Enter}')
+
+    expect(desk.calls.find((call) => call.method === 'POST')?.body).toMatchObject({
+      name: 'Exclusões vencidas',
+    })
   })
 })
 

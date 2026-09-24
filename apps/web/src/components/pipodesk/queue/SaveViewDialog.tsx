@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button, Modal, TextInput } from '@piposaude/design-system'
 import { useDesk, type NewView } from '@/components/pipodesk/shell/desk-context'
 import { childGroupsOf, rootGroupOf } from '@/lib/pipodesk/permissions'
@@ -16,7 +16,7 @@ export interface SaveViewDialogProps {
   filter: TicketFilter
   sort: TicketSort
   groupBy: GroupBy
-  onSave: (view: NewView) => void
+  onSave: (view: NewView) => Promise<boolean>
   onClose: () => void
 }
 
@@ -34,17 +34,23 @@ export function SaveViewDialog({
   const scopes = root ? [root, ...childGroupsOf(structure, root.id)] : []
   const [name, setName] = useState('')
   const [missing, setMissing] = useState(false)
+  const [refused, setRefused] = useState(false)
   const [scope, setScope] = useState(scopeId ?? root?.id ?? '')
   const input = useRef<HTMLInputElement>(null)
 
-  const save = () => {
+  useEffect(() => {
+    input.current?.focus()
+  }, [])
+
+  const save = async () => {
     if (name.trim().length === 0) {
       setMissing(true)
       input.current?.focus()
       return
     }
-    onSave({ name: name.trim(), groupId: scope, filter, sort, groupBy })
-    onClose()
+    const saved = await onSave({ name: name.trim(), groupId: scope, filter, sort, groupBy })
+    if (saved) onClose()
+    else setRefused(true)
   }
 
   return (
@@ -58,7 +64,7 @@ export function SaveViewDialog({
           <Button variant="secondary" onClick={onClose}>
             {copy.cancel}
           </Button>
-          <Button variant="primary" onClick={save}>
+          <Button variant="primary" onClick={() => void save()}>
             {copy.save}
           </Button>
         </>
@@ -68,7 +74,7 @@ export function SaveViewDialog({
         onKeyDown={(event) => {
           if (event.key !== 'Enter') return
           event.preventDefault()
-          save()
+          void save()
         }}
       >
         <TextInput
@@ -79,12 +85,18 @@ export function SaveViewDialog({
           onChange={(event) => {
             setName(event.target.value)
             setMissing(false)
+            setRefused(false)
           }}
         />
       </div>
       {missing && (
         <p className={`${styles.hint} ${styles.error}`} role="alert">
           {copy.nameMissing}
+        </p>
+      )}
+      {refused && (
+        <p className={`${styles.hint} ${styles.error}`} role="alert">
+          {copy.refused}
         </p>
       )}
       <label className={styles.field}>
