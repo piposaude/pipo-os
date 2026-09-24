@@ -4,6 +4,7 @@ import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/rea
 import { routeTree } from '@/routeTree.gen'
 import {
   ANALYSTS_BY_POD,
+  DATASET_TODAY,
   FIXTURE_USER_NAMES,
   VIEWER_GROUP_ID,
   VIEWER_ID,
@@ -53,6 +54,27 @@ async function reassignAll(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole('button', { name: FIXTURE_USER_NAMES[colega] }))
   return selected
 }
+
+const plusDays = (days: number) =>
+  new Date(Date.parse(`${DATASET_TODAY}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10)
+
+const futureNode = () => screen.getByRole('button', { name: /^Mov\. futuras\s*\d+$/ })
+const futureCount = () => Number(futureNode().textContent!.replace(/\D/g, ''))
+
+async function scheduleRow(
+  user: ReturnType<typeof userEvent.setup>,
+  row: HTMLElement,
+  day: string,
+) {
+  await user.click(within(row).getByRole('checkbox'))
+  const barra = await screen.findByRole('group', { name: 'Ações em lote' })
+  await user.click(within(barra).getByRole('button', { name: 'Ações' }))
+  await user.click(screen.getByRole('button', { name: 'Agendar' }))
+  fireEvent.change(screen.getByLabelText('Data da ação'), { target: { value: day } })
+  await user.click(screen.getByRole('button', { name: /Agendar para/ }))
+}
+
+const rowOf = (id: string) => document.querySelector<HTMLElement>(`tr[data-ticket-id="${id}"]`)
 
 describe('o que a tela muda, a API grava', () => {
   it('should não oferecer em lote a ação que a API ainda não sabe gravar', async () => {
@@ -172,5 +194,35 @@ describe('o que a tela muda, a API grava', () => {
     expect(status.map((call) => call.body)).toEqual(
       status.map(() => ({ status: 'carrier-processing' })),
     )
+  })
+})
+
+describe('agendar muda o chamado de janela', () => {
+  it('should tirar de hoje e levar para Movimentações futuras o que dorme depois da janela', async () => {
+    await renderQueue()
+    const user = userEvent.setup()
+    const antes = futureCount()
+    const row = document.querySelector<HTMLElement>('tr[data-ticket-id]')!
+    const id = row.getAttribute('data-ticket-id')!
+
+    await scheduleRow(user, row, plusDays(30))
+
+    await expect.poll(futureCount).toBe(antes + 1)
+    expect(rowOf(id)).toBeNull()
+  })
+
+  it('should trazer de volta para hoje o que foi reagendado para o passado', async () => {
+    await renderQueue()
+    const user = userEvent.setup()
+    const antes = futureCount()
+    await user.click(futureNode())
+    await screen.findByRole('table')
+    const row = document.querySelector<HTMLElement>('tr[data-ticket-id]')!
+    const id = row.getAttribute('data-ticket-id')!
+
+    await scheduleRow(user, row, plusDays(-1))
+
+    await expect.poll(futureCount).toBe(antes - 1)
+    expect(rowOf(id)).toBeNull()
   })
 })
