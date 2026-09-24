@@ -265,6 +265,7 @@ export default function QueuePage() {
           analysts={analysts}
           onAssign={(userId) => runBatch({ assigneeId: userId })}
           onStatus={runStatusBatch}
+          onSchedule={(actionDate) => runBatch({ actionDate })}
         />
       )}
 

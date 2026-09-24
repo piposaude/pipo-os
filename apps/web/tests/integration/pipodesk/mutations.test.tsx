@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from '@/routeTree.gen'
@@ -63,8 +63,40 @@ describe('o que a tela muda, a API grava', () => {
     await user.click(within(barra).getByRole('button', { name: 'Ações' }))
 
     expect(screen.getByRole('button', { name: 'Reatribuir' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Agendar' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Mover para carteira' })).not.toBeInTheDocument()
+  })
+
+  it('should agendar o lote mandando o instante em que o dia começa em São Paulo', async () => {
+    await renderQueue()
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('checkbox', { name: /selecionar todos/i }))
+    const barra = await screen.findByRole('group', { name: 'Ações em lote' })
+    const selected = selectedCount(barra)
+    await user.click(within(barra).getByRole('button', { name: 'Ações' }))
+    await user.click(screen.getByRole('button', { name: 'Agendar' }))
+    fireEvent.change(screen.getByLabelText('Data da ação'), { target: { value: '2026-12-15' } })
+    await user.click(screen.getByRole('button', { name: /Agendar para/ }))
+
+    const writes = desk.calls.filter((call) => call.method === 'PATCH')
+
+    expect(selected).toBeGreaterThan(1)
+    expect(writes).toHaveLength(selected)
+    expect(writes.map((call) => call.body)).toEqual(
+      writes.map(() => ({ actionDate: '2026-12-15T03:00:00.000Z' })),
+    )
+  })
+
+  it('should não agendar sem data escolhida', async () => {
+    await renderQueue()
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('checkbox', { name: /selecionar todos/i }))
+    const barra = await screen.findByRole('group', { name: 'Ações em lote' })
+    await user.click(within(barra).getByRole('button', { name: 'Ações' }))
+    await user.click(screen.getByRole('button', { name: 'Agendar' }))
+
+    expect(screen.getByRole('button', { name: /Agendar para/ })).toBeDisabled()
   })
 
   it('should mandar o novo responsável para a API, um PATCH por chamado', async () => {
