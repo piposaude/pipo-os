@@ -551,6 +551,29 @@ describe('completionFailures · a life the movement does not carry', () => {
     expect(named(completionFailures(subject, stranger))).toEqual(['members[999]:unknown_member'])
   })
 
+  describe('on a forced ticket of a dependent that does not say which of several', () => {
+    const subject = subjectOf({
+      forceCompletion: true,
+      enrollmentSnapshot: {
+        member_type: 'dependent',
+        member_id: 'absent',
+        primary: { profile: { tax_id: '111' } },
+        dependents: [{ profile: { tax_id: '222' } }, { profile: { tax_id: '333' } }],
+      },
+    })
+
+    it('refuses a tax id the snapshot does not carry', () => {
+      expect(named(completionFailures(subject, stranger))).toEqual(['members[999]:unknown_member'])
+    })
+
+    it('accepts a tax id the snapshot carries', () => {
+      const answer: CompletionData = {
+        members: [{ taxId: '333', idCardNumber: 'card', startDate: '2026-04-01' }],
+      }
+      expect(completionFailures(subject, answer)).toEqual([])
+    })
+  })
+
   it('lets a forced ticket through when the snapshot names no life to compare with', () => {
     expect(completionFailures(subjectOf({ forceCompletion: true }), stranger)).toEqual([])
   })

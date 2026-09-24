@@ -220,13 +220,20 @@ export interface CompletionContext {
 const taxIdOf = (member: unknown): string | null =>
   isRecord(member) ? readString(member, ['profile', 'tax-id']) : null
 
+const dependentsOf = (snapshot: Record<string, unknown>): unknown[] => {
+  const dependents = readPath(snapshot, ['dependents'])
+  return Array.isArray(dependents) ? dependents : []
+}
+
+export function snapshotPeopleOf(snapshot: unknown): (string | null)[] {
+  if (!isRecord(snapshot)) return []
+  return [readPath(snapshot, ['primary']), ...dependentsOf(snapshot)].filter(isRecord).map(taxIdOf)
+}
+
 export function snapshotLivesOf(snapshot: unknown): (string | null)[] {
   if (!isRecord(snapshot)) return []
 
-  const primary = readPath(snapshot, ['primary'])
-  const dependents = readPath(snapshot, ['dependents'])
-  const list = Array.isArray(dependents) ? dependents : []
-
+  const list = dependentsOf(snapshot)
   const memberType = readString(snapshot, ['member-type'], ['primary', 'member-type'])
   if (memberType?.toLowerCase() === 'dependent' && list.length > 0) {
     const memberId = readString(snapshot, ['member-id'])
@@ -235,10 +242,10 @@ export function snapshotLivesOf(snapshot: unknown): (string | null)[] {
         ? undefined
         : list.find((member) => isRecord(member) && readString(member, ['member-id']) === memberId)
     const soleDependent = list.length === 1 ? list[0] : undefined
-    return [taxIdOf(pointed ?? soleDependent)]
+    return [pointed ?? soleDependent].filter(isRecord).map(taxIdOf)
   }
 
-  return [primary, ...list].filter(isRecord).map(taxIdOf)
+  return snapshotPeopleOf(snapshot)
 }
 
 export function completionContextOf(snapshot: unknown): CompletionContext {
