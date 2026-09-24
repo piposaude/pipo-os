@@ -390,6 +390,27 @@ function TicketDetail({ id }: { id: string }) {
         </div>
 
         <div className={styles.pill}>
+          <span className={styles.pillLabel}>{constants.context.actionDate}</span>
+          <input
+            type="date"
+            className={`${styles.pillAction} ${styles.pillDate}`}
+            value={ticket.actionDate ?? ''}
+            aria-label={
+              ticket.actionDate
+                ? constants.context.changeLabel(
+                    constants.context.actionDate,
+                    formatDate(ticket.actionDate),
+                  )
+                : constants.context.noActionDate
+            }
+            onClick={(event) => event.currentTarget.showPicker?.()}
+            onChange={(event) =>
+              applyPatch([ticket.id], { actionDate: event.target.value || null })
+            }
+          />
+        </div>
+
+        <div className={styles.pill}>
           <span className={styles.pillLabel}>{constants.context.owner}</span>
           <span className={styles.panelAnchor}>
             <button

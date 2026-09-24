@@ -1,4 +1,4 @@
-import { act, configure, render, screen, waitFor, within } from '@testing-library/react'
+import { act, configure, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from '@/routeTree.gen'
@@ -411,6 +411,38 @@ describe('detalhe do chamado', () => {
   /** Every seeded ticket starts with no priority, so the round trip is the only
    *  way to reach the patch that clears it — and "Sem prioridade" is disabled
    *  exactly while it is already the value. */
+  it('should schedule from the context column, sending the instant the day starts', async () => {
+    await renderAt('/tickets/700003')
+
+    const contexto = await screen.findByRole('complementary', { name: 'Contexto do chamado' })
+    fireEvent.change(within(contexto).getByLabelText(/data de ação/i), {
+      target: { value: '2026-12-15' },
+    })
+
+    await waitFor(() =>
+      expect(desk.calls.filter((call) => call.method === 'PATCH').map((call) => call.body)).toEqual(
+        [{ actionDate: '2026-12-15T03:00:00.000Z' }],
+      ),
+    )
+    expect(within(contexto).getByLabelText(/data de ação/i)).toHaveValue('2026-12-15')
+  })
+
+  it('should unschedule when the date is cleared', async () => {
+    await renderAt('/tickets/700003')
+
+    const contexto = await screen.findByRole('complementary', { name: 'Contexto do chamado' })
+    const campo = within(contexto).getByLabelText(/data de ação/i)
+    fireEvent.change(campo, { target: { value: '2026-12-15' } })
+    fireEvent.change(campo, { target: { value: '' } })
+
+    await waitFor(() =>
+      expect(desk.calls.filter((call) => call.method === 'PATCH').at(-1)?.body).toEqual({
+        actionDate: null,
+      }),
+    )
+    expect(campo).toHaveValue('')
+  })
+
   it('should clear the priority again from the menu', async () => {
     await renderAt('/tickets/700003')
     const user = userEvent.setup()
