@@ -1,4 +1,4 @@
-/** The Histórico tab: the beneficiary's open tickets, and the current one. */
+/** The Histórico tab: the open tickets of the holder's family, and the current one. */
 export default {
   columns: {
     id: 'ID',
@@ -8,5 +8,6 @@ export default {
     situation: 'Situação',
   },
   closedAt: (date: string) => `em ${date}`,
-  openOnly: 'Mostra os chamados em aberto desta pessoa. Chamados já fechados não aparecem aqui.',
+  openOnly:
+    'Mostra os chamados em aberto do mesmo titular, incluindo os dos dependentes. Chamados já fechados não aparecem aqui.',
 }

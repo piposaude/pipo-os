@@ -37,7 +37,7 @@ const movementOf = (row: TicketRow): string => {
 
 const DEFAULT_SORT: TicketSort = { by: 'createdAt', direction: 'desc' }
 
-/** Always the ticket's beneficiary, never the person shown in Dados pessoais. */
+/** Always the ticket's holder, never the person shown in Dados pessoais. */
 export function HistoryTab({ ticket, rows }: HistoryTabProps) {
   const navigate = useNavigate()
   const [sort, setSort] = useState<TicketSort>(DEFAULT_SORT)
