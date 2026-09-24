@@ -408,41 +408,60 @@ describe('detalhe do chamado', () => {
     expect(screen.getByText(constants.timeline.emailPending)).toBeInTheDocument()
   })
 
-  /** Every seeded ticket starts with no priority, so the round trip is the only
-   *  way to reach the patch that clears it — and "Sem prioridade" is disabled
-   *  exactly while it is already the value. */
-  it('should schedule from the context column, sending the instant the day starts', async () => {
+  it('should schedule from the context column once the field is left, sending the instant the day starts', async () => {
     await renderAt('/tickets/700003')
 
     const contexto = await screen.findByRole('complementary', { name: 'Contexto do chamado' })
-    fireEvent.change(within(contexto).getByLabelText(/data de ação/i), {
-      target: { value: '2026-12-15' },
-    })
+    const campo = within(contexto).getByLabelText(/data de ação/i)
+    fireEvent.change(campo, { target: { value: '0002-12-15' } })
+    fireEvent.change(campo, { target: { value: '2026-12-15' } })
+
+    expect(desk.calls.filter((call) => call.method === 'PATCH')).toEqual([])
+
+    fireEvent.blur(campo)
 
     await waitFor(() =>
       expect(desk.calls.filter((call) => call.method === 'PATCH').map((call) => call.body)).toEqual(
         [{ actionDate: '2026-12-15T03:00:00.000Z' }],
       ),
     )
-    expect(within(contexto).getByLabelText(/data de ação/i)).toHaveValue('2026-12-15')
+    expect(campo).toHaveValue('2026-12-15')
   })
 
-  it('should unschedule when the date is cleared', async () => {
+  it('should save the date on Enter too', async () => {
     await renderAt('/tickets/700003')
 
     const contexto = await screen.findByRole('complementary', { name: 'Contexto do chamado' })
     const campo = within(contexto).getByLabelText(/data de ação/i)
     fireEvent.change(campo, { target: { value: '2026-12-15' } })
-    fireEvent.change(campo, { target: { value: '' } })
+    fireEvent.keyDown(campo, { key: 'Enter' })
 
     await waitFor(() =>
-      expect(desk.calls.filter((call) => call.method === 'PATCH').at(-1)?.body).toEqual({
-        actionDate: null,
-      }),
+      expect(desk.calls.filter((call) => call.method === 'PATCH')).toHaveLength(1),
+    )
+  })
+
+  it('should unschedule when the field is left empty', async () => {
+    await renderAt('/tickets/700003')
+
+    const contexto = await screen.findByRole('complementary', { name: 'Contexto do chamado' })
+    const campo = within(contexto).getByLabelText(/data de ação/i)
+    fireEvent.change(campo, { target: { value: '2026-12-15' } })
+    fireEvent.blur(campo)
+    fireEvent.change(campo, { target: { value: '' } })
+    fireEvent.blur(campo)
+
+    await waitFor(() =>
+      expect(desk.calls.filter((call) => call.method === 'PATCH').map((call) => call.body)).toEqual(
+        [{ actionDate: '2026-12-15T03:00:00.000Z' }, { actionDate: null }],
+      ),
     )
     expect(campo).toHaveValue('')
   })
 
+  /** Every seeded ticket starts with no priority, so the round trip is the only
+   *  way to reach the patch that clears it — and "Sem prioridade" is disabled
+   *  exactly while it is already the value. */
   it('should clear the priority again from the menu', async () => {
     await renderAt('/tickets/700003')
     const user = userEvent.setup()
