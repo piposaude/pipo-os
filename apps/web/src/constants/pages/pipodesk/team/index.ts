@@ -28,6 +28,7 @@ export default {
   portfolio: (count: number) => `${count} ${count === 1 ? 'empresa' : 'empresas'}`,
   noPortfolio: '—',
   notFound: 'Não encontramos esse time.',
+  newView: '+ Nova view',
   editableBy: (group: string) => `Só a coordenação de ${group} edita carteira e membros.`,
   /** Editing (add person, move company, rename, delete) is the rest of PD-105. */
   readOnly: 'Editar carteira e membros chega com o PD-105.',

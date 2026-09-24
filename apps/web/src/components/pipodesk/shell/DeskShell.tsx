@@ -3,7 +3,14 @@ import { Outlet, useNavigate, useRouterState, useSearch } from '@tanstack/react-
 import { SidebarMainLayout } from '@piposaude/design-system'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { QueueSidebar } from '@/components/pipodesk/sidebar/QueueSidebar'
-import { HOME_NODE_ID, buildTree, type TreeNode, type TreeSection } from '@/lib/pipodesk/tree'
+import {
+  HOME_NODE_ID,
+  buildTree,
+  findNode,
+  listNodeIdOf,
+  type TreeNode,
+  type TreeSection,
+} from '@/lib/pipodesk/tree'
 import {
   INITIAL_VIEW,
   fromSearch,
@@ -36,22 +43,6 @@ const QUEUES_KEY = ['get', '/api/queues', 'all']
  * The Pipodesk shell: tree left, content right. `.desk-root` scopes the
  * operation tokens (login carries none).
  */
-/** Node by id, at any depth of the three sections. */
-function findNode(sections: TreeSection[], id: string): TreeNode | null {
-  const walk = (nodes: TreeNode[]): TreeNode | null => {
-    for (const node of nodes) {
-      if (node.id === id) return node
-      const found = walk(node.children)
-      if (found) return found
-    }
-    return null
-  }
-  for (const section of sections) {
-    const found = walk(section.nodes)
-    if (found) return found
-  }
-  return null
-}
 
 /** Global key, not per person: collapsing the menu is a preference of the
  *  screen space, not of the account. */
@@ -425,11 +416,7 @@ export function DeskShell() {
       const doomed = structure.queues.find((queue) => queue.id === id)
       if (!doomed) return
       if (view.nodeId === id) {
-        const home =
-          doomed.groupId === rootGroupOf(structure)?.id
-            ? `node-${doomed.groupId}`
-            : `node-${doomed.groupId}-chamados`
-        const landing = findNode(sections, home)
+        const landing = findNode(sections, listNodeIdOf(doomed.groupId, rootGroupOf(structure)))
         if (landing) selectNode(landing)
       }
       void (async () => {
@@ -547,7 +534,7 @@ export function DeskShell() {
               viewerId={viewerId}
               onRenameView={renameView}
               onDeleteView={deleteView}
-              onNewView={openSaveView}
+              onNewView={onQueue ? openSaveView : undefined}
               viewerInitials={iniciaisDe(viewerName)}
               viewerName={viewerName}
               viewerEmail={email}

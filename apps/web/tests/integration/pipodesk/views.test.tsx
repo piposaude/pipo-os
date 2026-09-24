@@ -34,6 +34,7 @@ const MINE: SavedView = {
 async function renderDesk(
   writes: Record<string, unknown> = {},
   viewer: 'analyst' | 'coordination' = 'analyst',
+  entry = '/',
 ) {
   const seeded = fixtureStructureRoutes(VIEWER_ID)['/api/queues'] as { data: SavedView[] }
   views = [...seeded.data, MINE]
@@ -71,11 +72,12 @@ async function renderDesk(
   }
   const router = createRouter({
     routeTree,
-    history: createMemoryHistory({ initialEntries: ['/'] }),
+    history: createMemoryHistory({ initialEntries: [entry] }),
   })
   render(<RouterProvider router={router} />)
   await screen.findByRole('navigation', { name: /pipodesk/i })
   await within(sidebar()).findAllByRole('button', { name: /^Expandir POD/i })
+  return router
 }
 
 async function openViewerPod(user: ReturnType<typeof userEvent.setup>) {
@@ -331,5 +333,30 @@ describe('o menu … da linha da sidebar', () => {
     const where = within(dialog).getByRole('combobox', { name: 'Onde ela mora' })
     expect(where).toBeDisabled()
     expect(where).toHaveValue(VIEWER_GROUP_ID)
+  })
+})
+
+describe('criar visão a partir da página do time', () => {
+  it('should open the queue of the pod with Salvar visão locked on it', async () => {
+    const router = await renderDesk({}, 'analyst', `/teams/${VIEWER_GROUP_ID}?tab=views`)
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: '+ Nova view' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Salvar visão' })
+    const where = within(dialog).getByRole('combobox', { name: 'Onde ela mora' })
+    expect(where).toBeDisabled()
+    expect(where).toHaveValue(VIEWER_GROUP_ID)
+    expect(router.state.location.pathname).toBe('/')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Chamados')
+  })
+
+  it('should not offer Nova view aqui in the sidebar while the team page is open', async () => {
+    await renderDesk({}, 'coordination', `/teams/${VIEWER_GROUP_ID}?tab=views`)
+
+    await screen.findByRole('button', { name: '+ Nova view' })
+    expect(
+      within(sidebar()).queryByRole('button', { name: /^Ações de POD/ }),
+    ).not.toBeInTheDocument()
   })
 })
