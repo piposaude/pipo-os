@@ -5,6 +5,7 @@
  * rest to `PATCH /tickets/:id` — destination changes, shape does not.
  */
 
+import { startOfBusinessDay } from '@/lib/date'
 import { FINAL_STATUSES, toDisplayStatus, type ApiStatus } from './status'
 import type { Priority, TicketRow } from './ticket-row'
 
@@ -50,4 +51,14 @@ export function applyPatches(
     }
     return next
   })
+}
+
+export type TicketFieldsBody = Omit<TicketPatch, 'status' | 'groupId'>
+
+export function ticketFieldsBody(patch: TicketPatch): TicketFieldsBody {
+  const { status, groupId, ...fields } = patch
+  void status
+  void groupId
+  if (fields.actionDate) fields.actionDate = startOfBusinessDay(fields.actionDate)
+  return fields
 }

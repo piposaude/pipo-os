@@ -147,6 +147,10 @@
   background: var(--pipo-neutral-lightest);
 }
 
+.pillDate::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
 .panelAnchor {
   position: relative;
   display: inline-flex;

@@ -19,6 +19,7 @@ const renderRow = (ticket: (typeof queueSeed)[number], cols: typeof columns = co
           onToggleSelect={() => {}}
           today="2026-08-07"
           resolveName={(id) => id}
+          onSetPriority={() => {}}
         />
       </tbody>
     </table>,

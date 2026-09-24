@@ -1,4 +1,4 @@
-import { act, configure, render, screen, waitFor, within } from '@testing-library/react'
+import { act, configure, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from '@/routeTree.gen'
@@ -406,6 +406,74 @@ describe('detalhe do chamado', () => {
     expect(email).toBeDisabled()
     expect(email).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByText(constants.timeline.emailPending)).toBeInTheDocument()
+  })
+
+  it('should schedule from the context column once the field is left, sending the instant the day starts', async () => {
+    await renderAt('/tickets/700003')
+
+    const contexto = await screen.findByRole('complementary', { name: 'Contexto do chamado' })
+    const campo = within(contexto).getByLabelText(/data de ação/i)
+    fireEvent.change(campo, { target: { value: '0002-12-15' } })
+    fireEvent.change(campo, { target: { value: '2026-12-15' } })
+
+    expect(desk.calls.filter((call) => call.method === 'PATCH')).toEqual([])
+
+    fireEvent.blur(campo)
+
+    await waitFor(() =>
+      expect(desk.calls.filter((call) => call.method === 'PATCH').map((call) => call.body)).toEqual(
+        [{ actionDate: '2026-12-15T03:00:00.000Z' }],
+      ),
+    )
+    expect(campo).toHaveValue('2026-12-15')
+  })
+
+  it('should save the date on Enter too', async () => {
+    await renderAt('/tickets/700003')
+
+    const contexto = await screen.findByRole('complementary', { name: 'Contexto do chamado' })
+    const campo = within(contexto).getByLabelText(/data de ação/i)
+    fireEvent.change(campo, { target: { value: '2026-12-15' } })
+    fireEvent.keyDown(campo, { key: 'Enter' })
+
+    await waitFor(() =>
+      expect(desk.calls.filter((call) => call.method === 'PATCH')).toHaveLength(1),
+    )
+  })
+
+  it('should unschedule when the field is left empty', async () => {
+    await renderAt('/tickets/700003')
+
+    const contexto = await screen.findByRole('complementary', { name: 'Contexto do chamado' })
+    const campo = within(contexto).getByLabelText(/data de ação/i)
+    fireEvent.change(campo, { target: { value: '2026-12-15' } })
+    fireEvent.blur(campo)
+    fireEvent.change(campo, { target: { value: '' } })
+    fireEvent.blur(campo)
+
+    await waitFor(() =>
+      expect(desk.calls.filter((call) => call.method === 'PATCH').map((call) => call.body)).toEqual(
+        [{ actionDate: '2026-12-15T03:00:00.000Z' }, { actionDate: null }],
+      ),
+    )
+    expect(campo).toHaveValue('')
+  })
+
+  it('should keep the date when the field is left half-erased', async () => {
+    await renderAt('/tickets/700003')
+
+    const contexto = await screen.findByRole('complementary', { name: 'Contexto do chamado' })
+    const campo = within(contexto).getByLabelText(/data de ação/i)
+    fireEvent.change(campo, { target: { value: '2026-12-15' } })
+    fireEvent.blur(campo)
+    Object.defineProperty(campo, 'validity', { value: { badInput: true }, configurable: true })
+    fireEvent.change(campo, { target: { value: '' } })
+    fireEvent.blur(campo)
+
+    await waitFor(() => expect(campo).toHaveValue('2026-12-15'))
+    expect(desk.calls.filter((call) => call.method === 'PATCH').map((call) => call.body)).toEqual([
+      { actionDate: '2026-12-15T03:00:00.000Z' },
+    ])
   })
 
   /** Every seeded ticket starts with no priority, so the round trip is the only
