@@ -205,13 +205,18 @@ export function DeskShell() {
         const saved = ids.filter((id) => !refused.includes(id))
         if (saved.length === 0) return
 
+        const detail = ['get', '/api/tickets/{id}']
         const [rowsRead, inboxRead] = await Promise.all([
           refetchRows(),
           refetchInbox(),
-          queryClient.refetchQueries({ queryKey: ['get', '/api/tickets/{id}'] }),
-          queryClient.refetchQueries({ queryKey: ['get', '/api/tickets/{id}/timeline'] }),
+          queryClient.invalidateQueries({ queryKey: detail }),
+          queryClient.invalidateQueries({ queryKey: ['get', '/api/tickets/{id}/timeline'] }),
         ])
-        if (rowsRead.isError || inboxRead.isError)
+        const detailFailed = queryClient
+          .getQueryCache()
+          .findAll({ queryKey: detail, type: 'active' })
+          .some((query) => query.state.status === 'error')
+        if (rowsRead.isError || inboxRead.isError || detailFailed)
           for (const id of saved) awaitingRead.current.add(id)
         else dropPatches(saved)
       })

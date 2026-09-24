@@ -1,4 +1,4 @@
-import { configure, render, screen, waitFor, within } from '@testing-library/react'
+import { act, configure, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from '@/routeTree.gen'
@@ -546,6 +546,64 @@ describe('detalhe do chamado', () => {
     )
 
     expect(await screen.findByText(`Responsável alterado: ${name}`)).toBeInTheDocument()
+  })
+
+  it('should reread only the ticket on screen after a write, not every ticket seen before', async () => {
+    const reads: string[] = []
+    const inner = globalThis.fetch
+    globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+      const request = input instanceof Request ? input : null
+      const method = (init?.method ?? request?.method ?? 'GET').toUpperCase()
+      if (method === 'GET') reads.push(new URL(request?.url ?? String(input), 'http://x').pathname)
+      return inner(input, init)
+    }) as typeof globalThis.fetch
+
+    const router = await renderAt('/tickets/700002')
+    await screen.findByText('700002')
+    await router.navigate({ to: '/tickets/$id', params: { id: '700003' } })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: /^Prioridade:/ }))
+    const before = reads.filter((path) => path.startsWith('/api/tickets/700002')).length
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Prioridade' })).getByRole('button', {
+        name: 'Urgente',
+      }),
+    )
+
+    await waitFor(() => expect(desk.calls.some((call) => call.method === 'PATCH')).toBe(true))
+    await waitFor(() =>
+      expect(reads.filter((path) => path === '/api/tickets/700003').length).toBeGreaterThan(1),
+    )
+    expect(reads.filter((path) => path.startsWith('/api/tickets/700002')).length).toBe(before)
+  })
+
+  it('should keep the saved priority on screen when rereading the ticket fails', async () => {
+    const row = byId('700003')
+    desk.restore()
+    desk = (await import('../../helpers/desk')).mountDeskFixture(
+      {},
+      {
+        '/api/tickets/inbox': { data: [], total: 0 },
+        '/api/tickets/700003': () => {
+          if (desk.calls.some((call) => call.method === 'PATCH')) throw new TypeError('rede')
+          return apiTicketOf({ ...row, priority: null })
+        },
+      },
+    )
+    await renderAt('/tickets/700003')
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: /^Prioridade:/ }))
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Prioridade' })).getByRole('button', {
+        name: 'Urgente',
+      }),
+    )
+
+    await waitFor(() => expect(desk.calls.some((call) => call.method === 'PATCH')).toBe(true))
+    await act(() => vi.advanceTimersByTimeAsync(10_000))
+    await act(() => vi.advanceTimersByTimeAsync(100))
+    expect(screen.getByRole('button', { name: /^Prioridade: Urgente/ })).toBeInTheDocument()
   })
 
   it('should offer the analysts of the pod, from the structure and not from the load', async () => {
