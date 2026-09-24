@@ -153,6 +153,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/companies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Repetido: ?ids=a&ids=b. No máximo 100. */
+                    ids?: string[];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CompanyList"];
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/groups": {
         parameters: {
             query?: never;
@@ -2614,6 +2688,17 @@ export interface components {
         };
         CommentList: {
             data: components["schemas"]["TicketComment"][];
+        };
+        /** @description The companies asked for that the company-service knows. An unknown id is left out. */
+        CompanyList: {
+            data: components["schemas"]["CompanySummary"][];
+        };
+        /** @description A company as the company-service knows it. taxId is the CNPJ as the company-service stores it. Either can be null when the company-service has none. */
+        CompanySummary: {
+            /** Format: uuid */
+            id: string;
+            name: string | null;
+            taxId: string | null;
         };
         CreateAutomatedEventBodyInput: {
             /** @enum {string} */
