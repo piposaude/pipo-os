@@ -145,9 +145,9 @@ interface PersonContext {
   product: string
 }
 
-function personOf(raw: unknown, context: PersonContext): Person | null {
+function personOf(raw: unknown, context: PersonContext, fallbackId?: string): Person | null {
   const cpf = readString(raw, ['profile', 'tax-id'])
-  const id = readString(raw, ['member-id']) ?? cpf
+  const id = readString(raw, ['member-id']) ?? cpf ?? fallbackId ?? null
   if (id === null) return null
   const card = readString(raw, ['benefit', 'id-card-number'])
   return {
@@ -229,14 +229,13 @@ export function recordsFromTicket(ticket: Ticket): TicketRecords {
   })
   const rawDependents = readList(snapshot, ['dependents'])
   const dependents = holder
-    ? rawDependents.flatMap((raw) => {
-        const dependent = personOf(raw, {
-          role: 'dependent',
-          holderId: holder.id,
-          link: holderLink,
-          carrierId,
-          product,
-        })
+    ? rawDependents.flatMap((raw, index) => {
+        if (!isRecord(raw)) return []
+        const dependent = personOf(
+          raw,
+          { role: 'dependent', holderId: holder.id, link: holderLink, carrierId, product },
+          `${ticket.id}-dependent-${index}`,
+        )
         return dependent ? [dependent] : []
       })
     : []

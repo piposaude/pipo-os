@@ -269,6 +269,22 @@ describe('recordsFromTicket — a movimentação', () => {
     )
   })
 
+  it('should move the only dependent even when it has no member id nor CPF', () => {
+    const dependentMove = apiTicket({
+      id: 'ticket-5',
+      enrollmentSnapshot: {
+        ...payload,
+        member_type: 'dependent',
+        dependents: [{ relationship: 'child', profile: { tax_id: '', name: 'Caio Souza' } }],
+      },
+    })
+    const records = recordsFromTicket(dependentMove)
+    const moved = records.movementOf('ticket-5')?.beneficiaryId
+
+    expect(moved).toBe('ticket-5-dependent-0')
+    expect(records.personById.get(moved!)).toMatchObject({ name: 'Caio Souza', role: 'dependent' })
+  })
+
   it('should have no movement when the snapshot has no holder', () => {
     expect(recordsFromTicket(apiTicket({ enrollmentSnapshot: {} })).movementOf('ticket-1')).toBe(
       undefined,
