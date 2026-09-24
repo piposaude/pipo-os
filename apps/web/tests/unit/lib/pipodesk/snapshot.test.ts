@@ -207,6 +207,21 @@ describe('recordsFromTicket — a pessoa', () => {
     })
   })
 
+  it('should read sex and marital status regardless of case, as the EI displays them', () => {
+    const shouting = apiTicket({
+      enrollmentSnapshot: {
+        primary: {
+          profile: { tax_id: '1', name: 'X', gender: 'Female', marital_status: 'MARRIED' },
+        },
+      },
+    })
+
+    expect(recordsFromTicket(shouting).personById.get('1')).toMatchObject({
+      sex: 'f',
+      maritalStatus: 'married',
+    })
+  })
+
   it('should key a person by CPF when the EI sent no member id', () => {
     const noMemberId = apiTicket({
       enrollmentSnapshot: { primary: { profile: { tax_id: '999', name: 'Sem Id' } } },

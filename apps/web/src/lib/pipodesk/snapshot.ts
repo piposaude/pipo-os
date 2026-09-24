@@ -93,7 +93,7 @@ const MARITAL_STATUSES: readonly MaritalStatus[] = [
 ]
 
 function maritalStatusOf(value: string | null): MaritalStatus | null {
-  return MARITAL_STATUSES.find((status) => status === value) ?? null
+  return MARITAL_STATUSES.find((status) => status === value?.toLowerCase()) ?? null
 }
 
 function addressOf(person: unknown): Address | null {
@@ -156,7 +156,7 @@ function personOf(raw: unknown, context: PersonContext): Person | null {
     socialName: readString(raw, ['profile', 'preferred-name']),
     cpf: cpf ?? '',
     birthDate: readString(raw, ['profile', 'date-of-birth']),
-    sex: SEX_OF[readString(raw, ['profile', 'gender']) ?? ''] ?? null,
+    sex: SEX_OF[readString(raw, ['profile', 'gender'])?.toLowerCase() ?? ''] ?? null,
     email: readString(raw, ['contact', 'email']),
     phone: readString(raw, ['contact', 'phone']),
     maritalStatus: maritalStatusOf(readString(raw, ['profile', 'marital-status'])),
