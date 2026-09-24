@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from '@/routeTree.gen'
+import { useSessionStore } from '@/stores/session'
 import { ROOT_GROUP_ID, VIEWER_GROUP_ID, VIEWER_ID } from '@/fixtures/pipodesk/dataset'
 import { DEFAULT_SORT } from '@/lib/pipodesk/sort'
 import { fixtureStructureRoutes, page, type ApiMock } from '../../helpers/api'
@@ -13,9 +14,24 @@ type SavedView = Record<string, unknown> & { id: string }
 let desk: ApiMock
 let views: SavedView[]
 
-async function renderDesk(writes: Record<string, unknown> = {}) {
+const COORDINATION_ID = 'user-1'
+const MINE: SavedView = {
+  id: 'view-mine',
+  name: 'Minhas urgentes',
+  groupId: VIEWER_GROUP_ID,
+  ownerId: VIEWER_ID,
+  filters: { priorities: ['urgent'] },
+  sort: DEFAULT_SORT,
+  groupBy: null,
+  favorite: false,
+}
+
+async function renderDesk(
+  writes: Record<string, unknown> = {},
+  viewer: 'analyst' | 'coordination' = 'analyst',
+) {
   const seeded = fixtureStructureRoutes(VIEWER_ID)['/api/queues'] as { data: SavedView[] }
-  views = [...seeded.data]
+  views = [...seeded.data, MINE]
   desk = (await import('../../helpers/desk')).mountDeskFixture(
     {},
     {
@@ -25,16 +41,35 @@ async function renderDesk(writes: Record<string, unknown> = {}) {
         views = [...views, created]
         return { status: 201, body: created }
       },
+      'PATCH /api/queues/:id': (body: Record<string, unknown>, path: string) => {
+        const id = path.split('/').pop()
+        views = views.map((view) => (view.id === id ? { ...view, ...body } : view))
+        return { status: 200, body: views.find((view) => view.id === id) }
+      },
       ...writes,
     },
   )
+  if (viewer === 'coordination') {
+    useSessionStore.setState({
+      status: 'authenticated',
+      user: {
+        ...useSessionStore.getState().user!,
+        sub: COORDINATION_ID,
+        groups: [{ groupId: VIEWER_GROUP_ID, role: 'admin' }],
+      },
+    })
+  }
   const router = createRouter({
     routeTree,
     history: createMemoryHistory({ initialEntries: ['/'] }),
   })
   render(<RouterProvider router={router} />)
   await screen.findByRole('navigation', { name: /pipodesk/i })
-  await screen.findByRole('table')
+  await within(sidebar()).findAllByRole('button', { name: /^Expandir POD/i })
+}
+
+async function openViewerPod(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(within(sidebar()).getAllByRole('button', { name: /^Expandir POD/i })[0])
 }
 
 afterEach(() => {
@@ -119,5 +154,83 @@ describe('salvar a fila como visão', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Não foi possível salvar a alteração.',
     )
+  })
+})
+
+describe('renomear uma visão na sidebar', () => {
+  it('should rename the viewer own view in place, on a double click', async () => {
+    await renderDesk()
+    const user = userEvent.setup()
+    await openViewerPod(user)
+
+    await user.dblClick(within(sidebar()).getByText('Minhas urgentes'))
+    const field = within(sidebar()).getByRole('textbox', { name: 'Renomear Minhas urgentes' })
+    await user.clear(field)
+    await user.type(field, 'Urgentes do dia{Enter}')
+
+    expect(desk.calls.find((call) => call.method === 'PATCH')).toEqual({
+      method: 'PATCH',
+      path: '/api/queues/view-mine',
+      body: { name: 'Urgentes do dia' },
+    })
+    expect(within(sidebar()).getByText('Urgentes do dia')).toBeInTheDocument()
+    expect(within(sidebar()).queryByRole('textbox')).not.toBeInTheDocument()
+  })
+
+  it('should keep the name when Escape cancels or the field is left empty', async () => {
+    await renderDesk()
+    const user = userEvent.setup()
+    await openViewerPod(user)
+
+    await user.dblClick(within(sidebar()).getByText('Minhas urgentes'))
+    await user.type(within(sidebar()).getByRole('textbox'), ' novo{Escape}')
+    await user.dblClick(within(sidebar()).getByText('Minhas urgentes'))
+    await user.clear(within(sidebar()).getByRole('textbox'))
+    await user.keyboard('{Enter}')
+
+    expect(desk.calls.filter((call) => call.method === 'PATCH')).toHaveLength(0)
+    expect(within(sidebar()).getByText('Minhas urgentes')).toBeInTheDocument()
+  })
+
+  it('should not let an analyst rename the view of the team', async () => {
+    await renderDesk()
+    const user = userEvent.setup()
+    await openViewerPod(user)
+
+    await user.dblClick(within(sidebar()).getAllByText('Meus e livres')[0])
+
+    expect(within(sidebar()).queryByRole('textbox')).not.toBeInTheDocument()
+  })
+
+  it('should let the coordination rename the view of the team, but never a MOV', async () => {
+    await renderDesk({}, 'coordination')
+    const user = userEvent.setup()
+    await openViewerPod(user)
+
+    await user.dblClick(within(sidebar()).getAllByText('MOV CLT')[0])
+    expect(within(sidebar()).queryByRole('textbox')).not.toBeInTheDocument()
+
+    await user.dblClick(within(sidebar()).getAllByText('Meus e livres')[0])
+    expect(
+      within(sidebar()).getByRole('textbox', { name: 'Renomear Meus e livres' }),
+    ).toBeInTheDocument()
+  })
+
+  it('should put the old name back when the API refuses it', async () => {
+    await renderDesk({
+      'PATCH /api/queues/:id': () => ({ status: 409, body: { message: 'não' } }),
+    })
+    const user = userEvent.setup()
+    await openViewerPod(user)
+
+    await user.dblClick(within(sidebar()).getByText('Minhas urgentes'))
+    const field = within(sidebar()).getByRole('textbox')
+    await user.clear(field)
+    await user.type(field, 'Outro nome{Enter}')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível salvar a alteração.',
+    )
+    expect(within(sidebar()).getByText('Minhas urgentes')).toBeInTheDocument()
   })
 })
