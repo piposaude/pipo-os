@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { updateTicketStatusBodySchema } from '../tickets/schemas.js'
 import { serviceEventTypeSchema, ticketEventTypeSchema } from './event-types.js'
 
 /* The three the CHECK of migration 0030 allows. `system` is wider than
@@ -94,6 +95,40 @@ export function withDefaultKind(body: unknown): unknown {
 
   return { ...body, kind: 'manual' }
 }
+
+const submissionPartSchema = z
+  .object({
+    channel: z.enum(['internal', 'platform']),
+    body: commentBodyBase.body,
+  })
+  .strict()
+
+export const createSubmissionBodySchema = z
+  .object({
+    parts: z.array(submissionPartSchema).max(2).default([]),
+    status: updateTicketStatusBodySchema.optional(),
+    inReplyTo: z.uuid().optional(),
+  })
+  .strict()
+  .superRefine((body, ctx) => {
+    if (body.parts.length === 0 && body.status === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['parts'],
+        message: 'A submission carries at least one part or a status',
+      })
+    }
+    body.parts.forEach((part, index) => {
+      if (body.parts.findIndex((other) => other.channel === part.channel) !== index) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['parts', index, 'channel'],
+          message: `Channel ${part.channel} appears more than once`,
+        })
+      }
+    })
+  })
+  .meta({ id: 'CreateSubmissionBody' })
 
 export const commentListSchema = z
   .object({
@@ -191,3 +226,4 @@ export type CreateCommentBody = z.infer<typeof createCommentBodySchema>
 export type CreateManualCommentBody = z.infer<typeof createManualCommentBodySchema>
 export type CreateAutomatedEventBody = z.infer<typeof createAutomatedEventBodySchema>
 export type CommentList = z.infer<typeof commentListSchema>
+export type CreateSubmissionBody = z.infer<typeof createSubmissionBodySchema>
