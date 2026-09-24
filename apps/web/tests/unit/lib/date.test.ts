@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { businessDay, formatDateTime } from '@/lib/date'
+import { businessDay, formatDateTime, startOfBusinessDay } from '@/lib/date'
 
 describe('formatDateTime', () => {
   it('should format a valid ISO date as pt-BR date and time in America/Sao_Paulo', () => {
@@ -29,5 +29,17 @@ describe('businessDay', () => {
 
   it('should let a value that is already a day pass through', () => {
     expect(businessDay('2026-08-07')).toBe('2026-08-07')
+  })
+})
+
+describe('startOfBusinessDay', () => {
+  it('should yield the instant São Paulo midnight falls on, not UTC midnight', () => {
+    expect(startOfBusinessDay('2026-09-30')).toBe('2026-09-30T03:00:00.000Z')
+  })
+
+  it('should read back as the same business day', () => {
+    for (const day of ['2026-01-01', '2026-02-28', '2026-12-31']) {
+      expect(businessDay(startOfBusinessDay(day))).toBe(day)
+    }
   })
 })

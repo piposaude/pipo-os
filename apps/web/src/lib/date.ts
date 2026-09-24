@@ -39,3 +39,29 @@ export function businessDay(isoDate: string): string {
 export function businessToday(): string {
   return businessDay(new Date().toISOString())
 }
+
+const wallClock = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/Sao_Paulo',
+  hourCycle: 'h23',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+})
+
+function offsetAt(instant: Date): number {
+  const part = new Map(wallClock.formatToParts(instant).map((p) => [p.type, p.value]))
+  const n = (type: Intl.DateTimeFormatPartTypes): number => Number(part.get(type))
+  const asUtc = Date.UTC(n('year'), n('month') - 1, n('day'), n('hour'), n('minute'), n('second'))
+  return asUtc - Math.floor(instant.getTime() / 1000) * 1000
+}
+
+/** The instant a São Paulo day starts, as ISO. Twin of `startOfBusinessDay` in
+ *  api/src/shared/business-date.ts, whose cut decides when a ticket sleeps. */
+export function startOfBusinessDay(isoDate: string): string {
+  const utcMidnight = new Date(`${isoDate}T00:00:00Z`)
+  const guess = new Date(utcMidnight.getTime() - offsetAt(utcMidnight))
+  return new Date(utcMidnight.getTime() - offsetAt(guess)).toISOString()
+}
