@@ -13,6 +13,7 @@ import { digitsOf } from '../../shared/text.js'
 import { FK_VIOLATION, UNIQUE_VIOLATION } from '../../shared/pg.js'
 import type { Author } from '../auth/authenticate.js'
 import { insertEvent, type TicketEventInput } from '../comments/repository.js'
+import { enqueueStatusChange } from '../webhooks/deliveries.js'
 import {
   completionFailures,
   unknownMemberFailures,
@@ -195,6 +196,14 @@ function completionOf(
       })),
     ...fields,
   }
+}
+
+function selectCompletionMembers(db: Kysely<Database>, ticketId: string) {
+  return db
+    .selectFrom('ticket_completion_members')
+    .select(['tax_id', 'id_card_number', sql<string>`start_date::text`.as('start_date')])
+    .where('ticket_id', '=', ticketId)
+    .execute()
 }
 
 /** Three values have no column yet, so they are dug out of the jsonb here. */
@@ -405,11 +414,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
         ])
         .where('id', '=', id)
         .executeTakeFirst(),
-      this.db
-        .selectFrom('ticket_completion_members')
-        .select(['tax_id', 'id_card_number', sql<string>`start_date::text`.as('start_date')])
-        .where('ticket_id', '=', id)
-        .execute(),
+      selectCompletionMembers(this.db, id),
     ])
     if (!row) return undefined
 
@@ -727,9 +732,13 @@ export class TicketsRepository implements TicketsRepositoryPort {
         .set({ status: toStatus, closed_at: closedAt, ...completionColumnsOf(completion) })
         .where('id', '=', id)
         .returningAll()
+        .returning([
+          sql<string | null>`end_date::text`.as('end_date_text'),
+          sql<string | null>`effective_date::text`.as('effective_date_text'),
+        ])
         .executeTakeFirstOrThrow()
 
-      await trx
+      const history = await trx
         .insertInto('ticket_status_history')
         .values({
           ticket_id: id,
@@ -738,10 +747,26 @@ export class TicketsRepository implements TicketsRepositoryPort {
           author_id: authorId,
           author_type: 'user',
           reason: reason ?? null,
+          created_at: sql<Date>`clock_timestamp()`,
         })
-        .execute()
+        .returning(['id', 'created_at'])
+        .executeTakeFirstOrThrow()
 
-      return { kind: 'ok', ticket: toTicket(updated) }
+      const ticket = toTicket(updated)
+      await enqueueStatusChange(trx, history.id, {
+        ticket,
+        fromStatus: current.status,
+        toStatus,
+        reason: reason ?? null,
+        actor: { type: 'user', id: authorId },
+        occurredAt: history.created_at.toISOString(),
+        completion:
+          toStatus === 'completed'
+            ? completionOf(updated, await selectCompletionMembers(trx, id))
+            : null,
+      })
+
+      return { kind: 'ok', ticket }
     })
   }
 
