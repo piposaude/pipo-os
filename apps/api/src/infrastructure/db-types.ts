@@ -31,8 +31,10 @@ export interface OutboundWebhookDeliveries {
   delivered_at: Timestamp | null;
   id: Generated<string>;
   last_error: string | null;
+  locked_at: Timestamp | null;
+  next_attempt_at: Generated<Timestamp>;
   payload: Json;
-  signing_secret: string;
+  response_status: number | null;
   status: Generated<string>;
   status_history_id: string;
   target_url: string;
