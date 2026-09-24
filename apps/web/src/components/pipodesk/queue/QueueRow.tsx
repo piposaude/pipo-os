@@ -83,7 +83,7 @@ export function QueueRow({
       </td>
     ),
     id: (
-      <td key="id" className={styles.num}>
+      <td key="id" className={`${styles.num} ${styles.idColumn}`}>
         <span className={styles.idCell}>
           <PriorityMenu
             value={ticket.priority}

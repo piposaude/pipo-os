@@ -798,6 +798,12 @@
   font-size: 0.8125rem;
 }
 
+/* The priority panel is positioned inside this cell; the clipping every body
+   cell needs would swallow it, as it did the header funnel. */
+.table td.idColumn {
+  overflow: visible;
+}
+
 .idCell {
   display: inline-flex;
   align-items: center;
