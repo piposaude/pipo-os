@@ -31,7 +31,7 @@ export function PriorityMenu({ value, ticketNumber, onChange }: PriorityMenuProp
         aria-label={
           value === null
             ? constants.priority.set(ticketNumber)
-            : constants.priority.change(PRIORITY_COPY[value])
+            : constants.priority.change(PRIORITY_COPY[value], ticketNumber)
         }
         title={value === null ? constants.priority.none : PRIORITY_COPY[value]}
         aria-expanded={open}

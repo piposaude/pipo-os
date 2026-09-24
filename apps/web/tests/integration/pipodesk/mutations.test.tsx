@@ -135,7 +135,10 @@ describe('o que a tela muda, a API grava', () => {
       expect.objectContaining({ path: `/api/tickets/${id}`, body: { priority: 'high' } }),
     ])
     expect(router.state.location.pathname).toBe('/')
-    expect(within(row).getByRole('button', { name: /prioridade alta/i })).toBeInTheDocument()
+    const number = within(row).getByRole('checkbox').getAttribute('aria-label')!.replace(/^\D+/, '')
+    expect(
+      within(row).getByRole('button', { name: `Prioridade Alta do chamado ${number}. Trocar` }),
+    ).toBeInTheDocument()
   })
 
   it('should não abrir o chamado num clique no espaço do menu de prioridade', async () => {

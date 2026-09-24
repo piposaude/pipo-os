@@ -29,6 +29,7 @@ export default {
     label: 'Prioridade',
     none: 'Sem prioridade',
     set: (ticketNumber: string) => `Sem prioridade. Definir prioridade do chamado ${ticketNumber}`,
-    change: (level: string) => `Prioridade ${level}. Trocar`,
+    change: (level: string, ticketNumber: string) =>
+      `Prioridade ${level} do chamado ${ticketNumber}. Trocar`,
   },
 }
