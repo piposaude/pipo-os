@@ -390,3 +390,85 @@
   outline: none;
   box-shadow: var(--pipo-shadow-focus-primary);
 }
+
+/* Two classes: the DS PopoverMenu sets `position: relative` on the same node. */
+.row .menuAnchor {
+  position: absolute;
+  top: 3px;
+  right: 2px;
+}
+
+.menuTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: var(--pipo-radius-pill);
+  background: none;
+  color: var(--desk-row-action);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease;
+}
+
+.row:hover .menuTrigger,
+.menuTrigger:focus-visible,
+.menuTrigger[aria-expanded='true'] {
+  opacity: 1;
+  pointer-events: auto;
+  transition-duration: 0s;
+}
+
+.menuTrigger:hover {
+  background: var(--pipo-neutral-light);
+  color: var(--desk-row-action-hover);
+}
+
+.menuTrigger:focus-visible {
+  outline: none;
+  box-shadow: var(--pipo-shadow-focus-primary);
+}
+
+.row:has(.menuAnchor):hover > .count {
+  visibility: hidden;
+}
+
+.row:has(.menuTrigger[aria-expanded='true']) {
+  background: var(--desk-nav-hover);
+}
+
+.sidebar :global([role='menu'][role='menu']) {
+  padding: 6px 0;
+  border: 0.5px solid var(--desk-menu-line);
+  border-radius: 12px;
+  box-shadow:
+    0 6px 18px 0 rgb(0 0 0 / 2%),
+    0 3px 9px 0 rgb(0 0 0 / 4%),
+    0 1px 1px 0 rgb(0 0 0 / 4%);
+}
+
+.sidebar :global([role='menu'][role='menu'] > [role='menuitem']) {
+  display: flex;
+  align-items: center;
+  width: calc(100% - 12px);
+  height: 32px;
+  margin: 0 6px;
+  padding: 0 12px 0 8px;
+  border-radius: var(--pipo-radius-small);
+}
+
+.sidebar :global([role='menu'][role='menu'] > [role='menuitem']:hover) {
+  background: var(--desk-menu-hover);
+}
+
+.sidebar :global([role='menu'][role='menu'] [role='separator']) {
+  margin: 6px 0;
+  border: none;
+  border-bottom: 0.5px solid var(--desk-menu-line);
+}

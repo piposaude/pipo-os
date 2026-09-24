@@ -37,6 +37,11 @@
   --desk-nav-hover: #e7e7e8;
   --desk-nav-selected: #e1e1e2;
 
+  --desk-row-action: #969799;
+  --desk-row-action-hover: #2e2e30;
+  --desk-menu-line: #e8e8e8;
+  --desk-menu-hover: #f1f1f1;
+
   /* Logical 1px, 0.5px on high-dpi — a dense table grid gets too heavy otherwise. */
   --desk-hairline: 1px;
 
