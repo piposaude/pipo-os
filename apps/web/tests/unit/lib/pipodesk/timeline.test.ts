@@ -174,6 +174,18 @@ describe('timelineFromApi', () => {
 
     expect(timelineFromApi(row({ id: '1' }), items, resolveName)[1].body).toContain('status-novo')
   })
+
+  it('should skip an item type this version does not know, instead of breaking the page', () => {
+    const items = [
+      { ...base, id: 'a', type: 'comment', channel: 'internal', visibility: 'private', body: '1º' },
+      { ...base, id: 'b', type: 'attachment-added' },
+    ] as unknown as TimelineItem[]
+
+    expect(timelineFromApi(row({ id: '1' }), items, resolveName).map((e) => e.id)).toEqual([
+      '1-created',
+      'a',
+    ])
+  })
 })
 
 describe('commentBodyOf', () => {

@@ -110,27 +110,33 @@ export function timelineFromApi(
 
   return [
     created,
-    ...items.map((item): TimelineEvent => {
+    ...items.flatMap((item): TimelineEvent[] => {
       const actor =
         item.authorType === 'user' && item.authorId ? resolveName(item.authorId) : SYSTEM
       switch (item.type) {
         case 'comment':
-          return {
-            id: item.id,
-            at: item.createdAt,
-            actor,
-            body: item.body,
-            channel: channelOf(item),
-          }
+          return [
+            {
+              id: item.id,
+              at: item.createdAt,
+              actor,
+              body: item.body,
+              channel: channelOf(item),
+            },
+          ]
         case 'event':
-          return { id: item.id, at: item.createdAt, actor, body: eventBody(item, resolveName) }
+          return [{ id: item.id, at: item.createdAt, actor, body: eventBody(item, resolveName) }]
         case 'status-changed':
-          return {
-            id: item.id,
-            at: item.createdAt,
-            actor,
-            body: `Situação mudou de ${statusLabel(item.fromStatus)} para ${statusLabel(item.toStatus)}.`,
-          }
+          return [
+            {
+              id: item.id,
+              at: item.createdAt,
+              actor,
+              body: `Situação mudou de ${statusLabel(item.fromStatus)} para ${statusLabel(item.toStatus)}.`,
+            },
+          ]
+        default:
+          return []
       }
     }),
   ]
