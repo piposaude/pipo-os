@@ -86,6 +86,7 @@ export async function getCompanies({ ids, logger }: GetCompaniesParams): Promise
 
     const asked = new Set(ids)
     let dropped = 0
+    let unasked = 0
     const companies = data.companies.flatMap((row: unknown) => {
       const parsed = companyRowSchema.safeParse(row)
       if (!parsed.success) {
@@ -95,6 +96,7 @@ export async function getCompanies({ ids, logger }: GetCompaniesParams): Promise
 
       const id = parsed.data.id.toLowerCase()
       if (!asked.has(id)) {
+        unasked += 1
         return []
       }
 
@@ -105,6 +107,13 @@ export async function getCompanies({ ids, logger }: GetCompaniesParams): Promise
       logger?.warn(
         { dropped, seen: data.companies.length },
         'company lookup: rows dropped for breaking the company-service contract',
+      )
+    }
+
+    if (unasked > 0) {
+      logger?.warn(
+        { unasked, seen: data.companies.length },
+        'company lookup: rows dropped for companies that were not asked for',
       )
     }
 

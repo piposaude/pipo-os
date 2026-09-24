@@ -77,7 +77,8 @@ describe('getCompanies', () => {
     ])
   })
 
-  it('drops a company that was not asked for', async () => {
+  it('drops a company that was not asked for, and says so', async () => {
+    const warn = vi.fn()
     fetchMock.mockResolvedValueOnce(
       jsonResponse({
         companies: [
@@ -87,9 +88,10 @@ describe('getCompanies', () => {
       }),
     )
 
-    expect(await getCompanies({ ids: [SUBDEMO] })).toEqual([
+    expect(await getCompanies({ ids: [SUBDEMO], logger: { warn } })).toEqual([
       { id: SUBDEMO, name: 'SubDemo25', taxId: '32454452000130' },
     ])
+    expect(warn).toHaveBeenCalledWith({ unasked: 1, seen: 2 }, expect.any(String))
   })
 
   it.each([
