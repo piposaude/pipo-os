@@ -290,6 +290,22 @@ describe('cadastro de empresas a partir das linhas', () => {
     ])
   })
 
+  it('should find by cnpj a company whose rows carry no name, labelled by its id', () => {
+    const nameless = row({
+      id: '5',
+      companyId: 'empresa-5',
+      companyName: null,
+      companyTaxId: '77.888.999/0001-10',
+    })
+
+    const groups = searchQueue('888999', [nameless], sections, companyRegistryOf([nameless]))
+
+    const empresas = groups.find((group) => group.category === 'empresa')
+    expect(empresas?.hits.map((hit) => [hit.label, hit.detail])).toEqual([
+      ['empresa-5', 'Matriz · 77.888.999/0001-10'],
+    ])
+  })
+
   it('should still find by name a company whose rows carry no cnpj', () => {
     const plain = row({ id: '2', companyId: 'empresa-2', companyName: 'Grupo Quiriri' })
 

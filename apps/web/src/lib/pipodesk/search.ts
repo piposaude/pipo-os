@@ -163,8 +163,8 @@ export function searchQueue(
     }
 
     const record = companies[row.companyId]
-    const name = record?.legalName ?? row.companyName
-    if (name && matchesCompany(row, record, needle, digitsNeedle)) {
+    const name = record?.legalName || row.companyName || row.companyId
+    if (matchesCompany(row, record, needle, digitsNeedle)) {
       porEmpresa.set(row.companyId, { name, parentName: row.parentCompanyName })
     }
   }
