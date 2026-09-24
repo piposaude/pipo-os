@@ -21,7 +21,7 @@ import { logout } from '@/lib/auth'
 import queueConstants from '@/constants/pages/pipodesk/queue'
 import { useSessionStore } from '@/stores/session'
 import { api, client } from '@/lib/api'
-import { structureFromApi } from '@/lib/pipodesk/structure-from-api'
+import { structureFromApi, type ApiQueue } from '@/lib/pipodesk/structure-from-api'
 import { rowsFromApi } from '@/lib/pipodesk/rows-from-api'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 import { businessToday } from '@/lib/date'
@@ -283,6 +283,27 @@ export function DeskShell() {
     [viewerId, queryClient],
   )
 
+  const renameView = useCallback(
+    (id: string, name: string) => {
+      void (async () => {
+        await queryClient.cancelQueries({ queryKey: QUEUES_KEY })
+        const before = queryClient.getQueryData<ApiQueue[]>(QUEUES_KEY)
+        queryClient.setQueryData<ApiQueue[]>(QUEUES_KEY, (current) =>
+          current?.map((queue) => (queue.id === id ? { ...queue, name } : queue)),
+        )
+        try {
+          await client.PATCH('/api/queues/{id}', { params: { path: { id } }, body: { name } })
+        } catch {
+          queryClient.setQueryData(QUEUES_KEY, before)
+          setWriteFailed(true)
+          return
+        }
+        await queryClient.invalidateQueries({ queryKey: QUEUES_KEY })
+      })()
+    },
+    [queryClient],
+  )
+
   const structure = useMemo(
     () => structureFromApi(groupsQuery.data ?? [], queuesQuery.data ?? [], viewerId),
     [groupsQuery.data, queuesQuery.data, viewerId],
@@ -484,6 +505,8 @@ export function DeskShell() {
               activeId={view.nodeId}
               onSelect={selectNode}
               structure={structure}
+              viewerId={viewerId}
+              onRenameView={renameView}
               viewerInitials={iniciaisDe(viewerName)}
               viewerName={viewerName}
               viewerEmail={email}

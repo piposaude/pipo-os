@@ -371,3 +371,22 @@
   gap: var(--pipo-space-xsmall);
   padding: var(--pipo-space-xsmall);
 }
+
+.rename {
+  min-width: 0;
+  flex: 1 1 auto;
+  border: none;
+  border-radius: var(--pipo-radius-xsmall);
+  background: var(--pipo-surface);
+  padding: 0 var(--pipo-space-xxsmall);
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
+.rename:focus-visible {
+  outline: none;
+  box-shadow: var(--pipo-shadow-focus-primary);
+}

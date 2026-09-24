@@ -30,6 +30,11 @@ import type { TicketRow } from './ticket-row'
  *  three here detaches it, and the pod silently loses the cut. */
 const MOV_LABELS = { clt: 'MOV CLT', pj: 'MOV PJ', mb: 'MOV MB' } as const
 
+const POD_CUT_NAMES: ReadonlySet<string> = new Set(Object.values(MOV_LABELS))
+
+/** The API refuses renaming, moving or deleting these three for the same reason. */
+export const isPodCut = (queue: { name: string }): boolean => POD_CUT_NAMES.has(queue.name)
+
 export const FUTURE_NODE_ID = 'node-futuras'
 
 /** The triage node — tickets of companies with no portfolio. Exported so the
