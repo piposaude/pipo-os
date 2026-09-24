@@ -138,6 +138,17 @@ describe('o que a tela muda, a API grava', () => {
     expect(within(row).getByRole('button', { name: /prioridade alta/i })).toBeInTheDocument()
   })
 
+  it('should não abrir o chamado num clique no espaço do menu de prioridade', async () => {
+    const router = await renderQueue()
+    const user = userEvent.setup()
+    const row = document.querySelector<HTMLElement>('tr[data-ticket-id]')!
+
+    await user.click(within(row).getByRole('button', { name: /prioridade/i }))
+    await user.click(await screen.findByRole('dialog', { name: 'Prioridade' }))
+
+    expect(router.state.location.pathname).toBe('/')
+  })
+
   it('should mandar o novo responsável para a API, um PATCH por chamado', async () => {
     await renderQueue()
     const selected = await reassignAll(userEvent.setup())

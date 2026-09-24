@@ -22,7 +22,7 @@ export function PriorityMenu({ value, ticketNumber, onChange }: PriorityMenuProp
   }
 
   return (
-    <span className={styles.priorityAnchor}>
+    <span className={styles.priorityAnchor} onClick={(event) => event.stopPropagation()}>
       <button
         type="button"
         ref={trigger}
