@@ -206,10 +206,23 @@ describe('webhook deliveries of a status change', () => {
     let pending: ReturnType<typeof patchStatus> | undefined
     let released = 0
 
+    const waitUntilBlockedBy = async (holder: number): Promise<void> => {
+      for (let attempt = 0; attempt < 100; attempt++) {
+        const { rows } = await sql<{ waiting: number }>`
+          select count(*)::int as waiting from pg_stat_activity
+          where ${holder}::int = any(pg_blocking_pids(pid))`.execute(app.db)
+        if (rows[0]?.waiting) return
+        await new Promise((resolve) => setTimeout(resolve, 20))
+      }
+      throw new Error('The status change never waited on the ticket lock')
+    }
+
     await app.db.transaction().execute(async (trx) => {
       await trx.selectFrom('tickets').select('id').where('id', '=', id).forUpdate().execute()
+      const { rows } = await sql<{ pid: number }>`select pg_backend_pid() as pid`.execute(trx)
       pending = patchStatus(id, { status: 'broker-open-issue' })
-      await new Promise((resolve) => setTimeout(resolve, 300))
+      await waitUntilBlockedBy(rows[0]!.pid)
+      await new Promise((resolve) => setTimeout(resolve, 100))
       released = Date.now()
     })
 
