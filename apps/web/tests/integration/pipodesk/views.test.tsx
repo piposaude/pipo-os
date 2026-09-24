@@ -35,9 +35,10 @@ async function renderDesk(
   writes: Record<string, unknown> = {},
   viewer: 'analyst' | 'coordination' = 'analyst',
   entry = '/',
+  extra: SavedView[] = [MINE],
 ) {
   const seeded = fixtureStructureRoutes(VIEWER_ID)['/api/queues'] as { data: SavedView[] }
-  views = [...seeded.data, MINE]
+  views = [...seeded.data, ...extra]
   desk = (await import('../../helpers/desk')).mountDeskFixture(
     {},
     {
@@ -358,5 +359,41 @@ describe('criar visão a partir da página do time', () => {
     expect(
       within(sidebar()).queryByRole('button', { name: /^Ações de POD/ }),
     ).not.toBeInTheDocument()
+  })
+})
+
+describe('as visões fora do pod e em Favoritos', () => {
+  it('should leave a view of the root named as a MOV editable by the coordination', async () => {
+    const rootView = {
+      ...MINE,
+      id: 'view-root',
+      name: 'MOV PJ',
+      groupId: ROOT_GROUP_ID,
+      ownerId: null,
+    }
+    await renderDesk({}, 'coordination', '/', [rootView])
+    const user = userEvent.setup()
+
+    await user.click(within(sidebar()).getByRole('button', { name: /Expandir GEBEN/i }))
+
+    expect(within(sidebar()).getByRole('button', { name: 'Ações de MOV PJ' })).toBeInTheDocument()
+  })
+
+  it('should rename and delete a view from Favoritos, landing on its group when it was open', async () => {
+    await renderDesk({}, 'analyst', '/', [{ ...MINE, favorite: true }])
+    const user = userEvent.setup()
+
+    await user.click(within(sidebar()).getByText('Minhas urgentes'))
+    await user.dblClick(within(sidebar()).getByText('Minhas urgentes'))
+    expect(
+      within(sidebar()).getByRole('textbox', { name: 'Renomear Minhas urgentes' }),
+    ).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+
+    await user.click(within(sidebar()).getByRole('button', { name: 'Ações de Minhas urgentes' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Apagar view' }))
+
+    expect(desk.calls.find((call) => call.method === 'DELETE')?.path).toBe('/api/queues/view-mine')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Chamados')
   })
 })
