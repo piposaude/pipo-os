@@ -10,7 +10,6 @@ export interface Company {
 }
 
 export interface GetCompaniesParams {
-  baseUrl: string
   /** Lowercase uuids, at most one batch of the upstream: the caller validates. */
   ids: readonly string[]
   logger?: Pick<FastifyBaseLogger, 'warn'>
@@ -18,10 +17,16 @@ export interface GetCompaniesParams {
 
 export const COMPANIES_TIMEOUT_MS = 5_000
 
-// Not requiredWhenDeployed: the address is fixed in the cluster, and a wrong
-// one surfaces as a 503 on this route only.
-export function companyServiceInternalUrl(): string {
-  return process.env.COMPANY_SERVICE_INTERNAL_URL ?? 'http://company-service.default:4000'
+// Only the deployment knows the address. Missing, it is a 503 on this route
+// rather than a boot failure for every screen that never asks for a company.
+function companyServiceUrl(): string {
+  const url = process.env.COMPANY_SERVICE_INTERNAL_URL?.trim()
+  if (!url) {
+    throw new ServiceUnavailableError('company-service is unavailable', {
+      cause: new Error('COMPANY_SERVICE_INTERNAL_URL is not set'),
+    })
+  }
+  return url
 }
 
 // The same rules the route publishes: a row this lets through and the
@@ -39,14 +44,12 @@ function companiesUrl(baseUrl: string, ids: readonly string[]): string {
   return url.toString()
 }
 
-export async function getCompanies({
-  baseUrl,
-  ids,
-  logger,
-}: GetCompaniesParams): Promise<Company[]> {
+export async function getCompanies({ ids, logger }: GetCompaniesParams): Promise<Company[]> {
   if (ids.length === 0) {
     return []
   }
+
+  const baseUrl = companyServiceUrl()
 
   // Wraps the body as well: fetch resolves on the headers.
   const call = deadline(COMPANIES_TIMEOUT_MS)

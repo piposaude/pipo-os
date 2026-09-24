@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { COMPANIES_TIMEOUT_MS, getCompanies } from './company-service.js'
 import { jsonResponse } from '../shared/json.test-helpers.js'
 
-const BASE_URL = 'http://company-service.default:4000'
+const BASE_URL = 'http://company-service.test:4000'
 const SUBDEMO = 'ed635b72-77d2-41f9-9b2a-2ceb55c19b52'
 const OTHER = '6f1c1b0e-3f2a-4c55-9d7e-2b8a4e1f0c11'
 
@@ -12,10 +12,12 @@ describe('getCompanies', () => {
   beforeEach(() => {
     fetchMock.mockReset()
     vi.stubGlobal('fetch', fetchMock)
+    vi.stubEnv('COMPANY_SERVICE_INTERNAL_URL', BASE_URL)
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
   })
 
   it('returns the companies the company-service knows, with the tax id renamed', async () => {
@@ -23,7 +25,7 @@ describe('getCompanies', () => {
       jsonResponse({ companies: [{ id: SUBDEMO, 'tax-id': '32454452000130', name: 'SubDemo25' }] }),
     )
 
-    const companies = await getCompanies({ baseUrl: BASE_URL, ids: [SUBDEMO, OTHER] })
+    const companies = await getCompanies({ ids: [SUBDEMO, OTHER] })
 
     expect(companies).toEqual([{ id: SUBDEMO, name: 'SubDemo25', taxId: '32454452000130' }])
     const [url, options] = fetchMock.mock.calls[0]
@@ -34,14 +36,35 @@ describe('getCompanies', () => {
   it('reaches the right path even if the base url carries a trailing slash', async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ companies: [] }))
 
-    await getCompanies({ baseUrl: `${BASE_URL}/`, ids: [SUBDEMO] })
+    vi.stubEnv('COMPANY_SERVICE_INTERNAL_URL', `${BASE_URL}/`)
+
+    await getCompanies({ ids: [SUBDEMO] })
 
     expect(fetchMock.mock.calls[0][0]).toBe(`${BASE_URL}/api/companies?ids=${SUBDEMO}`)
   })
 
   it('asks nothing for no ids', async () => {
-    expect(await getCompanies({ baseUrl: BASE_URL, ids: [] })).toEqual([])
+    expect(await getCompanies({ ids: [] })).toEqual([])
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['unset', undefined],
+    ['blank', ' '],
+  ])('answers 503 without calling out when the address is %s', async (_case, value) => {
+    vi.stubEnv('COMPANY_SERVICE_INTERNAL_URL', value)
+
+    await expect(getCompanies({ ids: [SUBDEMO] })).rejects.toMatchObject({
+      name: 'ServiceUnavailableError',
+      cause: { message: 'COMPANY_SERVICE_INTERNAL_URL is not set' },
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('asks nothing for no ids, even with no address to ask', async () => {
+    vi.stubEnv('COMPANY_SERVICE_INTERNAL_URL', undefined)
+
+    expect(await getCompanies({ ids: [] })).toEqual([])
   })
 
   it('reads a company with no name or tax id as having none', async () => {
@@ -49,7 +72,7 @@ describe('getCompanies', () => {
       jsonResponse({ companies: [{ id: SUBDEMO, 'tax-id': null, name: null }] }),
     )
 
-    expect(await getCompanies({ baseUrl: BASE_URL, ids: [SUBDEMO] })).toEqual([
+    expect(await getCompanies({ ids: [SUBDEMO] })).toEqual([
       { id: SUBDEMO, name: null, taxId: null },
     ])
   })
@@ -64,7 +87,7 @@ describe('getCompanies', () => {
       }),
     )
 
-    expect(await getCompanies({ baseUrl: BASE_URL, ids: [SUBDEMO] })).toEqual([
+    expect(await getCompanies({ ids: [SUBDEMO] })).toEqual([
       { id: SUBDEMO, name: 'SubDemo25', taxId: '32454452000130' },
     ])
   })
@@ -81,7 +104,6 @@ describe('getCompanies', () => {
     )
 
     const companies = await getCompanies({
-      baseUrl: BASE_URL,
       ids: [SUBDEMO, OTHER],
       logger: { warn },
     })
@@ -94,7 +116,7 @@ describe('getCompanies', () => {
     const upstream = new Error('ECONNREFUSED')
     fetchMock.mockRejectedValueOnce(upstream)
 
-    await expect(getCompanies({ baseUrl: BASE_URL, ids: [SUBDEMO] })).rejects.toMatchObject({
+    await expect(getCompanies({ ids: [SUBDEMO] })).rejects.toMatchObject({
       name: 'ServiceUnavailableError',
       message: 'company-service is unreachable',
       cause: upstream,
@@ -104,7 +126,7 @@ describe('getCompanies', () => {
   it('answers 503 when the company-service fails, keeping its status out of the message', async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ error: 'boom' }, 500))
 
-    await expect(getCompanies({ baseUrl: BASE_URL, ids: [SUBDEMO] })).rejects.toMatchObject({
+    await expect(getCompanies({ ids: [SUBDEMO] })).rejects.toMatchObject({
       name: 'ServiceUnavailableError',
       message: 'company-service is unavailable',
     })
@@ -118,7 +140,7 @@ describe('getCompanies', () => {
       }),
     )
 
-    await expect(getCompanies({ baseUrl: BASE_URL, ids: [SUBDEMO] })).rejects.toMatchObject({
+    await expect(getCompanies({ ids: [SUBDEMO] })).rejects.toMatchObject({
       name: 'ServiceUnavailableError',
       cause: { message: 'answered a body that is not JSON' },
     })
@@ -127,7 +149,7 @@ describe('getCompanies', () => {
   it('answers 503 when a 200 carries no company list, instead of reading it as none', async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ total: 0 }))
 
-    await expect(getCompanies({ baseUrl: BASE_URL, ids: [SUBDEMO] })).rejects.toMatchObject({
+    await expect(getCompanies({ ids: [SUBDEMO] })).rejects.toMatchObject({
       name: 'ServiceUnavailableError',
     })
   })
@@ -151,9 +173,7 @@ describe('getCompanies', () => {
 
       // Asserted before the clock moves: the abort fires inside the advance,
       // and an unhandled rejection there takes the whole suite down.
-      const refused = expect(
-        getCompanies({ baseUrl: BASE_URL, ids: [SUBDEMO] }),
-      ).rejects.toMatchObject({
+      const refused = expect(getCompanies({ ids: [SUBDEMO] })).rejects.toMatchObject({
         name: 'ServiceUnavailableError',
       })
       await vi.advanceTimersByTimeAsync(COMPANIES_TIMEOUT_MS + 1)
@@ -174,7 +194,7 @@ describe('getCompanies', () => {
         },
       }))
 
-      await getCompanies({ baseUrl: BASE_URL, ids: [SUBDEMO] })
+      await getCompanies({ ids: [SUBDEMO] })
 
       expect(abortedDuringBody).toBe(true)
     })

@@ -16,6 +16,7 @@ describe('companies routes', () => {
   beforeEach(async () => {
     process.env.DEV_LOGIN_ENABLED = 'true'
     vi.stubEnv('SERVICE_ACCOUNT_TOKEN', 'token-for-tests')
+    vi.stubEnv('COMPANY_SERVICE_INTERNAL_URL', 'http://company-service.test:4000')
     fetchMock.mockReset()
     vi.stubGlobal('fetch', fetchMock)
 
@@ -73,7 +74,7 @@ describe('companies routes', () => {
       data: [{ id: SUBDEMO, name: 'SubDemo25', taxId: '32454452000130' }],
     })
     expect(companyServiceCalls()[0][0]).toBe(
-      `http://company-service.default:4000/api/companies?ids=${SUBDEMO},${UNKNOWN}`,
+      `http://company-service.test:4000/api/companies?ids=${SUBDEMO},${UNKNOWN}`,
     )
   })
 
@@ -83,7 +84,7 @@ describe('companies routes', () => {
     await getCompanies([TICKET], `?ids=${SUBDEMO.toUpperCase()}&ids=${SUBDEMO}`)
 
     expect(companyServiceCalls()[0][0]).toBe(
-      `http://company-service.default:4000/api/companies?ids=${SUBDEMO}`,
+      `http://company-service.test:4000/api/companies?ids=${SUBDEMO}`,
     )
   })
 

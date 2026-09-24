@@ -1,6 +1,6 @@
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
 import type { FastifyInstance } from 'fastify'
-import { companyServiceInternalUrl, getCompanies } from '../../infrastructure/company-service.js'
+import { getCompanies } from '../../infrastructure/company-service.js'
 import { errorResponseSchema } from '../../shared/schemas.js'
 import { STRUCTURE_POLICY, TICKET_POLICY } from '../auth/policy.js'
 import { companyListSchema, listCompaniesQuerySchema } from './schemas.js'
@@ -25,13 +25,7 @@ export function registerCompanyRoutes(app: FastifyInstance): void {
     },
     async (request) => {
       const ids = [...new Set(request.query.ids ?? [])]
-      const companies = await getCompanies({
-        baseUrl: companyServiceInternalUrl(),
-        ids,
-        logger: request.log,
-      })
-
-      return { data: companies }
+      return { data: await getCompanies({ ids, logger: request.log }) }
     },
   )
 }
