@@ -1,0 +1,30 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pipo-space-xxsmall);
+  margin-top: var(--pipo-space-small);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-small);
+}
+
+.field select {
+  height: 32px;
+  border: var(--pipo-border-width-small) solid var(--pipo-neutral-light);
+  border-radius: var(--pipo-radius-small);
+  background: var(--pipo-surface);
+  padding: 0 var(--pipo-space-xsmall);
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.hint {
+  margin-top: var(--pipo-space-xsmall);
+  color: var(--pipo-text-secondary);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-small);
+}
+
+.error {
+  color: var(--pipo-danger-dark);
+  font-weight: var(--pipo-fw-semibold);
+}

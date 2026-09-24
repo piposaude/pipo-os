@@ -15,7 +15,7 @@ import { applyPatches, ticketFieldsBody, type TicketPatch } from '@/lib/pipodesk
 import { SearchPalette } from '@/components/pipodesk/queue/SearchPalette'
 import { companyRegistryOf } from '@/lib/pipodesk/search'
 import { toQueueNode } from '@/lib/pipodesk/queue-node'
-import { DeskContext } from './desk-context'
+import { DeskContext, type NewView } from './desk-context'
 import { displayNameFromEmail } from '@/lib/pipodesk/format'
 import { logout } from '@/lib/auth'
 import queueConstants from '@/constants/pages/pipodesk/queue'
@@ -28,6 +28,7 @@ import { businessToday } from '@/lib/date'
 import '@/styles/pipodesk-tokens.css'
 
 const DETAIL_KEY = ['get', '/api/tickets/{id}']
+const QUEUES_KEY = ['get', '/api/queues', 'all']
 
 /**
  * The Pipodesk shell: tree left, content right. `.desk-root` scopes the
@@ -245,7 +246,7 @@ export function DeskShell() {
     staleTime: STRUCTURE_STALE_MS,
   })
   const queuesQuery = useQuery({
-    queryKey: ['get', '/api/queues', 'all'],
+    queryKey: QUEUES_KEY,
     queryFn: () =>
       allPages(async (page) => {
         const { data } = await client.GET('/api/queues', {
@@ -257,6 +258,31 @@ export function DeskShell() {
   })
 
   const companies = useMemo(() => companyRegistryOf(rows), [rows])
+
+  const createView = useCallback(
+    (draft: NewView) => {
+      void (async () => {
+        try {
+          await client.POST('/api/queues', {
+            body: {
+              name: draft.name,
+              groupId: draft.groupId,
+              ownerId: viewerId,
+              filters: draft.filter,
+              sort: draft.sort,
+              groupBy: draft.groupBy,
+            },
+          })
+        } catch {
+          setWriteFailed(true)
+          return
+        }
+        await queryClient.invalidateQueries({ queryKey: QUEUES_KEY })
+      })()
+    },
+    [viewerId, queryClient],
+  )
+
   const structure = useMemo(
     () => structureFromApi(groupsQuery.data ?? [], queuesQuery.data ?? [], viewerId),
     [groupsQuery.data, queuesQuery.data, viewerId],
@@ -412,8 +438,10 @@ export function DeskShell() {
       resolveName,
       sidebarCollapsed,
       toggleSidebar,
+      createView,
     }),
     [
+      createView,
       sections,
       view,
       dispatch,
