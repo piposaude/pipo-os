@@ -8,6 +8,8 @@ import {
   commentListSchema,
   commentSchema,
   createCommentBodySchema,
+  createSubmissionBodySchema,
+  submissionSchema,
   timelineQuerySchema,
   timelineSchema,
   withDefaultKind,
@@ -120,6 +122,37 @@ export function registerCommentRoutes(app: FastifyInstance, service: CommentsSer
 
       reply.status(created ? 201 : 200)
       return comment
+    },
+  )
+
+  server.post(
+    '/api/tickets/:id/submissions',
+    {
+      config: { policy: TICKET_POLICY },
+      bodyLimit: 262_144,
+      schema: {
+        params: ticketParamsSchema,
+        body: createSubmissionBodySchema,
+        response: {
+          201: submissionSchema,
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+          413: errorResponseSchema,
+          415: errorResponseSchema,
+          422: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const submission = await service.submit(
+        request.params.id,
+        request.body,
+        requireAuthor(request),
+      )
+      reply.status(201)
+      return submission
     },
   )
 }

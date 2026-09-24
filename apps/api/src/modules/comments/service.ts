@@ -1,8 +1,21 @@
-import { BadRequestError, ForbiddenError, NotFoundError } from '../../shared/errors.js'
+import {
+  BadRequestError,
+  ForbiddenError,
+  NotFoundError,
+  UnprocessableEntityError,
+  ValidationFailedError,
+} from '../../shared/errors.js'
 import type { TicketsRepositoryPort } from '../tickets/repository.js'
 import type { Author } from '../auth/authenticate.js'
 import type { CommentsRepositoryPort, TimelineKey, WrittenComment } from './repository.js'
-import type { CommentList, CreateCommentBody, Timeline, TimelineQuery } from './schemas.js'
+import type {
+  CommentList,
+  CreateCommentBody,
+  CreateSubmissionBody,
+  Submission,
+  Timeline,
+  TimelineQuery,
+} from './schemas.js'
 
 /* The cursor is base64 of "<created_at>|<id>" — opaque so the keyset can
    change without breaking a client that stored one. A malformed cursor is
@@ -51,6 +64,24 @@ export class CommentsService {
     /* The index decides, not a read before the write: two redeliveries landing
        together would both find nothing and both insert. */
     return this.repository.create(ticketId, data, author)
+  }
+
+  async submit(ticketId: string, data: CreateSubmissionBody, author: Author): Promise<Submission> {
+    const result = await this.repository.submit(ticketId, data, author)
+
+    if (result.kind === 'not-found') throw new NotFoundError(`Ticket ${ticketId} not found`)
+    if (result.kind === 'already-closed')
+      throw new UnprocessableEntityError(`Ticket ${ticketId} is already closed`)
+    if (result.kind === 'refused')
+      throw new ValidationFailedError(`Ticket ${ticketId} cannot be completed`, result.failures)
+    if (result.kind === 'unknown-reply') {
+      const message = `inReplyTo is not a submission of ticket ${ticketId}`
+      throw new ValidationFailedError(message, [
+        { field: 'inReplyTo', message, code: 'unknown_submission' },
+      ])
+    }
+
+    return { submissionId: result.submissionId, ticket: result.ticket, comments: result.comments }
   }
 
   async list(ticketId: string): Promise<CommentList> {

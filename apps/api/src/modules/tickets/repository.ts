@@ -120,7 +120,7 @@ function changeEventBody(
   return previous === null ? labels.set : labels.changed
 }
 
-function toTicket(row: Selectable<Tickets>): Ticket {
+export function toTicket(row: Selectable<Tickets>): Ticket {
   return {
     id: row.id,
     displayNumber: row.display_number,

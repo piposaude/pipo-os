@@ -4,9 +4,10 @@ import type { Database } from '../../infrastructure/db.js'
 import type { TicketComments } from '../../infrastructure/db-types.js'
 import type { Author } from '../auth/authenticate.js'
 import type { TicketEventType } from './event-types.js'
-import type { Comment, CreateCommentBody, TimelineItem } from './schemas.js'
+import type { Comment, CreateCommentBody, CreateSubmissionBody, TimelineItem } from './schemas.js'
+import { submit, type SubmitResult } from './submission.js'
 
-function toComment(row: Selectable<TicketComments>): Comment {
+export function toComment(row: Selectable<TicketComments>): Comment {
   return {
     id: row.id,
     ticketId: row.ticket_id,
@@ -211,6 +212,7 @@ export interface TimelinePage {
 
 export interface CommentsRepositoryPort {
   create(ticketId: string, data: CreateCommentBody, author: Author): Promise<WrittenComment>
+  submit(ticketId: string, data: CreateSubmissionBody, author: Author): Promise<SubmitResult>
   findMany(ticketId: string): Promise<Comment[]>
   findTimeline(
     ticketId: string,
@@ -248,6 +250,10 @@ export class CommentsRepository implements CommentsRepositoryPort {
       .executeTakeFirstOrThrow()
 
     return { comment: toComment(row), created: true }
+  }
+
+  submit(ticketId: string, data: CreateSubmissionBody, author: Author): Promise<SubmitResult> {
+    return submit(this.db, ticketId, data, author)
   }
 
   async findMany(ticketId: string): Promise<Comment[]> {

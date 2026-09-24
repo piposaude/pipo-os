@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { updateTicketStatusBodySchema } from '../tickets/schemas.js'
+import { ticketSchema, updateTicketStatusBodySchema } from '../tickets/schemas.js'
 import { serviceEventTypeSchema, ticketEventTypeSchema } from './event-types.js'
 
 /* The three the CHECK of migration 0030 allows. `system` is wider than
@@ -130,6 +130,14 @@ export const createSubmissionBodySchema = z
   })
   .meta({ id: 'CreateSubmissionBody' })
 
+export const submissionSchema = z
+  .object({
+    submissionId: z.uuid(),
+    ticket: ticketSchema,
+    comments: z.array(commentSchema),
+  })
+  .meta({ id: 'Submission' })
+
 export const commentListSchema = z
   .object({
     data: z.array(commentSchema),
@@ -227,3 +235,4 @@ export type CreateManualCommentBody = z.infer<typeof createManualCommentBodySche
 export type CreateAutomatedEventBody = z.infer<typeof createAutomatedEventBodySchema>
 export type CommentList = z.infer<typeof commentListSchema>
 export type CreateSubmissionBody = z.infer<typeof createSubmissionBodySchema>
+export type Submission = z.infer<typeof submissionSchema>
