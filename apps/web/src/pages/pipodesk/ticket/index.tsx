@@ -133,8 +133,8 @@ function TicketDetail({ id }: { id: string }) {
   const comment = useMutation({
     mutationFn: (body: ReturnType<typeof commentBodyOf>) =>
       client.POST('/api/tickets/{id}/comments', { params: { path: { id } }, body }),
-    onSuccess: async () => {
-      setDraft('')
+    onSuccess: async (_, sent) => {
+      setDraft((current) => (current.trim() === sent.body ? '' : current))
       await refetchTimeline()
     },
   })

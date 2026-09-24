@@ -342,10 +342,10 @@ export function fixtureUsersRoute(): unknown {
   }
 }
 
-/** Holds every GET to `path` until `release` runs, so a test can look at the
- *  screen while that read is still in flight. Wraps the API mock, so it has to
- *  come after it — and the mock's own `restore` undoes both. */
-export function holdGet(path: string): () => void {
+/** Holds every `method` request to `path` until `release` runs, so a test can
+ *  look at the screen while it is still in flight. Wraps the API mock, so it
+ *  has to come after it — and the mock's own `restore` undoes both. */
+export function holdRequest(method: string, path: string): () => void {
   const inner = globalThis.fetch
   let release!: () => void
   const released = new Promise<void>((resolve) => {
@@ -354,10 +354,12 @@ export function holdGet(path: string): () => void {
 
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
-    const method = (init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase()
-    if (method === 'GET' && new URL(url, 'http://localhost').pathname === path) await released
+    const sent = (init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase()
+    if (sent === method && new URL(url, 'http://localhost').pathname === path) await released
     return inner(input, init)
   }) as typeof globalThis.fetch
 
   return release
 }
+
+export const holdGet = (path: string): (() => void) => holdRequest('GET', path)

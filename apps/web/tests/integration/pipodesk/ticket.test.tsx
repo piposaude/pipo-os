@@ -15,7 +15,7 @@ import { analystsOf } from '@/lib/pipodesk/permissions'
 import { records } from '@/fixtures/pipodesk/records'
 import constants from '@/constants/pages/pipodesk/ticket'
 import copyButton from '@/constants/pipodesk/copy-button'
-import { apiTicketOf, holdGet } from '../../helpers/api'
+import { apiTicketOf, holdGet, holdRequest } from '../../helpers/api'
 
 /**
  * The first drawn row — the table is virtualized, so only the visible window
@@ -353,6 +353,25 @@ describe('detalhe do chamado', () => {
 
     expect(await screen.findByText(constants.timeline.sendFailed)).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Escreva…')).toHaveValue('Não pode sumir.')
+  })
+
+  it('should keep what was typed while the comment was on its way', async () => {
+    await renderAt('/tickets/700003')
+    const release = holdRequest('POST', '/api/tickets/700003/comments')
+    const user = userEvent.setup()
+    const field = await screen.findByPlaceholderText('Escreva…')
+
+    await user.type(field, 'Primeira parte.')
+    await user.click(screen.getByRole('button', { name: 'Comentar' }))
+    await user.type(field, ' Segunda parte.')
+    release()
+
+    await waitFor(() =>
+      expect(desk.calls).toContainEqual(
+        expect.objectContaining({ method: 'POST', path: '/api/tickets/700003/comments' }),
+      ),
+    )
+    await waitFor(() => expect(field).toHaveValue('Primeira parte. Segunda parte.'))
   })
 
   /**
