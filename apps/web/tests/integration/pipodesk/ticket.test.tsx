@@ -1,10 +1,11 @@
-import { configure, render, screen, within } from '@testing-library/react'
+import { configure, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from '@/routeTree.gen'
 import {
   DATASET_TODAY,
   FIXTURE_USER_NAMES,
+  VIEWER_ID,
   queueSeed,
   structureFixture,
 } from '@/fixtures/pipodesk/dataset'
@@ -216,7 +217,67 @@ describe('detalhe do chamado', () => {
     expect(screen.queryByRole('dialog', { name: 'Prioridade' })).not.toBeInTheDocument()
   })
 
-  it('should add an internal note to the timeline through the composer', async () => {
+  it('should draw the timeline the API keeps, in the words of the screen', async () => {
+    desk.restore()
+    desk = (await import('../../helpers/desk')).mountDeskFixture(
+      {},
+      {
+        '/api/tickets/700003/timeline': {
+          data: [
+            {
+              id: 'e1',
+              ticketId: '700003',
+              authorId: 'svc:enrollment-integrations',
+              authorType: 'service',
+              createdAt: '2026-08-05T10:00:00.000Z',
+              type: 'status-changed',
+              fromStatus: 'broker-processing',
+              toStatus: 'carrier-processing',
+              reason: null,
+            },
+            {
+              id: 'c1',
+              ticketId: '700003',
+              authorId: VIEWER_ID,
+              authorType: 'user',
+              createdAt: '2026-08-06T10:00:00.000Z',
+              type: 'comment',
+              channel: 'internal',
+              visibility: 'private',
+              body: 'Liguei na operadora.',
+            },
+          ],
+        },
+      },
+    )
+    await renderAt('/tickets/700003')
+
+    const entry = (await screen.findByText('Liguei na operadora.')).closest('li')!
+    expect(within(entry).getByText(FIXTURE_USER_NAMES[VIEWER_ID]!)).toBeInTheDocument()
+    expect(within(entry).getByText('Anotação interna')).toBeInTheDocument()
+    expect(screen.getByText(/^Situação mudou de .+ para .+\.$/)).toBeInTheDocument()
+  })
+
+  it('should post an internal note and show it once the timeline comes back with it', async () => {
+    const posted: unknown[] = []
+    desk.restore()
+    desk = (await import('../../helpers/desk')).mountDeskFixture(
+      {},
+      {
+        '/api/tickets/700003/timeline': () => ({
+          data: posted.map((body, index) => ({
+            id: `c${index}`,
+            ticketId: '700003',
+            authorId: VIEWER_ID,
+            authorType: 'user',
+            createdAt: '2026-08-06T10:00:00.000Z',
+            type: 'comment',
+            channel: 'internal',
+            ...(body as object),
+          })),
+        }),
+      },
+    )
     await renderAt('/tickets/700003')
     const user = userEvent.setup()
 
@@ -227,16 +288,19 @@ describe('detalhe do chamado', () => {
     )
 
     await user.type(screen.getByPlaceholderText('Escreva…'), 'Liguei na operadora, protocolo 123.')
+    posted.push({ visibility: 'private', body: 'Liguei na operadora, protocolo 123.' })
     await user.click(screen.getByRole('button', { name: 'Comentar' }))
 
-    expect(screen.getByText('Liguei na operadora, protocolo 123.')).toBeInTheDocument()
-    // The field clears for the next note.
+    expect(await screen.findByText('Liguei na operadora, protocolo 123.')).toBeInTheDocument()
+    expect(desk.calls).toContainEqual({
+      method: 'POST',
+      path: '/api/tickets/700003/comments',
+      body: { kind: 'manual', visibility: 'private', body: 'Liguei na operadora, protocolo 123.' },
+    })
     expect(screen.getByPlaceholderText('Escreva…')).toHaveValue('')
   })
 
-  /** The composer writes the channel it is on, and the timeline shows which one
-   *  — the PR claims both work, so both are exercised. */
-  it('should add a public comment on the channel the composer is switched to', async () => {
+  it('should post a public comment on the channel the composer is switched to', async () => {
     await renderAt('/tickets/700003')
     const user = userEvent.setup()
 
@@ -256,9 +320,28 @@ describe('detalhe do chamado', () => {
     await user.type(screen.getByPlaceholderText('Escreva…'), body)
     await user.click(screen.getByRole('button', { name: 'Comentar' }))
 
-    // The entry lands on the public channel, not on the default internal one.
-    const entry = screen.getByText(body).closest('li')!
-    expect(within(entry).getByText('Comentário público')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(desk.calls).toContainEqual({
+        method: 'POST',
+        path: '/api/tickets/700003/comments',
+        body: { kind: 'manual', visibility: 'public', body },
+      }),
+    )
+  })
+
+  it('should keep the draft and say so when the comment is refused', async () => {
+    desk.restore()
+    desk = (await import('../../helpers/desk')).mountDeskFixture({
+      'POST /api/tickets/700003/comments': 503,
+    })
+    await renderAt('/tickets/700003')
+    const user = userEvent.setup()
+
+    await user.type(await screen.findByPlaceholderText('Escreva…'), 'Não pode sumir.')
+    await user.click(screen.getByRole('button', { name: 'Comentar' }))
+
+    expect(await screen.findByText(constants.timeline.sendFailed)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Escreva…')).toHaveValue('Não pode sumir.')
   })
 
   /**
@@ -416,6 +499,44 @@ describe('detalhe do chamado', () => {
    * membership — not from whoever happens to hold a ticket right now. An
    * analyst with an empty queue is exactly who you want to hand work to.
    */
+  it('should show the reassignment in the timeline once the write is saved', async () => {
+    const ticket = queueSeed.find((row) => row.groupId !== null && row.id === '700003')!
+    desk.restore()
+    desk = (await import('../../helpers/desk')).mountDeskFixture(
+      {},
+      {
+        [`/api/tickets/${ticket.id}/timeline`]: () => ({
+          data: desk.calls
+            .filter((call) => call.method === 'PATCH' && call.path === `/api/tickets/${ticket.id}`)
+            .map((call, index) => ({
+              id: `e${index}`,
+              ticketId: ticket.id,
+              authorId: VIEWER_ID,
+              authorType: 'user',
+              createdAt: '2026-08-06T10:00:00.000Z',
+              type: 'event',
+              eventType: 'assigned',
+              body: 'Responsável alterado',
+              metadata: call.body as Record<string, unknown>,
+            })),
+        }),
+      },
+    )
+    await renderAt(`/tickets/${ticket.id}`)
+    const user = userEvent.setup()
+    const [analyst] = analystsOf(structureFixture, ticket.groupId!).filter(
+      (membership) => membership.userId !== ticket.assigneeId,
+    )
+    const name = FIXTURE_USER_NAMES[analyst!.userId]!
+
+    await user.click(await screen.findByRole('button', { name: /^Dono:/ }))
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Dono' })).getByRole('button', { name }),
+    )
+
+    expect(await screen.findByText(`Responsável alterado: ${name}`)).toBeInTheDocument()
+  })
+
   it('should offer the analysts of the pod, from the structure and not from the load', async () => {
     await renderAt('/')
     const user = userEvent.setup()

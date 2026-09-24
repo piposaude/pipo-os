@@ -77,6 +77,8 @@ export default {
     /** E-mail is Phase 6 (PD-112): the backend answers 501 until then, and
      *  faking the send would teach a gesture that does not exist. */
     emailPending: 'O e-mail ao RH chega com a Fase 6 (PD-112).',
+    loadFailed: 'Não foi possível carregar a linha do tempo.',
+    sendFailed: 'O comentário não foi salvo.',
     now: 'agora',
   },
 }

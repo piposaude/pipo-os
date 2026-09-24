@@ -1,8 +1,9 @@
 import { FIXTURE_USER_NAMES, queueSeed, structureFixture } from '@/fixtures/pipodesk/dataset'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 
-/** Answers `GET /api/tickets/<id>` for any id without a route of its own. */
+/** Answer for any ticket id without a route of its own. */
 export const TICKET_ROUTE = '/api/tickets/:id'
+export const TIMELINE_ROUTE = '/api/tickets/:id/timeline'
 
 export interface ApiCall {
   method: string
@@ -73,7 +74,10 @@ export function mockApi(
     }
 
     const ticketId = /^\/api\/tickets\/([^/]+)$/.exec(pathname)?.[1]
-    const route = routes[pathname] ?? (ticketId ? routes[TICKET_ROUTE] : undefined)
+    const timelineOf = /^\/api\/tickets\/[^/]+\/timeline$/.test(pathname)
+    const route =
+      routes[pathname] ??
+      (ticketId ? routes[TICKET_ROUTE] : timelineOf ? routes[TIMELINE_ROUTE] : undefined)
     let body = typeof route === 'function' ? route(new URL(url, 'http://localhost')) : route
     if (ticketId && body !== undefined && applied.has(ticketId)) {
       body = { ...(body as Record<string, unknown>), ...applied.get(ticketId) }
@@ -109,6 +113,7 @@ export function fixtureStructureRoutes(viewerId?: string): Record<string, unknow
   return {
     '/api/tickets/rows': fixtureRowsRoute(),
     [TICKET_ROUTE]: fixtureTicketRoute,
+    [TIMELINE_ROUTE]: { data: [] },
     '/api/users': fixtureUsersRoute(),
     '/api/groups': page(
       structureFixture.groups.map((group) => ({

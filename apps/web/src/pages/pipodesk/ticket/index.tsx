@@ -9,7 +9,8 @@ import {
   Tabs,
 } from '@piposaude/design-system'
 import { Link, useParams } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import type { components } from '@pipo-os/api-client'
 import { useDesk } from '@/components/pipodesk/shell/desk-context'
 import { SidebarToggle } from '@/components/pipodesk/shell/SidebarToggle'
 import { CompanyTab } from '@/components/pipodesk/ticket/CompanyTab'
@@ -35,7 +36,8 @@ import {
   CHANNELS,
   CHANNEL_LABEL,
   CHANNEL_ORDER,
-  timelineOf,
+  commentBodyOf,
+  timelineFromApi,
   type CommentChannel,
 } from '@/lib/pipodesk/timeline'
 import { isApiStatus } from '@/lib/pipodesk/status'
@@ -44,6 +46,10 @@ import { ApiError, client } from '@/lib/api'
 import constants from '@/constants/pages/pipodesk/ticket'
 import recordCopy from '@/constants/pages/pipodesk/ticket/record'
 import styles from './style.module.css'
+
+type TimelineItem = components['schemas']['TimelineItem']
+
+const TIMELINE_PAGE = 200
 
 /** One fact: label above, value below. */
 function Fact({ label, value }: { label: string; value: string }) {
@@ -63,8 +69,7 @@ function Fact({ label, value }: { label: string; value: string }) {
  */
 export default function TicketPage() {
   const { id } = useParams({ from: '/_auth/_desk/tickets/$id' })
-  const { view, structure, rows, today, resolveName, applyPatch, patchRow, comments, addComment } =
-    useDesk()
+  const { view, structure, rows, today, resolveName, applyPatch, patchRow } = useDesk()
 
   const ticketQuery = useQuery({
     queryKey: ['get', '/api/tickets/{id}', id],
@@ -99,10 +104,36 @@ export default function TicketPage() {
     null,
   )
 
+  const timelineQuery = useQuery({
+    queryKey: ['get', '/api/tickets/{id}/timeline', id],
+    queryFn: async () => {
+      const items: TimelineItem[] = []
+      let cursor: string | undefined
+      do {
+        const { data } = await client.GET('/api/tickets/{id}/timeline', {
+          params: { path: { id }, query: { limit: TIMELINE_PAGE, cursor } },
+        })
+        if (!data) break
+        items.push(...data.data)
+        cursor = data.nextCursor
+      } while (cursor)
+      return items
+    },
+  })
+  const { refetch: refetchTimeline } = timelineQuery
   const events = useMemo(
-    () => (ticket ? timelineOf(ticket, comments, resolveName) : []),
-    [ticket, comments, resolveName],
+    () => (ticket ? timelineFromApi(ticket, timelineQuery.data ?? [], resolveName) : []),
+    [ticket, timelineQuery.data, resolveName],
   )
+
+  const comment = useMutation({
+    mutationFn: (body: ReturnType<typeof commentBodyOf>) =>
+      client.POST('/api/tickets/{id}/comments', { params: { path: { id } }, body }),
+    onSuccess: async () => {
+      setDraft('')
+      await refetchTimeline()
+    },
+  })
 
   /** Analysts of the ticket's pod, from the structure — the same source the
    *  queue's batch reassign uses. Deriving it from who currently HOLDS a
@@ -218,6 +249,9 @@ export default function TicketPage() {
   const timeline = (
     <section className={styles.block}>
       <h2 className={styles.blockTitle}>{constants.timeline.heading}</h2>
+      {timelineQuery.isError && (
+        <p className={styles.composerHint}>{constants.timeline.loadFailed}</p>
+      )}
       <ol className={styles.timeline}>
         {events.map((event) => (
           <li key={event.id} className={styles.timelineItem}>
@@ -269,13 +303,18 @@ export default function TicketPage() {
           placeholder={constants.timeline.placeholder[channel]}
           rows={4}
         />
+        {comment.isError && (
+          <p role="alert" className={styles.composerHint}>
+            {constants.timeline.sendFailed}
+          </p>
+        )}
         <div className={styles.composerActions}>
           <Button
             variant="primary"
-            disabled={draft.trim().length === 0}
+            disabled={draft.trim().length === 0 || comment.isPending}
             onClick={() => {
-              addComment(ticket.id, channel, draft.trim())
-              setDraft('')
+              if (channel === 'email') return
+              comment.mutate(commentBodyOf(channel, draft.trim()))
             }}
           >
             {constants.timeline.submit[channel]}

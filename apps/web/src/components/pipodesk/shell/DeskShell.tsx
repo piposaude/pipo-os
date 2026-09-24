@@ -13,7 +13,6 @@ import {
 } from '@/lib/pipodesk/queue-view'
 import { applyPatches, type TicketPatch } from '@/lib/pipodesk/patches'
 import { SearchPalette } from '@/components/pipodesk/queue/SearchPalette'
-import type { CommentChannel, TicketComment } from '@/lib/pipodesk/timeline'
 import { toQueueNode } from '@/lib/pipodesk/queue-node'
 import { DeskContext } from './desk-context'
 import { displayNameFromEmail } from '@/lib/pipodesk/format'
@@ -167,24 +166,6 @@ export function DeskShell() {
     [rowsQuery.data, inboxQuery.data],
   )
 
-  const [comments, setComments] = useState<TicketComment[]>([])
-  const addComment = useCallback(
-    (ticketId: string, channel: CommentChannel, body: string) => {
-      setComments((current) => [
-        ...current,
-        {
-          id: `local-${current.length + 1}`,
-          ticketId,
-          channel,
-          body,
-          at: new Date().toISOString(),
-          author: email || 'você',
-        },
-      ])
-    },
-    [email],
-  )
-
   const [writeFailed, setWriteFailed] = useState(false)
   const { refetch: refetchRows, dataUpdatedAt: rowsUpdatedAt, isError: rowsFailed } = rowsQuery
   const { refetch: refetchInbox, dataUpdatedAt: inboxUpdatedAt, isError: inboxFailed } = inboxQuery
@@ -228,6 +209,7 @@ export function DeskShell() {
           refetchRows(),
           refetchInbox(),
           queryClient.refetchQueries({ queryKey: ['get', '/api/tickets/{id}'] }),
+          queryClient.refetchQueries({ queryKey: ['get', '/api/tickets/{id}/timeline'] }),
         ])
         if (rowsRead.isError || inboxRead.isError)
           for (const id of saved) awaitingRead.current.add(id)
@@ -416,8 +398,6 @@ export function DeskShell() {
       patchRow,
       rowsTotal,
       rowsTruncated,
-      comments,
-      addComment,
       viewerId,
       resolveName,
       sidebarCollapsed,
@@ -436,8 +416,6 @@ export function DeskShell() {
       patchRow,
       rowsTotal,
       rowsTruncated,
-      comments,
-      addComment,
       viewerId,
       today,
       resolveName,
