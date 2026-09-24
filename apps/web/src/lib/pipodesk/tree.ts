@@ -537,9 +537,6 @@ export function buildTree(tickets: TicketRow[], options: BuildTreeOptions): Tree
   ]
 }
 
-/** Top-bar pills: the active node's siblings. A node WITH children returns
- *  its children ("what is inside this"), not its siblings; a childless
- *  top-level node returns nothing (Inbox would drag Meus tickets along). */
 /** Node by id, at any depth of the three sections. */
 export function findNode(sections: TreeSection[], id: string): TreeNode | null {
   const walk = (nodes: TreeNode[]): TreeNode | null => {
@@ -560,6 +557,9 @@ export function findNode(sections: TreeSection[], id: string): TreeNode | null {
 export const listNodeIdOf = (groupId: string, root: { id: string } | null): string =>
   groupId === root?.id ? `node-${groupId}` : `node-${groupId}-chamados`
 
+/** Top-bar pills: the active node's siblings. A node WITH children returns
+ *  its children ("what is inside this"), not its siblings; a childless
+ *  top-level node returns nothing (Inbox would drag Meus tickets along). */
 export function pillsOf(sections: TreeSection[], nodeId: string): TreeNode[] {
   const walk = (nodes: TreeNode[]): TreeNode[] | null => {
     for (const current of nodes) {
