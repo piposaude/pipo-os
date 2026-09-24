@@ -70,8 +70,12 @@ const digitsOf = (text: string): string => text.replace(/\D/g, '')
 export function companyRegistryOf(rows: TicketRow[]): Record<string, CompanyRecord> {
   const registry: Record<string, CompanyRecord> = {}
   for (const row of rows) {
-    if (!row.companyName || registry[row.companyId]?.cnpj) continue
-    registry[row.companyId] = { legalName: row.companyName, cnpj: row.companyTaxId ?? '' }
+    if (!row.companyName && !row.companyTaxId) continue
+    const known = registry[row.companyId]
+    registry[row.companyId] = {
+      legalName: known?.legalName || row.companyName || '',
+      cnpj: known?.cnpj || row.companyTaxId || '',
+    }
   }
   return registry
 }

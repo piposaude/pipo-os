@@ -272,6 +272,24 @@ describe('cadastro de empresas a partir das linhas', () => {
     expect(empresas?.hits[0].detail).toBe('Filial de Grupo Quiriri · 11.222.333/0002-25')
   })
 
+  it('should find by cnpj a company whose name and cnpj come on different rows', () => {
+    const named = row({ id: '3', companyId: 'empresa-3', companyName: 'Jatobá Têxtil' })
+    const withCnpj = row({
+      id: '4',
+      companyId: 'empresa-3',
+      companyName: null,
+      companyTaxId: '44.555.666/0001-77',
+    })
+    const rows = [named, withCnpj]
+
+    const groups = searchQueue('555666', rows, sections, companyRegistryOf(rows))
+
+    const empresas = groups.find((group) => group.category === 'empresa')
+    expect(empresas?.hits.map((hit) => [hit.label, hit.detail])).toEqual([
+      ['Jatobá Têxtil', 'Matriz · 44.555.666/0001-77'],
+    ])
+  })
+
   it('should still find by name a company whose rows carry no cnpj', () => {
     const plain = row({ id: '2', companyId: 'empresa-2', companyName: 'Grupo Quiriri' })
 
