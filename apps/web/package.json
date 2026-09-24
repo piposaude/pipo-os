@@ -7,7 +7,6 @@
     "dev": "vite",
     "prebuild": "node scripts/copy-ds-assets.mjs",
     "build": "vite build && tsc",
-    "fixture:export": "tsx scripts/export-fixture.mts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
@@ -45,7 +44,6 @@
     "eslint-plugin-storybook": "^0.11.6",
     "jsdom": "^25.0.1",
     "storybook": "^8.6.18",
-    "tsx": "^4.23.12",
     "typescript": "catalog:",
     "vite": "^5.0.12",
     "vitest": "catalog:"
