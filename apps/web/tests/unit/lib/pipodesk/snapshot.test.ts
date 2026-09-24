@@ -12,7 +12,7 @@ const payload = {
     company_tax_id: '94180280177840',
     parent_company_name: 'Meridiano Logística',
     parent_company_tax_id: '23541772939101',
-    company_size: 'enterprise',
+    company_size: 'corporate',
   },
   contract: {
     id: 'contract-1',
@@ -51,7 +51,7 @@ const payload = {
     employment: {
       admission_date: '2024-03-01',
       employee_id: 'MAT-1',
-      contract_type: 'clt',
+      contract_type: 'brazil-labor-law',
       job_title: 'Analista',
       monthly_salary: 5432.1,
       cost_center: 'CC-9',
@@ -84,6 +84,8 @@ const ticket = apiTicket({
   carrierId: 'carrier-amil',
   carrierName: 'Amil',
   product: 'health',
+  contractType: 'clt',
+  companySize: 'enterprise',
   pendingDocumentation: ['comprovante-residencia'],
   createdAt: '2026-09-20T12:00:00.000Z',
   enrollmentSnapshot: payload,
@@ -124,6 +126,14 @@ describe('recordsFromTicket — a pessoa', () => {
         account: '12345-6',
       },
     })
+  })
+
+  it('should take the contract type the API translated, not the raw EI word', () => {
+    const holder = recordsFromTicket({ ...ticket, contractType: null }).personById.get(
+      'member-holder',
+    )
+
+    expect(holder?.link?.contractType).toBe(null)
   })
 
   it('should read the employment as the holder link, salary in cents', () => {
@@ -273,6 +283,12 @@ describe('recordsFromTicket — a empresa e o contrato', () => {
       cnpj: '23541772939101',
       parentId: null,
     })
+  })
+
+  it('should take the company size the API translated, not the raw EI word', () => {
+    const records = recordsFromTicket({ ...ticket, companySize: null })
+
+    expect(records.companyById.get('company-branch')?.porte).toBe(null)
   })
 
   it('should have no parent when the ticket company is the parent', () => {

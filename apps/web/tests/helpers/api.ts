@@ -199,6 +199,15 @@ export function apiTicketOf(row: TicketRow): Record<string, unknown> {
   }
 }
 
+/** The EI's own words, which the API translates into the ticket columns. */
+const EI_WORD: Record<string, string> = {
+  clt: 'brazil-labor-law',
+  pj: 'services-contract',
+  pme: 'smb',
+  'pme-plus': 'smb-plus',
+  enterprise: 'corporate',
+}
+
 const personPayload = (person: Person, product: string | null) => {
   const card = person.cards.find((c) => c.product === product) ?? person.cards[0]
   return {
@@ -241,7 +250,8 @@ const personPayload = (person: Person, product: string | null) => {
       person.link && {
         admission_date: person.link.admissionDate ?? undefined,
         employee_id: person.link.registration ?? undefined,
-        contract_type: person.link.contractType ?? undefined,
+        contract_type:
+          EI_WORD[person.link.contractType ?? ''] ?? person.link.contractType ?? undefined,
         job_title: person.link.jobTitle ?? undefined,
         monthly_salary:
           person.link.salaryCents === null ? undefined : person.link.salaryCents / 100,
@@ -259,7 +269,7 @@ function snapshotOf(row: TicketRow): Record<string, unknown> {
     company: {
       company_name: company?.tradeName ?? row.companyName ?? undefined,
       company_tax_id: company?.cnpj ?? undefined,
-      company_size: company?.porte ?? undefined,
+      company_size: EI_WORD[company?.porte ?? ''] ?? company?.porte ?? undefined,
       parent_company_name: parent?.tradeName ?? row.parentCompanyName ?? undefined,
       parent_company_tax_id: parent?.cnpj ?? undefined,
     },

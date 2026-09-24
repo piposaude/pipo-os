@@ -122,13 +122,13 @@ function bankAccountOf(person: unknown): BankAccount | null {
   }
 }
 
-function linkOf(person: unknown, companyId: string): EmploymentLink | null {
+function linkOf(person: unknown, ticket: Ticket): EmploymentLink | null {
   const job = readPath(person, ['employment'])
   if (!isRecord(job)) return null
   const salary = readNumber(job, ['monthly-salary'])
   return {
-    companyId,
-    contractType: readString(job, ['contract-type']),
+    companyId: ticket.companyId,
+    contractType: ticket.contractType,
     admissionDate: readString(job, ['admission-date']),
     salaryCents: salary === null ? null : Math.round(salary * 100),
     registration: readString(job, ['employee-id']),
@@ -219,7 +219,7 @@ export function recordsFromTicket(ticket: Ticket): TicketRecords {
   const product = ticket.product ?? readString(snapshot, ['contract', 'product-type']) ?? ''
 
   const primary = readPath(snapshot, ['primary'])
-  const holderLink = linkOf(primary, ticket.companyId)
+  const holderLink = linkOf(primary, ticket)
   const holder = personOf(primary, {
     role: 'holder',
     holderId: null,
@@ -250,7 +250,7 @@ export function recordsFromTicket(ticket: Ticket): TicketRecords {
       legalName: null,
       cnpj: readString(snapshot, ['company', 'company-tax-id']),
       parentId: ticket.parentCompanyId,
-      porte: readString(snapshot, ['company', 'company-size']) ?? ticket.companySize,
+      porte: ticket.companySize,
       contractualSla: null,
     })
   }
