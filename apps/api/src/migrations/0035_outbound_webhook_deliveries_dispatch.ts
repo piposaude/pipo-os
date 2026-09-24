@@ -35,6 +35,6 @@ export async function down(db: Kysely<unknown>): Promise<void> {
       DROP COLUMN response_status,
       DROP COLUMN locked_at,
       DROP COLUMN next_attempt_at,
-      ADD COLUMN signing_secret text NOT NULL
+      ADD COLUMN signing_secret text
   `.execute(db)
 }
