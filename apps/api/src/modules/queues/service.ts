@@ -33,11 +33,9 @@ function assertOwnsIt(ownerId: string | null | undefined, viewerId: string): voi
   }
 }
 
-/** Twin of MOV_LABELS in web/src/lib/pipodesk/tree.ts, which finds these three
- *  views of a pod by name: renaming or moving one detaches it from the pod. */
+/** The web tree finds these three team views of a pod by name: renaming or
+ *  moving one detaches it from the pod. */
 const POD_CUTS: ReadonlySet<string> = new Set(['MOV CLT', 'MOV PJ', 'MOV MB'])
-
-const isPodCut = (view: StoredView): boolean => view.groupId !== null && POD_CUTS.has(view.name)
 
 export class QueuesService {
   constructor(
@@ -53,7 +51,7 @@ export class QueuesService {
       { ownerId: data.ownerId ?? null, groupId: data.groupId ?? null },
       viewer,
     )
-    await this.assertCutNameFree(data.groupId ?? null, data.name)
+    await this.assertCutNameFree(data.groupId ?? null, data.name, data.ownerId ?? null)
     return this.repository.create(data, viewer.id)
   }
 
@@ -85,7 +83,7 @@ export class QueuesService {
     await this.assertMayEdit(current, viewer)
     const renamed = data.name !== undefined && data.name !== current.name
     const regrouped = data.groupId !== undefined && data.groupId !== current.groupId
-    if (isPodCut(current) && (renamed || regrouped)) {
+    if ((renamed || regrouped) && (await this.isPodCut(current))) {
       throw new ConflictError(`${current.name} is found by the pod by its name and group`)
     }
 
@@ -104,7 +102,7 @@ export class QueuesService {
       await this.assertMayEdit(moved, viewer)
     }
     if (renamed || regrouped) {
-      await this.assertCutNameFree(moved.groupId, data.name ?? current.name, id)
+      await this.assertCutNameFree(moved.groupId, data.name ?? current.name, moved.ownerId, id)
     }
 
     const queue = await this.repository.update(id, data, viewer.id)
@@ -119,20 +117,37 @@ export class QueuesService {
     const view = await this.ownershipOf(id)
     if (!viewer.structureAdmin) {
       await this.assertMayEdit(view, viewer)
-      if (isPodCut(view)) throw new ConflictError(`${view.name} is deleted with its pod`)
+      if (await this.isPodCut(view)) {
+        throw new ConflictError(`${view.name} is deleted with its pod`)
+      }
     }
     const deleted = await this.repository.delete(id)
     if (!deleted) throw new NotFoundError(`Queue ${id} not found`)
   }
 
+  private async isPod(groupId: string): Promise<boolean> {
+    const nodes = await this.groupsRepository.findNodes()
+    const parentId = nodes.find((node) => node.id === groupId)?.parentId ?? null
+    return parentId !== null && nodes.find((node) => node.id === parentId)?.parentId === null
+  }
+
+  private async isPodCut(view: StoredView): Promise<boolean> {
+    if (view.ownerId !== null || view.groupId === null || !POD_CUTS.has(view.name)) return false
+    return this.isPod(view.groupId)
+  }
+
   private async assertCutNameFree(
     groupId: string | null,
     name: string,
+    ownerId: string | null,
     exceptId?: string,
   ): Promise<void> {
-    if (groupId === null || !POD_CUTS.has(name)) return
+    if (groupId === null || !POD_CUTS.has(name) || !(await this.isPod(groupId))) return
+    if (ownerId !== null) {
+      throw new ConflictError(`${name} is a name kept for the team views of a pod`)
+    }
     if (await this.repository.isNameTaken(groupId, name, exceptId)) {
-      throw new ConflictError(`The group already has a view named ${name}`)
+      throw new ConflictError(`The pod already has a view named ${name}`)
     }
   }
 
