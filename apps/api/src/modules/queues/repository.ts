@@ -127,6 +127,7 @@ export class QueuesRepository implements QueuesRepositoryPort {
       .selectFrom('ticket_queues')
       .select('id')
       .where('group_id', '=', groupId)
+      .where('owner_id', 'is', null)
       .where('name', '=', name)
       .$if(exceptId !== undefined, (q) => q.where('id', '!=', exceptId!))
       .executeTakeFirst()

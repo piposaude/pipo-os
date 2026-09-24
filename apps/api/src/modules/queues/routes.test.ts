@@ -1424,15 +1424,51 @@ describe('queues routes', () => {
 
       it('lets a view of another pod carry the same name', async () => {
         await queue({ name: 'MOV CLT', groupId: pod })
+        const other = await app.inject({
+          method: 'POST',
+          url: '/api/groups',
+          cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
+          payload: { name: 'POD 6', parentId: geben },
+        })
 
         const response = await app.inject({
           method: 'POST',
           url: '/api/queues',
           cookies: { [SESSION_COOKIE_NAME]: sessionCookie },
-          payload: { name: 'MOV CLT', groupId: geben },
+          payload: { name: 'MOV CLT', groupId: other.json().id },
         })
 
         expect(response.statusCode).toBe(201)
+      })
+
+      it('refuses a personal view named as a MOV in a pod, even one missing it', async () => {
+        const response = await app.inject({
+          method: 'POST',
+          url: '/api/queues',
+          cookies: { [SESSION_COOKIE_NAME]: analyst },
+          payload: { name: 'MOV CLT', groupId: pod, ownerId: ANALYST },
+        })
+
+        expect(response.statusCode).toBe(409)
+      })
+
+      it('leaves a view of the root named as a MOV free to rename and delete', async () => {
+        const id = await queue({ name: 'MOV PJ', groupId: geben })
+
+        const renamed = await app.inject({
+          method: 'PATCH',
+          url: `/api/queues/${id}`,
+          cookies: { [SESSION_COOKIE_NAME]: gebenLead },
+          payload: { name: 'PJ de todos' },
+        })
+        const deleted = await app.inject({
+          method: 'DELETE',
+          url: `/api/queues/${id}`,
+          cookies: { [SESSION_COOKIE_NAME]: gebenLead },
+        })
+
+        expect(renamed.statusCode).toBe(200)
+        expect(deleted.statusCode).toBe(204)
       })
     })
   })
