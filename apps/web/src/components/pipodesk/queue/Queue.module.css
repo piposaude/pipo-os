@@ -797,3 +797,63 @@
   color: var(--desk-nav-text);
   font-size: 0.8125rem;
 }
+
+.idCell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pipo-space-xxsmall);
+}
+
+.priorityAnchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.priorityTrigger {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: var(--pipo-radius-xsmall);
+  background: transparent;
+  color: var(--pipo-text-secondary);
+  cursor: pointer;
+}
+
+.priorityTrigger:hover {
+  background: var(--pipo-neutral-light);
+}
+
+.priorityTrigger:focus-visible {
+  outline: none;
+  box-shadow: var(--pipo-shadow-focus-primary);
+}
+
+.priorityTrigger:not([data-set]) {
+  opacity: 0.45;
+}
+
+.priorityTrigger:not([data-set]):hover,
+.priorityTrigger:not([data-set]):focus-visible {
+  opacity: 1;
+}
+
+.priorityGlyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.priorityGlyph[data-level='urgent'] {
+  color: var(--pipo-danger-dark);
+}
+
+.priorityItem {
+  display: flex;
+  align-items: center;
+  gap: var(--pipo-space-xsmall);
+}

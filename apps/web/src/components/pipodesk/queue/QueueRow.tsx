@@ -9,7 +9,13 @@ import {
 } from '@/constants/pipodesk/domain'
 import type { QueueColumn } from '@/lib/pipodesk/columns'
 import { formatDayMonth, formatPrazo, prazoVariant } from '@/lib/pipodesk/format'
-import { companyTitleOf, principalNameOf, type TicketRow } from '@/lib/pipodesk/ticket-row'
+import {
+  companyTitleOf,
+  principalNameOf,
+  type Priority,
+  type TicketRow,
+} from '@/lib/pipodesk/ticket-row'
+import { PriorityMenu } from './PriorityMenu'
 import constants from '@/constants/pages/pipodesk/queue'
 import styles from './Queue.module.css'
 
@@ -35,6 +41,7 @@ export interface QueueRowProps {
   onToggleSelect: (id: string) => void
   today: string
   resolveName: (userId: string) => string
+  onSetPriority: (id: string, priority: Priority | null) => void
 }
 
 /** The deadline chip, or nothing. `prazoVariant` is the single decision: it
@@ -56,6 +63,7 @@ export function QueueRow({
   onToggleSelect,
   today,
   resolveName,
+  onSetPriority,
 }: QueueRowProps) {
   const reason = ticket.reason ? PENDING_REASON_COPY[ticket.reason] : null
   // The operational number (PD-011) is what the analyst reads out loud;
@@ -76,7 +84,14 @@ export function QueueRow({
     ),
     id: (
       <td key="id" className={styles.num}>
-        {number}
+        <span className={styles.idCell}>
+          <PriorityMenu
+            value={ticket.priority}
+            ticketNumber={number}
+            onChange={(priority) => onSetPriority(ticket.id, priority)}
+          />
+          {number}
+        </span>
       </td>
     ),
     assignee: (

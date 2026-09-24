@@ -24,6 +24,7 @@ const table = (groups: TicketGroup[], selectedIds: string[] = []) => (
     onOpenTicket={() => {}}
     today="2026-08-07"
     resolveName={(id) => id}
+    onSetPriority={() => {}}
   />
 )
 
@@ -112,6 +113,7 @@ describe('column funnel side', () => {
         onOpenTicket={() => {}}
         today="2026-08-07"
         resolveName={(id) => id}
+        onSetPriority={() => {}}
         columnFilter={(field, align) => {
           sides[field] = align
           return null
@@ -159,6 +161,7 @@ describe('header cell', () => {
         onOpenTicket={() => {}}
         today="2026-08-07"
         resolveName={(id) => id}
+        onSetPriority={() => {}}
         columnFilter={() => <button type="button">funil</button>}
       />,
     )
@@ -191,6 +194,7 @@ describe('header cell', () => {
         onOpenTicket={() => {}}
         today="2026-08-07"
         resolveName={(id) => id}
+        onSetPriority={() => {}}
       />,
     )
 

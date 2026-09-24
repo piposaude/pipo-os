@@ -25,4 +25,10 @@ export default {
       count === 1 ? 'não muda' : 'não mudam'
     } de situação: concluído e cancelado não reabrem.`,
   empty_cell: '—',
+  priority: {
+    label: 'Prioridade',
+    none: 'Sem prioridade',
+    set: (ticketNumber: string) => `Sem prioridade. Definir prioridade do chamado ${ticketNumber}`,
+    change: (level: string) => `Prioridade ${level}. Trocar`,
+  },
 }

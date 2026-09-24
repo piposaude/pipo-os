@@ -23,6 +23,7 @@ async function renderQueue(writes: Record<string, number> = {}) {
   render(<RouterProvider router={router} />)
   await screen.findByRole('navigation', { name: /pipodesk/i })
   await screen.findByRole('table')
+  return router
 }
 
 afterEach(() => {
@@ -97,6 +98,22 @@ describe('o que a tela muda, a API grava', () => {
     await user.click(screen.getByRole('button', { name: 'Agendar' }))
 
     expect(screen.getByRole('button', { name: /Agendar para/ })).toBeDisabled()
+  })
+
+  it('should trocar a prioridade pela linha sem abrir o chamado', async () => {
+    const router = await renderQueue()
+    const user = userEvent.setup()
+    const row = document.querySelector<HTMLElement>('tr[data-ticket-id]')!
+    const id = row.getAttribute('data-ticket-id')!
+
+    await user.click(within(row).getByRole('button', { name: /prioridade/i }))
+    await user.click(await screen.findByRole('button', { name: 'Alta' }))
+
+    expect(desk.calls.filter((call) => call.method === 'PATCH')).toEqual([
+      expect.objectContaining({ path: `/api/tickets/${id}`, body: { priority: 'high' } }),
+    ])
+    expect(router.state.location.pathname).toBe('/')
+    expect(within(row).getByRole('button', { name: /prioridade alta/i })).toBeInTheDocument()
   })
 
   it('should mandar o novo responsável para a API, um PATCH por chamado', async () => {
