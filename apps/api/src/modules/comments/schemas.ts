@@ -105,7 +105,11 @@ const submissionPartSchema = z
 
 export const createSubmissionBodySchema = z
   .object({
-    parts: z.array(submissionPartSchema).max(2).default([]),
+    parts: z
+      .array(submissionPartSchema)
+      .max(2)
+      .default([])
+      .describe('Uma parte por canal; sem parte, o envio precisa de status'),
     status: updateTicketStatusBodySchema.optional(),
     inReplyTo: z.uuid().optional(),
   })

@@ -44,6 +44,7 @@ const base = {
   ticketId: '1',
   authorId: 'ana@pipo',
   authorType: 'user' as const,
+  submissionId: null,
   createdAt: '2026-08-21T10:00:00.000Z',
 }
 
@@ -58,11 +59,20 @@ describe('timelineFromApi', () => {
 
   it('should keep the API order after the creation', () => {
     const items: TimelineItem[] = [
-      { ...base, id: 'a', type: 'comment', channel: 'internal', visibility: 'private', body: '1º' },
+      {
+        ...base,
+        id: 'a',
+        type: 'comment',
+        inReplyTo: null,
+        channel: 'internal',
+        visibility: 'private',
+        body: '1º',
+      },
       {
         ...base,
         id: 'b',
         type: 'comment',
+        inReplyTo: null,
         channel: 'internal',
         visibility: 'private',
         body: '2º',
@@ -79,9 +89,33 @@ describe('timelineFromApi', () => {
 
   it('should name the author of a comment, and read the channel off visibility and channel', () => {
     const items: TimelineItem[] = [
-      { ...base, id: 'a', type: 'comment', channel: 'internal', visibility: 'private', body: 'x' },
-      { ...base, id: 'b', type: 'comment', channel: 'internal', visibility: 'public', body: 'y' },
-      { ...base, id: 'c', type: 'comment', channel: 'email', visibility: 'private', body: 'z' },
+      {
+        ...base,
+        id: 'a',
+        type: 'comment',
+        inReplyTo: null,
+        channel: 'internal',
+        visibility: 'private',
+        body: 'x',
+      },
+      {
+        ...base,
+        id: 'b',
+        type: 'comment',
+        inReplyTo: null,
+        channel: 'internal',
+        visibility: 'public',
+        body: 'y',
+      },
+      {
+        ...base,
+        id: 'c',
+        type: 'comment',
+        inReplyTo: null,
+        channel: 'email',
+        visibility: 'private',
+        body: 'z',
+      },
     ]
 
     const [, internal, pub, email] = timelineFromApi(row({ id: '1' }), items, resolveName)
@@ -177,7 +211,15 @@ describe('timelineFromApi', () => {
 
   it('should skip an item type this version does not know, instead of breaking the page', () => {
     const items = [
-      { ...base, id: 'a', type: 'comment', channel: 'internal', visibility: 'private', body: '1º' },
+      {
+        ...base,
+        id: 'a',
+        type: 'comment',
+        inReplyTo: null,
+        channel: 'internal',
+        visibility: 'private',
+        body: '1º',
+      },
       { ...base, id: 'b', type: 'attachment-added' },
     ] as unknown as TimelineItem[]
 
