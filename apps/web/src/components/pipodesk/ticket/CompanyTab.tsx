@@ -169,8 +169,8 @@ export function CompanyTab({ companyId, policyId, records, capturedAt, today }: 
           <ul className={styles.list}>
             {plans.map((plan) => (
               <li key={plan.id} className={styles.row}>
-                <span>{plan.name}</span>
-                <span className={styles.code}>{plan.code}</span>
+                <span>{plan.name ?? RECORD_EMPTY}</span>
+                <span className={styles.code}>{plan.code ?? RECORD_EMPTY}</span>
                 <span>{PRODUCT_COPY[plan.product] ?? plan.product}</span>
               </li>
             ))}

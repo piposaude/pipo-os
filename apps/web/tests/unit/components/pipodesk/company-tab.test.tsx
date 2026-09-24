@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { CompanyTab } from '@/components/pipodesk/ticket/CompanyTab'
 import copy from '@/constants/pages/pipodesk/ticket/company'
+import { RECORD_EMPTY } from '@/lib/pipodesk/format'
 import { company, recordsWith } from '../../../helpers/records'
 
 describe('CompanyTab', () => {
@@ -168,5 +169,32 @@ describe('CompanyTab', () => {
     )
 
     expect(screen.queryByText(copy.plans.otherCompany)).not.toBeInTheDocument()
+  })
+
+  it('should show the empty-field dash for a plan the EI sent without name or code', () => {
+    const records = recordsWith({
+      policies: [
+        {
+          id: 'policy-1',
+          companyId: 'company-1',
+          carrierId: 'carrier-1',
+          product: 'health',
+          name: null,
+          code: null,
+        },
+      ],
+    })
+    render(
+      <CompanyTab
+        companyId="company-1"
+        policyId="policy-1"
+        records={records}
+        capturedAt="2026-08-01T12:00:00.000Z"
+        today="2026-08-07"
+      />,
+    )
+
+    const plans = screen.getByRole('heading', { name: copy.sections.plans }).closest('section')!
+    expect(within(plans).getAllByText(RECORD_EMPTY)).toHaveLength(2)
   })
 })
