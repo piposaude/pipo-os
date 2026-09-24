@@ -122,6 +122,13 @@ export const createSubmissionBodySchema = z
         message: 'A submission carries at least one part or a status',
       })
     }
+    if (body.inReplyTo !== undefined && body.parts.length === 0) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['inReplyTo'],
+        message: 'inReplyTo needs at least one part to answer with',
+      })
+    }
     body.parts.forEach((part, index) => {
       if (body.parts.findIndex((other) => other.channel === part.channel) !== index) {
         ctx.addIssue({

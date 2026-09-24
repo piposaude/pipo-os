@@ -73,6 +73,15 @@ describe('the body of POST /tickets/:id/submissions', () => {
     ).toBe('00000000-0000-4000-8000-0000000000aa')
   })
 
+  it('refuses inReplyTo on a submission with no text, which has nowhere to keep it', () => {
+    expect(
+      pathsOf({
+        status: { status: 'missing-documents' },
+        inReplyTo: '00000000-0000-4000-8000-0000000000aa',
+      }),
+    ).toEqual([['inReplyTo']])
+  })
+
   it('refuses a field it does not know', () => {
     const parts = [{ channel: 'internal', body: 'oi' }]
 
