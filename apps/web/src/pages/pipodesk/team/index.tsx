@@ -4,6 +4,7 @@ import {
   Badge,
   Breadcrumb,
   BreadcrumbItem,
+  Button,
   Heading,
   Loading,
   Table,
@@ -14,10 +15,12 @@ import {
   TableRow,
   Text,
 } from '@piposaude/design-system'
-import { Link, useParams, useSearch } from '@tanstack/react-router'
+import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { useDesk } from '@/components/pipodesk/shell/desk-context'
 import { SidebarToggle } from '@/components/pipodesk/shell/SidebarToggle'
-import { ancestorsOf } from '@/lib/pipodesk/permissions'
+import { ancestorsOf, rootGroupOf } from '@/lib/pipodesk/permissions'
+import { findNode, listNodeIdOf } from '@/lib/pipodesk/tree'
+import { toQueueNode } from '@/lib/pipodesk/queue-node'
 import { membersWithLoad, unownedCompaniesOf } from '@/lib/pipodesk/team'
 import type { LabelContext } from '@/lib/pipodesk/filter-copy'
 import { CarteirasTab } from './CarteirasTab'
@@ -47,8 +50,19 @@ export default function TeamPage() {
   /* `validateSearch` already restricted this to the two tabs or nothing —
      re-checking here would be a second source of truth for the same rule. */
   const { tab = 'home' } = useSearch({ from: '/_auth/_desk/teams/$groupId' })
-  const { structure, structurePending, rows, rowsTotal, rowsTruncated, resolveName, today } =
-    useDesk()
+  const {
+    structure,
+    structurePending,
+    rows,
+    rowsTotal,
+    rowsTruncated,
+    resolveName,
+    today,
+    sections,
+    dispatch,
+    openSaveView,
+  } = useDesk()
+  const navigate = useNavigate()
 
   const group = structure.groups.find((candidate) => candidate.id === groupId)
 
@@ -101,6 +115,14 @@ export default function TeamPage() {
     )
   }
 
+  const startNewView = () => {
+    const node = findNode(sections, listNodeIdOf(group.id, rootGroupOf(structure)))
+    if (!node) return
+    dispatch({ type: 'select-node', node: toQueueNode(node) })
+    void navigate({ to: '/' })
+    openSaveView(group.id)
+  }
+
   const trail = [...ancestorsOf(structure, groupId)].reverse()
   /* The breadcrumb, not a tab bar, says which section you are on (DSP-93):
      outside Home it ends in the section and the group becomes the way back. */
@@ -147,9 +169,17 @@ export default function TeamPage() {
             {constants.open(openCount)}
           </Text>
         </div>
-        {/* Saying WHO edits keeps read-only from reading as broken — otherwise
-                     people hunt for a button that does not exist. */}
-        <p className={styles.acao}>{constants.editableBy(group.name)}</p>
+        {tab === 'views' ? (
+          <div className={styles.acao}>
+            <Button variant="primary" onClick={startNewView}>
+              {constants.newView}
+            </Button>
+          </div>
+        ) : (
+          // Saying WHO edits keeps read-only from reading as broken — otherwise
+          // people hunt for a button that does not exist.
+          <p className={styles.acao}>{constants.editableBy(group.name)}</p>
+        )}
       </header>
 
       {rowsTruncated && (

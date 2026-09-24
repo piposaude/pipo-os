@@ -31,7 +31,7 @@ export interface QueueSidebarProps {
   viewerId: string
   onRenameView: (queueId: string, name: string) => void
   onDeleteView: (queueId: string) => void
-  onNewView: (groupId: string) => void
+  onNewView?: (groupId: string) => void
   /** Viewer initials for the footer. */
   viewerInitials: string
   viewerName: string
@@ -135,7 +135,7 @@ interface NodeProps {
   viewerId: string
   onRenameView: (queueId: string, name: string) => void
   onDeleteView: (queueId: string) => void
-  onNewView: (groupId: string) => void
+  onNewView?: (groupId: string) => void
 }
 
 const openMenuOnRightClick = (event: MouseEvent<HTMLDivElement>) => {
@@ -294,9 +294,11 @@ function Node(props: NodeProps) {
             />
           </svg>
         </button>
-        {nodeGroup !== undefined && canEditStructure(structure, viewerId, nodeGroup.id) && (
-          <RowMenu label={node.label} onNewView={() => onNewView(nodeGroup.id)} />
-        )}
+        {onNewView &&
+          nodeGroup !== undefined &&
+          canEditStructure(structure, viewerId, nodeGroup.id) && (
+            <RowMenu label={node.label} onNewView={() => onNewView(nodeGroup.id)} />
+          )}
         {isContainer ? null : <span className={styles.count}>{formatCount(node.count)}</span>}
       </div>
 
