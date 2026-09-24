@@ -5,6 +5,7 @@ import { QueueHeader } from '@/components/pipodesk/queue/QueueHeader'
 import { ColumnFilter } from '@/components/pipodesk/queue/ColumnFilter'
 import { QueueTable } from '@/components/pipodesk/queue/QueueTable'
 import { BatchBar } from '@/components/pipodesk/queue/BatchBar'
+import { SaveViewDialog } from '@/components/pipodesk/queue/SaveViewDialog'
 import styles from '@/components/pipodesk/queue/Queue.module.css'
 import { analystsOf } from '@/lib/pipodesk/permissions'
 import { useDesk } from '@/components/pipodesk/shell/desk-context'
@@ -135,6 +136,7 @@ export default function QueuePage() {
   /* Effective selection = intersection with the listed rows: an action that
        removes rows from the queue empties the selection with them. */
   const [batchMessage, setBatchMessage] = useState<string | null>(null)
+  const [savingView, setSavingView] = useState(false)
 
   const listedIds = useMemo(() => new Set(listed.map((ticket) => ticket.id)), [listed])
   const selectedVisible = view.selectedIds.filter((id) => listedIds.has(id))
@@ -174,6 +176,7 @@ export default function QueuePage() {
         onExitSearch={
           isSearchNode(view.nodeId) ? () => dispatch({ type: 'exit-search' }) : undefined
         }
+        onSaveView={() => setSavingView(true)}
         base={base}
         filter={view.filter}
         viewerId={viewerId}
@@ -209,6 +212,17 @@ export default function QueuePage() {
           }))
         }
       />
+
+      {savingView && (
+        <SaveViewDialog
+          scopeId={view.groupId}
+          lockScope={false}
+          filter={view.filter}
+          sort={view.sort}
+          groupBy={view.groupBy}
+          onClose={() => setSavingView(false)}
+        />
+      )}
 
       {/* The total left the visible header (the sidebar shows it) but not the
                  screen reader. */}
