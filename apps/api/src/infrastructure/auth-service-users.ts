@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import type { FastifyBaseLogger } from 'fastify'
+import { deadline } from '../shared/deadline.js'
 import { ServiceUnavailableError } from '../shared/errors.js'
 import { assertNotSetInDeployed } from '../shared/environment.js'
 import { isEmail } from '../shared/schemas.js'
@@ -39,15 +40,6 @@ export const LISTING_TIMEOUT_MS = 15_000
 
 /** And one per page, so a single hung request does not eat the whole budget. */
 export const PAGE_TIMEOUT_MS = 5_000
-
-/** AbortSignal.timeout is driven by a timer the test runner cannot advance, so
- *  the deadline would be unobservable — and untested. */
-function deadline(ms: number): { signal: AbortSignal; clear: () => void } {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(new Error(`timed out after ${ms}ms`)), ms)
-
-  return { signal: controller.signal, clear: () => clearTimeout(timer) }
-}
 
 /** A pasted token never rotates, and the identity behind it can attach any
  *  policy to any identity — so a deployed environment must not boot with one. */

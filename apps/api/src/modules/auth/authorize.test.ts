@@ -273,6 +273,7 @@ describe('the policy each route requires', () => {
     ['GET /api/auth/google', null],
     ['GET /api/auth/google/callback', null],
     ['GET /api/auth/me', null],
+    ['GET /api/companies', [TICKET, STRUCTURE]],
     ['GET /api/groups', STRUCTURE],
     ['GET /api/groups/:id', STRUCTURE],
     ['GET /api/queues', [TICKET, STRUCTURE]],

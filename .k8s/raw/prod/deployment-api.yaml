@@ -55,6 +55,8 @@ spec:
               value: https://auth-service.piposaude.com.br
             - name: AUTH_SERVICE_INTERNAL_URL
               value: http://auth-service.platform:4000
+            - name: COMPANY_SERVICE_INTERNAL_URL
+              value: http://company-service.default:4000
             - name: SERVICE_ALLOWED_ACCOUNTS
               value: cronjobs/enrollment-integrations-worker
             - name: ALLOWED_EMAIL_DOMAINS
