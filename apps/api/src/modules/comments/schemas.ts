@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { ticketSchema, updateTicketStatusBodySchema } from '../tickets/schemas.js'
+import { PENDENCY_ACTIONS } from '../pendencies/schemas.js'
 import { serviceEventTypeSchema, ticketEventTypeSchema } from './event-types.js'
 
 /* The three the CHECK of migration 0030 allows. `system` is wider than
@@ -102,10 +103,6 @@ const submissionPartSchema = z
     body: commentBodyBase.body,
   })
   .strict()
-
-export const PENDENCY_ACTIONS = ['opened', 'reopened', 'resolved'] as const
-
-export type PendencyAction = (typeof PENDENCY_ACTIONS)[number]
 
 const pendencyItemIdsSchema = z.array(z.string().min(1)).default([])
 

@@ -1,6 +1,34 @@
 import type { Kysely } from 'kysely'
+import { z } from 'zod'
 import type { Database } from '../../infrastructure/db.js'
-import type { PendencyItem } from './schemas.js'
+import { openPendenciesOf } from './open-pendencies.js'
+import { PENDENCY_ACTIONS, type OpenPendency, type PendencyItem } from './schemas.js'
+
+const pendencyEventMetadataSchema = z.object({
+  action: z.enum(PENDENCY_ACTIONS),
+  itemIds: z.array(z.string()),
+})
+
+export async function findOpenPendencies(
+  db: Kysely<Database>,
+  ticketId: string,
+): Promise<OpenPendency[]> {
+  const rows = await db
+    .selectFrom('ticket_comments')
+    .select(['metadata', 'created_at'])
+    .where('ticket_id', '=', ticketId)
+    .where('event_type', '=', 'pendency_changed')
+    .orderBy('created_at')
+    .orderBy('id')
+    .execute()
+
+  return openPendenciesOf(
+    rows.map((row) => ({
+      ...pendencyEventMetadataSchema.parse(row.metadata),
+      at: row.created_at.toISOString(),
+    })),
+  )
+}
 
 export async function listPendencyItems(
   db: Kysely<Database>,

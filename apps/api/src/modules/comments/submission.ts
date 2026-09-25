@@ -5,12 +5,8 @@ import type { Author } from '../auth/authenticate.js'
 import { applyStatusChange, toTicket } from '../tickets/repository.js'
 import type { Ticket, TicketStatus } from '../tickets/schemas.js'
 import { insertEvents, toComment } from './repository.js'
-import {
-  PENDENCY_ACTIONS,
-  type Comment,
-  type CreateSubmissionBody,
-  type PendencyAction,
-} from './schemas.js'
+import { PENDENCY_ACTIONS, type PendencyAction } from '../pendencies/schemas.js'
+import type { Comment, CreateSubmissionBody } from './schemas.js'
 
 export type SubmitResult =
   | {

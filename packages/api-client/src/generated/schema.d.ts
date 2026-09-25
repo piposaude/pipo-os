@@ -3121,6 +3121,16 @@ export interface components {
         GroupMemberRole: "admin" | "member";
         /** @enum {string} */
         GroupMemberRoleInput: "admin" | "member";
+        OpenPendency: {
+            itemId: string;
+            /**
+             * Format: date-time
+             * @description Quando o ciclo atual abriu
+             */
+            since: string;
+            /** @description Cobranças desde que o ciclo abriu */
+            chargedCount: number;
+        };
         OpenTicketConflict: {
             error: string;
             message: string;
@@ -3335,6 +3345,7 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             completion: components["schemas"]["TicketCompletion"] | null;
+            openPendencies: components["schemas"]["OpenPendency"][];
         };
         TicketFilter: {
             statuses?: components["schemas"]["TicketStatus"][];
