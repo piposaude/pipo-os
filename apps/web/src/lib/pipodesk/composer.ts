@@ -1,5 +1,5 @@
 import type { components } from '@pipo-os/api-client'
-import type { ApiStatus } from './status'
+import { API_STATUSES, DISPLAY_STATUSES, toDisplayStatus, type ApiStatus } from './status'
 
 type SubmissionBody = components['schemas']['CreateSubmissionBodyInput']
 type SubmissionPart = SubmissionBody['parts'][number]
@@ -31,16 +31,11 @@ export const EMPTY_DRAFT: ComposerDraft = {
   completion: {},
 }
 
-export const SEND_STATUSES: readonly ApiStatus[] = [
-  'broker-processing',
-  'broker-open-issue',
-  'carrier-processing',
-  'missing-documents',
-  'incorrect-data',
-  'submitted-cancellation',
-  'completed',
-  'cancelled',
-]
+export const SEND_STATUSES: readonly ApiStatus[] = [...API_STATUSES].sort(
+  (a, b) =>
+    DISPLAY_STATUSES.indexOf(toDisplayStatus(a).status) -
+    DISPLAY_STATUSES.indexOf(toDisplayStatus(b).status),
+)
 
 export function toggleDestination(draft: ComposerDraft, destination: Destination): ComposerDraft {
   if (PARKED_DESTINATIONS.has(destination)) return draft
