@@ -1,4 +1,4 @@
-import { sql, type InferResult, type Kysely, type Selectable } from 'kysely'
+import { sql, type InferResult, type Kysely, type Selectable, type Transaction } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import type { Tickets } from '../../infrastructure/db-types.js'
 import { ADVISORY_LOCKS } from '../../shared/advisory-locks.js'
@@ -57,6 +57,15 @@ export type ChangeStatusResult =
   | { kind: 'refused'; failures: ErrorDetails }
   | { kind: 'ok'; ticket: Ticket }
 
+export interface StatusChangeInput {
+  ticketId: string
+  toStatus: TicketStatus
+  authorId: string
+  reason?: string
+  completion?: CompletionData
+  submissionId?: string
+}
+
 const OPEN_ENROLLMENT_CONSTRAINT = 'uq_tickets_open_enrollment'
 
 const FK_FIELDS: Record<string, string> = {
@@ -111,7 +120,7 @@ function changeEventBody(
   return previous === null ? labels.set : labels.changed
 }
 
-function toTicket(row: Selectable<Tickets>): Ticket {
+export function toTicket(row: Selectable<Tickets>): Ticket {
   return {
     id: row.id,
     displayNumber: row.display_number,
@@ -338,20 +347,95 @@ export interface SavedViewQuery {
   pageSize: number
 }
 
+export async function applyStatusChange(
+  trx: Transaction<Database>,
+  { ticketId, toStatus, authorId, reason, completion, submissionId }: StatusChangeInput,
+): Promise<ChangeStatusResult> {
+  const current = await trx
+    .selectFrom('tickets')
+    .selectAll()
+    .where('id', '=', ticketId)
+    .forUpdate()
+    .executeTakeFirst()
+
+  if (!current) return { kind: 'not-found' }
+  if (CLOSED_STATUSES.has(current.status as TicketStatus)) {
+    return { kind: 'already-closed' }
+  }
+
+  if (toStatus === 'completed') {
+    const [first, ...rest] = gateFailures(current, completion)
+    if (first) return { kind: 'refused', failures: [first, ...rest] }
+  }
+
+  if (completion?.members?.length) {
+    await trx
+      .insertInto('ticket_completion_members')
+      .values(
+        completion.members.map((member) => ({
+          ticket_id: ticketId,
+          tax_id: member.taxId,
+          id_card_number: member.idCardNumber.trim(),
+          start_date: member.startDate,
+        })),
+      )
+      .execute()
+  }
+
+  const updated = await trx
+    .updateTable('tickets')
+    .set({
+      status: toStatus,
+      closed_at: CLOSED_STATUSES.has(toStatus) ? new Date().toISOString() : null,
+      ...completionColumnsOf(completion),
+    })
+    .where('id', '=', ticketId)
+    .returningAll()
+    .returning([
+      sql<string | null>`end_date::text`.as('end_date_text'),
+      sql<string | null>`effective_date::text`.as('effective_date_text'),
+    ])
+    .executeTakeFirstOrThrow()
+
+  const history = await trx
+    .insertInto('ticket_status_history')
+    .values({
+      ticket_id: ticketId,
+      from_status: current.status,
+      to_status: toStatus,
+      author_id: authorId,
+      author_type: 'user',
+      reason: reason ?? null,
+      submission_id: submissionId ?? null,
+      created_at: sql<Date>`clock_timestamp()`,
+    })
+    .returning(['id', 'created_at'])
+    .executeTakeFirstOrThrow()
+
+  const ticket = toTicket(updated)
+  await enqueueStatusChange(trx, history.id, {
+    ticket,
+    fromStatus: current.status,
+    toStatus,
+    reason: reason ?? null,
+    actor: { type: 'user', id: authorId },
+    occurredAt: history.created_at.toISOString(),
+    completion:
+      toStatus === 'completed'
+        ? completionOf(updated, await selectCompletionMembers(trx, ticketId))
+        : null,
+  })
+
+  return { kind: 'ok', ticket }
+}
+
 export interface TicketsRepositoryPort {
   findById(id: string): Promise<Ticket | undefined>
   findDetailById(id: string): Promise<TicketDetail | undefined>
   create(data: CreateTicketData): Promise<Ticket>
   update(id: string, data: UpdateTicketBody, author?: Author): Promise<Ticket | undefined>
   claimOpen(id: string, claimer: Author): Promise<Ticket | undefined>
-  changeStatus(
-    id: string,
-    toStatus: TicketStatus,
-    closedAt: string | null,
-    authorId: string,
-    reason?: string,
-    completion?: CompletionData,
-  ): Promise<ChangeStatusResult>
+  changeStatus(input: StatusChangeInput): Promise<ChangeStatusResult>
   findMany(query: ListTicketsQuery): Promise<{ data: Ticket[]; total: number }>
   findByFilter(params: SavedViewQuery, viewerId: string): Promise<{ data: Ticket[]; total: number }>
   countByFilters(
@@ -687,87 +771,8 @@ export class TicketsRepository implements TicketsRepositoryPort {
     }
   }
 
-  async changeStatus(
-    id: string,
-    toStatus: TicketStatus,
-    closedAt: string | null,
-    authorId: string,
-    reason?: string,
-    completion?: CompletionData,
-  ): Promise<ChangeStatusResult> {
-    return this.db.transaction().execute(async (trx) => {
-      const current = await trx
-        .selectFrom('tickets')
-        .selectAll()
-        .where('id', '=', id)
-        .forUpdate()
-        .executeTakeFirst()
-
-      if (!current) return { kind: 'not-found' }
-      if (CLOSED_STATUSES.has(current.status as TicketStatus)) {
-        return { kind: 'already-closed' }
-      }
-
-      if (toStatus === 'completed') {
-        const [first, ...rest] = gateFailures(current, completion)
-        if (first) return { kind: 'refused', failures: [first, ...rest] }
-      }
-
-      if (completion?.members?.length) {
-        await trx
-          .insertInto('ticket_completion_members')
-          .values(
-            completion.members.map((member) => ({
-              ticket_id: id,
-              tax_id: member.taxId,
-              id_card_number: member.idCardNumber.trim(),
-              start_date: member.startDate,
-            })),
-          )
-          .execute()
-      }
-
-      const updated = await trx
-        .updateTable('tickets')
-        .set({ status: toStatus, closed_at: closedAt, ...completionColumnsOf(completion) })
-        .where('id', '=', id)
-        .returningAll()
-        .returning([
-          sql<string | null>`end_date::text`.as('end_date_text'),
-          sql<string | null>`effective_date::text`.as('effective_date_text'),
-        ])
-        .executeTakeFirstOrThrow()
-
-      const history = await trx
-        .insertInto('ticket_status_history')
-        .values({
-          ticket_id: id,
-          from_status: current.status,
-          to_status: toStatus,
-          author_id: authorId,
-          author_type: 'user',
-          reason: reason ?? null,
-          created_at: sql<Date>`clock_timestamp()`,
-        })
-        .returning(['id', 'created_at'])
-        .executeTakeFirstOrThrow()
-
-      const ticket = toTicket(updated)
-      await enqueueStatusChange(trx, history.id, {
-        ticket,
-        fromStatus: current.status,
-        toStatus,
-        reason: reason ?? null,
-        actor: { type: 'user', id: authorId },
-        occurredAt: history.created_at.toISOString(),
-        completion:
-          toStatus === 'completed'
-            ? completionOf(updated, await selectCompletionMembers(trx, id))
-            : null,
-      })
-
-      return { kind: 'ok', ticket }
-    })
+  async changeStatus(input: StatusChangeInput): Promise<ChangeStatusResult> {
+    return this.db.transaction().execute((trx) => applyStatusChange(trx, input))
   }
 
   async claimOpen(id: string, claimer: Author): Promise<Ticket | undefined> {

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import type { FastifyInstance } from 'fastify'
 import { sql } from 'kysely'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
@@ -152,6 +153,36 @@ describe('webhook deliveries of a status change', () => {
         ],
         end_date: null,
       },
+    })
+  })
+
+  it('leaves the same delivery for a completion sent from the composer, once per submission', async () => {
+    await createConfig('ei')
+    const id = await openTicket()
+    const submission = {
+      submissionId: randomUUID(),
+      status: {
+        status: 'completed',
+        completion: { members: [member('22222222222'), member('33333333333')] },
+      },
+    }
+    const submit = () =>
+      app.inject({
+        method: 'POST',
+        url: `/api/tickets/${id}/submissions`,
+        cookies,
+        payload: submission,
+      })
+
+    expect((await submit()).statusCode).toBe(201)
+    expect((await submit()).statusCode).toBe(200)
+
+    const rows = await deliveries()
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.payload).toMatchObject({
+      from_status: 'carrier-processing',
+      to_status: 'completed',
+      completion: { members: [{ tax_id: '22222222222' }, { tax_id: '33333333333' }] },
     })
   })
 

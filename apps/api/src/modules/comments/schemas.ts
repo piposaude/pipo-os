@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { ticketSchema, updateTicketStatusBodySchema } from '../tickets/schemas.js'
 import { serviceEventTypeSchema, ticketEventTypeSchema } from './event-types.js'
 
 /* The three the CHECK of migration 0030 allows. `system` is wider than
@@ -95,6 +96,65 @@ export function withDefaultKind(body: unknown): unknown {
   return { ...body, kind: 'manual' }
 }
 
+const submissionPartSchema = z
+  .object({
+    channel: z.enum(['internal', 'platform']),
+    body: commentBodyBase.body,
+  })
+  .strict()
+
+export const createSubmissionBodySchema = z
+  .object({
+    submissionId: z
+      .uuid()
+      .describe('Gerado pelo cliente, um por envio; repetir o mesmo devolve o envio já gravado'),
+    parts: z
+      .array(submissionPartSchema)
+      .max(2)
+      .default([])
+      .describe('Uma parte por canal; sem parte, o envio precisa de status'),
+    status: updateTicketStatusBodySchema.optional(),
+    inReplyTo: z
+      .uuid()
+      .optional()
+      .describe('O envio que abriu a conversa, no mesmo chamado; só junto de parts'),
+  })
+  .strict()
+  .superRefine((body, ctx) => {
+    if (body.parts.length === 0 && body.status === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['parts'],
+        message: 'A submission carries at least one part or a status',
+      })
+    }
+    if (body.inReplyTo !== undefined && body.parts.length === 0) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['inReplyTo'],
+        message: 'inReplyTo needs at least one part to answer with',
+      })
+    }
+    body.parts.forEach((part, index) => {
+      if (body.parts.findIndex((other) => other.channel === part.channel) !== index) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['parts', index, 'channel'],
+          message: `Channel ${part.channel} appears more than once`,
+        })
+      }
+    })
+  })
+  .meta({ id: 'CreateSubmissionBody' })
+
+export const submissionSchema = z
+  .object({
+    submissionId: z.uuid(),
+    ticket: ticketSchema,
+    comments: z.array(commentSchema),
+  })
+  .meta({ id: 'Submission' })
+
 export const commentListSchema = z
   .object({
     data: z.array(commentSchema),
@@ -117,6 +177,7 @@ const timelineItemBase = {
      line the automation left, and the author id alone does not say which —
      `svc:` is a prefix, not a type. */
   authorType: authorTypeSchema,
+  submissionId: z.uuid().nullable(),
   createdAt: z.string(),
 }
 
@@ -127,6 +188,7 @@ export const timelineCommentSchema = z
     channel: z.enum(['internal', 'email']),
     visibility: z.enum(['public', 'private']),
     body: z.string(),
+    inReplyTo: z.uuid().nullable(),
   })
   .meta({ id: 'TimelineComment' })
 
@@ -191,3 +253,5 @@ export type CreateCommentBody = z.infer<typeof createCommentBodySchema>
 export type CreateManualCommentBody = z.infer<typeof createManualCommentBodySchema>
 export type CreateAutomatedEventBody = z.infer<typeof createAutomatedEventBodySchema>
 export type CommentList = z.infer<typeof commentListSchema>
+export type CreateSubmissionBody = z.infer<typeof createSubmissionBodySchema>
+export type Submission = z.infer<typeof submissionSchema>
