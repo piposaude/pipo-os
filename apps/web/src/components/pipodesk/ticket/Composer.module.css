@@ -9,6 +9,10 @@
   box-shadow: var(--desk-shadow-menu);
 }
 
+.composer:focus-within {
+  border-color: var(--desk-composer-focus);
+}
+
 .destinations {
   display: flex;
   flex-direction: column;
@@ -190,6 +194,11 @@
   padding: 0 var(--pipo-space-xxsmall) 0 4px;
   border-left: var(--pipo-border-width-small) solid var(--desk-send-divider);
   border-radius: 0 var(--pipo-radius-pill) var(--pipo-radius-pill) 0;
+}
+
+.sendGo:hover:not(:disabled),
+.sendMore:hover {
+  background: var(--desk-send-hover);
 }
 
 .sendGo:disabled {

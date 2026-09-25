@@ -62,6 +62,7 @@ export function ConclusionDrawer({
       onClose={onClose}
       title={copy.title}
       size="lg"
+      className={styles.drawer}
       footer={
         <div className={styles.footer}>
           <span className={styles.count}>

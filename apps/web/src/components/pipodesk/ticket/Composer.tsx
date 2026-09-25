@@ -172,6 +172,27 @@ export function Composer({ ticket, status }: ComposerProps) {
         <p className={styles.hint}>{copy.emailParked}</p>
       </div>
 
+      {completing && (
+        <div className={styles.summary}>
+          <p className={styles.summaryTitle}>
+            {conclusionCopy.summary}
+            <small>{conclusionCopy.filled(fields.length - emptyCount, fields.length)}</small>
+            <button
+              type="button"
+              className={`${styles.destination} ${styles.summaryOpen}`}
+              onClick={() => setDrawerOpen(true)}
+            >
+              {missing.length > 0 || refused.length > 0
+                ? conclusionCopy.fill
+                : conclusionCopy.review}
+            </button>
+          </p>
+          {missing.length > 0 && <p className={styles.missing}>{`${describeMissing(missing)}.`}</p>}
+          {refused.length > 0 && (
+            <p className={styles.missing}>{conclusionCopy.refused(refused)}</p>
+          )}
+        </div>
+      )}
       {draft.split === null ? (
         <textarea
           className={styles.input}
@@ -199,27 +220,6 @@ export function Composer({ ticket, status }: ComposerProps) {
         </div>
       )}
 
-      {completing && (
-        <div className={styles.summary}>
-          <p className={styles.summaryTitle}>
-            {conclusionCopy.summary}
-            <small>{conclusionCopy.filled(fields.length - emptyCount, fields.length)}</small>
-            <button
-              type="button"
-              className={`${styles.destination} ${styles.summaryOpen}`}
-              onClick={() => setDrawerOpen(true)}
-            >
-              {missing.length > 0 || refused.length > 0
-                ? conclusionCopy.fill
-                : conclusionCopy.review}
-            </button>
-          </p>
-          {missing.length > 0 && <p className={styles.missing}>{`${describeMissing(missing)}.`}</p>}
-          {refused.length > 0 && (
-            <p className={styles.missing}>{conclusionCopy.refused(refused)}</p>
-          )}
-        </div>
-      )}
       {submission.isError && (
         <p role="alert" className={styles.hint}>
           {copy.sendFailed}
@@ -227,12 +227,12 @@ export function Composer({ ticket, status }: ComposerProps) {
       )}
       <div className={styles.actions}>
         {!isOpen(status) && <p className={styles.hint}>{copy.closed(statusCopyOf(status))}</p>}
-        <span className={styles.send} data-disabled={!canSend || undefined}>
-          <button type="button" className={styles.sendGo} disabled={!canSend} onClick={send}>
-            {copy.submitAs(statusCopyOf(sendStatus))}
-          </button>
-          {isOpen(status) && (
-            <span className={styles.menuAnchor}>
+        <span className={styles.menuAnchor}>
+          <span className={styles.send} data-disabled={!canSend || undefined}>
+            <button type="button" className={styles.sendGo} disabled={!canSend} onClick={send}>
+              {copy.submitAs(statusCopyOf(sendStatus))}
+            </button>
+            {isOpen(status) && (
               <button
                 type="button"
                 ref={menuTrigger}
@@ -243,40 +243,40 @@ export function Composer({ ticket, status }: ComposerProps) {
               >
                 <Icon name="chevron-down" size="xs" />
               </button>
-              <Popover
-                open={menuOpen}
-                onClose={() => setMenuOpen(false)}
-                anchor={menuTrigger}
-                label={copy.statusMenu}
-                align="right"
-                side="top"
-              >
-                {SEND_STATUSES.map((option) => {
-                  const unavailable = option === 'completed' && blocked !== null
-                  return (
-                    <div key={option}>
-                      <button
-                        type="button"
-                        className={styles.menuItem}
-                        aria-pressed={option === sendStatus}
-                        aria-describedby={unavailable ? blockedId : undefined}
-                        disabled={unavailable}
-                        onClick={() => pick(option)}
-                      >
-                        <DeskIcon name="check" size={14} className={styles.menuCheck} />
-                        {copy.submitAs(statusCopyOf(option))}
-                      </button>
-                      {unavailable && (
-                        <p id={blockedId} className={styles.menuReason}>
-                          {copy.completionBlocked[blocked]}
-                        </p>
-                      )}
-                    </div>
-                  )
-                })}
-              </Popover>
-            </span>
-          )}
+            )}
+          </span>
+          <Popover
+            open={menuOpen && isOpen(status)}
+            onClose={() => setMenuOpen(false)}
+            anchor={menuTrigger}
+            label={copy.statusMenu}
+            align="right"
+            side="top"
+          >
+            {SEND_STATUSES.map((option) => {
+              const unavailable = option === 'completed' && blocked !== null
+              return (
+                <div key={option}>
+                  <button
+                    type="button"
+                    className={styles.menuItem}
+                    aria-pressed={option === sendStatus}
+                    aria-describedby={unavailable ? blockedId : undefined}
+                    disabled={unavailable}
+                    onClick={() => pick(option)}
+                  >
+                    <DeskIcon name="check" size={14} className={styles.menuCheck} />
+                    {copy.submitAs(statusCopyOf(option))}
+                  </button>
+                  {unavailable && (
+                    <p id={blockedId} className={styles.menuReason}>
+                      {copy.completionBlocked[blocked]}
+                    </p>
+                  )}
+                </div>
+              )
+            })}
+          </Popover>
         </span>
       </div>
       <ConclusionDrawer
