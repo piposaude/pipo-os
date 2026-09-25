@@ -273,6 +273,22 @@ describe('recordsFromTicket — a movimentação', () => {
     )
   })
 
+  it('should read the member type from the primary block when the root has none', () => {
+    const dependentMove = apiTicket({
+      id: 'ticket-5',
+      enrollmentSnapshot: {
+        ...payload,
+        primary: { ...payload.primary, member_type: 'dependent' },
+        member_id: 'member-dep',
+      },
+    })
+
+    expect(recordsFromTicket(dependentMove).movementOf('ticket-5')).toMatchObject({
+      beneficiaryId: 'member-dep',
+      dependentIds: [],
+    })
+  })
+
   it('should move the only dependent when the EI names none', () => {
     const dependentMove = apiTicket({
       id: 'ticket-3',

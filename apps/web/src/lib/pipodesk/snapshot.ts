@@ -206,8 +206,11 @@ function documentsOf(people: unknown[], ticket: Ticket): RecordDocument[] {
     })
 }
 
+const isDependentMovement = (snapshot: unknown): boolean =>
+  readString(snapshot, ['member-type'], ['primary', 'member-type'])?.toLowerCase() === 'dependent'
+
 function movedDependent(snapshot: unknown, dependents: Person[]): Person | undefined {
-  if (readString(snapshot, ['member-type'])?.toLowerCase() !== 'dependent') return undefined
+  if (!isDependentMovement(snapshot)) return undefined
   const memberId = readString(snapshot, ['member-id'])
   const named = dependents.find((dependent) => dependent.id === memberId)
   if (named) return named
@@ -247,9 +250,8 @@ function completionLivesOf(snapshot: unknown): CompletionLife[] {
   if (!isRecord(snapshot)) return []
   const primary = readPath(snapshot, ['primary'])
   const dependents = readList(snapshot, ['dependents'])
-  const memberType = readString(snapshot, ['member-type'], ['primary', 'member-type'])
 
-  if (memberType?.toLowerCase() === 'dependent' && dependents.length > 0) {
+  if (isDependentMovement(snapshot) && dependents.length > 0) {
     const memberId = readString(snapshot, ['member-id'])
     const pointed =
       memberId === null
