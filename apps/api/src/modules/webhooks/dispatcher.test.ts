@@ -3,7 +3,7 @@ import type { AddressInfo } from 'node:net'
 import { Sentry } from '@pipo-os/observability/sentry-node'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { sql } from 'kysely'
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildApp } from '../../app.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
 import { createRootGroup } from '../groups/root.test-helpers.js'
@@ -334,6 +334,22 @@ describe('webhook dispatcher', () => {
         expect(Number((await row(id)).wait)).toBeCloseTo(wait, 0)
       },
     )
+
+    it('keeps a 2xx as delivered when releasing the response body fails', async () => {
+      const id = await seed()
+      const errored = new ReadableStream({
+        start: (controller) => controller.error(new Error('aborted')),
+      })
+      vi.stubGlobal('fetch', async () => new Response(errored, { status: 200 }))
+
+      try {
+        await attemptOne()
+      } finally {
+        vi.unstubAllGlobals()
+      }
+
+      expect(await row(id)).toMatchObject({ status: 'delivered', response_status: 200 })
+    })
 
     it('retries a 4xx like any other failure', async () => {
       const id = await seed({ answer: '401' })

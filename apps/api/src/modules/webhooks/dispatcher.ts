@@ -101,7 +101,7 @@ async function send(delivery: DueDelivery, at: Date, timeoutMs: number): Promise
       redirect: 'error',
       signal: call.signal,
     })
-    await response.body?.cancel()
+    await response.body?.cancel().catch(() => undefined)
     return { responseStatus: response.status, error: null }
   } catch (error) {
     return { responseStatus: null, error: reasonOf(error) }
