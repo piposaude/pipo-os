@@ -172,4 +172,46 @@ describe('business metrics', () => {
       expect(await transitions('cancelled', 'carrier-processing')).toBe(0)
     })
   })
+
+  describe('pipos_tickets_comments_created_total', () => {
+    const comments = (visibility: string, authorType: string) =>
+      valueOf('pipos_tickets_comments_created_total', {
+        visibility,
+        author_type: authorType,
+      })
+
+    it('counts a comment by its visibility and the type of its author', async () => {
+      const { id } = (await createTicket()).json<{ id: string }>()
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/tickets/${id}/comments`,
+        payload: { visibility: 'public', body: 'Documento recebido' },
+        cookies,
+      })
+
+      expect(response.statusCode).toBe(201)
+      expect(await comments('public', 'user')).toBe(1)
+      expect(await comments('private', 'user')).toBe(0)
+    })
+
+    it('counts each part of a submission, once even when it is replayed', async () => {
+      const { id } = (await createTicket()).json<{ id: string }>()
+      const payload = {
+        submissionId: randomUUID(),
+        parts: [
+          { channel: 'internal', body: 'Conferido com a operadora' },
+          { channel: 'platform', body: 'Recebemos seu pedido' },
+        ],
+      }
+      const post = () =>
+        app.inject({ method: 'POST', url: `/api/tickets/${id}/submissions`, payload, cookies })
+
+      expect((await post()).statusCode).toBe(201)
+      expect((await post()).statusCode).toBe(200)
+
+      expect(await comments('private', 'user')).toBe(1)
+      expect(await comments('public', 'user')).toBe(1)
+    })
+  })
 })
