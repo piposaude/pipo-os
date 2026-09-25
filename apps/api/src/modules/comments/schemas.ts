@@ -104,7 +104,12 @@ const submissionPartSchema = z
   })
   .strict()
 
-const pendencyItemIdsSchema = z.array(z.string().min(1)).default([])
+const MAX_PENDENCY_ITEMS_PER_ACTION = 100
+
+const pendencyItemIdsSchema = z
+  .array(z.string().min(1))
+  .max(MAX_PENDENCY_ITEMS_PER_ACTION)
+  .default([])
 
 const submissionPendenciesSchema = z
   .object({

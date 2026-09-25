@@ -385,6 +385,7 @@
               "opened": {
                 "default": [],
                 "description": "Itens cobrados pela primeira vez, ou de novo",
+                "maxItems": 100,
                 "type": "array",
                 "items": {
                   "type": "string",
@@ -394,6 +395,7 @@
               "reopened": {
                 "default": [],
                 "description": "Itens resolvidos antes que voltaram a faltar",
+                "maxItems": 100,
                 "type": "array",
                 "items": {
                   "type": "string",
@@ -403,6 +405,7 @@
               "resolved": {
                 "default": [],
                 "description": "Itens que chegaram",
+                "maxItems": 100,
                 "type": "array",
                 "items": {
                   "type": "string",

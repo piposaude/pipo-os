@@ -121,6 +121,13 @@ describe('the body of POST /tickets/:id/submissions', () => {
     ])
   })
 
+  it('refuses a pendency list longer than the catalog could hold, before it reaches the query', () => {
+    const parts = [{ channel: 'internal', body: 'oi' }]
+    const opened = Array.from({ length: 101 }, (_, i) => `item-${i}`)
+
+    expect(pathsOf({ parts, pendencies: { opened } })).toEqual([['pendencies', 'opened']])
+  })
+
   it('refuses a field it does not know', () => {
     const parts = [{ channel: 'internal', body: 'oi' }]
 
