@@ -358,6 +358,63 @@ describe('o menu … da linha da sidebar', () => {
     expect(within(sidebar()).getByText('Minhas urgentes')).toBeInTheDocument()
   })
 
+  it('should keep a deleted view gone when a rename of another view fails afterwards', async () => {
+    let refuse: (() => void) | undefined
+    await renderDesk(
+      {
+        'PATCH /api/queues/:id': () =>
+          new Promise((resolve) => {
+            refuse = () => resolve({ status: 409, body: { message: 'não' } })
+          }),
+      },
+      'analyst',
+      '/',
+      [MINE, { ...MINE, id: 'view-other', name: 'Minhas antigas' }],
+    )
+    const user = userEvent.setup()
+    await openViewerPod(user)
+
+    await user.dblClick(within(sidebar()).getByText('Minhas antigas'))
+    const field = within(sidebar()).getByRole('textbox')
+    await user.clear(field)
+    await user.type(field, 'Outro nome{Enter}')
+    await user.click(within(sidebar()).getByRole('button', { name: 'Ações de Minhas urgentes' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Apagar view' }))
+    refuse?.()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível salvar a alteração.',
+    )
+    expect(within(sidebar()).getByText('Minhas antigas')).toBeInTheDocument()
+    expect(within(sidebar()).queryByText('Minhas urgentes')).not.toBeInTheDocument()
+  })
+
+  it('should show the saved name when two renames of the same view both fail', async () => {
+    const refusals: (() => void)[] = []
+    await renderDesk({
+      'PATCH /api/queues/:id': () =>
+        new Promise((resolve) => {
+          refusals.push(() => resolve({ status: 409, body: { message: 'não' } }))
+        }),
+    })
+    const user = userEvent.setup()
+    await openViewerPod(user)
+
+    for (const [from, to] of [
+      ['Minhas urgentes', 'Primeiro'],
+      ['Primeiro', 'Segundo'],
+    ]) {
+      await user.dblClick(within(sidebar()).getByText(from))
+      const field = within(sidebar()).getByRole('textbox')
+      await user.clear(field)
+      await user.type(field, `${to}{Enter}`)
+    }
+    refusals.forEach((refuse) => refuse())
+
+    expect(await within(sidebar()).findByText('Minhas urgentes')).toBeInTheDocument()
+    expect(within(sidebar()).queryByText('Primeiro')).not.toBeInTheDocument()
+  })
+
   it('should let the coordination start a view inside a pod, with the place locked', async () => {
     await renderDesk({}, 'coordination')
     const user = userEvent.setup()

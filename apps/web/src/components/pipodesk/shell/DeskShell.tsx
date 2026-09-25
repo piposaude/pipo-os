@@ -279,16 +279,19 @@ export function DeskShell() {
     (id: string, name: string) => {
       void (async () => {
         await queryClient.cancelQueries({ queryKey: QUEUES_KEY })
-        const before = queryClient.getQueryData<ApiQueue[]>(QUEUES_KEY)
-        queryClient.setQueryData<ApiQueue[]>(QUEUES_KEY, (current) =>
-          current?.map((queue) => (queue.id === id ? { ...queue, name } : queue)),
-        )
+        const previous = queryClient
+          .getQueryData<ApiQueue[]>(QUEUES_KEY)
+          ?.find((queue) => queue.id === id)?.name
+        const named = (to: string) => (current: ApiQueue[] | undefined) =>
+          current?.map((queue) => (queue.id === id ? { ...queue, name: to } : queue))
+        queryClient.setQueryData<ApiQueue[]>(QUEUES_KEY, named(name))
         try {
           await client.PATCH('/api/queues/{id}', { params: { path: { id } }, body: { name } })
         } catch {
-          queryClient.setQueryData(QUEUES_KEY, before)
+          if (previous !== undefined) {
+            queryClient.setQueryData<ApiQueue[]>(QUEUES_KEY, named(previous))
+          }
           setWriteFailed(true)
-          return
         }
         await queryClient.invalidateQueries({ queryKey: QUEUES_KEY })
       })()
@@ -420,16 +423,22 @@ export function DeskShell() {
       }
       void (async () => {
         await queryClient.cancelQueries({ queryKey: QUEUES_KEY })
-        const before = queryClient.getQueryData<ApiQueue[]>(QUEUES_KEY)
+        const before = queryClient.getQueryData<ApiQueue[]>(QUEUES_KEY) ?? []
+        const at = before.findIndex((queue) => queue.id === id)
         queryClient.setQueryData<ApiQueue[]>(QUEUES_KEY, (current) =>
           current?.filter((queue) => queue.id !== id),
         )
         try {
           await client.DELETE('/api/queues/{id}', { params: { path: { id } } })
         } catch {
-          queryClient.setQueryData(QUEUES_KEY, before)
+          if (at !== -1) {
+            queryClient.setQueryData<ApiQueue[]>(QUEUES_KEY, (current) =>
+              current?.some((queue) => queue.id === id)
+                ? current
+                : current && [...current.slice(0, at), before[at], ...current.slice(at)],
+            )
+          }
           setWriteFailed(true)
-          return
         }
         await queryClient.invalidateQueries({ queryKey: QUEUES_KEY })
       })()
