@@ -43,7 +43,7 @@
 
 .life {
   padding-top: 20px;
-  color: var(--desk-pill-text-strong);
+  color: var(--pipo-text-primary);
 }
 
 .life small {
@@ -66,10 +66,10 @@
   min-width: 0;
   height: 32px;
   padding: 0 var(--pipo-space-xsmall);
-  border: var(--desk-hairline) solid var(--pipo-border-strong);
+  border: var(--pipo-border-width-small) solid var(--pipo-border-strong);
   border-radius: var(--pipo-radius-xsmall);
   background: var(--pipo-surface);
-  color: var(--desk-pill-text-strong);
+  color: var(--pipo-text-primary);
   font: inherit;
 }
 

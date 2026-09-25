@@ -120,6 +120,7 @@
 }
 
 .input {
+  box-sizing: border-box;
   width: 100%;
   min-height: 96px;
   max-height: 40vh;
