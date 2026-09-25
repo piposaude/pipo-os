@@ -226,3 +226,11 @@ const SHORT_LABELS: Record<string, string> = {
 }
 
 export const shortSidebarLabel = (label: string): string => SHORT_LABELS[label] ?? label
+
+/** Up to two initials for the avatar, from the first two words of the name. */
+export const initialsOf = (name: string): string =>
+  name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('')

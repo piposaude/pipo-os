@@ -4,6 +4,7 @@ import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/rea
 import { routeTree } from '@/routeTree.gen'
 import constants from '@/constants/pages/pipodesk/team'
 import sidebarConstants from '@/constants/pipodesk/sidebar'
+import { FIXTURE_USER_NAMES } from '../../fixtures/pipodesk/dataset'
 import { fixtureStructureRoutes, holdGet, page, truncatedRowsRoute } from '../../helpers/api'
 
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
@@ -77,6 +78,19 @@ describe('home do pod', () => {
     expect(screen.getByText(`${naArvore} chamados abertos`)).toBeInTheDocument()
   })
 
+  it('should count at the root the same open tickets the sidebar counts for GEBEN', async () => {
+    await renderAt('/teams/group-geben')
+    const sidebar = screen.getByRole('navigation', { name: /pipodesk/i })
+
+    // GEBEN is a level-0 branch: the count is the row's, beside the label button.
+    const naArvore = within(sidebar)
+      .getByRole('button', { name: /^GEBEN/ })
+      .parentElement?.textContent?.replace('GEBEN', '')
+      .trim()
+
+    expect(await screen.findByText(`${naArvore} chamados abertos`)).toBeInTheDocument()
+  })
+
   it('should say who can edit, so read-only does not read as broken', async () => {
     await renderAt('/teams/pod-1')
 
@@ -96,6 +110,17 @@ describe('home do pod', () => {
     const rows = within(table).getAllByRole('row').slice(1)
     expect(within(rows[0]).getByText('Coordenação')).toBeInTheDocument()
     expect(within(rows[rows.length - 1]).getByText('Analista')).toBeInTheDocument()
+  })
+
+  /** From November each client has a single analyst: the table warns about the
+   *  clients that still have more than one, it does not block. */
+  it('should mark on the portfolio how many clients of the person another analyst also works', async () => {
+    await renderAt('/teams/pod-1')
+
+    const table = await screen.findByRole('table')
+    const marks = within(table).getAllByText(/têm mais de um analista hoje/)
+    expect(marks.length).toBeGreaterThan(0)
+    expect(marks[0].closest('td')).toHaveTextContent(/\d+ empresas.*\d+/)
   })
 
   it('should be reachable from the Home link of the pod in the sidebar', async () => {
@@ -137,6 +162,35 @@ describe('home do pod', () => {
     await renderAt('/teams/pod-inexistente')
 
     expect(await screen.findByText(/não encontramos esse time/i)).toBeInTheDocument()
+  })
+})
+
+describe('home da operação', () => {
+  /** The root's own memberships are the two coordinators; the operation's page
+   *  is about the whole team. */
+  it('should list every person of the operation once, with the pods they are in', async () => {
+    await renderAt('/teams/group-geben')
+
+    const table = await screen.findByRole('table')
+    expect(within(table).getByRole('columnheader', { name: 'Pod' })).toBeInTheDocument()
+    const rows = within(table).getAllByRole('row').slice(1)
+    expect(rows).toHaveLength(Object.keys(FIXTURE_USER_NAMES).length)
+
+    const analyst = rows.find((line) => within(line).queryByText(FIXTURE_USER_NAMES['user-3']))!
+    expect(within(analyst).getByRole('link', { name: 'POD 1' })).toHaveAttribute(
+      'href',
+      '/teams/pod-1',
+    )
+  })
+
+  it('should say coordination is in every pod instead of listing all six', async () => {
+    await renderAt('/teams/group-geben')
+
+    const rows = within(await screen.findByRole('table'))
+      .getAllByRole('row')
+      .slice(1)
+    expect(within(rows[0]).getByText('Coordenação')).toBeInTheDocument()
+    expect(within(rows[0]).getByText('Todos os pods')).toBeInTheDocument()
   })
 })
 

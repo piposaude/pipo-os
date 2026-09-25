@@ -18,6 +18,9 @@ export default {
     rename: 'Renomear',
     renameField: (label: string) => `Renomear ${label}`,
     newView: 'Nova view aqui',
+    newSubteam: 'Novo subtime',
+    /** The name a new subteam is born with, until someone renames it. */
+    newSubteamName: 'Novo subtime',
     deleteView: 'Apagar view',
   },
 }
