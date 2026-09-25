@@ -6,6 +6,7 @@ import {
 import type { Author } from '../auth/authenticate.js'
 import { alterationTypeOf } from './enrollment-snapshot.js'
 import { canonicalEnrollmentType, parseAlterationType } from './enrollment-type.js'
+import type { TicketMetrics } from './metrics.js'
 import type { TicketRowsQuery } from './rows-schema.js'
 import type { TicketsRepositoryPort } from './repository.js'
 import {
@@ -19,7 +20,10 @@ import {
 } from './schemas.js'
 
 export class TicketsService {
-  constructor(private readonly repository: TicketsRepositoryPort) {}
+  constructor(
+    private readonly repository: TicketsRepositoryPort,
+    private readonly metrics: TicketMetrics,
+  ) {}
 
   async get(id: string): Promise<TicketDetail> {
     const ticket = await this.repository.findDetailById(id)
@@ -55,7 +59,9 @@ export class TicketsService {
             ] as const)
       throw new ValidationFailedError(message, [{ field: 'alterationType', message, code }])
     }
-    return this.repository.create({ ...data, enrollmentType })
+    const ticket = await this.repository.create({ ...data, enrollmentType })
+    this.metrics.ticketCreated(ticket.sourceSystem)
+    return ticket
   }
 
   async update(id: string, data: UpdateTicketBody, author?: Author): Promise<Ticket> {
@@ -92,6 +98,8 @@ export class TicketsService {
       throw new UnprocessableEntityError(`Ticket ${id} is already closed`)
     if (result.kind === 'refused')
       throw new ValidationFailedError(`Ticket ${id} cannot be completed`, result.failures)
+
+    this.metrics.statusChanged(result.fromStatus, result.ticket.status)
     return result.ticket
   }
 

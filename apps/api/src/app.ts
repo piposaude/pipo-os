@@ -26,6 +26,7 @@ import errorHandlerPlugin from './infrastructure/error-handler.js'
 import authenticatePlugin from './modules/auth/authenticate.js'
 import authorizePlugin from './modules/auth/authorize.js'
 import { authServiceInternalUrl } from './modules/auth/config.js'
+import ticketMetricsPlugin from './modules/tickets/metrics.js'
 import { UsersService } from './modules/users/service.js'
 import { isDeployedEnvironment } from './shared/environment.js'
 
@@ -87,6 +88,7 @@ export function buildApp(): FastifyInstance {
   app.register(authorizePlugin)
   app.register(metricsPlugin)
   app.register(dbPlugin)
+  app.register(ticketMetricsPlugin)
   app.register(errorHandlerPlugin)
 
   assertServiceTokenIsLocalOnly()

@@ -124,6 +124,45 @@ describe('a comment written by a service', () => {
     })
   })
 
+  it('counts its comment with the service as author type, and not its automated event', async () => {
+    const counted = async (): Promise<number> => {
+      const metric = app.metrics.client.register.getSingleMetric(
+        'pipos_tickets_comments_created_total',
+      )
+      const { values } = (await metric?.get()) ?? { values: [] }
+      return (
+        values.find(
+          ({ labels }) => labels.visibility === 'private' && labels.author_type === 'service',
+        )?.value ?? 0
+      )
+    }
+    const before = await counted()
+
+    const post = (payload: Record<string, unknown>) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/tickets/${ticketId}/comments`,
+        headers: { authorization: `Bearer ${token}` },
+        payload,
+      })
+
+    expect((await post({ visibility: 'private', body: 'operadora confirmou' })).statusCode).toBe(
+      201,
+    )
+    expect(
+      (
+        await post({
+          kind: 'automated_event',
+          eventType: 'document_signature_sent',
+          visibility: 'private',
+          body: 'Documento enviado para assinatura',
+        })
+      ).statusCode,
+    ).toBe(201)
+
+    expect(await counted()).toBe(before + 1)
+  })
+
   describe('redelivery of the same event', () => {
     const replayed = {
       kind: 'automated_event',

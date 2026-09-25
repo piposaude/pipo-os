@@ -1,3 +1,5 @@
+// Leva o `app.metrics` do fastify-metrics para o .d.ts: os apps tipam contra ele.
+/// <reference types="fastify-metrics" preserve="true" />
 import { createRequire } from 'node:module'
 import fp from 'fastify-plugin'
 import Fastify, { type FastifyInstance, type FastifyPluginCallback } from 'fastify'
