@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { recordsFromTicket } from '@/lib/pipodesk/snapshot'
+import { completionSnapshotOf, recordsFromTicket } from '@/lib/pipodesk/snapshot'
 import { apiTicket } from '../../../helpers/ticket'
 
 const payload = {
@@ -404,6 +404,118 @@ describe('recordsFromTicket — a grafia', () => {
     expect(recordsFromTicket(kebab).personById.get('m1')).toMatchObject({
       cpf: '1',
       birthDate: '2000-01-01',
+    })
+  })
+})
+
+describe('completionSnapshotOf — as vidas', () => {
+  const holder = { taxId: '11122233344', name: 'Ana', role: 'holder' }
+  const bia = { taxId: '55566677788', name: 'Bia Souza', role: 'dependent' }
+
+  it('should take the holder first and then every dependent on a holder movement', () => {
+    expect(completionSnapshotOf(payload).lives).toEqual([holder, bia])
+  })
+
+  it('should take only the dependent the EI names on a dependent movement', () => {
+    const snapshot = {
+      ...payload,
+      member_type: 'dependent',
+      member_id: 'member-dep',
+      dependents: [...payload.dependents, { member_id: 'member-dep-2', profile: { tax_id: '9' } }],
+    }
+
+    expect(completionSnapshotOf(snapshot).lives).toEqual([bia])
+  })
+
+  it('should read the member type from the primary block when the root has none', () => {
+    const snapshot = {
+      ...payload,
+      member_id: 'member-dep',
+      primary: { ...payload.primary, member_type: 'Dependent' },
+    }
+
+    expect(completionSnapshotOf(snapshot).lives).toEqual([bia])
+  })
+
+  it('should take the only dependent when the EI names none', () => {
+    expect(completionSnapshotOf({ ...payload, member_type: 'dependent' }).lives).toEqual([bia])
+  })
+
+  it('should take no life when a dependent movement names none among several dependents', () => {
+    const snapshot = {
+      ...payload,
+      member_type: 'dependent',
+      dependents: [...payload.dependents, { member_id: 'member-dep-2', profile: { tax_id: '9' } }],
+    }
+
+    expect(completionSnapshotOf(snapshot).lives).toEqual([])
+  })
+
+  it('should take the holder alone when a dependent movement carries no dependent', () => {
+    const snapshot = { ...payload, member_type: 'dependent', dependents: [] }
+
+    expect(completionSnapshotOf(snapshot).lives).toEqual([holder])
+  })
+
+  it('should keep a life with no tax id, with an empty one', () => {
+    const snapshot = { ...payload, dependents: [{ profile: { name: 'Sem CPF' } }] }
+
+    expect(completionSnapshotOf(snapshot).lives).toEqual([
+      holder,
+      { taxId: '', name: 'Sem CPF', role: 'dependent' },
+    ])
+  })
+
+  it('should compare the tax id by its digits', () => {
+    const snapshot = {
+      primary: { profile: { tax_id: '111.222.333-44', name: 'Ana Souza' } },
+    }
+
+    expect(completionSnapshotOf(snapshot).lives[0]?.taxId).toBe('11122233344')
+  })
+
+  it('should take no life from a snapshot that is not an object', () => {
+    expect(completionSnapshotOf(null).lives).toEqual([])
+  })
+})
+
+describe('completionSnapshotOf — as datas', () => {
+  it('should read the admission of the holder', () => {
+    expect(completionSnapshotOf(payload).admissionDate).toBe('2024-03-01')
+  })
+
+  it('should take the day of an admission written as an instant', () => {
+    const snapshot = {
+      primary: { employment: { admission_date: '2024-03-01T00:00:00Z' } },
+    }
+
+    expect(completionSnapshotOf(snapshot).admissionDate).toBe('2024-03-01')
+  })
+
+  it('should have no admission when the one written is not a real date', () => {
+    const snapshot = { primary: { employment: { admission_date: '2024-02-31' } } }
+
+    expect(completionSnapshotOf(snapshot).admissionDate).toBeNull()
+  })
+
+  it('should read the dates the HR requested, one per kind of movement', () => {
+    const snapshot = {
+      benefit_data: { requested_start_date: '2026-07-11', requested_end_date: '2026-08-01' },
+      alteration_data: [{ requested_start_date: '2026-09-01' }],
+    }
+
+    expect(completionSnapshotOf(snapshot)).toMatchObject({
+      requestedStart: '2026-07-11',
+      requestedEnd: '2026-08-01',
+      requestedEffective: '2026-09-01',
+    })
+  })
+
+  it('should have no requested date when the EI sent none', () => {
+    expect(completionSnapshotOf(payload)).toMatchObject({
+      requestedStart: null,
+      requestedEnd: null,
+      requestedEffective: null,
     })
   })
 })

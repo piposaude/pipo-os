@@ -4,6 +4,7 @@
  */
 
 import type { Ticket } from '@pipo-os/api-client'
+import { isRealDay } from '@/lib/date'
 import {
   indexRecords,
   type Address,
@@ -211,6 +212,69 @@ function movedDependent(snapshot: unknown, dependents: Person[]): Person | undef
   const named = dependents.find((dependent) => dependent.id === memberId)
   if (named) return named
   return dependents.length === 1 ? dependents[0] : undefined
+}
+
+export interface CompletionLife {
+  taxId: string
+  name: string
+  role: 'holder' | 'dependent'
+}
+
+export interface CompletionSnapshot {
+  lives: CompletionLife[]
+  admissionDate: string | null
+  requestedStart: string | null
+  requestedEnd: string | null
+  requestedEffective: string | null
+}
+
+function dayOf(written: string | null): string | null {
+  const value = written?.trim().slice(0, 10) ?? ''
+  return isRealDay(value) ? value : null
+}
+
+function lifeOf(raw: unknown, role: CompletionLife['role']): CompletionLife {
+  return {
+    taxId: (readString(raw, ['profile', 'tax-id']) ?? '').replace(/\D/g, ''),
+    name: readString(raw, ['profile', 'preferred-name'], ['profile', 'name']) ?? '',
+    role,
+  }
+}
+
+/** Twin of the API's `snapshotLivesOf`: the drawer asks for exactly the lives
+ *  the completion gate will check, or the API refuses what the screen allowed. */
+function completionLivesOf(snapshot: unknown): CompletionLife[] {
+  if (!isRecord(snapshot)) return []
+  const primary = readPath(snapshot, ['primary'])
+  const dependents = readList(snapshot, ['dependents'])
+  const memberType = readString(snapshot, ['member-type'], ['primary', 'member-type'])
+
+  if (memberType?.toLowerCase() === 'dependent' && dependents.length > 0) {
+    const memberId = readString(snapshot, ['member-id'])
+    const pointed =
+      memberId === null
+        ? undefined
+        : dependents.find((raw) => isRecord(raw) && readString(raw, ['member-id']) === memberId)
+    const moved = pointed ?? (dependents.length === 1 ? dependents[0] : undefined)
+    return isRecord(moved) ? [lifeOf(moved, 'dependent')] : []
+  }
+
+  return [
+    ...(isRecord(primary) ? [lifeOf(primary, 'holder')] : []),
+    ...dependents.filter(isRecord).map((raw) => lifeOf(raw, 'dependent')),
+  ]
+}
+
+export function completionSnapshotOf(snapshot: unknown): CompletionSnapshot {
+  return {
+    lives: completionLivesOf(snapshot),
+    admissionDate: dayOf(readString(snapshot, ['primary', 'employment', 'admission-date'])),
+    requestedStart: dayOf(readString(snapshot, ['benefit-data', 'requested-start-date'])),
+    requestedEnd: dayOf(readString(snapshot, ['benefit-data', 'requested-end-date'])),
+    requestedEffective: dayOf(
+      readString(readList(snapshot, ['alteration-data'])[0], ['requested-start-date']),
+    ),
+  }
 }
 
 export function recordsFromTicket(ticket: Ticket): TicketRecords {
