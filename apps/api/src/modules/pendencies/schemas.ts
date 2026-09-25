@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { canonicalEnrollmentTypeSchema } from '../tickets/enrollment-type.js'
 
-export const PENDENCY_ACTIONS = ['opened', 'reopened', 'resolved'] as const
+export const PENDENCY_ACTIONS = ['opened', 'resolved'] as const
 
 export type PendencyAction = (typeof PENDENCY_ACTIONS)[number]
 

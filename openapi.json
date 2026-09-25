@@ -392,16 +392,6 @@
                   "minLength": 1
                 }
               },
-              "reopened": {
-                "default": [],
-                "description": "Itens resolvidos antes que voltaram a faltar",
-                "maxItems": 100,
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1
-                }
-              },
               "resolved": {
                 "default": [],
                 "description": "Itens que chegaram; o que não está aberto é ignorado",

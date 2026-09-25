@@ -114,7 +114,6 @@ const pendencyItemIdsSchema = z
 const submissionPendenciesSchema = z
   .object({
     opened: pendencyItemIdsSchema.describe('Itens cobrados pela primeira vez, ou de novo'),
-    reopened: pendencyItemIdsSchema.describe('Itens resolvidos antes que voltaram a faltar'),
     resolved: pendencyItemIdsSchema.describe(
       'Itens que chegaram; o que não está aberto é ignorado',
     ),

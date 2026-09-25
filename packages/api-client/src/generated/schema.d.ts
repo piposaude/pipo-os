@@ -2976,11 +2976,6 @@ export interface components {
                  */
                 opened: string[];
                 /**
-                 * @description Itens resolvidos antes que voltaram a faltar
-                 * @default []
-                 */
-                reopened: string[];
-                /**
                  * @description Itens que chegaram; o que não está aberto é ignorado
                  * @default []
                  */

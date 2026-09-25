@@ -94,7 +94,7 @@ describe('openPendencies in GET /api/tickets/:id', () => {
     const id = await openTicket()
     await charge(id, { opened: ['rg'] })
     await charge(id, { resolved: ['rg'] })
-    const reopenedAt = await charge(id, { reopened: ['rg'] })
+    const reopenedAt = await charge(id, { opened: ['rg'] })
 
     expect((await detail(id)).openPendencies).toEqual([
       { itemId: 'rg', since: reopenedAt, chargedCount: 1 },

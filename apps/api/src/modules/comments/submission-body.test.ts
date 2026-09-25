@@ -103,7 +103,13 @@ describe('the body of POST /tickets/:id/submissions', () => {
       pendencies: { opened: ['rg', 'cpf'] },
     })
 
-    expect(parsed.pendencies).toEqual({ opened: ['rg', 'cpf'], reopened: [], resolved: [] })
+    expect(parsed.pendencies).toEqual({ opened: ['rg', 'cpf'], resolved: [] })
+  })
+
+  it('refuses reopened: whether a charge reopens an item is for the API to read in the chronology', () => {
+    const parts = [{ channel: 'internal', body: 'oi' }]
+
+    expect(pathsOf({ parts, pendencies: { reopened: ['rg'] } })).toEqual([['pendencies']])
   })
 
   it('refuses pendencies with neither text nor status, which leave no submission to replay by', () => {

@@ -37,7 +37,7 @@ describe('openPendenciesOf', () => {
         { action: 'opened', itemIds: ['rg'], at: T1 },
         { action: 'opened', itemIds: ['rg'], at: T1 },
         { action: 'resolved', itemIds: ['rg'], at: T2 },
-        { action: 'reopened', itemIds: ['rg'], at: T3 },
+        { action: 'opened', itemIds: ['rg'], at: T3 },
       ]),
     ).toEqual([{ itemId: 'rg', since: T3, chargedCount: 1 }])
   })

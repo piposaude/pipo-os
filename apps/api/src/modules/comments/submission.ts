@@ -29,7 +29,6 @@ type SubmissionPendencies = NonNullable<CreateSubmissionBody['pendencies']>
 
 const PENDENCY_EVENT_BODY: Record<PendencyAction, { one: string; many: string }> = {
   opened: { one: 'Pendência marcada', many: 'Pendências marcadas' },
-  reopened: { one: 'Pendência reaberta', many: 'Pendências reabertas' },
   resolved: { one: 'Pendência resolvida', many: 'Pendências resolvidas' },
 }
 
