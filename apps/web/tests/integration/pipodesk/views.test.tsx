@@ -451,8 +451,8 @@ describe('criar visão a partir da página do time', () => {
 
     await screen.findByRole('button', { name: '+ Nova view' })
     await user.click(within(sidebar()).getAllByRole('button', { name: /^Ações de POD/ })[0])
-    expect(await screen.findByRole('menuitem', { name: 'Renomear' })).toBeInTheDocument()
-    expect(screen.queryByRole('menuitem', { name: 'Nova view aqui' })).not.toBeInTheDocument()
+    const items = await screen.findAllByRole('menuitem')
+    expect(items.map((item) => item.textContent)).toEqual(['Renomear', 'Novo subtime'])
   })
 })
 
