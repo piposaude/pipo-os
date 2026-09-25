@@ -5,6 +5,7 @@ import {
   UnprocessableEntityError,
   ValidationFailedError,
 } from '../../shared/errors.js'
+import type { TicketMetrics } from '../tickets/metrics.js'
 import type { TicketsRepositoryPort } from '../tickets/repository.js'
 import type { Author } from '../auth/authenticate.js'
 import type { CommentsRepositoryPort, TimelineKey, WrittenComment } from './repository.js'
@@ -47,6 +48,7 @@ export class CommentsService {
   constructor(
     private readonly repository: CommentsRepositoryPort,
     private readonly ticketsRepository: TicketsRepositoryPort,
+    private readonly metrics: TicketMetrics,
   ) {}
 
   async add(ticketId: string, data: CreateCommentBody, author: Author): Promise<WrittenComment> {
@@ -91,7 +93,8 @@ export class CommentsService {
       ])
     }
 
-    const { created, submissionId, ticket, comments } = result
+    const { created, submissionId, ticket, comments, statusChange } = result
+    if (statusChange) this.metrics.statusChanged(statusChange.fromStatus, statusChange.toStatus)
     return { submission: { submissionId, ticket, comments }, created }
   }
 

@@ -55,7 +55,7 @@ export type ChangeStatusResult =
   | { kind: 'not-found' }
   | { kind: 'already-closed' }
   | { kind: 'refused'; failures: ErrorDetails }
-  | { kind: 'ok'; ticket: Ticket }
+  | { kind: 'ok'; ticket: Ticket; fromStatus: TicketStatus }
 
 export interface StatusChangeInput {
   ticketId: string
@@ -426,7 +426,7 @@ export async function applyStatusChange(
         : null,
   })
 
-  return { kind: 'ok', ticket }
+  return { kind: 'ok', ticket, fromStatus: current.status as TicketStatus }
 }
 
 export interface TicketsRepositoryPort {

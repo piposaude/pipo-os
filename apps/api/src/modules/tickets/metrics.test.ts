@@ -122,4 +122,54 @@ describe('business metrics', () => {
       ).toBe(1)
     })
   })
+
+  describe('pipos_tickets_status_changes_total', () => {
+    const changeStatus = async (ticketId: string, status: string) =>
+      app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${ticketId}/status`,
+        payload: { status },
+        cookies,
+      })
+
+    const submit = async (ticketId: string, submissionId: string, status: string) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/tickets/${ticketId}/submissions`,
+        payload: { submissionId, status: { status } },
+        cookies,
+      })
+
+    const transitions = (from: string, to: string) =>
+      valueOf('pipos_tickets_status_changes_total', { from_status: from, to_status: to })
+
+    it('counts a change made by PATCH /status, from and to', async () => {
+      const { id } = (await createTicket()).json<{ id: string }>()
+
+      expect((await changeStatus(id, 'carrier-processing')).statusCode).toBe(200)
+
+      expect(await transitions('broker-processing', 'carrier-processing')).toBe(1)
+    })
+
+    it('counts a change made by a submission, once even when it is replayed', async () => {
+      const { id } = (await createTicket()).json<{ id: string }>()
+      const submissionId = randomUUID()
+
+      expect((await submit(id, submissionId, 'missing-documents')).statusCode).toBe(201)
+      expect((await submit(id, submissionId, 'missing-documents')).statusCode).toBe(200)
+
+      expect(await transitions('broker-processing', 'missing-documents')).toBe(1)
+    })
+
+    it('does not count a change refused on a closed ticket', async () => {
+      const { id } = (await createTicket()).json<{ id: string }>()
+      expect((await changeStatus(id, 'cancelled')).statusCode).toBe(200)
+
+      expect((await changeStatus(id, 'carrier-processing')).statusCode).toBe(422)
+      expect((await submit(id, randomUUID(), 'carrier-processing')).statusCode).toBe(422)
+
+      expect(await transitions('broker-processing', 'cancelled')).toBe(1)
+      expect(await transitions('cancelled', 'carrier-processing')).toBe(0)
+    })
+  })
 })

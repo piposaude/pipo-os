@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import fp from 'fastify-plugin'
+import type { TicketStatus } from './schemas.js'
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -9,6 +10,7 @@ declare module 'fastify' {
 
 export interface TicketMetrics {
   ticketCreated(sourceSystem: string): void
+  statusChanged(fromStatus: TicketStatus, toStatus: TicketStatus): void
 }
 
 function createTicketMetrics(app: FastifyInstance): TicketMetrics {
@@ -20,8 +22,16 @@ function createTicketMetrics(app: FastifyInstance): TicketMetrics {
     labelNames: ['source_system'] as const,
   })
 
+  const statusChanges = new client.Counter({
+    name: 'pipos_tickets_status_changes_total',
+    help: 'Ticket status changes, one per status history row',
+    labelNames: ['from_status', 'to_status'] as const,
+  })
+
   return {
     ticketCreated: (sourceSystem) => created.inc({ source_system: sourceSystem }),
+    statusChanged: (fromStatus, toStatus) =>
+      statusChanges.inc({ from_status: fromStatus, to_status: toStatus }),
   }
 }
 

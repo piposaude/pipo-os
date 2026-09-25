@@ -98,6 +98,8 @@ export class TicketsService {
       throw new UnprocessableEntityError(`Ticket ${id} is already closed`)
     if (result.kind === 'refused')
       throw new ValidationFailedError(`Ticket ${id} cannot be completed`, result.failures)
+
+    this.metrics.statusChanged(result.fromStatus, result.ticket.status)
     return result.ticket
   }
 
