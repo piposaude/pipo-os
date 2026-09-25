@@ -404,7 +404,7 @@
               },
               "resolved": {
                 "default": [],
-                "description": "Itens que chegaram",
+                "description": "Itens que chegaram; o que não está aberto é ignorado",
                 "maxItems": 100,
                 "type": "array",
                 "items": {

@@ -5,6 +5,7 @@ import type { Author } from '../auth/authenticate.js'
 import { applyStatusChange, toTicket } from '../tickets/repository.js'
 import type { Ticket, TicketStatus } from '../tickets/schemas.js'
 import { insertEvents, toComment } from './repository.js'
+import { findOpenPendencies } from '../pendencies/repository.js'
 import { PENDENCY_ACTIONS, type PendencyAction } from '../pendencies/schemas.js'
 import type { Comment, CreateSubmissionBody } from './schemas.js'
 
@@ -130,8 +131,12 @@ export async function submit(
             .returningAll()
             .execute()
 
-    const { pendencies } = body
-    if (pendencies) {
+    if (body.pendencies) {
+      const open = new Set((await findOpenPendencies(trx, ticketId)).map((p) => p.itemId))
+      const pendencies = {
+        ...body.pendencies,
+        resolved: body.pendencies.resolved.filter((itemId) => open.has(itemId)),
+      }
       await insertEvents(
         trx,
         PENDENCY_ACTIONS.filter((action) => pendencies[action].length > 0).map((action) => {

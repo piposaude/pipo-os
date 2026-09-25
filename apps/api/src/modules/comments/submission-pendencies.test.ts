@@ -84,15 +84,19 @@ describe('pendencies in POST /api/tickets/:id/submissions', () => {
 
   it('keeps the pendency events out of the submission, as activity lines at its instant', async () => {
     const id = await openTicket()
+    await submit(id, { parts: note, pendencies: { opened: ['carta-empresa'] } })
+    const earlier = new Set((await pendencyEventsOf(id)).map((e) => e.id))
+    const submissionId = randomUUID()
 
     const response = await submit(id, {
+      submissionId,
       parts: note,
       pendencies: { opened: ['rg', 'cpf'], resolved: ['carta-empresa'] },
     })
 
     expect(response.statusCode).toBe(201)
-    const [comment] = await manualOf(id)
-    const events = await pendencyEventsOf(id)
+    const comment = (await manualOf(id)).find((c) => c.submission_id === submissionId)!
+    const events = (await pendencyEventsOf(id)).filter((e) => !earlier.has(e.id))
     expect(
       events.map((e) => ({ body: e.body, metadata: e.metadata, visibility: e.visibility })),
     ).toEqual([
@@ -127,6 +131,23 @@ describe('pendencies in POST /api/tickets/:id/submissions', () => {
     expect(await pendencyEventsOf(id)).toHaveLength(1)
   })
 
+  it('records a resolution only for the items that are open', async () => {
+    const id = await openTicket()
+    await submit(id, { parts: note, pendencies: { opened: ['rg'] } })
+
+    const partly = await submit(id, { parts: note, pendencies: { resolved: ['rg', 'cpf'] } })
+    const stale = await submit(id, { parts: note, pendencies: { resolved: ['rg'] } })
+
+    expect(partly.statusCode).toBe(201)
+    expect(stale.statusCode).toBe(201)
+    expect(
+      (await pendencyEventsOf(id)).map((e) => ({ body: e.body, metadata: e.metadata })),
+    ).toEqual([
+      { body: 'Pendência marcada', metadata: { action: 'opened', itemIds: ['rg'] } },
+      { body: 'Pendência resolvida', metadata: { action: 'resolved', itemIds: ['rg'] } },
+    ])
+  })
+
   it('refuses an item outside the catalog by its place in the list, and writes nothing', async () => {
     const id = await openTicket()
 
@@ -150,29 +171,33 @@ describe('pendencies in POST /api/tickets/:id/submissions', () => {
     expect(ticket.status).not.toBe('missing-documents')
   })
 
-  it('refuses to open a retired item and still resolves one', async () => {
+  it('refuses to charge a retired item and still resolves one', async () => {
     const id = await openTicket()
     await app.db
       .insertInto('pendency_items')
-      .values({
-        id: 'test-retired',
-        label: 'Retirado',
-        category: 'document',
-        position: 1000,
-        active: false,
-      })
+      .values({ id: 'test-retired', label: 'Retirado', category: 'document', position: 1000 })
+      .execute()
+    await submit(id, { parts: note, pendencies: { opened: ['test-retired'] } })
+    await app.db
+      .updateTable('pendency_items')
+      .set({ active: false })
+      .where('id', '=', 'test-retired')
       .execute()
 
-    const opened = await submit(id, { parts: note, pendencies: { reopened: ['test-retired'] } })
+    const charged = await submit(id, { parts: note, pendencies: { opened: ['test-retired'] } })
     const resolved = await submit(id, { parts: note, pendencies: { resolved: ['test-retired'] } })
 
-    expect(opened.statusCode).toBe(422)
-    expect(opened.json().details).toEqual([
+    expect(charged.statusCode).toBe(422)
+    expect(charged.json().details).toEqual([
       expect.objectContaining({
-        field: 'pendencies.reopened[0]',
+        field: 'pendencies.opened[0]',
         code: 'inactive_pendency_item',
       }),
     ])
     expect(resolved.statusCode).toBe(201)
+    expect((await pendencyEventsOf(id)).map((e) => e.metadata)).toEqual([
+      { action: 'opened', itemIds: ['test-retired'] },
+      { action: 'resolved', itemIds: ['test-retired'] },
+    ])
   })
 })
