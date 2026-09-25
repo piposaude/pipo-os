@@ -58,7 +58,7 @@ export interface DeskContextValue {
   /** Pods and memberships, written optimistically over the API. */
   groupWrites: GroupWrites
   /** A subteam under the root, with the default name. */
-  newSubteam: () => void
+  newSubteam?: () => void
 }
 
 export const DeskContext = createContext<DeskContextValue | null>(null)

@@ -9,7 +9,7 @@ const copy = sidebarConstants.rowMenu
 export interface TeamMenuProps {
   name: string
   onRename: () => void
-  onNewSubteam: () => void
+  onNewSubteam?: () => void
 }
 
 /**
@@ -47,15 +47,17 @@ export function TeamMenu({ name, onRename, onNewSubteam }: TeamMenuProps) {
       >
         {copy.rename}
       </PopoverMenuItem>
-      <PopoverMenuItem
-        icon={<Icon name="fill/plus" size="sm" />}
-        onClick={() => {
-          close()
-          onNewSubteam()
-        }}
-      >
-        {copy.newSubteam}
-      </PopoverMenuItem>
+      {onNewSubteam && (
+        <PopoverMenuItem
+          icon={<Icon name="fill/plus" size="sm" />}
+          onClick={() => {
+            close()
+            onNewSubteam()
+          }}
+        >
+          {copy.newSubteam}
+        </PopoverMenuItem>
+      )}
     </PopoverMenu>
   )
 }

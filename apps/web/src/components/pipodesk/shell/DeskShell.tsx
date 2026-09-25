@@ -22,7 +22,7 @@ import {
 import { applyPatches, ticketFieldsBody, type TicketPatch } from '@/lib/pipodesk/patches'
 import { SearchPalette } from '@/components/pipodesk/queue/SearchPalette'
 import { SaveViewDialog } from '@/components/pipodesk/queue/SaveViewDialog'
-import { rootGroupOf } from '@/lib/pipodesk/permissions'
+import { canEditStructure, rootGroupOf } from '@/lib/pipodesk/permissions'
 import { toQueueNode } from '@/lib/pipodesk/queue-node'
 import { DeskContext, type NewView } from './desk-context'
 import { GROUPS_KEY, useGroupWrites } from './use-group-writes'
@@ -456,10 +456,11 @@ export function DeskShell() {
 
   /* One level of subteam, not free hierarchy: whatever row it comes from, it
      hangs from the root — the tree's width is budgeted for that. */
-  const newSubteam = useCallback(() => {
+  const newSubteam = useMemo(() => {
     const root = rootGroupOf(structure)
-    if (root) groupWrites.createGroup(sidebarConstants.rowMenu.newSubteamName, root.id)
-  }, [structure, groupWrites])
+    if (!root || !canEditStructure(structure, viewerId, root.id)) return undefined
+    return () => groupWrites.createGroup(sidebarConstants.rowMenu.newSubteamName, root.id)
+  }, [structure, viewerId, groupWrites])
 
   const [saveView, setSaveView] = useState<{ lockedTo: string | null } | null>(null)
   const openSaveView = useCallback(

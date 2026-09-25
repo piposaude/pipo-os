@@ -511,6 +511,20 @@ describe('novo subtime', () => {
     )
   })
 
+  it('should not offer a new subteam to someone who coordinates only the pod', async () => {
+    await renderTeam('/teams/pod-1', { viewer: 'pod-coordination' })
+    const user = userEvent.setup()
+
+    await user.click(within(header()).getByRole('button', { name: 'Ações de POD 1' }))
+    expect(await screen.findByRole('menuitem', { name: 'Renomear' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Novo subtime' })).not.toBeInTheDocument()
+    await user.keyboard('{Escape}')
+
+    await user.click(within(sidebar()).getByRole('button', { name: 'Ações de POD 1' }))
+    expect(await screen.findByRole('menuitem', { name: 'Renomear' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Novo subtime' })).not.toBeInTheDocument()
+  })
+
   it('should say so when the API refuses the new subteam', async () => {
     await renderTeam('/teams/pod-1', {
       writes: { 'POST /api/groups': () => ({ status: 422, body: { message: 'recusado' } }) },

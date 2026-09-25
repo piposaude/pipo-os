@@ -33,7 +33,7 @@ export interface QueueSidebarProps {
   onDeleteView: (queueId: string) => void
   onNewView?: (groupId: string) => void
   onRenameGroup: (groupId: string, name: string) => void
-  onNewSubteam: () => void
+  onNewSubteam?: () => void
   /** Viewer initials for the footer. */
   viewerInitials: string
   viewerName: string
@@ -139,7 +139,7 @@ interface NodeProps {
   onDeleteView: (queueId: string) => void
   onNewView?: (groupId: string) => void
   onRenameGroup: (groupId: string, name: string) => void
-  onNewSubteam: () => void
+  onNewSubteam?: () => void
 }
 
 const openMenuOnRightClick = (event: MouseEvent<HTMLDivElement>) => {
