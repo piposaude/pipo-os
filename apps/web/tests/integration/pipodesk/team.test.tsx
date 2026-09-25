@@ -4,6 +4,7 @@ import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/rea
 import { routeTree } from '@/routeTree.gen'
 import constants from '@/constants/pages/pipodesk/team'
 import sidebarConstants from '@/constants/pipodesk/sidebar'
+import { FIXTURE_USER_NAMES } from '@/fixtures/pipodesk/dataset'
 import { holdGet, truncatedRowsRoute } from '../../helpers/api'
 
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
@@ -137,6 +138,35 @@ describe('home do pod', () => {
     await renderAt('/teams/pod-inexistente')
 
     expect(await screen.findByText(/não encontramos esse time/i)).toBeInTheDocument()
+  })
+})
+
+describe('home da operação', () => {
+  /** The root's own memberships are the two coordinators; the operation's page
+   *  is about the whole team. */
+  it('should list every person of the operation once, with the pods they are in', async () => {
+    await renderAt('/teams/group-geben')
+
+    const table = await screen.findByRole('table')
+    expect(within(table).getByRole('columnheader', { name: 'Pod' })).toBeInTheDocument()
+    const rows = within(table).getAllByRole('row').slice(1)
+    expect(rows).toHaveLength(Object.keys(FIXTURE_USER_NAMES).length)
+
+    const analyst = rows.find((line) => within(line).queryByText(FIXTURE_USER_NAMES['user-3']))!
+    expect(within(analyst).getByRole('link', { name: 'POD 1' })).toHaveAttribute(
+      'href',
+      '/teams/pod-1',
+    )
+  })
+
+  it('should say coordination is in every pod instead of listing all six', async () => {
+    await renderAt('/teams/group-geben')
+
+    const rows = within(await screen.findByRole('table'))
+      .getAllByRole('row')
+      .slice(1)
+    expect(within(rows[0]).getByText('Coordenação')).toBeInTheDocument()
+    expect(within(rows[0]).getByText('Todos os pods')).toBeInTheDocument()
   })
 })
 

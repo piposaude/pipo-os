@@ -18,9 +18,12 @@ export default {
   table: {
     person: 'Pessoa',
     role: 'Papel',
+    pod: 'Pod',
     portfolio: 'Carteira',
     open: 'Abertos',
   },
+  /** Coordination is admin in every pod: six names would say "all" at length. */
+  allPods: 'Todos os pods',
   roles: {
     admin: 'Coordenação',
     member: 'Analista',

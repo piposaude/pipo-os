@@ -112,6 +112,12 @@
   gap: var(--pipo-space-xsmall);
 }
 
+.pods {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--pipo-space-xxsmall) var(--pipo-space-xsmall);
+}
+
 .muted {
   color: var(--pipo-text-secondary);
 }

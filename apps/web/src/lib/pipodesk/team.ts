@@ -4,7 +4,7 @@
  */
 
 import { membersOf } from './permissions'
-import type { MemberRole, StructureState } from './structure'
+import type { Group, MemberRole, StructureState } from './structure'
 import type { TicketRow } from './ticket-row'
 
 export interface UnownedCompanies {
@@ -43,6 +43,15 @@ export function portfolioOf(structure: StructureState, groupId: string, userId: 
   return membership?.companyIds ?? []
 }
 
+function openByAssignee(rows: TicketRow[]): Map<string, number> {
+  const open = new Map<string, number>()
+  for (const row of rows) {
+    if (row.assigneeId === null || row.closedAt !== null) continue
+    open.set(row.assigneeId, (open.get(row.assigneeId) ?? 0) + 1)
+  }
+  return open
+}
+
 export interface MemberLoad {
   userId: string
   role: MemberRole
@@ -60,11 +69,7 @@ export function membersWithLoad(
   groupId: string,
   rows: TicketRow[],
 ): MemberLoad[] {
-  const open = new Map<string, number>()
-  for (const row of rows) {
-    if (row.assigneeId === null || row.closedAt !== null) continue
-    open.set(row.assigneeId, (open.get(row.assigneeId) ?? 0) + 1)
-  }
+  const open = openByAssignee(rows)
 
   return membersOf(structure, groupId)
     .map((membership) => ({
@@ -77,4 +82,49 @@ export function membersWithLoad(
       if (a.role !== b.role) return a.role === 'admin' ? -1 : 1
       return b.open - a.open
     })
+}
+
+export interface RosterLine extends MemberLoad {
+  /** The pods the person is in, by name. Never the root. */
+  pods: Group[]
+}
+
+/**
+ * The operation's page lists people, not the root's memberships: the root only
+ * holds coordination. One line per person, admin anywhere reading as
+ * coordination — the same climb `canEditStructure` does. Coordination first,
+ * then analysts by pod, then by name.
+ */
+export function operationRoster(
+  structure: StructureState,
+  rows: TicketRow[],
+  nameOf: (userId: string) => string,
+): RosterLine[] {
+  const open = openByAssignee(rows)
+  const lines = new Map<string, RosterLine>()
+
+  for (const membership of structure.memberships) {
+    const group = structure.groups.find((candidate) => candidate.id === membership.groupId)
+    if (!group) continue
+    const line = lines.get(membership.userId) ?? {
+      userId: membership.userId,
+      role: 'member' as MemberRole,
+      companies: 0,
+      open: open.get(membership.userId) ?? 0,
+      pods: [],
+    }
+    if (membership.role === 'admin') line.role = 'admin'
+    line.companies += (membership.companyIds ?? []).length
+    if (group.parentId !== null) line.pods.push(group)
+    lines.set(membership.userId, line)
+  }
+
+  const byName = (a: Group, b: Group) => a.name.localeCompare(b.name)
+  for (const line of lines.values()) line.pods.sort(byName)
+
+  return [...lines.values()].sort((a, b) => {
+    if (a.role !== b.role) return a.role === 'admin' ? -1 : 1
+    const pod = (a.pods[0]?.name ?? '').localeCompare(b.pods[0]?.name ?? '')
+    return pod !== 0 ? pod : nameOf(a.userId).localeCompare(nameOf(b.userId))
+  })
 }

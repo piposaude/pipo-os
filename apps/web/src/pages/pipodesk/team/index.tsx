@@ -1,18 +1,10 @@
 import { useMemo } from 'react'
 import {
-  Avatar,
-  Badge,
   Breadcrumb,
   BreadcrumbItem,
   Button,
   Heading,
   Loading,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
   Text,
 } from '@piposaude/design-system'
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
@@ -21,23 +13,16 @@ import { SidebarToggle } from '@/components/pipodesk/shell/SidebarToggle'
 import { ancestorsOf, rootGroupOf } from '@/lib/pipodesk/permissions'
 import { findNode, listNodeIdOf } from '@/lib/pipodesk/tree'
 import { toQueueNode } from '@/lib/pipodesk/queue-node'
-import { membersWithLoad, unownedCompaniesOf } from '@/lib/pipodesk/team'
+import { unownedCompaniesOf } from '@/lib/pipodesk/team'
 import type { LabelContext } from '@/lib/pipodesk/filter-copy'
 import { CarteirasTab } from './CarteirasTab'
+import { MemberTable } from './MemberTable'
 import { ViewsTab } from './ViewsTab'
 import { windowOf } from '@/lib/pipodesk/filter'
 import { COMPANY_NAMES } from '@/fixtures/pipodesk/dataset'
 import constants from '@/constants/pages/pipodesk/team'
 import sidebarConstants from '@/constants/pipodesk/sidebar'
 import styles from './style.module.css'
-
-/** Up to two initials for the avatar, from the first two words of the name. */
-const initialsOf = (name: string): string =>
-  name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('')
 
 /**
  * A pod's Home: who is on the team, with how much portfolio and load. The
@@ -78,15 +63,14 @@ export default function TeamPage() {
     [rows, groupId, today],
   )
 
+  /* At the root the roster is every pod's people, so their load is too. */
+  const awake = useMemo(() => windowOf(rows, 'awake', today), [rows, today])
+
   const openCount = inGroup.length
   /* Memoized like `inGroup` they derive from: both walk the structure and the
      pod's open tickets, and the page re-renders on every context change. */
   const unowned = useMemo(
     () => unownedCompaniesOf(structure, groupId, inGroup),
-    [structure, groupId, inGroup],
-  )
-  const members = useMemo(
-    () => membersWithLoad(structure, groupId, inGroup),
     [structure, groupId, inGroup],
   )
 
@@ -114,6 +98,8 @@ export default function TeamPage() {
       </div>
     )
   }
+
+  const isRoot = group.parentId === null
 
   const startNewView = () => {
     const node = findNode(sections, listNodeIdOf(group.id, rootGroupOf(structure)))
@@ -201,55 +187,13 @@ export default function TeamPage() {
 
       <div className={styles.secao}>
         {tab === 'home' && (
-          <>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableHeaderCell>{constants.table.person}</TableHeaderCell>
-                  <TableHeaderCell>{constants.table.role}</TableHeaderCell>
-                  <TableHeaderCell>{constants.table.portfolio}</TableHeaderCell>
-                  <TableHeaderCell align="right">{constants.table.open}</TableHeaderCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {members.map((member) => (
-                  <TableRow key={member.userId}>
-                    <TableCell>
-                      <span className={styles.person}>
-                        {/* alt="" on purpose: the name renders next to it in the same cell — an
-                                                   alt would read the person twice. The queue's owner
-                                                   column is the opposite: there the avatar is alone. */}
-                        <Avatar size="sm" text={initialsOf(resolveName(member.userId))} alt="" />
-                        {resolveName(member.userId)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {/* `tertiary`, not `primary`: solid green with light text reads as a
-                                               button, not an attribute, in a 20px badge. */}
-                      <Badge
-                        variant={member.role === 'admin' ? 'tertiary' : 'neutral'}
-                        size="small"
-                      >
-                        {constants.roles[member.role]}
-                      </Badge>
-                    </TableCell>
-                    {/* Coordination without portfolio is "not applicable", not zero — a `0`
-                                           would read as an empty portfolio to fill. */}
-                    <TableCell>
-                      {member.companies === 0 && member.role === 'admin' ? (
-                        <span className={styles.muted}>{constants.noPortfolio}</span>
-                      ) : (
-                        constants.portfolio(member.companies)
-                      )}
-                    </TableCell>
-                    <TableCell align="right" className={styles.num}>
-                      {member.open}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </>
+          <MemberTable
+            group={group}
+            isRoot={isRoot}
+            structure={structure}
+            rows={isRoot ? awake : inGroup}
+            resolveName={resolveName}
+          />
         )}
         {tab === 'portfolios' && (
           <CarteirasTab

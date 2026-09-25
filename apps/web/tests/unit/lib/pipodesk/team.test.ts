@@ -1,5 +1,10 @@
 // @vitest-environment node
-import { unownedCompaniesOf, portfolioOf, membersWithLoad } from '@/lib/pipodesk/team'
+import {
+  unownedCompaniesOf,
+  portfolioOf,
+  membersWithLoad,
+  operationRoster,
+} from '@/lib/pipodesk/team'
 import type { StructureState } from '@/lib/pipodesk/structure'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 
@@ -113,5 +118,59 @@ describe('membersWithLoad', () => {
       { userId: 'tainá@pipo', role: 'member', companies: 1, open: 2 },
       { userId: 'carla@pipo', role: 'member', companies: 2, open: 1 },
     ])
+  })
+})
+
+describe('operationRoster', () => {
+  const operation: StructureState = {
+    groups: [
+      { id: 'geben', name: 'GEBEN', parentId: null, companyIds: [] },
+      { id: 'pod-2', name: 'POD 2', parentId: 'geben', companyIds: ['e'] },
+      { id: 'pod-1', name: 'POD 1', parentId: 'geben', companyIds: ['a', 'b'] },
+    ],
+    memberships: [
+      { userId: 'bruno@pipo', groupId: 'geben', role: 'admin' },
+      { userId: 'bruno@pipo', groupId: 'pod-1', role: 'admin' },
+      { userId: 'carla@pipo', groupId: 'pod-2', role: 'member', companyIds: ['e'] },
+      { userId: 'carla@pipo', groupId: 'pod-1', role: 'member', companyIds: ['a', 'b'] },
+      { userId: 'ana@pipo', groupId: 'pod-2', role: 'member', companyIds: [] },
+    ],
+    queues: [],
+  }
+  const nameOf = (userId: string) => userId
+
+  /** A membership is per group, and the root only holds coordination: the
+   *  root's own members would list two people for the whole operation. */
+  it('should give one line per person of the operation, with the pods they are in', () => {
+    const roster = operationRoster(operation, [], nameOf)
+
+    expect(roster.map((line) => line.userId)).toEqual(['bruno@pipo', 'carla@pipo', 'ana@pipo'])
+    expect(roster[1]).toMatchObject({
+      role: 'member',
+      companies: 3,
+      pods: [
+        { id: 'pod-1', name: 'POD 1' },
+        { id: 'pod-2', name: 'POD 2' },
+      ],
+    })
+  })
+
+  /** Coordination is admin wherever it is, and the root is not a pod. */
+  it('should read as coordination anyone admin in some group, without listing the root as a pod', () => {
+    expect(operationRoster(operation, [], nameOf)[0]).toMatchObject({
+      role: 'admin',
+      pods: [{ id: 'pod-1' }],
+    })
+  })
+
+  /** On the operation's page the load is what the person holds in any pod. */
+  it('should count the open tickets of each person across every pod', () => {
+    const rows = [
+      row({ id: '1', assigneeId: 'carla@pipo', groupId: 'pod-1' }),
+      row({ id: '2', assigneeId: 'carla@pipo', groupId: 'pod-2' }),
+      row({ id: '3', assigneeId: 'carla@pipo', closedAt: '2026-08-10T10:00:00.000Z' }),
+    ]
+
+    expect(operationRoster(operation, rows, nameOf)[1].open).toBe(2)
   })
 })
