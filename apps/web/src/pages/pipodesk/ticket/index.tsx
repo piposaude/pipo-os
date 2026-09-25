@@ -3,17 +3,17 @@ import {
   Banner,
   Breadcrumb,
   BreadcrumbItem,
-  Button,
   Heading,
   Loading,
   Tabs,
 } from '@piposaude/design-system'
 import { Link, useParams } from '@tanstack/react-router'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import type { components } from '@pipo-os/api-client'
 import { useDesk } from '@/components/pipodesk/shell/desk-context'
 import { SidebarToggle } from '@/components/pipodesk/shell/SidebarToggle'
 import { CompanyTab } from '@/components/pipodesk/ticket/CompanyTab'
+import { Composer } from '@/components/pipodesk/ticket/Composer'
 import { CopyButton } from '@/components/pipodesk/ticket/CopyButton'
 import { DocumentsTab } from '@/components/pipodesk/ticket/DocumentsTab'
 import { HistoryTab } from '@/components/pipodesk/ticket/HistoryTab'
@@ -31,14 +31,7 @@ import {
 import { ORIGIN_COPY } from '@/lib/pipodesk/filter-copy'
 import { analystsOf } from '@/lib/pipodesk/permissions'
 import { daysOverdue, formatDate, formatDayMonth, formatLongDate } from '@/lib/pipodesk/format'
-import {
-  CHANNELS,
-  CHANNEL_LABEL,
-  CHANNEL_ORDER,
-  commentBodyOf,
-  timelineFromApi,
-  type CommentChannel,
-} from '@/lib/pipodesk/timeline'
+import { CHANNEL_LABEL, timelineFromApi } from '@/lib/pipodesk/timeline'
 import { isApiStatus } from '@/lib/pipodesk/status'
 import { recordsFromTicket } from '@/lib/pipodesk/snapshot'
 import { PRIORITIES, toTicketRow } from '@/lib/pipodesk/ticket-row'
@@ -105,8 +98,6 @@ function TicketDetail({ id }: { id: string }) {
   const [dateDraft, setDateDraft] = useState<string | null>(null)
   const priorityTrigger = useRef<HTMLButtonElement>(null)
   const ownerTrigger = useRef<HTMLButtonElement>(null)
-  const [channel, setChannel] = useState<CommentChannel>('internal')
-  const [draft, setDraft] = useState('')
   const [shownPerson, setShownPerson] = useState<string | null>(null)
 
   const timelineQuery = useQuery({
@@ -125,20 +116,10 @@ function TicketDetail({ id }: { id: string }) {
       return items
     },
   })
-  const { refetch: refetchTimeline } = timelineQuery
   const events = useMemo(
     () => (ticket ? timelineFromApi(ticket, timelineQuery.data ?? [], resolveName) : []),
     [ticket, timelineQuery.data, resolveName],
   )
-
-  const comment = useMutation({
-    mutationFn: (body: ReturnType<typeof commentBodyOf>) =>
-      client.POST('/api/tickets/{id}/comments', { params: { path: { id } }, body }),
-    onSuccess: async (_, sent) => {
-      setDraft((current) => (current.trim() === sent.body ? '' : current))
-      await refetchTimeline()
-    },
-  })
 
   /** Analysts of the ticket's pod, from the structure — the same source the
    *  queue's batch reassign uses. Deriving it from who currently HOLDS a
@@ -170,7 +151,6 @@ function TicketDetail({ id }: { id: string }) {
   /* `null` for no action date AND for one that cannot be read — an unreadable
      date is not an overdue deadline. */
   const overdue = ticket.actionDate === null ? null : daysOverdue(ticket.actionDate, today)
-  const activeChannel = CHANNELS[channel]
 
   const saveDate = (field: HTMLInputElement) => {
     if (dateDraft === null) return
@@ -278,60 +258,7 @@ function TicketDetail({ id }: { id: string }) {
         ))}
       </ol>
 
-      <div className={styles.composer}>
-        <div
-          className={styles.composerChannels}
-          role="group"
-          aria-label={constants.timeline.channelGroup}
-        >
-          {CHANNEL_ORDER.map((value) => (
-            <button
-              key={value}
-              type="button"
-              className={styles.composerChannel}
-              /* aria-pressed, not role="tab": there is no tabpanel to switch, and
-                               promising one to screen readers would be a lie. */
-              aria-pressed={channel === value}
-              disabled={CHANNELS[value].parked === true}
-              onClick={() => setChannel(value)}
-            >
-              {CHANNELS[value].label}
-            </button>
-          ))}
-        </div>
-        {/* On screen, not in a `title`: a disabled button takes no focus and its
-                     tooltip is not reliably announced, so the reason was mouse-only. */}
-        <p className={styles.composerHint}>{constants.timeline.emailPending}</p>
-        <p className={styles.composerHint}>{activeChannel.hint}</p>
-        <textarea
-          className={styles.composerInput}
-          /* `aria-label` and not the hidden `<label>` Carteiras uses: that one
-             exists because the DS `TextInput` drops `aria-label`; a native
-             `textarea` keeps it. */
-          aria-label={constants.timeline.label[channel]}
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder={constants.timeline.placeholder[channel]}
-          rows={4}
-        />
-        {comment.isError && (
-          <p role="alert" className={styles.composerHint}>
-            {constants.timeline.sendFailed}
-          </p>
-        )}
-        <div className={styles.composerActions}>
-          <Button
-            variant="primary"
-            disabled={draft.trim().length === 0 || comment.isPending}
-            onClick={() => {
-              if (channel === 'email') return
-              comment.mutate(commentBodyOf(channel, draft.trim()))
-            }}
-          >
-            {constants.timeline.submit[channel]}
-          </Button>
-        </div>
-      </div>
+      <Composer ticketId={ticket.id} />
     </section>
   )
 

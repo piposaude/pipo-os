@@ -271,61 +271,10 @@
   line-height: var(--pipo-lh-default);
 }
 
-/* Composer. */
-.composer {
-  display: flex;
-  flex-direction: column;
-  gap: var(--pipo-space-xsmall);
-  padding-top: var(--pipo-space-small);
-  border-top: var(--pipo-border-width-small) solid var(--pipo-border);
-}
-
-.composerChannels {
-  display: flex;
-  gap: var(--pipo-space-xxsmall);
-}
-
-.composerChannel {
-  padding: var(--pipo-space-xxsmall) var(--pipo-space-xsmall);
-  border: var(--pipo-border-width-small) solid var(--pipo-border);
-  border-radius: var(--pipo-radius-pill);
-  background: var(--pipo-surface);
-  color: var(--pipo-text-secondary);
-  font-family: var(--pipo-font-ui);
-  font-size: var(--pipo-fs-xsmall);
-  cursor: pointer;
-}
-
-.composerChannel[aria-pressed='true'] {
-  background: var(--pipo-brand-primary-lightest);
-  color: var(--pipo-text-primary);
-  font-weight: var(--pipo-fw-semibold);
-}
-
-.composerChannel:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
 .composerHint {
   margin: 0;
   color: var(--pipo-text-secondary);
   font-size: var(--pipo-fs-xsmall);
-}
-
-.composerInput {
-  width: 100%;
-  padding: var(--pipo-space-xsmall);
-  border: var(--pipo-border-width-small) solid var(--pipo-border);
-  border-radius: var(--pipo-radius-small);
-  font-family: var(--pipo-font-ui);
-  font-size: var(--pipo-fs-small);
-  resize: vertical;
-}
-
-.composerActions {
-  display: flex;
-  justify-content: flex-end;
 }
 
 /* The page radius, not the DS one, so the notice lines up with the blocks. */

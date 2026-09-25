@@ -1,5 +1,5 @@
 import { ENROLLMENT_TYPE_COPY } from '@/constants/pipodesk/domain'
-import type { CommentChannel } from '@/lib/pipodesk/timeline'
+import type { Destination } from '@/lib/pipodesk/composer'
 
 export default {
   notFound: (id: string) => `Não existe chamado com o id ${id}.`,
@@ -56,31 +56,33 @@ export default {
   },
   timeline: {
     heading: 'Linha do tempo',
-    channelGroup: 'Canal do comentário',
-    /** The field's accessible name — a placeholder is not one. */
-    label: {
-      internal: 'Anotação interna',
-      public: 'Comentário público',
-      email: 'E-mail ao RH',
-    } satisfies Record<CommentChannel, string>,
-    /** Keyed by channel, not `x` plus `xEmail`: the pair of ternaries this
-     *  replaced could only ever pick the non-e-mail side, because the parked
-     *  channel never becomes the active one. */
-    placeholder: {
-      internal: 'Escreva…',
-      public: 'Escreva…',
-      email: 'Escreva o e-mail ao RH…',
-    } satisfies Record<CommentChannel, string>,
-    submit: {
-      internal: 'Comentar',
-      public: 'Comentar',
-      email: 'Enviar e-mail',
-    } satisfies Record<CommentChannel, string>,
-    /** E-mail is Phase 6 (PD-112): the backend answers 501 until then, and
-     *  faking the send would teach a gesture that does not exist. */
-    emailPending: 'O e-mail ao RH chega com a Fase 6 (PD-112).',
     loadFailed: 'Não foi possível carregar a linha do tempo.',
-    sendFailed: 'O comentário não foi salvo.',
     now: 'agora',
+  },
+  composer: {
+    destinationsLabel: 'Este texto vai para',
+    destination: {
+      internal: 'Interno',
+      platform: 'Plataforma do RH',
+      email: 'E-mail para o RH',
+    } satisfies Record<Destination, string>,
+    hint: {
+      internal: 'Não sai do chamado.',
+      platform: 'Vira a última atualização que o RH vê na plataforma.',
+    },
+    emailParked: 'O e-mail ao RH chega com a Fase 6 (PD-112).',
+    split: {
+      open: 'Escrever diferente para cada um',
+      close: 'Voltar a um texto só',
+      needsTwo: 'Só faz sentido com mais de um destino ligado',
+      openHint: 'Abre uma caixa por destino, quando o mesmo texto não serve para todos',
+      closeHint: 'Volta a um texto só. Os textos por destino ficam guardados até você reabrir.',
+    },
+    field: 'Escrever uma mensagem',
+    placeholder: 'Escrever…',
+    fieldFor: (destination: string) => `Texto para ${destination}`,
+    placeholderFor: (destination: string) => `Escrever para ${destination.toLowerCase()}…`,
+    submit: 'Enviar',
+    sendFailed: 'O envio não foi salvo.',
   },
 }
