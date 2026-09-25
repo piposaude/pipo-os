@@ -1,5 +1,5 @@
 import { Sentry } from '@pipo-os/observability/sentry-node'
-import type { FastifyBaseLogger } from 'fastify'
+import type { FastifyBaseLogger, FastifyInstance } from 'fastify'
 import { sql, type Kysely } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
 import { deadline } from '../../shared/deadline.js'
@@ -9,6 +9,7 @@ export const CLAIM_LIMIT = 20
 export const LEASE_SECONDS = 60
 export const DELIVERY_TIMEOUT_MS = 10_000
 export const MAX_ATTEMPTS = 10
+export const DISPATCH_INTERVAL_MS = 5_000
 const BACKOFF_BASE_SECONDS = 30
 const BACKOFF_CAP_SECONDS = 3600
 
@@ -67,9 +68,11 @@ export async function claimDue(db: Kysely<Database>, limit = CLAIM_LIMIT): Promi
   }))
 }
 
+type Log = Pick<FastifyBaseLogger, 'info' | 'warn' | 'error'>
+
 export interface AttemptOptions {
   db: Kysely<Database>
-  log: FastifyBaseLogger
+  log: Log
   timeoutMs?: number
   now?: () => Date
 }
@@ -147,4 +150,42 @@ export async function attempt(
   } else {
     log.warn(context, 'webhook delivery failed')
   }
+}
+
+async function dispatchDue(options: AttemptOptions): Promise<void> {
+  const due = await claimDue(options.db)
+  await Promise.all(
+    due.map((delivery) =>
+      attempt(options, delivery).catch((error: unknown) =>
+        options.log.error({ err: error, deliveryId: delivery.id }, 'webhook delivery not recorded'),
+      ),
+    ),
+  )
+}
+
+export function startDispatcher(
+  app: FastifyInstance,
+  { intervalMs = DISPATCH_INTERVAL_MS, log = app.log }: { intervalMs?: number; log?: Log } = {},
+): void {
+  let timer: NodeJS.Timeout | undefined
+  let round: Promise<void> = Promise.resolve()
+  let closing = false
+
+  const run = () => {
+    round = dispatchDue({ db: app.db, log })
+      .catch((error: unknown) => log.error({ err: error }, 'webhook dispatch round failed'))
+      .finally(() => {
+        if (!closing) timer = setTimeout(run, intervalMs)
+      })
+  }
+
+  app.addHook('onReady', async () => {
+    run()
+    log.info({ intervalMs }, 'webhook dispatcher started')
+  })
+  app.addHook('onClose', async () => {
+    closing = true
+    clearTimeout(timer)
+    await round
+  })
 }

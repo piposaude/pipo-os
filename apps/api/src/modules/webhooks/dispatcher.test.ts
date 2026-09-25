@@ -7,7 +7,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { buildApp } from '../../app.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
 import { createRootGroup } from '../groups/root.test-helpers.js'
-import { attempt, claimDue, type AttemptOptions } from './dispatcher.js'
+import { attempt, claimDue, startDispatcher, type AttemptOptions } from './dispatcher.js'
 
 interface Received {
   headers: Record<string, string | string[] | undefined>
@@ -37,7 +37,10 @@ describe('webhook dispatcher', () => {
     receiver.post('/:answer', async (request, reply) => {
       const { answer } = request.params as { answer: string }
       received.push({ headers: request.headers, body: request.body as string })
-      if (answer === 'hang') await new Promise<void>((resolve) => (releaseHung = resolve))
+      if (answer === 'hang') {
+        await new Promise<void>((resolve) => (releaseHung = resolve))
+        return reply.status(200).send()
+      }
       if (answer === 'redirect') return reply.redirect('/200', 302)
       return reply.status(Number(answer)).send()
     })
@@ -134,6 +137,24 @@ describe('webhook dispatcher', () => {
 
   const ids = (claimed: { id: string }[]) => claimed.map((delivery) => delivery.id)
 
+  const row = (id: string) =>
+    app.db
+      .selectFrom('outbound_webhook_deliveries')
+      .selectAll()
+      .select(sql<number>`extract(epoch from next_attempt_at - now())`.as('wait'))
+      .where('id', '=', id)
+      .executeTakeFirstOrThrow()
+
+  const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+  const settles = async (id: string, status: string) => {
+    for (let waited = 0; waited < 2000; waited += 20) {
+      if ((await row(id)).status === status) return
+      await pause(20)
+    }
+    expect((await row(id)).status).toBe(status)
+  }
+
   describe('claimDue', () => {
     it('reserves only what is due and still pending or failed', async () => {
       const pending = await seed({ status: 'pending' })
@@ -211,14 +232,6 @@ describe('webhook dispatcher', () => {
       await attempt(options(overrides), delivery!)
       return delivery!
     }
-
-    const row = (id: string) =>
-      app.db
-        .selectFrom('outbound_webhook_deliveries')
-        .selectAll()
-        .select(sql<number>`extract(epoch from next_attempt_at - now())`.as('wait'))
-        .where('id', '=', id)
-        .executeTakeFirstOrThrow()
 
     it('marks the delivery as delivered on a 2xx', async () => {
       const id = await seed({ answer: '204' })
@@ -362,6 +375,86 @@ describe('webhook dispatcher', () => {
           extra: { deliveryId: id, ticketId, webhookConfigId: configId },
         },
       ])
+    })
+  })
+
+  describe('the rounds', () => {
+    const subject = async ({
+      enabled = false,
+      rounds,
+    }: { enabled?: boolean; rounds?: Parameters<typeof startDispatcher>[1] } = {}) => {
+      if (enabled) process.env.WEBHOOK_DISPATCHER_ENABLED = 'true'
+      try {
+        const api = buildApp()
+        if (rounds) api.register(async (scope) => startDispatcher(scope, rounds))
+        await api.ready()
+        return api
+      } finally {
+        delete process.env.WEBHOOK_DISPATCHER_ENABLED
+      }
+    }
+
+    it('starts with WEBHOOK_DISPATCHER_ENABLED=true and sends what is due at boot', async () => {
+      const id = await seed({ answer: '200' })
+      const api = await subject({ enabled: true })
+
+      try {
+        await settles(id, 'delivered')
+      } finally {
+        await api.close()
+      }
+    })
+
+    it('stays off without WEBHOOK_DISPATCHER_ENABLED', async () => {
+      const id = await seed({ answer: '200' })
+      const api = await subject()
+
+      try {
+        await pause(300)
+        expect((await row(id)).status).toBe('pending')
+      } finally {
+        await api.close()
+      }
+    })
+
+    it('keeps sending what becomes due on the following rounds', async () => {
+      const api = await subject({ rounds: { intervalMs: 20 } })
+
+      try {
+        const id = await seed({ answer: '200' })
+        await settles(id, 'delivered')
+      } finally {
+        await api.close()
+      }
+    })
+
+    it('lets the round in flight record its outcome before closing the database', async () => {
+      const id = await seed({ answer: 'hang' })
+      const api = await subject({ enabled: true })
+      for (let waited = 0; received.length === 0 && waited < 2000; waited += 10) await pause(10)
+
+      const closed = api.close()
+      await pause(50)
+      releaseHung()
+      await closed
+
+      expect(await row(id)).toMatchObject({ status: 'delivered', locked_at: null })
+    })
+
+    it('stops the rounds on close', async () => {
+      const failures: string[] = []
+      const log = {
+        info: () => undefined,
+        warn: () => undefined,
+        error: (_context: unknown, message?: string) => void failures.push(message ?? ''),
+      }
+      const api = await subject({ rounds: { intervalMs: 200, log } })
+      await pause(50)
+
+      await api.close()
+      await pause(400)
+
+      expect(failures).toEqual([])
     })
   })
 })
