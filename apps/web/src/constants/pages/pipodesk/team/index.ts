@@ -40,6 +40,44 @@ export default {
   shared: (count: number) =>
     `${count} ${count === 1 ? 'destes clientes tem' : 'destes clientes têm'} mais de um analista hoje. A partir de novembro cada cliente tem analista único.`,
   notFound: 'Não encontramos esse time.',
+  empty: {
+    title: (group: string) => `${group} ainda não tem ninguém.`,
+    /** Names the button instead of repeating it: one main action per screen. */
+    canEdit: 'Use + Adicionar pessoa para o time começar a receber chamado.',
+    cannotEdit: 'Só a coordenação inclui gente num time.',
+  },
+  addPerson: {
+    button: '+ Adicionar pessoa',
+    titleRoot: 'Incluir na operação',
+    title: (group: string) => `Incluir em ${group}`,
+    cancel: 'Cancelar',
+    submit: 'Incluir',
+    role: 'Papel',
+    pod: 'Pod',
+    person: 'Pessoa',
+    search: 'Buscar pessoa',
+    analyst: 'Analista',
+    analystCaptionRoot: 'Entra em um pod, com carteira de clientes.',
+    analystCaption: 'Recebe chamado dos clientes da carteira dela.',
+    coordinationRoot: 'Coordenação da operação',
+    coordination: (group: string) => `Coordenação de ${group}`,
+    coordinationCaptionRoot:
+      'Edita estrutura, membro e carteira de todos os pods. Não tem carteira própria.',
+    coordinationCaption: 'Edita membro e carteira deste pod. Não tem carteira própria.',
+    podCaption: (companies: number, analysts: number) =>
+      `${companies} ${companies === 1 ? 'empresa' : 'empresas'} · ${analysts} ${
+        analysts === 1 ? 'analista' : 'analistas'
+      }`,
+    nobodyLeft: (group: string) => `Todo mundo que casa com essa busca já está em ${group}.`,
+    elsewhere: (name: string, pods: { name: string; companies: number }[]) =>
+      `${name} já está em ${pods
+        .map(
+          (pod) => `${pod.name} (${pod.companies} ${pod.companies === 1 ? 'empresa' : 'empresas'})`,
+        )
+        .join(', ')}.`,
+    emptyPortfolio:
+      'A pessoa entra sem carteira. Enquanto estiver assim, o trabalho dos clientes sem dono chega por rodízio.',
+  },
   newView: '+ Nova view',
   editableBy: (group: string) => `Só a coordenação de ${group} edita carteira e membros.`,
   /** Editing (add person, move company, rename, delete) is the rest of PD-105. */

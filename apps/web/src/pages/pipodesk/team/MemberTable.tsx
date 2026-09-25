@@ -14,19 +14,12 @@ import {
 } from '@piposaude/design-system'
 import { Link } from '@tanstack/react-router'
 import { DeskIcon } from '@/components/pipodesk/icons'
+import { initialsOf } from '@/lib/pipodesk/format'
 import { membersWithLoad, operationRoster, type RosterLine } from '@/lib/pipodesk/team'
 import type { Group, MemberRole, StructureState } from '@/lib/pipodesk/structure'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 import constants from '@/constants/pages/pipodesk/team'
 import styles from './style.module.css'
-
-/** Up to two initials for the avatar, from the first two words of the name. */
-const initialsOf = (name: string): string =>
-  name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('')
 
 export interface MemberTableProps {
   group: Group
@@ -119,6 +112,15 @@ export function MemberTable({
         : membersWithLoad(structure, group.id, rows).map((line) => ({ ...line, pods: [] })),
     [isRoot, structure, rows, resolveName, group.id],
   )
+
+  if (lines.length === 0) {
+    return (
+      <div className={styles.empty}>
+        <p>{constants.empty.title(group.name)}</p>
+        <p>{canEdit ? constants.empty.canEdit : constants.empty.cannotEdit}</p>
+      </div>
+    )
+  }
 
   return (
     <Table>

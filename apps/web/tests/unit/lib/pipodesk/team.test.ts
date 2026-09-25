@@ -4,6 +4,9 @@ import {
   portfolioOf,
   membersWithLoad,
   operationRoster,
+  candidatesFor,
+  elsewhereOf,
+  joinTargets,
 } from '@/lib/pipodesk/team'
 import type { StructureState } from '@/lib/pipodesk/structure'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
@@ -191,5 +194,70 @@ describe('operationRoster', () => {
     ]
 
     expect(operationRoster(operation, rows, nameOf)[1].open).toBe(2)
+  })
+})
+
+describe('adding a person', () => {
+  const operation: StructureState = {
+    groups: [
+      { id: 'geben', name: 'GEBEN', parentId: null, companyIds: [] },
+      { id: 'pod-1', name: 'POD 1', parentId: 'geben', companyIds: ['a'] },
+      { id: 'pod-2', name: 'POD 2', parentId: 'geben', companyIds: ['b', 'c'] },
+    ],
+    memberships: [
+      { userId: 'bruno@pipo', groupId: 'geben', role: 'admin' },
+      { userId: 'carla@pipo', groupId: 'pod-2', role: 'member', companyIds: ['b', 'c'] },
+    ],
+    queues: [],
+  }
+  const people = [
+    { id: 'bruno@pipo', name: 'Bruno Lima' },
+    { id: 'carla@pipo', name: 'Carla Antônia' },
+    { id: 'ana@pipo', name: 'Ana Souza' },
+  ]
+
+  /** Offering only who is missing is what keeps the 409 of a repeated member
+   *  out of the normal path. */
+  it('should offer the people not yet in the group, matching the search without accents', () => {
+    expect(candidatesFor(people, operation, 'pod-2', '').map((p) => p.id)).toEqual([
+      'bruno@pipo',
+      'ana@pipo',
+    ])
+    expect(candidatesFor(people, operation, 'pod-1', 'antonia').map((p) => p.id)).toEqual([
+      'carla@pipo',
+    ])
+  })
+
+  /** Being in two pods is allowed; doing it without seeing the first is not a
+   *  decision anyone meant to take. */
+  it('should say which other pods the person is in, and with how many companies', () => {
+    expect(elsewhereOf(operation, 'carla@pipo', 'pod-1')).toEqual([{ name: 'POD 2', companies: 2 }])
+    // The root is not a pod.
+    expect(elsewhereOf(operation, 'bruno@pipo', 'pod-1')).toEqual([])
+  })
+
+  it('should add an analyst to the chosen pod only', () => {
+    expect(joinTargets(operation, 'pod-1', 'member', 'ana@pipo')).toEqual([
+      { groupId: 'pod-1', role: 'member' },
+    ])
+  })
+
+  /** Coordination of the operation is admin in the root AND in every pod: each
+   *  pod's page lists its own memberships, and coordination has to be there. */
+  it('should make operation coordination admin in the root and in every pod', () => {
+    expect(joinTargets(operation, 'geben', 'admin', 'ana@pipo')).toEqual([
+      { groupId: 'geben', role: 'admin' },
+      { groupId: 'pod-1', role: 'admin' },
+      { groupId: 'pod-2', role: 'admin' },
+    ])
+  })
+
+  /** A membership that already exists is left as it is: promoting to the
+   *  operation does not turn someone's analyst seat into coordination. */
+  it('should skip the groups where the person already has a membership', () => {
+    expect(joinTargets(operation, 'geben', 'admin', 'carla@pipo')).toEqual([
+      { groupId: 'geben', role: 'admin' },
+      { groupId: 'pod-1', role: 'admin' },
+    ])
   })
 })

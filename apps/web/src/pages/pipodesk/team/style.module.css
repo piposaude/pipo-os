@@ -158,6 +158,16 @@
   box-shadow: var(--pipo-shadow-focus-primary);
 }
 
+.empty {
+  padding: var(--pipo-space-medium) 0;
+  color: var(--pipo-text-secondary);
+  font-size: var(--pipo-fs-small);
+}
+
+.empty p {
+  margin: 0 0 var(--pipo-space-xxsmall);
+}
+
 .muted {
   color: var(--pipo-text-secondary);
 }

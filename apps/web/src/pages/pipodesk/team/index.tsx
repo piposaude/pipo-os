@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -17,6 +17,7 @@ import { unownedCompaniesOf } from '@/lib/pipodesk/team'
 import type { LabelContext } from '@/lib/pipodesk/filter-copy'
 import { CarteirasTab } from './CarteirasTab'
 import { MemberTable } from './MemberTable'
+import { AddPersonModal } from './AddPersonModal'
 import { ViewsTab } from './ViewsTab'
 import { windowOf } from '@/lib/pipodesk/filter'
 import { COMPANY_NAMES } from '@/fixtures/pipodesk/dataset'
@@ -50,6 +51,7 @@ export default function TeamPage() {
     groupWrites,
   } = useDesk()
   const navigate = useNavigate()
+  const [adding, setAdding] = useState(false)
 
   const group = structure.groups.find((candidate) => candidate.id === groupId)
 
@@ -164,6 +166,12 @@ export default function TeamPage() {
               {constants.newView}
             </Button>
           </div>
+        ) : tab === 'home' && canEdit ? (
+          <div className={styles.acao}>
+            <Button variant="primary" onClick={() => setAdding(true)}>
+              {constants.addPerson.button}
+            </Button>
+          </div>
         ) : (
           // Saying WHO edits keeps read-only from reading as broken — otherwise
           // people hunt for a button that does not exist.
@@ -214,6 +222,7 @@ export default function TeamPage() {
           <ViewsTab structure={structure} groupId={groupId} rows={inGroup} ctx={ctx} />
         )}
       </div>
+      {adding && <AddPersonModal group={group} isRoot={isRoot} onClose={() => setAdding(false)} />}
     </div>
   )
 }

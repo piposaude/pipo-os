@@ -6,7 +6,14 @@ import type { MemberRole } from '@/lib/pipodesk/structure'
 
 export const GROUPS_KEY = ['get', '/api/groups', 'all']
 
+export interface NewMembership {
+  groupId: string
+  userId: string
+  role: MemberRole
+}
+
 export interface GroupWrites {
+  addMembers: (memberships: NewMembership[]) => void
   setMemberRole: (groupId: string, userId: string, role: MemberRole) => void
   removeMember: (groupId: string, userId: string) => void
 }
@@ -50,6 +57,32 @@ export function useGroupWrites(onFail: () => void): GroupWrites {
     })
 
     return {
+      addMembers: (memberships) => {
+        void (async () => {
+          await queryClient.cancelQueries({ queryKey: GROUPS_KEY })
+          for (const { groupId, userId, role } of memberships) {
+            editMembers(groupId, (current) => [
+              ...current,
+              { userId, role, active: true, companyIds: [] },
+            ])
+          }
+          const results = await Promise.allSettled(
+            memberships.map(({ groupId, userId, role }) =>
+              client.POST('/api/groups/{id}/members', {
+                params: { path: { id: groupId } },
+                body: { userId, role },
+              }),
+            ),
+          )
+          const refused = memberships.filter((_, index) => results[index].status === 'rejected')
+          for (const { groupId, userId } of refused) {
+            editMembers(groupId, (current) => current.filter((member) => member.userId !== userId))
+          }
+          if (refused.length > 0) onFail()
+          await queryClient.invalidateQueries({ queryKey: GROUPS_KEY })
+        })()
+      },
+
       setMemberRole: (groupId, userId, role) => {
         const previous = members(groupId).find((member) => member.userId === userId)?.role
         const withRole = (to: MemberRole) => (current: ApiGroupMember[]) =>

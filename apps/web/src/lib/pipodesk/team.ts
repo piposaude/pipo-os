@@ -3,7 +3,8 @@
  * out of the screen so tests exercise the domain rule directly.
  */
 
-import { membersOf } from './permissions'
+import { childGroupsOf, membersOf } from './permissions'
+import { normalizeText } from './filter'
 import type { Group, MemberRole, StructureState } from './structure'
 import type { TicketRow } from './ticket-row'
 
@@ -156,4 +157,64 @@ export function operationRoster(
     const pod = (a.pods[0]?.name ?? '').localeCompare(b.pods[0]?.name ?? '')
     return pod !== 0 ? pod : nameOf(a.userId).localeCompare(nameOf(b.userId))
   })
+}
+
+export interface Person {
+  id: string
+  name: string
+}
+
+/** Who can still join the group, by name without accents or case. */
+export function candidatesFor(
+  people: Person[],
+  structure: StructureState,
+  groupId: string,
+  query: string,
+): Person[] {
+  const inGroup = new Set(membersOf(structure, groupId).map((membership) => membership.userId))
+  const wanted = normalizeText(query.trim())
+  return people.filter(
+    (person) => !inGroup.has(person.id) && normalizeText(person.name).includes(wanted),
+  )
+}
+
+/** The other pods the person is in, with how many companies they carry there. */
+export function elsewhereOf(
+  structure: StructureState,
+  userId: string,
+  groupId: string,
+): { name: string; companies: number }[] {
+  return structure.memberships.flatMap((membership) => {
+    if (membership.userId !== userId || membership.groupId === groupId) return []
+    const group = structure.groups.find((candidate) => candidate.id === membership.groupId)
+    return group && group.parentId !== null
+      ? [{ name: group.name, companies: (membership.companyIds ?? []).length }]
+      : []
+  })
+}
+
+/**
+ * The memberships that adding the person creates. Coordination of the root is
+ * coordination of the operation: admin in the root and in every pod, so each
+ * pod's page lists them. An existing membership is left as it is.
+ */
+export function joinTargets(
+  structure: StructureState,
+  groupId: string,
+  role: MemberRole,
+  userId: string,
+): { groupId: string; role: MemberRole }[] {
+  const group = structure.groups.find((candidate) => candidate.id === groupId)
+  const groups =
+    group?.parentId === null && role === 'admin'
+      ? [groupId, ...childGroupsOf(structure, groupId).map((child) => child.id)]
+      : [groupId]
+  return groups
+    .filter(
+      (target) =>
+        !structure.memberships.some(
+          (membership) => membership.userId === userId && membership.groupId === target,
+        ),
+    )
+    .map((target) => ({ groupId: target, role }))
 }

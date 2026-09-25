@@ -26,7 +26,7 @@ import { rootGroupOf } from '@/lib/pipodesk/permissions'
 import { toQueueNode } from '@/lib/pipodesk/queue-node'
 import { DeskContext, type NewView } from './desk-context'
 import { GROUPS_KEY, useGroupWrites } from './use-group-writes'
-import { displayNameFromEmail } from '@/lib/pipodesk/format'
+import { displayNameFromEmail, initialsOf } from '@/lib/pipodesk/format'
 import { logout } from '@/lib/auth'
 import queueConstants from '@/constants/pages/pipodesk/queue'
 import { useSessionStore } from '@/stores/session'
@@ -51,13 +51,6 @@ const QUEUES_KEY = ['get', '/api/queues', 'all']
 /** Global key, not per person: collapsing the menu is a preference of the
  *  screen space, not of the account. */
 const SIDEBAR_KEY = 'pipodesk:sidebar-collapsed'
-
-const iniciaisDe = (name: string): string =>
-  name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('')
 
 const STRUCTURE_STALE_MS = 5 * 60 * 1000
 const MAX_PAGE_SIZE = 100
@@ -145,6 +138,14 @@ export function DeskShell() {
   const resolveName = useMemo(
     () => (userId: string) => namesByEmail.get(userId)?.trim() || displayNameFromEmail(userId),
     [namesByEmail],
+  )
+  const people = useMemo(
+    () =>
+      (usersQuery.data?.data ?? []).map((person) => ({
+        id: person.email,
+        name: resolveName(person.email),
+      })),
+    [usersQuery.data, resolveName],
   )
 
   /* Prototype model: the base never changes; actions become patches applied
@@ -494,6 +495,7 @@ export function DeskShell() {
       rowsTruncated,
       viewerId,
       resolveName,
+      people,
       sidebarCollapsed,
       toggleSidebar,
       openSaveView,
@@ -517,6 +519,7 @@ export function DeskShell() {
       viewerId,
       today,
       resolveName,
+      people,
       sidebarCollapsed,
       toggleSidebar,
     ],
@@ -548,7 +551,7 @@ export function DeskShell() {
               onRenameView={renameView}
               onDeleteView={deleteView}
               onNewView={onQueue ? openSaveView : undefined}
-              viewerInitials={iniciaisDe(viewerName)}
+              viewerInitials={initialsOf(viewerName)}
               viewerName={viewerName}
               viewerEmail={email}
               onLogout={handleLogout}

@@ -8,6 +8,7 @@ import type { TicketFilter } from '@/lib/pipodesk/filter'
 import type { TicketSort } from '@/lib/pipodesk/sort'
 import type { GroupBy } from '@/lib/pipodesk/group'
 import type { GroupWrites } from './use-group-writes'
+import type { Person } from '@/lib/pipodesk/team'
 
 export interface NewView {
   name: string
@@ -43,6 +44,8 @@ export interface DeskContextValue {
   today: string
   viewerId: string
   resolveName: (userId: string) => string
+  /** Everyone who can be put in a pod, as `GET /api/users` lists them. */
+  people: Person[]
   sidebarCollapsed: boolean
   toggleSidebar: () => void
   /** Applies a patch to tickets — the prototype's mutation model until the
