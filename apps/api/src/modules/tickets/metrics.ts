@@ -1,7 +1,8 @@
 import type { FastifyInstance } from 'fastify'
 import fp from 'fastify-plugin'
 import { deadline } from '../../shared/deadline.js'
-import type { Comment } from '../comments/schemas.js'
+import type { Author } from '../auth/authenticate.js'
+import { commentSchema, type Comment } from '../comments/schemas.js'
 import { CLOSED_STATUSES, ticketStatusSchema, type TicketStatus } from './schemas.js'
 
 declare module 'fastify' {
@@ -17,6 +18,8 @@ export interface TicketMetrics {
 }
 
 const OPEN_STATUSES = ticketStatusSchema.options.filter((status) => !CLOSED_STATUSES.has(status))
+
+const MANUAL_AUTHOR_TYPES = ['user', 'service'] as const satisfies readonly Author['type'][]
 
 export const OPEN_TICKETS_READ_TIMEOUT_MS = 2_000
 
@@ -34,12 +37,22 @@ function createTicketMetrics(app: FastifyInstance): TicketMetrics {
     help: 'Ticket status changes, one per status history row',
     labelNames: ['from_status', 'to_status'] as const,
   })
+  for (const from of OPEN_STATUSES) {
+    for (const to of ticketStatusSchema.options) {
+      statusChanges.inc({ from_status: from, to_status: to }, 0)
+    }
+  }
 
   const comments = new client.Counter({
     name: 'pipos_tickets_comments_created_total',
     help: 'Manual comments written on tickets, by visibility and author type',
     labelNames: ['visibility', 'author_type'] as const,
   })
+  for (const visibility of commentSchema.shape.visibility.options) {
+    for (const authorType of MANUAL_AUTHOR_TYPES) {
+      comments.inc({ visibility, author_type: authorType }, 0)
+    }
+  }
 
   new client.Gauge({
     name: 'pipos_tickets_open',

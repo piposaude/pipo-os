@@ -112,6 +112,8 @@ Isso sobe `apps/api` e `apps/web` simultaneamente via `pnpm -r --parallel dev`.
   | `pipos_tickets_comments_created_total` | counter | `visibility`, `author_type` | Comentário manual, pela rota de comentário ou pelo envio                                              |
   | `pipos_tickets_open`                   | gauge   | `status`                    | Chamados abertos, lidos do banco a cada coleta. As réplicas devolvem o mesmo valor: agregue com `max` |
 
+  Os contadores de mudança de status e de comentário já nascem com todas as combinações em zero. O de chamado criado não: o `source_system` não tem vocabulário fechado, a série de uma origem só aparece no primeiro chamado dela em cada pod, e a consulta que precisa enxergar o zero usa `or vector(0)`.
+
 - **Erros**: erros 5xx não tratados na api e crashes de render no web são reportados ao Sentry quando `SENTRY_DSN`/`WEB_APP_SENTRY_DSN` estão configurados, sem PII no contexto da request.
 
 ## API

@@ -7,6 +7,7 @@ import { SESSION_COOKIE_NAME } from '../auth/session.js'
 import { sessionCookieFor } from '../auth/session.test-helpers.js'
 import { createRootGroup } from '../groups/root.test-helpers.js'
 import { OPEN_TICKETS_READ_TIMEOUT_MS } from './metrics.js'
+import { ticketStatusSchema } from './schemas.js'
 
 const TICKET_POLICIES = ['admin/allow/administrate/pipodesk/ticket']
 
@@ -49,6 +50,7 @@ describe('business metrics', () => {
   let metricsServer: FastifyInstance
   let cookies: Record<string, string>
   let rootGroupId: string
+  let atBoot: Sample[]
 
   const scrape = async (): Promise<Sample[]> => {
     const response = await metricsServer.inject({ method: 'GET', url: '/metrics' })
@@ -78,6 +80,7 @@ describe('business metrics', () => {
     app = buildApp()
     // Port 0: the suite reads it by inject, and 8080 may be taken on the machine.
     metricsServer = await startMetricsServer(app, 0)
+    atBoot = await scrape()
     rootGroupId = await createRootGroup(app.db)
     cookies = {
       [SESSION_COOKIE_NAME]: sessionCookieFor(app, 'analista@piposaude.com.br', TICKET_POLICIES),
@@ -144,6 +147,24 @@ describe('business metrics', () => {
     const transitions = (from: string, to: string) =>
       valueOf('pipos_tickets_status_changes_total', { from_status: from, to_status: to })
 
+    it('publishes every transition out of an open status at zero, before the first change', () => {
+      const series = atBoot.filter((sample) => sample.name === 'pipos_tickets_status_changes_total')
+      const from = new Set(series.map((sample) => sample.labels.from_status))
+
+      expect(from).toEqual(
+        new Set([
+          'broker-processing',
+          'carrier-processing',
+          'broker-open-issue',
+          'missing-documents',
+          'incorrect-data',
+          'submitted-cancellation',
+        ]),
+      )
+      expect(series).toHaveLength(from.size * ticketStatusSchema.options.length)
+      expect(series.every((sample) => sample.value === 0)).toBe(true)
+    })
+
     it('counts a change made by PATCH /status, from and to', async () => {
       const { id } = (await createTicket()).json<{ id: string }>()
 
@@ -180,6 +201,22 @@ describe('business metrics', () => {
         visibility,
         author_type: authorType,
       })
+
+    it('publishes every visibility and author type at zero, before the first comment', () => {
+      const series = atBoot
+        .filter((sample) => sample.name === 'pipos_tickets_comments_created_total')
+        .map(({ labels, value }) => ({ ...labels, value }))
+
+      expect(series).toHaveLength(4)
+      expect(series).toEqual(
+        expect.arrayContaining([
+          { visibility: 'public', author_type: 'user', value: 0 },
+          { visibility: 'public', author_type: 'service', value: 0 },
+          { visibility: 'private', author_type: 'user', value: 0 },
+          { visibility: 'private', author_type: 'service', value: 0 },
+        ]),
+      )
+    })
 
     it('counts a comment by its visibility and the type of its author', async () => {
       const { id } = (await createTicket()).json<{ id: string }>()
