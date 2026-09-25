@@ -5,6 +5,7 @@ import {
   UnprocessableEntityError,
   ValidationFailedError,
 } from '../../shared/errors.js'
+import type { TicketMetrics } from '../tickets/metrics.js'
 import type { TicketsRepositoryPort } from '../tickets/repository.js'
 import type { Author } from '../auth/authenticate.js'
 import type { CommentsRepositoryPort, TimelineKey, WrittenComment } from './repository.js'
@@ -47,6 +48,7 @@ export class CommentsService {
   constructor(
     private readonly repository: CommentsRepositoryPort,
     private readonly ticketsRepository: TicketsRepositoryPort,
+    private readonly metrics: TicketMetrics,
   ) {}
 
   async add(ticketId: string, data: CreateCommentBody, author: Author): Promise<WrittenComment> {
@@ -63,7 +65,9 @@ export class CommentsService {
 
     /* The index decides, not a read before the write: two redeliveries landing
        together would both find nothing and both insert. */
-    return this.repository.create(ticketId, data, author)
+    const written = await this.repository.create(ticketId, data, author)
+    if (written.created) this.metrics.commentsCreated([written.comment])
+    return written
   }
 
   async submit(
@@ -91,7 +95,9 @@ export class CommentsService {
       ])
     }
 
-    const { created, submissionId, ticket, comments } = result
+    const { created, submissionId, ticket, comments, statusChange } = result
+    if (statusChange) this.metrics.statusChanged(statusChange.fromStatus, statusChange.toStatus)
+    if (created) this.metrics.commentsCreated(comments)
     return { submission: { submissionId, ticket, comments }, created }
   }
 

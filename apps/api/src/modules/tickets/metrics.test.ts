@@ -1,0 +1,344 @@
+import { randomUUID } from 'node:crypto'
+import { startMetricsServer } from '@pipo-os/observability/metrics'
+import type { FastifyInstance } from 'fastify'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { buildApp } from '../../app.js'
+import { SESSION_COOKIE_NAME } from '../auth/session.js'
+import { sessionCookieFor } from '../auth/session.test-helpers.js'
+import { createRootGroup } from '../groups/root.test-helpers.js'
+import { OPEN_TICKETS_READ_TIMEOUT_MS } from './metrics.js'
+import { ticketStatusSchema } from './schemas.js'
+
+const TICKET_POLICIES = ['admin/allow/administrate/pipodesk/ticket']
+
+const ticketBody = {
+  enrollmentId: '00000000-0000-4000-8000-000000000001',
+  enrollmentType: 'inclusion',
+  companyId: '00000000-0000-4000-8000-000000000002',
+  sourceSystem: 'enrollment-integrations',
+  enrollmentSnapshot: { name: 'Test User' },
+}
+
+interface Sample {
+  name: string
+  labels: Record<string, string>
+  value: number
+}
+
+/** The exposition text parsed line by line: the labels here carry no comma
+ *  and no quote, so a split is enough. */
+function parseExposition(text: string): Sample[] {
+  return text
+    .split('\n')
+    .filter((line) => line !== '' && !line.startsWith('#'))
+    .map((line) => {
+      const match = /^(\w+)(?:\{(.*)\})? (\S+)$/.exec(line)
+      if (!match) throw new Error(`Unparseable exposition line: ${line}`)
+      const [, name, rawLabels, value] = match
+      const labels = Object.fromEntries(
+        (rawLabels ? rawLabels.split(',') : []).map((pair) => {
+          const [key, quoted] = pair.split('=')
+          return [key, quoted.slice(1, -1)]
+        }),
+      )
+      return { name, labels, value: Number(value) }
+    })
+}
+
+describe('business metrics', () => {
+  let app: FastifyInstance
+  let metricsServer: FastifyInstance
+  let cookies: Record<string, string>
+  let rootGroupId: string
+  let atBoot: Sample[]
+
+  const scrape = async (): Promise<Sample[]> => {
+    const response = await metricsServer.inject({ method: 'GET', url: '/metrics' })
+    expect(response.statusCode).toBe(200)
+    return parseExposition(response.body)
+  }
+
+  const valueOf = async (name: string, labels: Record<string, string>): Promise<number> => {
+    const samples = await scrape()
+    const sample = samples.find(
+      (candidate) =>
+        candidate.name === name &&
+        Object.entries(labels).every(([key, value]) => candidate.labels[key] === value),
+    )
+    return sample?.value ?? 0
+  }
+
+  const createTicket = async (body: Partial<typeof ticketBody> = {}) =>
+    app.inject({
+      method: 'POST',
+      url: '/api/tickets',
+      payload: { ...ticketBody, ...body },
+      cookies,
+    })
+
+  beforeAll(async () => {
+    app = buildApp()
+    // Port 0: the suite reads it by inject, and 8080 may be taken on the machine.
+    metricsServer = await startMetricsServer(app, 0)
+    atBoot = await scrape()
+    rootGroupId = await createRootGroup(app.db)
+    cookies = {
+      [SESSION_COOKIE_NAME]: sessionCookieFor(app, 'analista@piposaude.com.br', TICKET_POLICIES),
+    }
+  })
+
+  beforeEach(() => {
+    app.metrics.client.register.resetMetrics()
+  })
+
+  afterEach(async () => {
+    await app.db.deleteFrom('ticket_comments').execute()
+    await app.db.deleteFrom('ticket_status_history').execute()
+    await app.db.deleteFrom('outbound_webhook_deliveries').execute()
+    await app.db.deleteFrom('tickets').execute()
+  })
+
+  afterAll(async () => {
+    await app.db.deleteFrom('ticket_groups').where('id', '=', rootGroupId).execute()
+    await app.close()
+  })
+
+  describe('pipos_tickets_created_total', () => {
+    it('counts a created ticket by its source system', async () => {
+      expect((await createTicket()).statusCode).toBe(201)
+      expect((await createTicket({ enrollmentId: randomUUID() })).statusCode).toBe(201)
+      expect(
+        (await createTicket({ enrollmentId: randomUUID(), sourceSystem: 'smoke-test' })).statusCode,
+      ).toBe(201)
+
+      expect(
+        await valueOf('pipos_tickets_created_total', { source_system: 'enrollment-integrations' }),
+      ).toBe(2)
+      expect(await valueOf('pipos_tickets_created_total', { source_system: 'smoke-test' })).toBe(1)
+    })
+
+    it('does not count the 409 of an enrollment that already has an open ticket', async () => {
+      expect((await createTicket()).statusCode).toBe(201)
+      expect((await createTicket()).statusCode).toBe(409)
+
+      expect(
+        await valueOf('pipos_tickets_created_total', { source_system: 'enrollment-integrations' }),
+      ).toBe(1)
+    })
+  })
+
+  describe('pipos_tickets_status_changes_total', () => {
+    const changeStatus = async (ticketId: string, status: string) =>
+      app.inject({
+        method: 'PATCH',
+        url: `/api/tickets/${ticketId}/status`,
+        payload: { status },
+        cookies,
+      })
+
+    const submit = async (ticketId: string, submissionId: string, status: string) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/tickets/${ticketId}/submissions`,
+        payload: { submissionId, status: { status } },
+        cookies,
+      })
+
+    const transitions = (from: string, to: string) =>
+      valueOf('pipos_tickets_status_changes_total', { from_status: from, to_status: to })
+
+    it('publishes every transition out of an open status at zero, before the first change', () => {
+      const series = atBoot.filter((sample) => sample.name === 'pipos_tickets_status_changes_total')
+      const from = new Set(series.map((sample) => sample.labels.from_status))
+
+      expect(from).toEqual(
+        new Set([
+          'broker-processing',
+          'carrier-processing',
+          'broker-open-issue',
+          'missing-documents',
+          'incorrect-data',
+          'submitted-cancellation',
+        ]),
+      )
+      expect(series).toHaveLength(from.size * ticketStatusSchema.options.length)
+      expect(series.every((sample) => sample.value === 0)).toBe(true)
+    })
+
+    it('counts a change made by PATCH /status, from and to', async () => {
+      const { id } = (await createTicket()).json<{ id: string }>()
+
+      expect((await changeStatus(id, 'carrier-processing')).statusCode).toBe(200)
+
+      expect(await transitions('broker-processing', 'carrier-processing')).toBe(1)
+    })
+
+    it('counts a change made by a submission, once even when it is replayed', async () => {
+      const { id } = (await createTicket()).json<{ id: string }>()
+      const submissionId = randomUUID()
+
+      expect((await submit(id, submissionId, 'missing-documents')).statusCode).toBe(201)
+      expect((await submit(id, submissionId, 'missing-documents')).statusCode).toBe(200)
+
+      expect(await transitions('broker-processing', 'missing-documents')).toBe(1)
+    })
+
+    it('does not count a change refused on a closed ticket', async () => {
+      const { id } = (await createTicket()).json<{ id: string }>()
+      expect((await changeStatus(id, 'cancelled')).statusCode).toBe(200)
+
+      expect((await changeStatus(id, 'carrier-processing')).statusCode).toBe(422)
+      expect((await submit(id, randomUUID(), 'carrier-processing')).statusCode).toBe(422)
+
+      expect(await transitions('broker-processing', 'cancelled')).toBe(1)
+      expect(await transitions('cancelled', 'carrier-processing')).toBe(0)
+    })
+  })
+
+  describe('pipos_tickets_comments_created_total', () => {
+    const comments = (visibility: string, authorType: string) =>
+      valueOf('pipos_tickets_comments_created_total', {
+        visibility,
+        author_type: authorType,
+      })
+
+    it('publishes every visibility and author type at zero, before the first comment', () => {
+      const series = atBoot
+        .filter((sample) => sample.name === 'pipos_tickets_comments_created_total')
+        .map(({ labels, value }) => ({ ...labels, value }))
+
+      expect(series).toHaveLength(4)
+      expect(series).toEqual(
+        expect.arrayContaining([
+          { visibility: 'public', author_type: 'user', value: 0 },
+          { visibility: 'public', author_type: 'service', value: 0 },
+          { visibility: 'private', author_type: 'user', value: 0 },
+          { visibility: 'private', author_type: 'service', value: 0 },
+        ]),
+      )
+    })
+
+    it('counts a comment by its visibility and the type of its author', async () => {
+      const { id } = (await createTicket()).json<{ id: string }>()
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/tickets/${id}/comments`,
+        payload: { visibility: 'public', body: 'Documento recebido' },
+        cookies,
+      })
+
+      expect(response.statusCode).toBe(201)
+      expect(await comments('public', 'user')).toBe(1)
+      expect(await comments('private', 'user')).toBe(0)
+    })
+
+    it('counts each part of a submission, once even when it is replayed', async () => {
+      const { id } = (await createTicket()).json<{ id: string }>()
+      const payload = {
+        submissionId: randomUUID(),
+        parts: [
+          { channel: 'internal', body: 'Conferido com a operadora' },
+          { channel: 'platform', body: 'Recebemos seu pedido' },
+        ],
+      }
+      const post = () =>
+        app.inject({ method: 'POST', url: `/api/tickets/${id}/submissions`, payload, cookies })
+
+      expect((await post()).statusCode).toBe(201)
+      expect((await post()).statusCode).toBe(200)
+
+      expect(await comments('private', 'user')).toBe(1)
+      expect(await comments('public', 'user')).toBe(1)
+    })
+  })
+
+  describe('pipos_tickets_open', () => {
+    const openSeries = async () =>
+      Object.fromEntries(
+        (await scrape())
+          .filter((sample) => sample.name === 'pipos_tickets_open')
+          .map((sample) => [sample.labels.status, sample.value]),
+      )
+
+    it('reads the open tickets by status from the database, at every scrape', async () => {
+      const first = (await createTicket()).json<{ id: string }>()
+      await createTicket({ enrollmentId: randomUUID() })
+      const closed = (await createTicket({ enrollmentId: randomUUID() })).json<{ id: string }>()
+      await app.db
+        .updateTable('tickets')
+        .set({ status: 'cancelled' })
+        .where('id', '=', closed.id)
+        .execute()
+
+      expect(await openSeries()).toEqual({
+        'broker-processing': 2,
+        'carrier-processing': 0,
+        'broker-open-issue': 0,
+        'missing-documents': 0,
+        'incorrect-data': 0,
+        'submitted-cancellation': 0,
+      })
+
+      await app.db
+        .updateTable('tickets')
+        .set({ status: 'missing-documents' })
+        .where('id', '=', first.id)
+        .execute()
+
+      expect(await openSeries()).toMatchObject({ 'broker-processing': 1, 'missing-documents': 1 })
+    })
+
+    it('drops its series when the read fails, and the scrape still answers', async () => {
+      await createTicket()
+      const selectFrom = vi.spyOn(app.db, 'selectFrom').mockImplementationOnce(() => {
+        throw new Error('connection terminated')
+      })
+      const logError = vi.spyOn(app.log, 'error').mockImplementation(() => {})
+
+      try {
+        const samples = await scrape()
+
+        expect(samples.some((sample) => sample.name === 'pipos_tickets_open')).toBe(false)
+        expect(samples.some((sample) => sample.name === 'process_cpu_seconds_total')).toBe(true)
+        expect(logError).toHaveBeenCalledWith(
+          { err: expect.objectContaining({ message: 'connection terminated' }) },
+          expect.any(String),
+        )
+      } finally {
+        selectFrom.mockRestore()
+        logError.mockRestore()
+      }
+
+      expect(await openSeries()).toMatchObject({ 'broker-processing': 1 })
+    })
+
+    it('gives up on a read that hangs before the scrape itself times out', async () => {
+      const hanging = {
+        select: () => hanging,
+        where: () => hanging,
+        groupBy: () => hanging,
+        execute: () => new Promise(() => {}),
+      }
+      const selectFrom = vi
+        .spyOn(app.db, 'selectFrom')
+        .mockImplementationOnce(() => hanging as never)
+      const logError = vi.spyOn(app.log, 'error').mockImplementation(() => {})
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+
+      try {
+        const scraped = scrape()
+        await vi.advanceTimersByTimeAsync(OPEN_TICKETS_READ_TIMEOUT_MS + 1)
+        const samples = await scraped
+
+        expect(samples.some((sample) => sample.name === 'pipos_tickets_open')).toBe(false)
+        expect(samples.some((sample) => sample.name === 'process_cpu_seconds_total')).toBe(true)
+        expect(logError).toHaveBeenCalledOnce()
+      } finally {
+        vi.useRealTimers()
+        selectFrom.mockRestore()
+        logError.mockRestore()
+      }
+    })
+  })
+})
