@@ -13,6 +13,7 @@ export interface NewMembership {
 }
 
 export interface GroupWrites {
+  renameGroup: (groupId: string, name: string) => void
   addMembers: (memberships: NewMembership[]) => void
   setMemberRole: (groupId: string, userId: string, role: MemberRole) => void
   removeMember: (groupId: string, userId: string) => void
@@ -56,7 +57,26 @@ export function useGroupWrites(onFail: () => void): GroupWrites {
       params: { path: { id: groupId, memberId: userId } },
     })
 
+    const renamed = (groupId: string, name: string) =>
+      queryClient.setQueryData<ApiGroup[]>(GROUPS_KEY, (current) =>
+        current?.map((group) => (group.id === groupId ? { ...group, name } : group)),
+      )
+
     return {
+      renameGroup: (groupId, name) => {
+        const previous = queryClient
+          .getQueryData<ApiGroup[]>(GROUPS_KEY)
+          ?.find((group) => group.id === groupId)?.name
+        write(
+          () => renamed(groupId, name),
+          () =>
+            client.PATCH('/api/groups/{id}', { params: { path: { id: groupId } }, body: { name } }),
+          () => {
+            if (previous !== undefined) renamed(groupId, previous)
+          },
+        )
+      },
+
       addMembers: (memberships) => {
         void (async () => {
           await queryClient.cancelQueries({ queryKey: GROUPS_KEY })

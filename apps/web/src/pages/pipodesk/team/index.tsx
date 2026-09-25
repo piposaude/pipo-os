@@ -18,6 +18,8 @@ import type { LabelContext } from '@/lib/pipodesk/filter-copy'
 import { CarteirasTab } from './CarteirasTab'
 import { MemberTable } from './MemberTable'
 import { AddPersonModal } from './AddPersonModal'
+import { TeamMenu } from './TeamMenu'
+import { InlineRename } from '@/components/pipodesk/sidebar/InlineRename'
 import { ViewsTab } from './ViewsTab'
 import { windowOf } from '@/lib/pipodesk/filter'
 import { COMPANY_NAMES } from '@/fixtures/pipodesk/dataset'
@@ -52,6 +54,7 @@ export default function TeamPage() {
   } = useDesk()
   const navigate = useNavigate()
   const [adding, setAdding] = useState(false)
+  const [renaming, setRenaming] = useState(false)
 
   const group = structure.groups.find((candidate) => candidate.id === groupId)
 
@@ -155,7 +158,32 @@ export default function TeamPage() {
 
       <header className={styles.pagehead}>
         <div className={styles.titulo}>
-          <Heading level="h1">{group.name}</Heading>
+          <div className={styles.nome}>
+            {renaming ? (
+              <InlineRename
+                className={styles.rename}
+                value={group.name}
+                onCommit={(name) => {
+                  setRenaming(false)
+                  if (name !== group.name) groupWrites.renameGroup(group.id, name)
+                }}
+                onCancel={() => setRenaming(false)}
+              />
+            ) : (
+              <Heading level="h1">
+                <span
+                  onDoubleClick={() => {
+                    if (canEdit) setRenaming(true)
+                  }}
+                >
+                  {group.name}
+                </span>
+              </Heading>
+            )}
+            {canEdit && !renaming && (
+              <TeamMenu name={group.name} onRename={() => setRenaming(true)} />
+            )}
+          </div>
           <Text variant="bodySmall" className={styles.sub}>
             {constants.open(openCount)}
           </Text>

@@ -551,6 +551,7 @@ export function DeskShell() {
               onRenameView={renameView}
               onDeleteView={deleteView}
               onNewView={onQueue ? openSaveView : undefined}
+              onRenameGroup={groupWrites.renameGroup}
               viewerInitials={initialsOf(viewerName)}
               viewerName={viewerName}
               viewerEmail={email}

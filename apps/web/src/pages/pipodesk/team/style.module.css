@@ -46,6 +46,33 @@
   gap: var(--pipo-space-xxsmall);
 }
 
+.nome {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--pipo-space-xxsmall);
+}
+
+/* Same box as the h1 it replaces, so renaming does not move the page. */
+.rename {
+  min-width: 0;
+  max-width: 32ch;
+  padding: 0 var(--pipo-space-xxsmall);
+  border: var(--pipo-border-width-small) solid var(--pipo-border);
+  border-radius: var(--pipo-radius-xsmall);
+  background: var(--pipo-surface);
+  color: var(--pipo-neutral-darkest);
+  font-family: inherit;
+  font-size: var(--pipo-fs-h3);
+  font-weight: var(--pipo-fw-bold);
+  line-height: 1.313;
+}
+
+.rename:focus-visible {
+  outline: none;
+  box-shadow: var(--pipo-shadow-focus-primary);
+}
+
 .sub {
   font-variant-numeric: tabular-nums;
 }

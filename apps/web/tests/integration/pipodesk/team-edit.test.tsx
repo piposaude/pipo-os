@@ -62,6 +62,11 @@ async function renderTeam(
         )
         return { status: 200, body: { groupId, ...group.members.find((m) => m.userId === userId) } }
       },
+      'PATCH /api/groups/:id': (body: { name?: string }, path: string) => {
+        const group = groups.find((candidate) => candidate.id === path.split('/')[3])!
+        Object.assign(group, body)
+        return { status: 200, body: group }
+      },
       'POST /api/groups/:id/members': (
         body: { userId: string; role: ApiMember['role'] },
         path: string,
@@ -331,5 +336,86 @@ describe('incluir pessoa', () => {
     expect(
       screen.getByText(/Use \+ Adicionar pessoa para o time começar a receber chamado/),
     ).toBeInTheDocument()
+  })
+})
+
+describe('renomear o time', () => {
+  const header = () => screen.getByRole('heading', { level: 1 }).closest('header')!
+  const titleText = () => within(screen.getByRole('heading', { level: 1 })).getByText('POD 1')
+  const sidebar = () => screen.getByRole('navigation', { name: /pipodesk/i })
+  const patches = () =>
+    desk.calls.filter((call) => call.method === 'PATCH' && call.path === '/api/groups/pod-1')
+
+  it('should rename the pod from its title, and the tree follows', async () => {
+    await renderTeam('/teams/pod-1')
+    const user = userEvent.setup()
+
+    await user.dblClick(titleText())
+    const field = screen.getByRole('textbox', { name: 'Renomear POD 1' })
+    await user.clear(field)
+    await user.type(field, 'POD Sul{Enter}')
+
+    expect(screen.getByRole('heading', { level: 1, name: 'POD Sul' })).toBeInTheDocument()
+    expect(within(sidebar()).getByText('POD Sul')).toBeInTheDocument()
+    expect(patches()).toEqual([
+      { method: 'PATCH', path: '/api/groups/pod-1', body: { name: 'POD Sul' } },
+    ])
+  })
+
+  it('should rename from the … next to the title, and Esc gives up without writing', async () => {
+    await renderTeam('/teams/pod-1')
+    const user = userEvent.setup()
+
+    await user.click(within(header()).getByRole('button', { name: 'Ações de POD 1' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Renomear' }))
+    await user.type(screen.getByRole('textbox', { name: 'Renomear POD 1' }), 'x{Escape}')
+
+    expect(screen.getByRole('heading', { level: 1, name: 'POD 1' })).toBeInTheDocument()
+    expect(patches()).toEqual([])
+  })
+
+  it('should put the name back and say so when the API refuses', async () => {
+    await renderTeam('/teams/pod-1', {
+      writes: { 'PATCH /api/groups/:id': () => ({ status: 422, body: { message: 'recusado' } }) },
+    })
+    const user = userEvent.setup()
+
+    await user.dblClick(titleText())
+    await user.type(screen.getByRole('textbox', { name: 'Renomear POD 1' }), ' B{Enter}')
+
+    expect(await screen.findByText(queueConstants.writeFailed)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'POD 1' })).toBeInTheDocument()
+  })
+
+  it('should rename a pod from its row in the tree', async () => {
+    await renderTeam('/teams/pod-1')
+    const user = userEvent.setup()
+
+    await user.click(within(sidebar()).getByRole('button', { name: 'Ações de POD 2' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Renomear' }))
+    const field = within(sidebar()).getByRole('textbox', { name: 'Renomear POD 2' })
+    await user.clear(field)
+    await user.type(field, 'POD Norte{Enter}')
+
+    expect(within(sidebar()).getByText('POD Norte')).toBeInTheDocument()
+    expect(desk.calls).toContainEqual({
+      method: 'PATCH',
+      path: '/api/groups/pod-2',
+      body: { name: 'POD Norte' },
+    })
+  })
+
+  it('should give someone who does not coordinate neither the … nor the double click', async () => {
+    await renderTeam('/teams/pod-1', { viewer: 'analyst' })
+    const user = userEvent.setup()
+
+    expect(
+      within(header()).queryByRole('button', { name: 'Ações de POD 1' }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(sidebar()).queryByRole('button', { name: 'Ações de POD 1' }),
+    ).not.toBeInTheDocument()
+    await user.dblClick(titleText())
+    expect(screen.queryByRole('textbox', { name: 'Renomear POD 1' })).not.toBeInTheDocument()
   })
 })

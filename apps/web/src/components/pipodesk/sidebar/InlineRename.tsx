@@ -6,9 +6,10 @@ export interface InlineRenameProps {
   value: string
   onCommit: (name: string) => void
   onCancel: () => void
+  className?: string
 }
 
-export function InlineRename({ value, onCommit, onCancel }: InlineRenameProps) {
+export function InlineRename({ value, onCommit, onCancel, className }: InlineRenameProps) {
   const [draft, setDraft] = useState(value)
   const field = useRef<HTMLInputElement>(null)
   /** Enter commits and the unmount blurs: without the latch the name is sent twice. */
@@ -37,7 +38,7 @@ export function InlineRename({ value, onCommit, onCancel }: InlineRenameProps) {
       ref={field}
       type="text"
       aria-label={constants.rowMenu.renameField(value)}
-      className={styles.rename}
+      className={className ?? styles.rename}
       value={draft}
       onChange={(event) => setDraft(event.target.value)}
       onBlur={commit}
