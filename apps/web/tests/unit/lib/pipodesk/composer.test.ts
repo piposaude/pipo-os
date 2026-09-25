@@ -4,6 +4,7 @@ import {
   EMPTY_DRAFT,
   SEND_STATUSES,
   partsOf,
+  sameSubmission,
   statusChangeOf,
   submissionBodyOf,
   toggleDestination,
@@ -172,5 +173,39 @@ describe('withCompletionValue', () => {
 
     expect(draft.completion).toEqual({ endDate: '2026-08-31', x: '1' })
     expect(EMPTY_DRAFT.completion).toEqual({})
+  })
+})
+
+describe('sameSubmission', () => {
+  const sent = withCompletionValue(
+    withStatus(withText(both, 'Oi.'), 'completed'),
+    'endDate',
+    '2026-08-31',
+  )
+
+  it('should take a draft rebuilt with the same content as the same submission', () => {
+    const rebuilt = withStatus(withText(withText(sent, 'Oi. '), 'Oi.'), 'completed')
+
+    expect(rebuilt).not.toBe(sent)
+    expect(sameSubmission(sent, rebuilt, 'carrier-processing')).toBe(true)
+  })
+
+  it('should take picking the situation the send already carries as the same submission', () => {
+    const untouched = withText(EMPTY_DRAFT, 'Oi.')
+
+    expect(
+      sameSubmission(untouched, withStatus(untouched, 'carrier-processing'), 'carrier-processing'),
+    ).toBe(true)
+  })
+
+  it('should take another text, situation or completion value as another submission', () => {
+    const current = 'carrier-processing'
+
+    expect(sameSubmission(sent, withText(sent, 'Olá.'), current)).toBe(false)
+    expect(sameSubmission(sent, withStatus(sent, 'cancelled'), current)).toBe(false)
+    expect(sameSubmission(sent, withCompletionValue(sent, 'endDate', '2026-09-01'), current)).toBe(
+      false,
+    )
+    expect(sameSubmission(sent, toggleDestination(sent, 'platform'), current)).toBe(false)
   })
 })

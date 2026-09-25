@@ -191,6 +191,45 @@ describe('composer do chamado', () => {
     expect(second).not.toBe(first)
   })
 
+  it('should keep the submission id when the draft is rebuilt with the same content after a failure', async () => {
+    answer = 503
+    await renderAt(`/tickets/${TICKET}`)
+    const user = userEvent.setup()
+    const field = await screen.findByRole('textbox', { name: copy.field })
+
+    await user.type(field, 'Mesmo texto.')
+    await user.click(sendButton())
+    await screen.findByText(copy.sendFailed)
+    await user.type(field, 'x{Backspace}')
+    await user.click(sendButton())
+
+    await waitFor(() => expect(submissions()).toHaveLength(2))
+    const [first, second] = submissions().map(
+      (call) => (call.body as { submissionId: string }).submissionId,
+    )
+    expect(second).toBe(first)
+  })
+
+  it('should keep the submission id when the situation already carried is picked again after a failure', async () => {
+    answer = 503
+    await renderAt(`/tickets/${TICKET}`)
+    const user = userEvent.setup()
+    const field = await screen.findByRole('textbox', { name: copy.field })
+
+    await user.type(field, 'Mesmo texto.')
+    await user.click(sendButton())
+    await screen.findByText(copy.sendFailed)
+    const current = sendButton().textContent ?? ''
+    await user.click(within(await statusMenu(user)).getByRole('button', { name: current }))
+    await user.click(sendButton())
+
+    await waitFor(() => expect(submissions()).toHaveLength(2))
+    const [first, second] = submissions().map(
+      (call) => (call.body as { submissionId: string }).submissionId,
+    )
+    expect(second).toBe(first)
+  })
+
   it('should start a new submission id after one is saved', async () => {
     await renderAt(`/tickets/${TICKET}`)
     const user = userEvent.setup()

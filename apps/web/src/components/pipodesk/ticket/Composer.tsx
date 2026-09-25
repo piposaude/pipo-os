@@ -20,6 +20,7 @@ import {
   PARKED_DESTINATIONS,
   SEND_STATUSES,
   partsOf,
+  sameSubmission,
   statusChangeOf,
   submissionBodyOf,
   toggleDestination,
@@ -56,7 +57,11 @@ export function Composer({ ticket, status }: ComposerProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [rejected, setRejected] = useState<Record<string, string>>({})
   const [draft, setDraft] = useState<ComposerDraft>(EMPTY_DRAFT)
-  const [attempt, setAttempt] = useState<{ id: string; draft: ComposerDraft } | null>(null)
+  const [attempt, setAttempt] = useState<{
+    id: string
+    draft: ComposerDraft
+    status: ApiStatus
+  } | null>(null)
 
   const fields = useMemo(() => closingFields(ticket), [ticket])
   const { admissionDate } = useMemo(
@@ -112,8 +117,11 @@ export function Composer({ ticket, status }: ComposerProps) {
 
   const send = () => {
     const completion = completing ? completionBodyOf(fields, draft.completion) : undefined
-    const id = attempt?.draft === draft ? attempt.id : crypto.randomUUID()
-    setAttempt({ id, draft })
+    const id =
+      attempt && sameSubmission(attempt.draft, draft, attempt.status)
+        ? attempt.id
+        : crypto.randomUUID()
+    setAttempt({ id, draft, status: attempt?.id === id ? attempt.status : status })
     setRejected({})
     submission.mutate({ body: submissionBodyOf(draft, status, id, completion), sent: draft })
   }

@@ -108,6 +108,15 @@ export const withCompletionValue = (
 export const statusChangeOf = (draft: ComposerDraft, current: ApiStatus): ApiStatus | null =>
   draft.status !== null && draft.status !== current ? draft.status : null
 
+export function sameSubmission(a: ComposerDraft, b: ComposerDraft, current: ApiStatus): boolean {
+  if (statusChangeOf(a, current) !== statusChangeOf(b, current)) return false
+  const keys = new Set([...Object.keys(a.completion), ...Object.keys(b.completion)])
+  for (const key of keys) {
+    if ((a.completion[key] ?? '').trim() !== (b.completion[key] ?? '').trim()) return false
+  }
+  return JSON.stringify(partsOf(a)) === JSON.stringify(partsOf(b))
+}
+
 export function submissionBodyOf(
   draft: ComposerDraft,
   current: ApiStatus,
