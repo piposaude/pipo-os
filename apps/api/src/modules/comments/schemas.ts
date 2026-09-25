@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { ticketSchema, updateTicketStatusBodySchema } from '../tickets/schemas.js'
+import { PENDENCY_ACTIONS } from '../pendencies/schemas.js'
 import { serviceEventTypeSchema, ticketEventTypeSchema } from './event-types.js'
 
 /* The three the CHECK of migration 0030 allows. `system` is wider than
@@ -103,6 +104,22 @@ const submissionPartSchema = z
   })
   .strict()
 
+const MAX_PENDENCY_ITEMS_PER_ACTION = 100
+
+const pendencyItemIdsSchema = z
+  .array(z.string().min(1))
+  .max(MAX_PENDENCY_ITEMS_PER_ACTION)
+  .default([])
+
+const submissionPendenciesSchema = z
+  .object({
+    opened: pendencyItemIdsSchema.describe('Itens cobrados pela primeira vez, ou de novo'),
+    resolved: pendencyItemIdsSchema.describe(
+      'Itens que chegaram; o que não está aberto é ignorado',
+    ),
+  })
+  .strict()
+
 export const createSubmissionBodySchema = z
   .object({
     submissionId: z
@@ -118,9 +135,25 @@ export const createSubmissionBodySchema = z
       .uuid()
       .optional()
       .describe('O envio que abriu a conversa, no mesmo chamado; só junto de parts'),
+    pendencies: submissionPendenciesSchema
+      .describe('Pendências marcadas no envio; só junto de parts ou status')
+      .optional(),
   })
   .strict()
   .superRefine((body, ctx) => {
+    const named = new Set<string>()
+    for (const action of PENDENCY_ACTIONS) {
+      body.pendencies?.[action].forEach((itemId, index) => {
+        if (named.has(itemId)) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['pendencies', action, index],
+            message: `Pendency item ${itemId} appears more than once`,
+          })
+        }
+        named.add(itemId)
+      })
+    }
     if (body.parts.length === 0 && body.status === undefined) {
       ctx.addIssue({
         code: 'custom',

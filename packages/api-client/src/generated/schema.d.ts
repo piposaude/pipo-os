@@ -1058,6 +1058,71 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/pendency-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Só os itens deste tipo e os que valem para qualquer tipo */
+                    enrollmentType?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PendencyItemList"];
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/queues": {
         parameters: {
             query?: never;
@@ -2903,6 +2968,19 @@ export interface components {
              * @description O envio que abriu a conversa, no mesmo chamado; só junto de parts
              */
             inReplyTo?: string;
+            /** @description Pendências marcadas no envio; só junto de parts ou status */
+            pendencies?: {
+                /**
+                 * @description Itens cobrados pela primeira vez, ou de novo
+                 * @default []
+                 */
+                opened: string[];
+                /**
+                 * @description Itens que chegaram; o que não está aberto é ignorado
+                 * @default []
+                 */
+                resolved: string[];
+            };
         };
         CreateTicketBodyInput: {
             /** Format: uuid */
@@ -3038,12 +3116,34 @@ export interface components {
         GroupMemberRole: "admin" | "member";
         /** @enum {string} */
         GroupMemberRoleInput: "admin" | "member";
+        OpenPendency: {
+            itemId: string;
+            /**
+             * Format: date-time
+             * @description Quando o ciclo atual abriu
+             */
+            since: string;
+            /** @description Cobranças desde que o ciclo abriu */
+            chargedCount: number;
+        };
         OpenTicketConflict: {
             error: string;
             message: string;
             details?: components["schemas"]["ErrorDetail"][];
             /** Format: uuid */
             ticketId?: string;
+        };
+        /** @enum {string} */
+        PendencyCategory: "document" | "signature" | "correction" | "data";
+        /** @description Um item que a analista pode cobrar. enrollmentType null vale para qualquer tipo. */
+        PendencyItem: {
+            id: string;
+            label: string;
+            category: components["schemas"]["PendencyCategory"];
+            enrollmentType: ("inclusion" | "exclusion" | "plan_change" | "registration_data_change" | "combined_change") | null;
+        };
+        PendencyItemList: {
+            data: components["schemas"]["PendencyItem"][];
         };
         Queue: {
             /** Format: uuid */
@@ -3157,7 +3257,7 @@ export interface components {
             channel: "internal" | "email";
             /** @enum {string} */
             visibility: "public" | "private";
-            eventType: ("hr_platform_reply" | "enrollment_cancellation_requested" | "document_signature_sent" | "contractor_document_failed" | "internal_note" | "assigned" | "priority_changed" | "action_date_changed" | "moved" | "document_attached") | null;
+            eventType: ("hr_platform_reply" | "enrollment_cancellation_requested" | "document_signature_sent" | "contractor_document_failed" | "internal_note" | "assigned" | "priority_changed" | "action_date_changed" | "moved" | "document_attached" | "pendency_changed") | null;
             authorId: string | null;
             /** @enum {string} */
             authorType: "user" | "service" | "system";
@@ -3240,6 +3340,7 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             completion: components["schemas"]["TicketCompletion"] | null;
+            openPendencies: components["schemas"]["OpenPendency"][];
         };
         TicketFilter: {
             statuses?: components["schemas"]["TicketStatus"][];
@@ -3386,7 +3487,7 @@ export interface components {
             /** @constant */
             type: "event";
             /** @enum {string} */
-            eventType: "hr_platform_reply" | "enrollment_cancellation_requested" | "document_signature_sent" | "contractor_document_failed" | "internal_note" | "assigned" | "priority_changed" | "action_date_changed" | "moved" | "document_attached";
+            eventType: "hr_platform_reply" | "enrollment_cancellation_requested" | "document_signature_sent" | "contractor_document_failed" | "internal_note" | "assigned" | "priority_changed" | "action_date_changed" | "moved" | "document_attached" | "pendency_changed";
             body: string;
             metadata: {
                 [key: string]: unknown;

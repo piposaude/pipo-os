@@ -1,10 +1,12 @@
 import type { Kysely, Transaction } from 'kysely'
 import type { Database } from '../../infrastructure/db.js'
-import type { ErrorDetails } from '../../shared/errors.js'
+import type { ErrorDetail, ErrorDetails } from '../../shared/errors.js'
 import type { Author } from '../auth/authenticate.js'
 import { applyStatusChange, toTicket } from '../tickets/repository.js'
 import type { Ticket, TicketStatus } from '../tickets/schemas.js'
-import { toComment } from './repository.js'
+import { insertEvents, toComment } from './repository.js'
+import { findOpenPendencies } from '../pendencies/repository.js'
+import { PENDENCY_ACTIONS, type PendencyAction } from '../pendencies/schemas.js'
 import type { Comment, CreateSubmissionBody } from './schemas.js'
 
 export type SubmitResult =
@@ -21,6 +23,14 @@ export type SubmitResult =
   | { kind: 'refused'; failures: ErrorDetails }
   | { kind: 'unknown-reply' }
   | { kind: 'reply-to-reply' }
+  | { kind: 'invalid-pendencies'; failures: ErrorDetails }
+
+type SubmissionPendencies = NonNullable<CreateSubmissionBody['pendencies']>
+
+const PENDENCY_EVENT_BODY: Record<PendencyAction, { one: string; many: string }> = {
+  opened: { one: 'Pendência marcada', many: 'Pendências marcadas' },
+  resolved: { one: 'Pendência resolvida', many: 'Pendências resolvidas' },
+}
 
 export async function submit(
   db: Kysely<Database>,
@@ -76,6 +86,11 @@ export async function submit(
       if (nested) return { kind: 'reply-to-reply' }
     }
 
+    if (body.pendencies) {
+      const failures = await pendencyFailures(trx, body.pendencies)
+      if (failures) return { kind: 'invalid-pendencies', failures }
+    }
+
     let ticket = toTicket(current)
     let statusChange: { fromStatus: TicketStatus; toStatus: TicketStatus } | null = null
 
@@ -115,6 +130,28 @@ export async function submit(
             .returningAll()
             .execute()
 
+    if (body.pendencies) {
+      const open = new Set((await findOpenPendencies(trx, ticketId)).map((p) => p.itemId))
+      const pendencies = {
+        ...body.pendencies,
+        resolved: body.pendencies.resolved.filter((itemId) => open.has(itemId)),
+      }
+      await insertEvents(
+        trx,
+        PENDENCY_ACTIONS.filter((action) => pendencies[action].length > 0).map((action) => {
+          const itemIds = pendencies[action]
+          const copy = PENDENCY_EVENT_BODY[action]
+          return {
+            ticketId,
+            eventType: 'pendency_changed' as const,
+            body: itemIds.length > 1 ? copy.many : copy.one,
+            metadata: { action, itemIds },
+          }
+        }),
+        author,
+      )
+    }
+
     return {
       kind: 'ok',
       created: true,
@@ -124,6 +161,45 @@ export async function submit(
       statusChange,
     }
   })
+}
+
+async function pendencyFailures(
+  trx: Transaction<Database>,
+  pendencies: SubmissionPendencies,
+): Promise<ErrorDetails | undefined> {
+  const ids = PENDENCY_ACTIONS.flatMap((action) => pendencies[action])
+  if (ids.length === 0) return undefined
+
+  const rows = await trx
+    .selectFrom('pendency_items')
+    .select(['id', 'active'])
+    .where('id', 'in', ids)
+    .execute()
+  const activeById = new Map(rows.map((row) => [row.id, row.active]))
+
+  const failures: ErrorDetail[] = []
+  for (const action of PENDENCY_ACTIONS) {
+    pendencies[action].forEach((itemId, index) => {
+      const field = `pendencies.${action}[${index}]`
+      const active = activeById.get(itemId)
+      if (active === undefined) {
+        failures.push({
+          field,
+          message: `${itemId} is not a pendency item`,
+          code: 'unknown_pendency_item',
+        })
+      } else if (!active && action !== 'resolved') {
+        failures.push({
+          field,
+          message: `${itemId} is retired: it can be resolved, not charged again`,
+          code: 'inactive_pendency_item',
+        })
+      }
+    })
+  }
+
+  const [first, ...rest] = failures
+  return first ? [first, ...rest] : undefined
 }
 
 async function findSubmission(

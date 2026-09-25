@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { emailSchema, errorResponseSchema } from '../../shared/schemas.js'
+import { openPendencySchema } from '../pendencies/schemas.js'
 import {
   alterationTypeSchema,
   incomingEnrollmentTypeSchema,
@@ -102,7 +103,10 @@ export const completionSchema = z
   .meta({ id: 'TicketCompletion' })
 
 export const ticketDetailSchema = ticketSchema
-  .extend({ completion: completionSchema.nullable() })
+  .extend({
+    completion: completionSchema.nullable(),
+    openPendencies: z.array(openPendencySchema),
+  })
   .meta({ id: 'TicketDetail' })
 
 export const ticketParamsSchema = z.object({

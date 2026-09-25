@@ -96,6 +96,44 @@ describe('the body of POST /tickets/:id/submissions', () => {
     ).toEqual([['inReplyTo']])
   })
 
+  it('takes pendencies next to the text, one list per action', () => {
+    const parsed = createSubmissionBodySchema.parse({
+      submissionId,
+      parts: [{ channel: 'platform', body: 'faltam documentos' }],
+      pendencies: { opened: ['rg', 'cpf'] },
+    })
+
+    expect(parsed.pendencies).toEqual({ opened: ['rg', 'cpf'], resolved: [] })
+  })
+
+  it('refuses reopened: whether a charge reopens an item is for the API to read in the chronology', () => {
+    const parts = [{ channel: 'internal', body: 'oi' }]
+
+    expect(pathsOf({ parts, pendencies: { reopened: ['rg'] } })).toEqual([['pendencies']])
+  })
+
+  it('refuses pendencies with neither text nor status, which leave no submission to replay by', () => {
+    expect(pathsOf({ pendencies: { opened: ['rg'] } })).toEqual([['parts']])
+  })
+
+  it('refuses an item named twice in one submission', () => {
+    const parts = [{ channel: 'internal', body: 'oi' }]
+
+    expect(pathsOf({ parts, pendencies: { opened: ['rg'], resolved: ['rg'] } })).toEqual([
+      ['pendencies', 'resolved', 0],
+    ])
+    expect(pathsOf({ parts, pendencies: { opened: ['rg', 'rg'] } })).toEqual([
+      ['pendencies', 'opened', 1],
+    ])
+  })
+
+  it('refuses a pendency list longer than the catalog could hold, before it reaches the query', () => {
+    const parts = [{ channel: 'internal', body: 'oi' }]
+    const opened = Array.from({ length: 101 }, (_, i) => `item-${i}`)
+
+    expect(pathsOf({ parts, pendencies: { opened } })).toEqual([['pendencies', 'opened']])
+  })
+
   it('refuses a field it does not know', () => {
     const parts = [{ channel: 'internal', body: 'oi' }]
 

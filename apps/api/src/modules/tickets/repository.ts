@@ -13,6 +13,7 @@ import { digitsOf } from '../../shared/text.js'
 import { FK_VIOLATION, UNIQUE_VIOLATION } from '../../shared/pg.js'
 import type { Author } from '../auth/authenticate.js'
 import { insertEvent, type TicketEventInput } from '../comments/repository.js'
+import { findOpenPendencies } from '../pendencies/repository.js'
 import { enqueueStatusChange } from '../webhooks/deliveries.js'
 import {
   completionFailures,
@@ -488,7 +489,7 @@ export class TicketsRepository implements TicketsRepositoryPort {
   }
 
   async findDetailById(id: string): Promise<TicketDetail | undefined> {
-    const [row, members] = await Promise.all([
+    const [row, members, openPendencies] = await Promise.all([
       this.db
         .selectFrom('tickets')
         .selectAll()
@@ -499,10 +500,11 @@ export class TicketsRepository implements TicketsRepositoryPort {
         .where('id', '=', id)
         .executeTakeFirst(),
       selectCompletionMembers(this.db, id),
+      findOpenPendencies(this.db, id),
     ])
     if (!row) return undefined
 
-    return { ...toTicket(row), completion: completionOf(row, members) }
+    return { ...toTicket(row), completion: completionOf(row, members), openPendencies }
   }
 
   /** Exact, unlike `companyIds` of `/tickets/rows`: this is the EI's

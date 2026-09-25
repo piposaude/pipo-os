@@ -10,7 +10,8 @@
     "priority_changed",
     "action_date_changed",
     "moved",
-    "document_attached"
+    "document_attached",
+    "pendency_changed"
   ],
   "writableByService": {
     "readme": "The half POST /api/tickets/:id/comments accepts. The rest is what the API records about its own writes, through insertEvent and inside the transaction that moved the column — posted from outside it would be a chronology line with no change behind it.",

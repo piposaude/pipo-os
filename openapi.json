@@ -378,6 +378,33 @@
             "type": "string",
             "format": "uuid",
             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "pendencies": {
+            "type": "object",
+            "properties": {
+              "opened": {
+                "default": [],
+                "description": "Itens cobrados pela primeira vez, ou de novo",
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "resolved": {
+                "default": [],
+                "description": "Itens que chegaram; o que não está aberto é ignorado",
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "additionalProperties": false,
+            "description": "Pendências marcadas no envio; só junto de parts ou status"
           }
         },
         "required": [
@@ -928,6 +955,32 @@
           "member"
         ]
       },
+      "OpenPendency": {
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "type": "string"
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+            "description": "Quando o ciclo atual abriu"
+          },
+          "chargedCount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Cobranças desde que o ciclo abriu"
+          }
+        },
+        "required": [
+          "itemId",
+          "since",
+          "chargedCount"
+        ],
+        "additionalProperties": false
+      },
       "OpenTicketConflict": {
         "type": "object",
         "properties": {
@@ -953,6 +1006,69 @@
         "required": [
           "error",
           "message"
+        ],
+        "additionalProperties": false
+      },
+      "PendencyCategory": {
+        "type": "string",
+        "enum": [
+          "document",
+          "signature",
+          "correction",
+          "data"
+        ]
+      },
+      "PendencyItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/PendencyCategory"
+          },
+          "enrollmentType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "inclusion",
+                  "exclusion",
+                  "plan_change",
+                  "registration_data_change",
+                  "combined_change"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "category",
+          "enrollmentType"
+        ],
+        "additionalProperties": false,
+        "description": "Um item que a analista pode cobrar. enrollmentType null vale para qualquer tipo."
+      },
+      "PendencyItemList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PendencyItem"
+            }
+          }
+        },
+        "required": [
+          "data"
         ],
         "additionalProperties": false
       },
@@ -1619,7 +1735,8 @@
                   "priority_changed",
                   "action_date_changed",
                   "moved",
-                  "document_attached"
+                  "document_attached",
+                  "pendency_changed"
                 ]
               },
               {
@@ -2131,6 +2248,12 @@
                 "type": "null"
               }
             ]
+          },
+          "openPendencies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenPendency"
+            }
           }
         },
         "required": [
@@ -2167,7 +2290,8 @@
           "closedAt",
           "createdAt",
           "updatedAt",
-          "completion"
+          "completion",
+          "openPendencies"
         ],
         "additionalProperties": false
       },
@@ -3052,7 +3176,8 @@
               "priority_changed",
               "action_date_changed",
               "moved",
-              "document_attached"
+              "document_attached",
+              "pendency_changed"
             ]
           },
           "body": {
@@ -4474,6 +4599,64 @@
             }
           },
           "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pendency-items": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "query",
+            "name": "enrollmentType",
+            "required": false,
+            "description": "Só os itens deste tipo e os que valem para qualquer tipo"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendencyItemList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
             "description": "Default Response",
             "content": {
               "application/json": {
