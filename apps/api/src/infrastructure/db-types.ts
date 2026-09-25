@@ -42,6 +42,17 @@ export interface OutboundWebhookDeliveries {
   webhook_config_id: string;
 }
 
+export interface PendencyItems {
+  active: Generated<boolean>;
+  category: string;
+  created_at: Generated<Timestamp>;
+  enrollment_type: string | null;
+  id: string;
+  label: string;
+  position: number;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface TicketComments {
   author_id: string | null;
   author_type: string;
@@ -223,6 +234,7 @@ export interface WebhookConfigs {
 
 export interface DB {
   outbound_webhook_deliveries: OutboundWebhookDeliveries;
+  pendency_items: PendencyItems;
   ticket_comments: TicketComments;
   ticket_completion_members: TicketCompletionMembers;
   ticket_email_attachments: TicketEmailAttachments;

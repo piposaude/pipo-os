@@ -956,6 +956,69 @@
         ],
         "additionalProperties": false
       },
+      "PendencyCategory": {
+        "type": "string",
+        "enum": [
+          "document",
+          "signature",
+          "correction",
+          "data"
+        ]
+      },
+      "PendencyItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/PendencyCategory"
+          },
+          "enrollmentType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "inclusion",
+                  "exclusion",
+                  "plan_change",
+                  "registration_data_change",
+                  "combined_change"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "category",
+          "enrollmentType"
+        ],
+        "additionalProperties": false,
+        "description": "Um item que a analista pode cobrar. enrollmentType null vale para qualquer tipo."
+      },
+      "PendencyItemList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PendencyItem"
+            }
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
       "Queue": {
         "type": "object",
         "properties": {
@@ -4474,6 +4537,64 @@
             }
           },
           "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pendency-items": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "query",
+            "name": "enrollmentType",
+            "required": false,
+            "description": "Só os itens deste tipo e os que valem para qualquer tipo"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendencyItemList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
             "description": "Default Response",
             "content": {
               "application/json": {

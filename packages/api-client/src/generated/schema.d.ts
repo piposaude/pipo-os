@@ -1058,6 +1058,71 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/pendency-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Só os itens deste tipo e os que valem para qualquer tipo */
+                    enrollmentType?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PendencyItemList"];
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/queues": {
         parameters: {
             query?: never;
@@ -3044,6 +3109,18 @@ export interface components {
             details?: components["schemas"]["ErrorDetail"][];
             /** Format: uuid */
             ticketId?: string;
+        };
+        /** @enum {string} */
+        PendencyCategory: "document" | "signature" | "correction" | "data";
+        /** @description Um item que a analista pode cobrar. enrollmentType null vale para qualquer tipo. */
+        PendencyItem: {
+            id: string;
+            label: string;
+            category: components["schemas"]["PendencyCategory"];
+            enrollmentType: ("inclusion" | "exclusion" | "plan_change" | "registration_data_change" | "combined_change") | null;
+        };
+        PendencyItemList: {
+            data: components["schemas"]["PendencyItem"][];
         };
         Queue: {
             /** Format: uuid */
