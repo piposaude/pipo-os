@@ -245,6 +245,20 @@ describe('webhook dispatcher', () => {
       expect(JSON.parse(delivery!.body)).toEqual({ delivery_id: 'd', to_status: 'completed' })
       expect((await row(id)).target_url).toBe('http://ei.default:3000/pipodesk-webhook')
     })
+
+    it('hands over the lease exactly as it is stored, so the attempt can match it back', async () => {
+      const id = await seed()
+
+      const [delivery] = await claimDue(app.db)
+
+      expect(
+        await app.db
+          .selectFrom('outbound_webhook_deliveries')
+          .select('id')
+          .where('locked_at', '=', delivery!.lockedAt)
+          .execute(),
+      ).toEqual([{ id }])
+    })
   })
 
   describe('attempt', () => {
@@ -349,6 +363,25 @@ describe('webhook dispatcher', () => {
       }
 
       expect(await row(id)).toMatchObject({ status: 'delivered', response_status: 200 })
+    })
+
+    it('drops the outcome of an attempt whose lease another replica took over', async () => {
+      const id = await seed({ answer: '500' })
+      const [stale] = await claimDue(app.db)
+      await app.db
+        .updateTable('outbound_webhook_deliveries')
+        .set({ locked_at: seconds(-61) })
+        .execute()
+      const [current] = await claimDue(app.db)
+
+      await attempt(options(), stale!)
+      await attempt(options(), { ...current!, targetUrl: `${receiverUrl}/200` })
+
+      expect(await row(id)).toMatchObject({
+        status: 'delivered',
+        attempt_count: 1,
+        response_status: 200,
+      })
     })
 
     it('retries a 4xx like any other failure', async () => {

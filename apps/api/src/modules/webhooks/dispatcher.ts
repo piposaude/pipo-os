@@ -15,6 +15,7 @@ const BACKOFF_CAP_SECONDS = 3600
 
 export interface DueDelivery {
   id: string
+  lockedAt: Date
   ticketId: string
   webhookConfigId: string
   targetUrl: string
@@ -27,7 +28,10 @@ export async function claimDue(db: Kysely<Database>, limit = CLAIM_LIMIT): Promi
   const rows = await db
     .updateTable('outbound_webhook_deliveries as d')
     .from('webhook_configs as c')
-    .set((eb) => ({ locked_at: sql`now()`, target_url: eb.ref('c.target_url') }))
+    .set((eb) => ({
+      locked_at: sql`date_trunc('milliseconds', now())`,
+      target_url: eb.ref('c.target_url'),
+    }))
     .whereRef('c.id', '=', 'd.webhook_config_id')
     .where('d.id', 'in', (eb) =>
       eb
@@ -51,6 +55,7 @@ export async function claimDue(db: Kysely<Database>, limit = CLAIM_LIMIT): Promi
     )
     .returning([
       'd.id',
+      'd.locked_at',
       'd.ticket_id',
       'd.webhook_config_id',
       'd.target_url',
@@ -62,6 +67,7 @@ export async function claimDue(db: Kysely<Database>, limit = CLAIM_LIMIT): Promi
 
   return rows.map((row) => ({
     id: row.id,
+    lockedAt: row.locked_at!,
     ticketId: row.ticket_id,
     webhookConfigId: row.webhook_config_id,
     targetUrl: row.target_url,
@@ -120,7 +126,7 @@ export async function attempt(
   const attempts = delivery.attemptCount + 1
   const status = delivered ? 'delivered' : attempts >= MAX_ATTEMPTS ? 'dead' : 'failed'
 
-  await db
+  const recorded = await db
     .updateTable('outbound_webhook_deliveries')
     .set({
       status,
@@ -135,9 +141,8 @@ export async function attempt(
           }),
     })
     .where('id', '=', delivery.id)
-    .execute()
-
-  if (delivered) return
+    .where('locked_at', '=', delivery.lockedAt)
+    .executeTakeFirst()
 
   const context = {
     deliveryId: delivery.id,
@@ -147,6 +152,11 @@ export async function attempt(
     responseStatus: outcome.responseStatus,
     error: outcome.error,
   }
+  if (recorded.numUpdatedRows === 0n) {
+    log.warn(context, 'webhook delivery lease lost, outcome dropped')
+    return
+  }
+  if (delivered) return
   if (status === 'dead') {
     log.error(context, 'webhook delivery dead')
     Sentry.captureMessage('webhook delivery dead', { level: 'error', extra: context })
