@@ -8,11 +8,11 @@ import {
   VIEWER_ID,
   queueSeed,
   structureFixture,
-} from '@/fixtures/pipodesk/dataset'
+} from '../../fixtures/pipodesk/dataset'
 import { daysOverdue, formatLongDate } from '@/lib/pipodesk/format'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 import { analystsOf } from '@/lib/pipodesk/permissions'
-import { records } from '@/fixtures/pipodesk/records'
+import { records } from '../../fixtures/pipodesk/records'
 import constants from '@/constants/pages/pipodesk/ticket'
 import copyButton from '@/constants/pipodesk/copy-button'
 import { apiTicketOf, holdGet, holdRequest } from '../../helpers/api'

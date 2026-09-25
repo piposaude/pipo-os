@@ -21,8 +21,8 @@ afterEach(() => {
  * moved out. The roster comes from the structure, so it is empty here, and an
  * empty dialog with no explanation is a dead end.
  */
-vi.mock('@/fixtures/pipodesk/dataset', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/fixtures/pipodesk/dataset')>()
+vi.mock('../../fixtures/pipodesk/dataset', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../fixtures/pipodesk/dataset')>()
   return {
     ...actual,
     structureFixture: {
@@ -40,7 +40,7 @@ configure({ asyncUtilTimeout: 3000 })
 
 describe('dono num pod sem analista', () => {
   it('should say the pod has no analyst instead of opening an empty menu', async () => {
-    const { queueSeed } = await import('@/fixtures/pipodesk/dataset')
+    const { queueSeed } = await import('../../fixtures/pipodesk/dataset')
     const ticket = queueSeed.find((row) => row.groupId === 'pod-5')!
     const router = createRouter({
       routeTree,

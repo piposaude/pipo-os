@@ -4,7 +4,7 @@ import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/rea
 import { routeTree } from '@/routeTree.gen'
 import constants from '@/constants/pages/pipodesk/team'
 import sidebarConstants from '@/constants/pipodesk/sidebar'
-import { holdGet, truncatedRowsRoute } from '../../helpers/api'
+import { fixtureStructureRoutes, holdGet, page, truncatedRowsRoute } from '../../helpers/api'
 
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
@@ -157,6 +157,35 @@ describe('abas do pod', () => {
     // Unowned first — the group's coordination debt.
     const firstRow = within(table).getAllByRole('row')[1]
     expect(within(firstRow).getByText('Na rotação')).toBeInTheDocument()
+  })
+
+  it('should name a company by its tickets and leave one without tickets as its id', async () => {
+    const rows = JSON.parse(fixtureStructureRoutes()['/api/tickets/rows'] as string) as {
+      data: { companyId: string; companyName: string | null; groupId: string }[]
+    }
+    const named = rows.data.find((row) => row.groupId === 'pod-1' && row.companyName)!
+    const groups = fixtureStructureRoutes()['/api/groups'] as ReturnType<typeof page>
+    const withoutTickets = 'company-261'
+    desk.restore()
+    desk = (await import('../../helpers/desk')).mountDeskFixture(
+      {},
+      {
+        '/api/groups': page(
+          (groups.data as { id: string; companyIds: string[] }[]).map((group) =>
+            group.id === 'pod-1'
+              ? { ...group, companyIds: [named.companyId, withoutTickets] }
+              : { ...group, companyIds: group.companyIds.filter((id) => id !== named.companyId) },
+          ),
+        ),
+      },
+    )
+
+    await renderAt('/teams/pod-1?tab=portfolios')
+
+    const table = await screen.findByRole('table')
+    expect(within(table).getByText(named.companyName!)).toBeInTheDocument()
+    expect(within(table).getByText(withoutTickets)).toBeInTheDocument()
+    expect(within(table).queryByText('Maresia Construções')).not.toBeInTheDocument()
   })
 
   /** The two memos behind this are split on purpose: the tally walks every open

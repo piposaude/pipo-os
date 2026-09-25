@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { QueueRow } from '@/components/pipodesk/queue/QueueRow'
 import { ENROLLMENT_TYPE_COPY } from '@/constants/pipodesk/domain'
-import { queueSeed } from '@/fixtures/pipodesk/dataset'
+import { queueSeed } from '../../../fixtures/pipodesk/dataset'
 
 const columns = [
   { key: 'select', label: '', width: '36px' },

@@ -1,7 +1,7 @@
-import { FIXTURE_USER_NAMES, queueSeed, structureFixture } from '@/fixtures/pipodesk/dataset'
+import { FIXTURE_USER_NAMES, queueSeed, structureFixture } from '../fixtures/pipodesk/dataset'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 import type { Person } from '@/lib/pipodesk/record'
-import { records } from '@/fixtures/pipodesk/records'
+import { records } from '../fixtures/pipodesk/records'
 
 /** Answer for any ticket id without a route of its own. */
 export const TICKET_ROUTE = '/api/tickets/:id'
@@ -150,8 +150,6 @@ export function fixtureStructureRoutes(viewerId?: string): Record<string, unknow
   }
 }
 
-/** Serialized once: the dataset carries some 6.700 rows, and stringifying it
- *  per request would dominate the run. */
 let rowsBody: string | null = null
 
 /** The holder's CPF, which the API reads off the snapshot into every row. */
@@ -168,6 +166,7 @@ export function fixtureRowsRoute(): string {
     data: queueSeed.map((row) => ({
       ...row,
       taxId: taxIdOf(row.id),
+      companyTaxId: records.companyById.get(row.companyId)?.cnpj ?? null,
       title: row.subject,
       displayNumber: row.displayNumber ?? row.id,
       // The projection sends an instant, never a day: noon in São Paulo, so the

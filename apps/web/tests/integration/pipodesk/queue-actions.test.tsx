@@ -7,7 +7,7 @@ import {
   FIXTURE_USER_NAMES,
   VIEWER_GROUP_ID,
   VIEWER_ID,
-} from '@/fixtures/pipodesk/dataset'
+} from '../../fixtures/pipodesk/dataset'
 import { isAuthenticated, logout } from '@/lib/auth'
 import constants from '@/constants/pages/pipodesk/queue'
 import searchCopy from '@/constants/pipodesk/search'
@@ -345,7 +345,7 @@ describe('busca global', () => {
     await user.paste('guaporé agropecuária')
     await user.click(
       await within(palette).findByRole('option', {
-        name: /^Guaporé Agropecuária LTDA Matriz · \d/,
+        name: /^Guaporé Agropecuária Matriz · \d/,
       }),
     )
 
@@ -396,7 +396,7 @@ describe('busca global', () => {
     await user.paste('guaporé agropecuária')
     await user.click(
       await within(palette).findByRole('option', {
-        name: /^Guaporé Agropecuária LTDA Matriz · \d/,
+        name: /^Guaporé Agropecuária Matriz · \d/,
       }),
     )
 

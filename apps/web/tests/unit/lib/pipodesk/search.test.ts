@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { searchQueue, defaultHits } from '@/lib/pipodesk/search'
+import { companyRegistryOf, searchQueue, defaultHits } from '@/lib/pipodesk/search'
 import { buildTree } from '@/lib/pipodesk/tree'
 import type { StructureState } from '@/lib/pipodesk/structure'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
@@ -251,5 +251,69 @@ describe('empresa na busca: rótulo, casamento e contagem', () => {
 
   it('should count only itself on a branch result', () => {
     expect(empresaHits('caicara')?.[0].count).toBe(1)
+  })
+})
+
+describe('cadastro de empresas a partir das linhas', () => {
+  const branch = row({
+    id: '1',
+    companyId: 'empresa-1',
+    companyName: 'Caiçara Metalurgia',
+    companyTaxId: '11.222.333/0002-25',
+    parentCompanyId: 'empresa-9',
+    parentCompanyName: 'Grupo Quiriri',
+  })
+
+  it('should find a company by the digits of the cnpj its rows carry', () => {
+    const groups = searchQueue('333000225', [branch], sections, companyRegistryOf([branch]))
+
+    const empresas = groups.find((group) => group.category === 'empresa')
+    expect(empresas?.hits.map((hit) => hit.label)).toEqual(['Caiçara Metalurgia'])
+    expect(empresas?.hits[0].detail).toBe('Filial de Grupo Quiriri · 11.222.333/0002-25')
+  })
+
+  it('should find by cnpj a company whose name and cnpj come on different rows', () => {
+    const named = row({ id: '3', companyId: 'empresa-3', companyName: 'Jatobá Têxtil' })
+    const withCnpj = row({
+      id: '4',
+      companyId: 'empresa-3',
+      companyName: null,
+      companyTaxId: '44.555.666/0001-77',
+    })
+    const rows = [named, withCnpj]
+
+    const groups = searchQueue('555666', rows, sections, companyRegistryOf(rows))
+
+    const empresas = groups.find((group) => group.category === 'empresa')
+    expect(empresas?.hits.map((hit) => [hit.label, hit.detail])).toEqual([
+      ['Jatobá Têxtil', 'Matriz · 44.555.666/0001-77'],
+    ])
+  })
+
+  it('should find by cnpj a company whose rows carry no name, labelled by its id', () => {
+    const nameless = row({
+      id: '5',
+      companyId: 'empresa-5',
+      companyName: null,
+      companyTaxId: '77.888.999/0001-10',
+    })
+
+    const groups = searchQueue('888999', [nameless], sections, companyRegistryOf([nameless]))
+
+    const empresas = groups.find((group) => group.category === 'empresa')
+    expect(empresas?.hits.map((hit) => [hit.label, hit.detail])).toEqual([
+      ['empresa-5', 'Matriz · 77.888.999/0001-10'],
+    ])
+  })
+
+  it('should still find by name a company whose rows carry no cnpj', () => {
+    const plain = row({ id: '2', companyId: 'empresa-2', companyName: 'Grupo Quiriri' })
+
+    const groups = searchQueue('quiriri', [plain], sections, companyRegistryOf([plain]))
+
+    const empresas = groups.find((group) => group.category === 'empresa')
+    expect(empresas?.hits.map((hit) => [hit.label, hit.detail])).toEqual([
+      ['Grupo Quiriri', 'Matriz'],
+    ])
   })
 })
