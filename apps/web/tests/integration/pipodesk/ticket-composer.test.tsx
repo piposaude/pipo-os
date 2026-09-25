@@ -155,6 +155,25 @@ describe('composer do chamado', () => {
     expect(second).toBe(first)
   })
 
+  it('should start a new submission id when the draft changed after a failure', async () => {
+    answer = 503
+    await renderAt(`/tickets/${TICKET}`)
+    const user = userEvent.setup()
+    const field = await screen.findByRole('textbox', { name: copy.field })
+
+    await user.type(field, 'Primeira versão.')
+    await user.click(sendButton())
+    await screen.findByText(copy.sendFailed)
+    await user.type(field, ' Corrigida.')
+    await user.click(sendButton())
+
+    await waitFor(() => expect(submissions()).toHaveLength(2))
+    const [first, second] = submissions().map(
+      (call) => (call.body as { submissionId: string }).submissionId,
+    )
+    expect(second).not.toBe(first)
+  })
+
   it('should start a new submission id after one is saved', async () => {
     await renderAt(`/tickets/${TICKET}`)
     const user = userEvent.setup()
@@ -513,6 +532,22 @@ describe('composer do chamado — conclusão', () => {
     expect(start).toHaveAccessibleDescription(drawerCopy.rejected.before_admission)
     expect(start).toHaveValue('2026-07-01')
     expect(screen.getByText(copy.sendFailed)).toBeInTheDocument()
+    expect(within(reopened).queryByText(drawerCopy.allFilled)).not.toBeInTheDocument()
+    expect(
+      within(reopened).getAllByText(drawerCopy.refused(['Início da vigência · Léo'])).length,
+    ).toBeGreaterThan(0)
+
+    await user.click(within(reopened).getByRole('button', { name: drawerCopy.back }))
+    expect(sendButton()).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: drawerCopy.fill }))
+    await user.clear(within(screen.getByRole('dialog')).getByLabelText('Início da vigência · Léo'))
+    await user.type(
+      within(screen.getByRole('dialog')).getByLabelText('Início da vigência · Léo'),
+      '2026-07-02',
+    )
+    await user.keyboard('{Escape}')
+    expect(sendButton()).toBeEnabled()
   })
 
   it('should ask a single end date on an exclusion, with the requested end beside it', async () => {

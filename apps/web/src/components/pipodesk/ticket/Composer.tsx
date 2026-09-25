@@ -10,6 +10,7 @@ import {
   completionBlock,
   completionBodyOf,
   describeMissing,
+  fieldLabel,
   missingClosing,
   rejectedFields,
 } from '@/lib/pipodesk/closing'
@@ -55,7 +56,7 @@ export function Composer({ ticket, status }: ComposerProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [rejected, setRejected] = useState<Record<string, string>>({})
   const [draft, setDraft] = useState<ComposerDraft>(EMPTY_DRAFT)
-  const [submissionId, setSubmissionId] = useState(() => crypto.randomUUID())
+  const [attempt, setAttempt] = useState<{ id: string; draft: ComposerDraft } | null>(null)
 
   const fields = useMemo(() => closingFields(ticket), [ticket])
   const { admissionDate } = useMemo(
@@ -72,7 +73,7 @@ export function Composer({ ticket, status }: ComposerProps) {
     },
     onSuccess: (_, { sent }) => {
       setDraft((current) => (current === sent ? EMPTY_DRAFT : current))
-      setSubmissionId(crypto.randomUUID())
+      setAttempt(null)
       for (const queryKey of [
         ['get', '/api/tickets/{id}', ticket.id],
         ['get', '/api/tickets/{id}/timeline', ticket.id],
@@ -97,19 +98,22 @@ export function Composer({ ticket, status }: ComposerProps) {
   const missing = completing ? missingClosing(fields, draft.completion) : []
   const emptyCount = missing.filter((item) => item.reason === 'empty').length
   const parts = partsOf(draft)
+  const refused = fields.filter((field) => rejected[field.key] !== undefined).map(fieldLabel)
   const canSend =
-    (parts.length > 0 || change !== null) && missing.length === 0 && !submission.isPending
+    (parts.length > 0 || change !== null) &&
+    missing.length === 0 &&
+    refused.length === 0 &&
+    !submission.isPending
 
   const split = draft.split !== null
   const hint = draft.destinations.includes('platform') ? copy.hint.platform : copy.hint.internal
 
   const send = () => {
     const completion = completing ? completionBodyOf(fields, draft.completion) : undefined
+    const id = attempt?.draft === draft ? attempt.id : crypto.randomUUID()
+    setAttempt({ id, draft })
     setRejected({})
-    submission.mutate({
-      body: submissionBodyOf(draft, status, submissionId, completion),
-      sent: draft,
-    })
+    submission.mutate({ body: submissionBodyOf(draft, status, id, completion), sent: draft })
   }
 
   const pick = (next: ApiStatus) => {
@@ -205,10 +209,15 @@ export function Composer({ ticket, status }: ComposerProps) {
               className={`${styles.destination} ${styles.summaryOpen}`}
               onClick={() => setDrawerOpen(true)}
             >
-              {missing.length > 0 ? conclusionCopy.fill : conclusionCopy.review}
+              {missing.length > 0 || refused.length > 0
+                ? conclusionCopy.fill
+                : conclusionCopy.review}
             </button>
           </p>
           {missing.length > 0 && <p className={styles.missing}>{`${describeMissing(missing)}.`}</p>}
+          {refused.length > 0 && (
+            <p className={styles.missing}>{conclusionCopy.refused(refused)}</p>
+          )}
         </div>
       )}
       {submission.isError && (
@@ -278,6 +287,7 @@ export function Composer({ ticket, status }: ComposerProps) {
         onChange={changeValue}
         missing={missing}
         rejected={rejected}
+        refused={refused}
         admissionDate={admissionDate}
       />
     </div>

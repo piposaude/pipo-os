@@ -22,6 +22,7 @@ export interface ConclusionDrawerProps {
   onChange: (key: string, value: string) => void
   missing: MissingField[]
   rejected: Record<string, string>
+  refused: string[]
   admissionDate: string | null
 }
 
@@ -48,6 +49,7 @@ export function ConclusionDrawer({
   onChange,
   missing,
   rejected,
+  refused,
   admissionDate,
 }: ConclusionDrawerProps) {
   const idPrefix = useId()
@@ -63,7 +65,11 @@ export function ConclusionDrawer({
       footer={
         <div className={styles.footer}>
           <span className={styles.count}>
-            {missing.length === 0 ? copy.allFilled : `${describeMissing(missing)}.`}
+            {missing.length > 0
+              ? `${describeMissing(missing)}.`
+              : refused.length > 0
+                ? copy.refused(refused)
+                : copy.allFilled}
           </span>
           <button type="button" className={styles.back} onClick={onClose}>
             {copy.back}

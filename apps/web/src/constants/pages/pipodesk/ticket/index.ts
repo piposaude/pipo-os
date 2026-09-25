@@ -115,5 +115,6 @@ export default {
       before_admission: 'Antes de um mês da admissão.',
     } as Record<string, string>,
     rejectedOther: 'A API recusou este valor.',
+    refused: (labels: string[]) => `A API recusou ${labels.join(', ')}.`,
   },
 }
