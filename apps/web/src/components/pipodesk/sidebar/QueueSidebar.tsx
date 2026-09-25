@@ -19,8 +19,8 @@ import styles from './QueueSidebar.module.css'
  * look like detail and are not: (1) a group row never navigates — it expands;
  * the child "Chamados" opens the list; (2) subteams do not collapse with the
  * group's items; (3) containers draw no count — a number the click cannot
- * open is a broken promise. Missing: the group items of the row menu (PD-105)
- * and the favorite star (PD-109).
+ * open is a broken promise. Missing: deleting a subteam and its icon
+ * (PD-105b, PD-105c) and the favorite star (PD-109).
  */
 
 export interface QueueSidebarProps {

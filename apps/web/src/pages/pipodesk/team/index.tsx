@@ -31,7 +31,7 @@ import styles from './style.module.css'
  * A pod's Home: who is on the team, with how much portfolio and load. The
  * unowned-companies warning sits ABOVE the table — it is the group's one
  * coordination debt, and a warning inside the tab you already opened warns
- * nobody. Read-only; editing is the rest of PD-105.
+ * nobody.
  */
 export default function TeamPage() {
   const { groupId } = useParams({ from: '/_auth/_desk/teams/$groupId' })

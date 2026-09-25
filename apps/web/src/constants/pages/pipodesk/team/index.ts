@@ -80,8 +80,6 @@ export default {
   },
   newView: '+ Nova view',
   editableBy: (group: string) => `Só a coordenação de ${group} edita carteira e membros.`,
-  /** Editing (add person, move company, rename, delete) is the rest of PD-105. */
-  readOnly: 'Editar carteira e membros chega com o PD-105.',
   carteiras: {
     search: 'Buscar empresa…',
     /** Echoes the term back: an empty table with only headers reads as a
@@ -97,7 +95,7 @@ export default {
     /** No owner here is not an error: it is rotation. The alert color is for
      *  coordination to resolve. */
     rotation: 'Na rotação',
-    editPending: 'Alocar empresa e editar carteira chegam com o resto do PD-105.',
+    editPending: 'Alocar empresa e editar carteira chegam com o PD-108.',
   },
   views: {
     intro:
