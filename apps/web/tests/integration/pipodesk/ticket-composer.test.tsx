@@ -134,6 +134,26 @@ describe('composer do chamado', () => {
     expect(field).toHaveValue('')
   })
 
+  it('should go back to the internal note alone once a submission is saved', async () => {
+    await renderAt(`/tickets/${TICKET}`)
+    const user = userEvent.setup()
+    const group = await destinations()
+
+    await user.click(within(group).getByRole('button', { name: copy.destination.platform }))
+    await user.type(screen.getByRole('textbox', { name: copy.field }), 'Carteirinha enviada.')
+    await user.click(sendButton())
+
+    await waitFor(() => expect(screen.getByRole('textbox', { name: copy.field })).toHaveValue(''))
+    expect(within(group).getByRole('button', { name: copy.destination.internal })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(within(group).getByRole('button', { name: copy.destination.platform })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+  })
+
   it('should show the part for Plataforma do RH as a public comment in the timeline', async () => {
     await renderAt(`/tickets/${TICKET}`)
     const user = userEvent.setup()
