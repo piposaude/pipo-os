@@ -66,6 +66,21 @@
   font-size: var(--pipo-fs-small);
 }
 
+.retry {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--pipo-neutral-darkest);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.retry:focus-visible {
+  outline: none;
+  box-shadow: var(--pipo-shadow-focus-primary);
+}
+
 .srOnly {
   position: absolute;
   overflow: hidden;

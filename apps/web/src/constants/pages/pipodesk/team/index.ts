@@ -68,6 +68,9 @@ export default {
       `${companies} ${companies === 1 ? 'empresa' : 'empresas'} · ${analysts} ${
         analysts === 1 ? 'analista' : 'analistas'
       }`,
+    peopleLoading: 'Carregando pessoas…',
+    peopleFailed: 'Não foi possível carregar as pessoas.',
+    retry: 'Tentar de novo',
     nobodyLeft: (group: string) => `Todo mundo que casa com essa busca já está em ${group}.`,
     elsewhere: (name: string, pods: { name: string; companies: number }[]) =>
       `${name} já está em ${pods

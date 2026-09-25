@@ -46,6 +46,8 @@ export interface DeskContextValue {
   resolveName: (userId: string) => string
   /** Everyone who can be put in a pod, as `GET /api/users` lists them. */
   people: Person[]
+  peopleStatus: 'pending' | 'error' | 'success'
+  reloadPeople: () => void
   sidebarCollapsed: boolean
   toggleSidebar: () => void
   /** Applies a patch to tickets — the prototype's mutation model until the

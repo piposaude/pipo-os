@@ -132,6 +132,9 @@ export function DeskShell() {
   const inboxQuery = api.useQuery('get', '/api/tickets/inbox', {}, { staleTime: 30_000 })
   const usersQuery = api.useQuery('get', '/api/users', {}, { staleTime: STRUCTURE_STALE_MS })
 
+  const { refetch: refetchPeople } = usersQuery
+  const reloadPeople = useCallback(() => void refetchPeople(), [refetchPeople])
+
   const namesByEmail = useMemo(
     () => new Map((usersQuery.data?.data ?? []).map((person) => [person.email, person.name])),
     [usersQuery.data],
@@ -504,6 +507,8 @@ export function DeskShell() {
       viewerId,
       resolveName,
       people,
+      peopleStatus: usersQuery.status,
+      reloadPeople,
       sidebarCollapsed,
       toggleSidebar,
       openSaveView,
@@ -530,6 +535,8 @@ export function DeskShell() {
       today,
       resolveName,
       people,
+      usersQuery.status,
+      reloadPeople,
       sidebarCollapsed,
       toggleSidebar,
     ],

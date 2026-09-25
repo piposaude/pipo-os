@@ -23,7 +23,7 @@ export interface AddPersonModalProps {
  * not something the form can hold.
  */
 export function AddPersonModal({ group, isRoot, onClose }: AddPersonModalProps) {
-  const { structure, people, groupWrites } = useDesk()
+  const { structure, people, peopleStatus, reloadPeople, groupWrites } = useDesk()
   const [role, setRole] = useState<MemberRole | null>(null)
   const [podId, setPodId] = useState<string | null>(isRoot ? null : group.id)
   const [userId, setUserId] = useState<string | null>(null)
@@ -150,7 +150,16 @@ export function AddPersonModal({ group, isRoot, onClose }: AddPersonModalProps) 
                 </li>
               ))}
             </ul>
-            {candidates.length === 0 && targetGroup && (
+            {peopleStatus === 'pending' && <p className={styles.hint}>{copy.peopleLoading}</p>}
+            {peopleStatus === 'error' && (
+              <p className={styles.hint} role="alert">
+                {copy.peopleFailed}{' '}
+                <button type="button" className={styles.retry} onClick={reloadPeople}>
+                  {copy.retry}
+                </button>
+              </p>
+            )}
+            {peopleStatus === 'success' && candidates.length === 0 && targetGroup && (
               <p className={styles.hint}>{copy.nobodyLeft(targetGroup.name)}</p>
             )}
             {person && elsewhere.length > 0 && (

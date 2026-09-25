@@ -5,7 +5,7 @@ import { routeTree } from '@/routeTree.gen'
 import { useSessionStore } from '@/stores/session'
 import { FIXTURE_USER_NAMES } from '@/fixtures/pipodesk/dataset'
 import queueConstants from '@/constants/pages/pipodesk/queue'
-import { fixtureStructureRoutes, page, type ApiMock } from '../../helpers/api'
+import { fixtureStructureRoutes, fixtureUsersRoute, page, type ApiMock } from '../../helpers/api'
 
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())
 
@@ -317,6 +317,28 @@ describe('incluir pessoa', () => {
         '/api/groups/pod-6/members',
       ]),
     )
+  })
+
+  /** An empty list because the people did not load is not "everyone is here". */
+  it('should say the people could not be loaded, and read them again on request', async () => {
+    let usersDown = true
+    await renderTeam('/teams/pod-1', {
+      writes: { '/api/users': () => (usersDown ? undefined : fixtureUsersRoute()) },
+    })
+    const user = userEvent.setup()
+    const dialog = await openAdd(user, 'Incluir em POD 1')
+
+    await user.click(within(dialog).getByRole('radio', { name: /Analista/ }))
+    expect(within(dialog).getByText('Carregando pessoas…')).toBeInTheDocument()
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Não foi possível carregar as pessoas.',
+    )
+    expect(within(dialog).queryByText(/Todo mundo que casa/)).not.toBeInTheDocument()
+
+    usersDown = false
+    await user.click(within(dialog).getByRole('button', { name: 'Tentar de novo' }))
+    expect(await within(dialog).findByRole('button', { name: OTHER })).toBeInTheDocument()
   })
 
   it('should not offer the button to someone who does not coordinate the pod', async () => {
