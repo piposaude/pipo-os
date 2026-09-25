@@ -95,6 +95,7 @@ Isso sobe `apps/api` e `apps/web` simultaneamente via `pnpm -r --parallel dev`.
 | `ALLOWED_EMAIL_DOMAINS`        | `piposaude.com.br,pipo.ai`                                          | Domínios de e-mail aceitos no login Google, separados por vírgula                                                                                                                          |
 | `DEV_LOGIN_ENABLED`            | _(desligado)_                                                       | Habilita `POST /api/auth/dev-login`. Só `true` liga; a API **falha no boot** se chegar em ambiente deployado                                                                               |
 | `DEV_LOGIN_EMAIL`              | `dev@piposaude.com.br`                                              | Identidade usada pelo login local; precisa pertencer a `ALLOWED_EMAIL_DOMAINS`                                                                                                             |
+| `WEBHOOK_DISPATCHER_ENABLED`   | _(desligado)_                                                       | Liga o envio das entregas do webhook de mudança de status, uma rodada a cada 5 s. Só `true` liga; sem destino em `webhook_configs`, não envia nada                                         |
 
 ## Observabilidade
 
