@@ -96,7 +96,7 @@ export function Composer({ ticket, status }: ComposerProps) {
     },
   })
 
-  const blocked = completionBlock(ticket, status)
+  const blocked = useMemo(() => completionBlock(ticket, status), [ticket, status])
   const change = statusChangeOf(draft, status)
   const sendStatus = draft.status ?? status
   const completing = change === 'completed' && fields.length > 0
