@@ -93,7 +93,7 @@ export function Composer({ ticket, status }: ComposerProps) {
       const refused = rejectedFields(fields, error.details)
       setRejected(refused)
       if (Object.keys(refused).length > 0) setDrawerOpen(true)
-      else void queryClient.invalidateQueries({ queryKey: ['get', '/api/tickets/{id}', ticket.id] })
+      void queryClient.invalidateQueries({ queryKey: ['get', '/api/tickets/{id}', ticket.id] })
     },
   })
 

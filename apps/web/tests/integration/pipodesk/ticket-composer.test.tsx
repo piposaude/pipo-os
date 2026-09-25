@@ -653,7 +653,7 @@ describe('composer do chamado — conclusão', () => {
     expect(sendButton()).toBeEnabled()
   })
 
-  it('should reload the ticket and lock the completion, saying why, when the API refuses a status that moved', async () => {
+  async function completeWhileTheStatusMoves(details: { field: string; code: string }[]) {
     const ticket = apiTicket({
       id: 'T-1',
       enrollmentSnapshot: family,
@@ -669,7 +669,7 @@ describe('composer do chamado — conclusão', () => {
           body: {
             error: 'Unprocessable Entity',
             message: 'recusado',
-            details: [{ field: 'status', code: 'invalid_status', message: 'x' }],
+            details: details.map((detail) => ({ ...detail, message: 'x' })),
           },
         }
       },
@@ -682,10 +682,24 @@ describe('composer do chamado — conclusão', () => {
     await fillFamily(user, drawer)
     await user.click(within(drawer).getByRole('button', { name: drawerCopy.back }))
     await user.click(sendButton())
+  }
+
+  it('should reload the ticket and lock the completion, saying why, when the API refuses a status that moved', async () => {
+    await completeWhileTheStatusMoves([{ field: 'status', code: 'invalid_status' }])
 
     expect(await screen.findByText(copy.completionBlocked.status)).toBeInTheDocument()
     expect(sendButton()).toBeDisabled()
     expect(screen.queryByRole('dialog', { name: drawerCopy.title })).not.toBeInTheDocument()
+  })
+
+  it('should reload the ticket also when the refusal of a status that moved names a field', async () => {
+    await completeWhileTheStatusMoves([
+      { field: 'status', code: 'invalid_status' },
+      { field: `members[${LEO}].startDate`, code: 'before_admission' },
+    ])
+
+    expect(await screen.findByRole('dialog', { name: drawerCopy.title })).toBeInTheDocument()
+    expect(await screen.findByText(copy.completionBlocked.status)).toBeInTheDocument()
   })
 
   it('should ask a single end date on an exclusion, with the requested end beside it', async () => {
