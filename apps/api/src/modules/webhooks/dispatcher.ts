@@ -27,7 +27,7 @@ export async function claimDue(db: Kysely<Database>, limit = CLAIM_LIMIT): Promi
   const rows = await db
     .updateTable('outbound_webhook_deliveries as d')
     .from('webhook_configs as c')
-    .set({ locked_at: sql`now()` })
+    .set((eb) => ({ locked_at: sql`now()`, target_url: eb.ref('c.target_url') }))
     .whereRef('c.id', '=', 'd.webhook_config_id')
     .where('d.id', 'in', (eb) =>
       eb

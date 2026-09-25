@@ -105,6 +105,12 @@ describe('webhook dispatcher', () => {
       attemptCount?: number
     } = {},
   ): Promise<string> => {
+    if (values.answer) {
+      await app.db
+        .updateTable('webhook_configs')
+        .set({ target_url: `${receiverUrl}/${values.answer}` })
+        .execute()
+    }
     const history = await app.db
       .insertInto('ticket_status_history')
       .values({
@@ -121,9 +127,7 @@ describe('webhook dispatcher', () => {
         ticket_id: ticketId,
         status_history_id: history.id,
         webhook_config_id: configId,
-        target_url: values.answer
-          ? `${receiverUrl}/${values.answer}`
-          : 'http://127.0.0.1:1/pipodesk-webhook',
+        target_url: 'http://127.0.0.1:1/pipodesk-webhook',
         payload: JSON.stringify(values.payload ?? { to_status: 'broker-processing' }),
         status: values.status ?? 'pending',
         next_attempt_at: seconds(values.dueIn ?? -1),
@@ -202,9 +206,12 @@ describe('webhook dispatcher', () => {
       expect(new Set(all).size).toBe(30)
     })
 
-    it('hands over the destination, its current secret and the body to sign', async () => {
+    it('hands over the current address and secret of the destination, and the body to sign', async () => {
       const id = await seed({ payload: { delivery_id: 'd', to_status: 'completed' } })
-      await app.db.updateTable('webhook_configs').set({ secret: 'rotated' }).execute()
+      await app.db
+        .updateTable('webhook_configs')
+        .set({ target_url: 'http://ei.default:3000/pipodesk-webhook', secret: 'rotated' })
+        .execute()
 
       const [delivery] = await claimDue(app.db)
 
@@ -212,11 +219,12 @@ describe('webhook dispatcher', () => {
         id,
         ticketId,
         webhookConfigId: configId,
-        targetUrl: 'http://127.0.0.1:1/pipodesk-webhook',
+        targetUrl: 'http://ei.default:3000/pipodesk-webhook',
         secret: 'rotated',
         attemptCount: 0,
       })
       expect(JSON.parse(delivery!.body)).toEqual({ delivery_id: 'd', to_status: 'completed' })
+      expect((await row(id)).target_url).toBe('http://ei.default:3000/pipodesk-webhook')
     })
   })
 
