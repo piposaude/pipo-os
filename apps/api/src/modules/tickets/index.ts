@@ -5,7 +5,7 @@ import { TicketsService } from './service.js'
 
 export default async function ticketsModule(app: FastifyInstance): Promise<void> {
   const repository = new TicketsRepository(app.db)
-  const service = new TicketsService(repository)
+  const service = new TicketsService(repository, app.ticketMetrics)
 
   registerTicketRoutes(app, service)
 }
