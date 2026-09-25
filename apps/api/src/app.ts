@@ -87,8 +87,8 @@ export function buildApp(): FastifyInstance {
   app.register(authenticatePlugin)
   app.register(authorizePlugin)
   app.register(metricsPlugin)
-  app.register(ticketMetricsPlugin)
   app.register(dbPlugin)
+  app.register(ticketMetricsPlugin)
   app.register(errorHandlerPlugin)
 
   assertServiceTokenIsLocalOnly()

@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto'
 import { startMetricsServer } from '@pipo-os/observability/metrics'
 import type { FastifyInstance } from 'fastify'
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildApp } from '../../app.js'
 import { SESSION_COOKIE_NAME } from '../auth/session.js'
 import { sessionCookieFor } from '../auth/session.test-helpers.js'
 import { createRootGroup } from '../groups/root.test-helpers.js'
+import { OPEN_TICKETS_READ_TIMEOUT_MS } from './metrics.js'
 
 const TICKET_POLICIES = ['admin/allow/administrate/pipodesk/ticket']
 
@@ -212,6 +213,95 @@ describe('business metrics', () => {
 
       expect(await comments('private', 'user')).toBe(1)
       expect(await comments('public', 'user')).toBe(1)
+    })
+  })
+
+  describe('pipos_tickets_open', () => {
+    const openSeries = async () =>
+      Object.fromEntries(
+        (await scrape())
+          .filter((sample) => sample.name === 'pipos_tickets_open')
+          .map((sample) => [sample.labels.status, sample.value]),
+      )
+
+    it('reads the open tickets by status from the database, at every scrape', async () => {
+      const first = (await createTicket()).json<{ id: string }>()
+      await createTicket({ enrollmentId: randomUUID() })
+      const closed = (await createTicket({ enrollmentId: randomUUID() })).json<{ id: string }>()
+      await app.db
+        .updateTable('tickets')
+        .set({ status: 'cancelled' })
+        .where('id', '=', closed.id)
+        .execute()
+
+      expect(await openSeries()).toEqual({
+        'broker-processing': 2,
+        'carrier-processing': 0,
+        'broker-open-issue': 0,
+        'missing-documents': 0,
+        'incorrect-data': 0,
+        'submitted-cancellation': 0,
+      })
+
+      await app.db
+        .updateTable('tickets')
+        .set({ status: 'missing-documents' })
+        .where('id', '=', first.id)
+        .execute()
+
+      expect(await openSeries()).toMatchObject({ 'broker-processing': 1, 'missing-documents': 1 })
+    })
+
+    it('drops its series when the read fails, and the scrape still answers', async () => {
+      await createTicket()
+      const selectFrom = vi.spyOn(app.db, 'selectFrom').mockImplementationOnce(() => {
+        throw new Error('connection terminated')
+      })
+      const logError = vi.spyOn(app.log, 'error').mockImplementation(() => {})
+
+      try {
+        const samples = await scrape()
+
+        expect(samples.some((sample) => sample.name === 'pipos_tickets_open')).toBe(false)
+        expect(samples.some((sample) => sample.name === 'process_cpu_seconds_total')).toBe(true)
+        expect(logError).toHaveBeenCalledWith(
+          { err: expect.objectContaining({ message: 'connection terminated' }) },
+          expect.any(String),
+        )
+      } finally {
+        selectFrom.mockRestore()
+        logError.mockRestore()
+      }
+
+      expect(await openSeries()).toMatchObject({ 'broker-processing': 1 })
+    })
+
+    it('gives up on a read that hangs before the scrape itself times out', async () => {
+      const hanging = {
+        select: () => hanging,
+        where: () => hanging,
+        groupBy: () => hanging,
+        execute: () => new Promise(() => {}),
+      }
+      const selectFrom = vi
+        .spyOn(app.db, 'selectFrom')
+        .mockImplementationOnce(() => hanging as never)
+      const logError = vi.spyOn(app.log, 'error').mockImplementation(() => {})
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+
+      try {
+        const scraped = scrape()
+        await vi.advanceTimersByTimeAsync(OPEN_TICKETS_READ_TIMEOUT_MS + 1)
+        const samples = await scraped
+
+        expect(samples.some((sample) => sample.name === 'pipos_tickets_open')).toBe(false)
+        expect(samples.some((sample) => sample.name === 'process_cpu_seconds_total')).toBe(true)
+        expect(logError).toHaveBeenCalledOnce()
+      } finally {
+        vi.useRealTimers()
+        selectFrom.mockRestore()
+        logError.mockRestore()
+      }
     })
   })
 })
