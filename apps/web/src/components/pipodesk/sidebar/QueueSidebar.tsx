@@ -19,8 +19,8 @@ import styles from './QueueSidebar.module.css'
  * look like detail and are not: (1) a group row never navigates — it expands;
  * the child "Chamados" opens the list; (2) subteams do not collapse with the
  * group's items; (3) containers draw no count — a number the click cannot
- * open is a broken promise. Missing: the group items of the row menu (PD-105)
- * and the favorite star (PD-109).
+ * open is a broken promise. Missing: deleting a subteam and its icon
+ * (PD-105b, PD-105c) and the favorite star (PD-109).
  */
 
 export interface QueueSidebarProps {
@@ -32,6 +32,8 @@ export interface QueueSidebarProps {
   onRenameView: (queueId: string, name: string) => void
   onDeleteView: (queueId: string) => void
   onNewView?: (groupId: string) => void
+  onRenameGroup: (groupId: string, name: string) => void
+  onNewSubteam?: () => void
   /** Viewer initials for the footer. */
   viewerInitials: string
   viewerName: string
@@ -136,6 +138,8 @@ interface NodeProps {
   onRenameView: (queueId: string, name: string) => void
   onDeleteView: (queueId: string) => void
   onNewView?: (groupId: string) => void
+  onRenameGroup: (groupId: string, name: string) => void
+  onNewSubteam?: () => void
 }
 
 const openMenuOnRightClick = (event: MouseEvent<HTMLDivElement>) => {
@@ -146,8 +150,18 @@ const openMenuOnRightClick = (event: MouseEvent<HTMLDivElement>) => {
 }
 
 function Node(props: NodeProps) {
-  const { node, activeId, onSelect, structure, viewerId, onRenameView, onDeleteView, onNewView } =
-    props
+  const {
+    node,
+    activeId,
+    onSelect,
+    structure,
+    viewerId,
+    onRenameView,
+    onDeleteView,
+    onNewView,
+    onRenameGroup,
+    onNewSubteam,
+  } = props
   const style = { '--depth': node.depth } as CSSProperties
   const isActive = node.id === activeId
   const nodeGroup = groupOfNode(node.id, structure)
@@ -163,6 +177,8 @@ function Node(props: NodeProps) {
   const queue = structure.queues.find((saved) => saved.id === queueId)
   const canRename =
     queue !== undefined && !isPodCut(queue, structure) && canEditQueue(queue, structure, viewerId)
+  const canEditGroup =
+    nodeGroup !== undefined && canEditStructure(structure, viewerId, nodeGroup.id)
 
   const activate = () => {
     if (isContainer) {
@@ -259,15 +275,32 @@ function Node(props: NodeProps) {
         className={styles.row}
         style={style}
         onClick={activate}
+        onDoubleClick={() => {
+          if (canEditGroup) setRenaming(true)
+        }}
         onContextMenu={openMenuOnRightClick}
       >
-        <button
-          type="button"
-          className={`${styles.item} ${styles.branch}`}
-          aria-current={isContainer || !isActive ? undefined : 'page'}
-        >
-          {iconAndLabel}
-        </button>
+        {renaming && nodeGroup !== undefined ? (
+          <div className={`${styles.item} ${styles.renaming}`}>
+            {iconKind && <SidebarIcon kind={iconKind} />}
+            <InlineRename
+              value={nodeGroup.name}
+              onCommit={(name) => {
+                setRenaming(false)
+                if (name !== nodeGroup.name) onRenameGroup(nodeGroup.id, name)
+              }}
+              onCancel={() => setRenaming(false)}
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            className={`${styles.item} ${styles.branch}`}
+            aria-current={isContainer || !isActive ? undefined : 'page'}
+          >
+            {iconAndLabel}
+          </button>
+        )}
         <button
           type="button"
           className={styles.toggle}
@@ -295,11 +328,14 @@ function Node(props: NodeProps) {
             />
           </svg>
         </button>
-        {onNewView &&
-          nodeGroup !== undefined &&
-          canEditStructure(structure, viewerId, nodeGroup.id) && (
-            <RowMenu label={node.label} onNewView={() => onNewView(nodeGroup.id)} />
-          )}
+        {canEditGroup && !renaming && (
+          <RowMenu
+            label={node.label}
+            onRename={() => setRenaming(true)}
+            onNewView={onNewView && (() => onNewView(nodeGroup.id))}
+            onNewSubteam={onNewSubteam}
+          />
+        )}
         {isContainer ? null : <span className={styles.count}>{formatCount(node.count)}</span>}
       </div>
 
@@ -409,6 +445,8 @@ export function QueueSidebar({
   onRenameView,
   onDeleteView,
   onNewView,
+  onRenameGroup,
+  onNewSubteam,
   viewerInitials,
   viewerName,
   viewerEmail,
@@ -470,6 +508,8 @@ export function QueueSidebar({
                     onRenameView={onRenameView}
                     onDeleteView={onDeleteView}
                     onNewView={onNewView}
+                    onRenameGroup={onRenameGroup}
+                    onNewSubteam={onNewSubteam}
                   />
                 ))
               )}

@@ -18,20 +18,71 @@ export default {
   table: {
     person: 'Pessoa',
     role: 'Papel',
+    pod: 'Pod',
     portfolio: 'Carteira',
     open: 'Abertos',
+    actions: 'Ações',
   },
+  rowMenu: {
+    trigger: (name: string) => `Ações de ${name}`,
+    makeAdmin: 'Tornar coordenação',
+    makeMember: 'Tornar analista',
+    remove: 'Remover do time',
+  },
+  /** Coordination is admin in every pod: six names would say "all" at length. */
+  allPods: 'Todos os pods',
   roles: {
     admin: 'Coordenação',
     member: 'Analista',
   },
   portfolio: (count: number) => `${count} ${count === 1 ? 'empresa' : 'empresas'}`,
   noPortfolio: '—',
+  shared: (count: number) =>
+    `${count} ${count === 1 ? 'destes clientes tem' : 'destes clientes têm'} mais de um analista hoje. A partir de novembro cada cliente tem analista único.`,
   notFound: 'Não encontramos esse time.',
+  empty: {
+    title: (group: string) => `${group} ainda não tem ninguém.`,
+    /** Names the button instead of repeating it: one main action per screen. */
+    canEdit: 'Use + Adicionar pessoa para o time começar a receber chamado.',
+    cannotEdit: 'Só a coordenação inclui gente num time.',
+  },
+  addPerson: {
+    button: '+ Adicionar pessoa',
+    titleRoot: 'Incluir na operação',
+    title: (group: string) => `Incluir em ${group}`,
+    cancel: 'Cancelar',
+    submit: 'Incluir',
+    role: 'Papel',
+    pod: 'Pod',
+    person: 'Pessoa',
+    search: 'Buscar pessoa',
+    analyst: 'Analista',
+    analystCaptionRoot: 'Entra em um pod, com carteira de clientes.',
+    analystCaption: 'Recebe chamado dos clientes da carteira dela.',
+    coordinationRoot: 'Coordenação da operação',
+    coordination: (group: string) => `Coordenação de ${group}`,
+    coordinationCaptionRoot:
+      'Edita estrutura, membro e carteira de todos os pods. Não tem carteira própria.',
+    coordinationCaption: 'Edita membro e carteira deste pod. Não tem carteira própria.',
+    podCaption: (companies: number, analysts: number) =>
+      `${companies} ${companies === 1 ? 'empresa' : 'empresas'} · ${analysts} ${
+        analysts === 1 ? 'analista' : 'analistas'
+      }`,
+    peopleLoading: 'Carregando pessoas…',
+    peopleFailed: 'Não foi possível carregar as pessoas.',
+    retry: 'Tentar de novo',
+    nobodyLeft: (group: string) => `Todo mundo que casa com essa busca já está em ${group}.`,
+    elsewhere: (name: string, pods: { name: string; companies: number }[]) =>
+      `${name} já está em ${pods
+        .map(
+          (pod) => `${pod.name} (${pod.companies} ${pod.companies === 1 ? 'empresa' : 'empresas'})`,
+        )
+        .join(', ')}.`,
+    emptyPortfolio:
+      'A pessoa entra sem carteira. Enquanto estiver assim, o trabalho dos clientes sem dono chega por rodízio.',
+  },
   newView: '+ Nova view',
   editableBy: (group: string) => `Só a coordenação de ${group} edita carteira e membros.`,
-  /** Editing (add person, move company, rename, delete) is the rest of PD-105. */
-  readOnly: 'Editar carteira e membros chega com o PD-105.',
   carteiras: {
     search: 'Buscar empresa…',
     /** Echoes the term back: an empty table with only headers reads as a
@@ -47,7 +98,7 @@ export default {
     /** No owner here is not an error: it is rotation. The alert color is for
      *  coordination to resolve. */
     rotation: 'Na rotação',
-    editPending: 'Alocar empresa e editar carteira chegam com o resto do PD-105.',
+    editPending: 'Alocar empresa e editar carteira chegam com o PD-108.',
   },
   views: {
     intro:
