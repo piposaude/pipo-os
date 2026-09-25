@@ -25,6 +25,7 @@ import { SaveViewDialog } from '@/components/pipodesk/queue/SaveViewDialog'
 import { rootGroupOf } from '@/lib/pipodesk/permissions'
 import { toQueueNode } from '@/lib/pipodesk/queue-node'
 import { DeskContext, type NewView } from './desk-context'
+import { GROUPS_KEY, useGroupWrites } from './use-group-writes'
 import { displayNameFromEmail } from '@/lib/pipodesk/format'
 import { logout } from '@/lib/auth'
 import queueConstants from '@/constants/pages/pipodesk/queue'
@@ -164,6 +165,8 @@ export function DeskShell() {
   )
 
   const [writeFailed, setWriteFailed] = useState(false)
+  const failWrite = useCallback(() => setWriteFailed(true), [])
+  const groupWrites = useGroupWrites(failWrite)
   const { refetch: refetchRows, dataUpdatedAt: rowsUpdatedAt, isError: rowsFailed } = rowsQuery
   const { refetch: refetchInbox, dataUpdatedAt: inboxUpdatedAt, isError: inboxFailed } = inboxQuery
 
@@ -231,7 +234,7 @@ export function DeskShell() {
   )
 
   const groupsQuery = useQuery({
-    queryKey: ['get', '/api/groups', 'all'],
+    queryKey: GROUPS_KEY,
     queryFn: () =>
       allPages(async (page) => {
         const { data } = await client.GET('/api/groups', {
@@ -494,9 +497,11 @@ export function DeskShell() {
       sidebarCollapsed,
       toggleSidebar,
       openSaveView,
+      groupWrites,
     }),
     [
       openSaveView,
+      groupWrites,
       sections,
       view,
       dispatch,

@@ -134,6 +134,30 @@
   font-variant-numeric: tabular-nums;
 }
 
+.rowMenu {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: var(--pipo-radius-pill);
+  background: transparent;
+  color: var(--pipo-text-secondary);
+  cursor: pointer;
+}
+
+.rowMenu:hover,
+.rowMenu[aria-expanded='true'] {
+  background: var(--pipo-neutral-light);
+}
+
+.rowMenu:focus-visible {
+  outline: none;
+  box-shadow: var(--pipo-shadow-focus-primary);
+}
+
 .muted {
   color: var(--pipo-text-secondary);
 }

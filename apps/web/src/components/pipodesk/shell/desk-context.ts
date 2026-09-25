@@ -7,6 +7,7 @@ import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 import type { TicketFilter } from '@/lib/pipodesk/filter'
 import type { TicketSort } from '@/lib/pipodesk/sort'
 import type { GroupBy } from '@/lib/pipodesk/group'
+import type { GroupWrites } from './use-group-writes'
 
 export interface NewView {
   name: string
@@ -49,6 +50,8 @@ export interface DeskContextValue {
   applyPatch: (ids: string[], patch: TicketPatch) => void
   patchRow: (row: TicketRow) => TicketRow
   openSaveView: (groupId?: string) => void
+  /** Pods and memberships, written optimistically over the API. */
+  groupWrites: GroupWrites
 }
 
 export const DeskContext = createContext<DeskContextValue | null>(null)

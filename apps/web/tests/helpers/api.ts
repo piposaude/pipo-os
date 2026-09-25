@@ -19,6 +19,21 @@ export interface ApiMock {
   failReads: boolean
 }
 
+/** A write route with any `:param` segment, e.g. `DELETE /api/groups/:id/members/:memberId`. */
+function routeByPattern(
+  routes: Record<string, unknown>,
+  method: string,
+  pathname: string,
+): unknown {
+  for (const [key, handler] of Object.entries(routes)) {
+    const [routeMethod, pattern] = key.split(' ')
+    if (routeMethod !== method || !pattern?.includes(':')) continue
+    const regex = new RegExp(`^${pattern.replace(/:[^/]+/g, '[^/]+')}$`)
+    if (regex.test(pathname)) return handler
+  }
+  return undefined
+}
+
 /** Restores by assignment, never `unstubAllGlobals()`: the setup file stubs
  *  `Request`, and unstubbing here would take it down with it. */
 export function mockApi(
@@ -42,7 +57,8 @@ export function mockApi(
 
       const handler =
         routes[`${method} ${pathname}`] ??
-        routes[`${method} ${pathname.replace(/\/[^/]+$/, '/:id')}`]
+        routes[`${method} ${pathname.replace(/\/[^/]+$/, '/:id')}`] ??
+        routeByPattern(routes, method, pathname)
       if (typeof handler === 'function') {
         const answer = (await handler(body, pathname)) as { status: number; body?: unknown }
         return new Response(answer.body === undefined ? null : JSON.stringify(answer.body), {

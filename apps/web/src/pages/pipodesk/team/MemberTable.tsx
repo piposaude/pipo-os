@@ -1,8 +1,10 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Avatar,
   Badge,
   Icon,
+  PopoverMenu,
+  PopoverMenuItem,
   Table,
   TableBody,
   TableCell,
@@ -11,8 +13,9 @@ import {
   TableRow,
 } from '@piposaude/design-system'
 import { Link } from '@tanstack/react-router'
+import { DeskIcon } from '@/components/pipodesk/icons'
 import { membersWithLoad, operationRoster, type RosterLine } from '@/lib/pipodesk/team'
-import type { Group, StructureState } from '@/lib/pipodesk/structure'
+import type { Group, MemberRole, StructureState } from '@/lib/pipodesk/structure'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 import constants from '@/constants/pages/pipodesk/team'
 import styles from './style.module.css'
@@ -32,6 +35,62 @@ export interface MemberTableProps {
   /** Awake open work: the pod's own in a pod, every pod's at the root. */
   rows: TicketRow[]
   resolveName: (userId: string) => string
+  /** Coordination of this pod or above. Without it the row has no menu at all. */
+  canEdit: boolean
+  onSetRole: (userId: string, role: MemberRole) => void
+  onRemove: (userId: string) => void
+}
+
+function RowActions({
+  name,
+  role,
+  onSetRole,
+  onRemove,
+}: {
+  name: string
+  role: MemberRole
+  onSetRole: (role: MemberRole) => void
+  onRemove: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const close = () => setOpen(false)
+  return (
+    <PopoverMenu
+      isOpen={open}
+      onClose={close}
+      placement="bottom-end"
+      trigger={
+        <button
+          type="button"
+          className={styles.rowMenu}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label={constants.rowMenu.trigger(name)}
+          onClick={() => setOpen((current) => !current)}
+        >
+          <DeskIcon name="more" size={16} />
+        </button>
+      }
+    >
+      <PopoverMenuItem
+        onClick={() => {
+          close()
+          onSetRole(role === 'admin' ? 'member' : 'admin')
+        }}
+      >
+        {role === 'admin' ? constants.rowMenu.makeMember : constants.rowMenu.makeAdmin}
+      </PopoverMenuItem>
+      <PopoverMenuItem
+        destructive
+        onClick={() => {
+          close()
+          onRemove()
+        }}
+      >
+        {constants.rowMenu.remove}
+      </PopoverMenuItem>
+    </PopoverMenu>
+  )
 }
 
 /**
@@ -39,7 +98,20 @@ export interface MemberTableProps {
  * line per person of the operation, with the Pod column — the root's own
  * memberships are only coordination.
  */
-export function MemberTable({ group, isRoot, structure, rows, resolveName }: MemberTableProps) {
+export function MemberTable({
+  group,
+  isRoot,
+  structure,
+  rows,
+  resolveName,
+  canEdit,
+  onSetRole,
+  onRemove,
+}: MemberTableProps) {
+  /* At the root a person has several memberships: the pod is a link, and the
+     edits live on its page, where the membership is one. */
+  const withActions = canEdit && !isRoot
+
   const lines = useMemo<RosterLine[]>(
     () =>
       isRoot
@@ -57,6 +129,7 @@ export function MemberTable({ group, isRoot, structure, rows, resolveName }: Mem
           {isRoot && <TableHeaderCell>{constants.table.pod}</TableHeaderCell>}
           <TableHeaderCell>{constants.table.portfolio}</TableHeaderCell>
           <TableHeaderCell align="right">{constants.table.open}</TableHeaderCell>
+          {withActions && <TableHeaderCell aria-label={constants.table.actions} />}
         </TableRow>
       </TableHead>
       <TableBody>
@@ -114,6 +187,16 @@ export function MemberTable({ group, isRoot, structure, rows, resolveName }: Mem
             <TableCell align="right" className={styles.num}>
               {member.open}
             </TableCell>
+            {withActions && (
+              <TableCell align="right">
+                <RowActions
+                  name={resolveName(member.userId)}
+                  role={member.role}
+                  onSetRole={(role) => onSetRole(member.userId, role)}
+                  onRemove={() => onRemove(member.userId)}
+                />
+              </TableCell>
+            )}
           </TableRow>
         ))}
       </TableBody>

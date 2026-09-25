@@ -10,7 +10,7 @@ import {
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { useDesk } from '@/components/pipodesk/shell/desk-context'
 import { SidebarToggle } from '@/components/pipodesk/shell/SidebarToggle'
-import { ancestorsOf, rootGroupOf } from '@/lib/pipodesk/permissions'
+import { ancestorsOf, canEditStructure, rootGroupOf } from '@/lib/pipodesk/permissions'
 import { findNode, listNodeIdOf } from '@/lib/pipodesk/tree'
 import { toQueueNode } from '@/lib/pipodesk/queue-node'
 import { unownedCompaniesOf } from '@/lib/pipodesk/team'
@@ -46,6 +46,8 @@ export default function TeamPage() {
     sections,
     dispatch,
     openSaveView,
+    viewerId,
+    groupWrites,
   } = useDesk()
   const navigate = useNavigate()
 
@@ -100,6 +102,7 @@ export default function TeamPage() {
   }
 
   const isRoot = group.parentId === null
+  const canEdit = canEditStructure(structure, viewerId, group.id)
 
   const startNewView = () => {
     const node = findNode(sections, listNodeIdOf(group.id, rootGroupOf(structure)))
@@ -193,6 +196,9 @@ export default function TeamPage() {
             structure={structure}
             rows={isRoot ? awake : inGroup}
             resolveName={resolveName}
+            canEdit={canEdit}
+            onSetRole={(userId, role) => groupWrites.setMemberRole(group.id, userId, role)}
+            onRemove={(userId) => groupWrites.removeMember(group.id, userId)}
           />
         )}
         {tab === 'portfolios' && (

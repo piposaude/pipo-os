@@ -21,6 +21,13 @@ export default {
     pod: 'Pod',
     portfolio: 'Carteira',
     open: 'Abertos',
+    actions: 'Ações',
+  },
+  rowMenu: {
+    trigger: (name: string) => `Ações de ${name}`,
+    makeAdmin: 'Tornar coordenação',
+    makeMember: 'Tornar analista',
+    remove: 'Remover do time',
   },
   /** Coordination is admin in every pod: six names would say "all" at length. */
   allPods: 'Todos os pods',
