@@ -3,12 +3,19 @@ import type { Database } from '../../infrastructure/db.js'
 import type { ErrorDetails } from '../../shared/errors.js'
 import type { Author } from '../auth/authenticate.js'
 import { applyStatusChange, toTicket } from '../tickets/repository.js'
-import type { Ticket } from '../tickets/schemas.js'
+import type { Ticket, TicketStatus } from '../tickets/schemas.js'
 import { toComment } from './repository.js'
 import type { Comment, CreateSubmissionBody } from './schemas.js'
 
 export type SubmitResult =
-  | { kind: 'ok'; created: boolean; submissionId: string; ticket: Ticket; comments: Comment[] }
+  | {
+      kind: 'ok'
+      created: boolean
+      submissionId: string
+      ticket: Ticket
+      comments: Comment[]
+      statusChange: { fromStatus: TicketStatus; toStatus: TicketStatus } | null
+    }
   | { kind: 'not-found' }
   | { kind: 'already-closed' }
   | { kind: 'refused'; failures: ErrorDetails }
@@ -39,6 +46,7 @@ export async function submit(
         submissionId,
         ticket: toTicket(current),
         comments: replayed,
+        statusChange: null,
       }
     }
 
@@ -69,6 +77,7 @@ export async function submit(
     }
 
     let ticket = toTicket(current)
+    let statusChange: { fromStatus: TicketStatus; toStatus: TicketStatus } | null = null
 
     if (body.status) {
       const changed = await applyStatusChange(trx, {
@@ -81,6 +90,7 @@ export async function submit(
       })
       if (changed.kind !== 'ok') return changed
       ticket = changed.ticket
+      statusChange = { fromStatus: changed.fromStatus, toStatus: changed.ticket.status }
     }
 
     const rows =
@@ -105,7 +115,14 @@ export async function submit(
             .returningAll()
             .execute()
 
-    return { kind: 'ok', created: true, submissionId, ticket, comments: rows.map(toComment) }
+    return {
+      kind: 'ok',
+      created: true,
+      submissionId,
+      ticket,
+      comments: rows.map(toComment),
+      statusChange,
+    }
   })
 }
 
