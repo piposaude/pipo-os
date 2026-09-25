@@ -59,6 +59,8 @@ spec:
               value: http://company-service.default:4000
             - name: SERVICE_ALLOWED_ACCOUNTS
               value: cronjobs/enrollment-integrations-worker
+            - name: WEBHOOK_DISPATCHER_ENABLED
+              value: 'true'
             - name: ALLOWED_EMAIL_DOMAINS
               value: piposaude.com.br,pipo.ai
             - name: COOKIE_SECRET
