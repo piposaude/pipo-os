@@ -78,6 +78,19 @@ describe('home do pod', () => {
     expect(screen.getByText(`${naArvore} chamados abertos`)).toBeInTheDocument()
   })
 
+  it('should count at the root the same open tickets the sidebar counts for GEBEN', async () => {
+    await renderAt('/teams/group-geben')
+    const sidebar = screen.getByRole('navigation', { name: /pipodesk/i })
+
+    // GEBEN is a level-0 branch: the count is the row's, beside the label button.
+    const naArvore = within(sidebar)
+      .getByRole('button', { name: /^GEBEN/ })
+      .parentElement?.textContent?.replace('GEBEN', '')
+      .trim()
+
+    expect(await screen.findByText(`${naArvore} chamados abertos`)).toBeInTheDocument()
+  })
+
   it('should say who can edit, so read-only does not read as broken', async () => {
     await renderAt('/teams/pod-1')
 

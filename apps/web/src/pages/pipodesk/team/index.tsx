@@ -73,7 +73,6 @@ export default function TeamPage() {
   /* At the root the roster is every pod's people, so their load is too. */
   const awake = useMemo(() => windowOf(rows, 'awake', today), [rows, today])
 
-  const openCount = inGroup.length
   /* Memoized like `inGroup` they derive from: both walk the structure and the
      pod's open tickets, and the page re-renders on every context change. */
   const unowned = useMemo(
@@ -106,6 +105,7 @@ export default function TeamPage() {
 
   const isRoot = group.parentId === null
   const canEdit = canEditStructure(structure, viewerId, group.id)
+  const open = isRoot ? awake : inGroup
 
   const startNewView = () => {
     const node = findNode(sections, listNodeIdOf(group.id, rootGroupOf(structure)))
@@ -187,7 +187,7 @@ export default function TeamPage() {
             )}
           </div>
           <Text variant="bodySmall" className={styles.sub}>
-            {constants.open(openCount)}
+            {constants.open(open.length)}
           </Text>
         </div>
         {tab === 'views' ? (
@@ -232,7 +232,7 @@ export default function TeamPage() {
             group={group}
             isRoot={isRoot}
             structure={structure}
-            rows={isRoot ? awake : inGroup}
+            rows={open}
             resolveName={resolveName}
             canEdit={canEdit}
             onSetRole={(userId, role) => groupWrites.setMemberRole(group.id, userId, role)}
