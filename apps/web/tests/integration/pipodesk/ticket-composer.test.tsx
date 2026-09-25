@@ -567,6 +567,33 @@ describe('composer do chamado — conclusão', () => {
     expect(sendButton()).toBeEnabled()
   })
 
+  it('should not hold a send that no longer completes behind a refusal of the completion', async () => {
+    const user = await openTicket({ status: 'carrier-processing' }, () => ({
+      status: 422,
+      body: {
+        error: 'Unprocessable Entity',
+        message: 'recusado',
+        details: [{ field: `members[${LEO}].startDate`, code: 'before_admission', message: 'x' }],
+      },
+    }))
+
+    const drawer = await pickCompleted(user)
+    await fillFamily(user, drawer)
+    await user.click(within(drawer).getByRole('button', { name: drawerCopy.back }))
+    await user.click(sendButton())
+    await screen.findByRole('dialog', { name: drawerCopy.title })
+    await user.keyboard('{Escape}')
+
+    await user.click(
+      within(await statusMenu(user)).getByRole('button', {
+        name: 'Enviar como Com o cliente · Falta documento',
+      }),
+    )
+    await user.type(screen.getByRole('textbox', { name: copy.field }), 'Operadora pediu o RG.')
+
+    expect(sendButton()).toBeEnabled()
+  })
+
   it('should ask a single end date on an exclusion, with the requested end beside it', async () => {
     const user = await openTicket({
       status: 'carrier-processing',

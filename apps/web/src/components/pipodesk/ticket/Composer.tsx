@@ -98,7 +98,9 @@ export function Composer({ ticket, status }: ComposerProps) {
   const missing = completing ? missingClosing(fields, draft.completion) : []
   const emptyCount = missing.filter((item) => item.reason === 'empty').length
   const parts = partsOf(draft)
-  const refused = fields.filter((field) => rejected[field.key] !== undefined).map(fieldLabel)
+  const refused = completing
+    ? fields.filter((field) => rejected[field.key] !== undefined).map(fieldLabel)
+    : []
   const canSend =
     (parts.length > 0 || change !== null) &&
     missing.length === 0 &&
