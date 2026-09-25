@@ -8,7 +8,7 @@ import {
   VIEWER_GROUP_ID,
   VIEWER_ID,
   structureFixture,
-} from '@/fixtures/pipodesk/dataset'
+} from '../../fixtures/pipodesk/dataset'
 import { DEFAULT_SORT } from '@/lib/pipodesk/sort'
 import { fixtureStructureRoutes, page, type ApiMock } from '../../helpers/api'
 

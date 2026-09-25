@@ -77,6 +77,7 @@ describe('the set of public routes', () => {
 │       ├── /comments (GET, HEAD, POST)
 │       ├── /claim (POST)
 │       ├── /timeline (GET, HEAD)
+│       ├── /submissions (POST)
 │       └── /status (PATCH)
 ├── /api/companies (GET, HEAD)
 ├── /api/groups (POST, GET, HEAD)

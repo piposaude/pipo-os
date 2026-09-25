@@ -2540,6 +2540,119 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/tickets/{id}/submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateSubmissionBodyInput"];
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Submission"];
+                    };
+                };
+                /** @description Default Response */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Submission"];
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Default Response */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tickets/{id}/timeline": {
         parameters: {
             query?: never;
@@ -2769,6 +2882,28 @@ export interface components {
             sort?: components["schemas"]["QueueSortInput"];
             groupBy?: components["schemas"]["QueueGroupByInput"];
         };
+        CreateSubmissionBodyInput: {
+            /**
+             * Format: uuid
+             * @description Gerado pelo cliente, um por envio; repetir o mesmo devolve o envio já gravado
+             */
+            submissionId: string;
+            /**
+             * @description Uma parte por canal; sem parte, o envio precisa de status
+             * @default []
+             */
+            parts: {
+                /** @enum {string} */
+                channel: "internal" | "platform";
+                body: string;
+            }[];
+            status?: components["schemas"]["UpdateTicketStatusBodyInput"];
+            /**
+             * Format: uuid
+             * @description O envio que abriu a conversa, no mesmo chamado; só junto de parts
+             */
+            inReplyTo?: string;
+        };
         CreateTicketBodyInput: {
             /** Format: uuid */
             enrollmentId: string;
@@ -2962,6 +3097,12 @@ export interface components {
         RelationshipInput: "holder" | "dependent" | "family-group";
         ReplaceGroupCompaniesBodyInput: {
             companyIds: string[];
+        };
+        Submission: {
+            /** Format: uuid */
+            submissionId: string;
+            ticket: components["schemas"]["Ticket"];
+            comments: components["schemas"]["TicketComment"][];
         };
         Ticket: {
             /** Format: uuid */
@@ -3221,6 +3362,7 @@ export interface components {
             authorId: string | null;
             /** @enum {string} */
             authorType: "user" | "service" | "system";
+            submissionId: string | null;
             createdAt: string;
             /** @constant */
             type: "comment";
@@ -3229,6 +3371,7 @@ export interface components {
             /** @enum {string} */
             visibility: "public" | "private";
             body: string;
+            inReplyTo: string | null;
         };
         TimelineEvent: {
             /** Format: uuid */
@@ -3238,6 +3381,7 @@ export interface components {
             authorId: string | null;
             /** @enum {string} */
             authorType: "user" | "service" | "system";
+            submissionId: string | null;
             createdAt: string;
             /** @constant */
             type: "event";
@@ -3257,6 +3401,7 @@ export interface components {
             authorId: string | null;
             /** @enum {string} */
             authorType: "user" | "service" | "system";
+            submissionId: string | null;
             createdAt: string;
             /** @constant */
             type: "status-changed";

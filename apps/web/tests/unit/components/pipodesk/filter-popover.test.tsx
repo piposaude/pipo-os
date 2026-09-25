@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { FilterPopover } from '@/components/pipodesk/queue/FilterPopover'
 import type { TicketFilter } from '@/lib/pipodesk/filter'
 import { queueViewReducer, type QueueView } from '@/lib/pipodesk/queue-view'
-import { queueSeed } from '@/fixtures/pipodesk/dataset'
+import { queueSeed } from '../../../fixtures/pipodesk/dataset'
 
 const ctx = {
   companyName: (id: string) => id,

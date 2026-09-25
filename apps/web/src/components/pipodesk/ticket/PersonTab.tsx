@@ -130,8 +130,6 @@ export function PersonTab({ personId, records, capturedAt, onSelectPerson }: Per
             {formatNumericDate(person.birthDate)}
           </RecordField>
           <RecordField label={copy.fields.cpf}>{formatCpf(person.cpf)}</RecordField>
-          {/* The `??` looks dead against the union, but the fixture enters by cast:
-              a JSON not regenerated can still carry a value the union dropped. */}
           <RecordField label={copy.fields.sex}>
             {person.sex ? (SEX_COPY[person.sex] ?? person.sex) : RECORD_EMPTY}
           </RecordField>

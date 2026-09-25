@@ -21,6 +21,7 @@ import {
 } from '@/lib/pipodesk/queue-view'
 import { applyPatches, ticketFieldsBody, type TicketPatch } from '@/lib/pipodesk/patches'
 import { SearchPalette } from '@/components/pipodesk/queue/SearchPalette'
+import { companyRegistryOf } from '@/lib/pipodesk/search'
 import { SaveViewDialog } from '@/components/pipodesk/queue/SaveViewDialog'
 import { canEditStructure, rootGroupOf } from '@/lib/pipodesk/permissions'
 import { toQueueNode } from '@/lib/pipodesk/queue-node'
@@ -36,7 +37,6 @@ import { structureFromApi, type ApiQueue } from '@/lib/pipodesk/structure-from-a
 import { rowsFromApi } from '@/lib/pipodesk/rows-from-api'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 import { businessToday } from '@/lib/date'
-import { COMPANY_REGISTRY } from '@/fixtures/pipodesk/dataset'
 import '@/styles/pipodesk-tokens.css'
 
 const DETAIL_KEY = ['get', '/api/tickets/{id}']
@@ -44,9 +44,7 @@ const QUEUES_KEY = ['get', '/api/queues', 'all']
 
 /**
  * The Pipodesk shell: tree left, content right. `.desk-root` scopes the
- * operation tokens (login carries none). Rows, structure, names and the inbox
- * come from the API; the company registry is the last fixture, and it leaves
- * with PD-054.
+ * operation tokens (login carries none).
  */
 
 /** Global key, not per person: collapsing the menu is a preference of the
@@ -260,6 +258,8 @@ export function DeskShell() {
       }),
     staleTime: STRUCTURE_STALE_MS,
   })
+
+  const companies = useMemo(() => companyRegistryOf(rows), [rows])
 
   const createView = useCallback(
     async (draft: NewView): Promise<boolean> => {
@@ -605,7 +605,7 @@ export function DeskShell() {
             onClose={() => setSearchOpen(false)}
             rows={rows}
             sections={sections}
-            companies={COMPANY_REGISTRY}
+            companies={companies}
             onSelect={(node) => {
               dispatch({ type: 'select-node', node })
               navigate({ to: '/' })

@@ -22,7 +22,6 @@ import { TeamMenu } from './TeamMenu'
 import { InlineRename } from '@/components/pipodesk/sidebar/InlineRename'
 import { ViewsTab } from './ViewsTab'
 import { windowOf } from '@/lib/pipodesk/filter'
-import { COMPANY_NAMES } from '@/fixtures/pipodesk/dataset'
 import constants from '@/constants/pages/pipodesk/team'
 import sidebarConstants from '@/constants/pipodesk/sidebar'
 import styles from './style.module.css'
@@ -88,9 +87,7 @@ export default function TeamPage() {
       if (row.companyName) companies.set(row.companyId, row.companyName)
     }
     return {
-      // The dataset catalog covers companies with no tickets — exactly the case
-      // triage and a fresh portfolio show.
-      companyName: (id) => companies.get(id) ?? COMPANY_NAMES[id] ?? id,
+      companyName: (id) => companies.get(id) ?? id,
       carrierName: (id) => id,
       userName: resolveName,
     }

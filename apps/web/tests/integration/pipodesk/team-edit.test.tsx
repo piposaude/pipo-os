@@ -3,8 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
 import { routeTree } from '@/routeTree.gen'
 import { useSessionStore } from '@/stores/session'
-import { FIXTURE_USER_NAMES } from '@/fixtures/pipodesk/dataset'
 import queueConstants from '@/constants/pages/pipodesk/queue'
+import { FIXTURE_USER_NAMES } from '../../fixtures/pipodesk/dataset'
 import { fixtureStructureRoutes, fixtureUsersRoute, page, type ApiMock } from '../../helpers/api'
 
 vi.mock('@/lib/auth', async () => (await import('../../helpers/auth')).deskSession())

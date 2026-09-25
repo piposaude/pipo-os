@@ -67,10 +67,10 @@ src/
   lib/pipodesk/      lógica pura do domínio, sem React: filtro, ordenação,
                      árvore da sidebar, status, janela de datas, patches, busca
   constants/         toda a copy pt-BR, por tela
-  fixtures/pipodesk/ o dataset mockado (ver abaixo)
   styles/            tokens de operação do Pipodesk (--desk-*) e o CSS global
 tests/unit           espelha src/
 tests/integration    uma suíte por fluxo, renderizando a routeTree real com fetch mockado
+tests/fixtures       a massa dos testes, um recorte dos dados do protótipo
 ```
 
 ## Convenções
@@ -86,43 +86,15 @@ tests/integration    uma suíte por fluxo, renderizando a routeTree real com fet
 - Componente do design system sempre que existir; primitivo local só para o que
   o DS não tem (Popover e os ícones do Pipodesk).
 
-## Dados: fixture do protótipo
-
-O frontend ainda não está ligado à API de tickets. Fila e time leem
-`src/fixtures/pipodesk/dataset.json`; o detalhe lê também
-`src/fixtures/pipodesk/records.json` (cadastro, empresa, contratos, documentos
-e o vínculo de cada chamado com o beneficiário). Os dois são gerados a partir do
-protótipo `pipodesk` (repositório `prototipos`, ao lado deste) com o
-vocabulário já traduzido para o da API.
-
-- Regerar, de dentro de `apps/web`, no commit-base do protótipo:
-  `pnpm fixture:export 7279ccf`
-  O script (`scripts/export-fixture.mts`) lê o protótipo por `git archive`, então
-  não toca nele nem depende do que está checado lá; o repositório é procurado em
-  `../prototipos` (ou em `PIPODESK_PROTOTYPE=<caminho>`).
-- Ações na tela (reatribuir, mudar status, prioridade, agendar) aplicam um patch
-  local (`lib/pipodesk/patches.ts`); recarregar volta ao dataset.
-- O “hoje” é fixo (campo `today` do dataset), para a fila ser reproduzível em
-  teste e screenshot.
-
 ## Referência de produto
 
 O comportamento-alvo é o protótipo `pipodesk`. Divergência visual ou de regra
 entre os dois é bug aqui, salvo decisão registrada no plano.
 
-**Base do protótipo: `7279ccf` (8 set 2026)**, o commit com que a fixture e as
-telas foram sincronizadas pela última vez. Para re-sincronizar, ao menos uma vez
+**Base do protótipo: `7279ccf` (8 set 2026)**, o commit com que as telas foram
+sincronizadas pela última vez. Para re-sincronizar, ao menos uma vez
 por semana: `git log 7279ccf..origin/main -- pipodesk/src` no repositório do
-protótipo lista o que mudou; regerar as fixtures e atualizar este commit.
-
-**O commit-base está travado aqui pela DSP-127**, e não por falta de rodada. Exportar
-em qualquer commit a partir de `6552857` quebra o exportador com
-`ticket 700005: client-answered com motivo incorrect-data não tem par na API`:
-o passe de enriquecimento move 282 chamados para um sétimo estado que só existe
-na variante A daquela peça, e a API tem oito estados sem par para ele. Ele
-volta a andar quando o Gregory decidir entre estado novo e tag, e a decisão for
-portada. Enquanto isso, a rodada porta o que não depende de dado novo e deixa a
-fixture onde está — ver ACE-251.
+protótipo lista o que mudou; portar e atualizar este commit.
 
 **O commit-base diz de onde partir, não o que já foi portado.** Ele marca a
 última rodada, e uma rodada pode ter deixado ponto para trás — na rodada de 14
@@ -131,12 +103,6 @@ do commit-base, nunca tinha sido portado, e sair da busca caía sempre em Meus t
 A lista de commits pega o que é novo; o que ficou para trás só aparece
 conferindo o código dos dois lados, e o mesmo vale ao contrário: a rodada de 14
 set achou a DSP-120 já implementada aqui antes de o commit chegar ao commit-base.
-
-O exportador (`scripts/export-fixture.mts`) vive aqui, não no protótipo, e lê o
-outro repositório por `git archive` — nunca escreve nele. A conferência de que
-ele continua fiel é gerar no commit-base atual e comparar com as fixtures
-commitadas: têm que sair idênticas. Foi assim que a reconstrução dele na
-ACE-193 se provou, e é assim que se descobre que uma tradução de borda mudou.
 
 Plano e backlog: [Pipodesk no Notion](https://app.notion.com/p/3cd4744bd8038168bb39d69ed7252d4d);
 tickets no Linear, projeto “Pipodesk no PipOS”.
