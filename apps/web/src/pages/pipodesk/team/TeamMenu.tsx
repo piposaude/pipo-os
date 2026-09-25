@@ -9,6 +9,7 @@ const copy = sidebarConstants.rowMenu
 export interface TeamMenuProps {
   name: string
   onRename: () => void
+  onNewSubteam: () => void
 }
 
 /**
@@ -16,7 +17,7 @@ export interface TeamMenuProps {
  * shows on hover, and whoever never hovers never finds it. Same items and copy
  * as the tree's, so the two read as one gesture.
  */
-export function TeamMenu({ name, onRename }: TeamMenuProps) {
+export function TeamMenu({ name, onRename, onNewSubteam }: TeamMenuProps) {
   const [open, setOpen] = useState(false)
   const close = () => setOpen(false)
   return (
@@ -45,6 +46,15 @@ export function TeamMenu({ name, onRename }: TeamMenuProps) {
         }}
       >
         {copy.rename}
+      </PopoverMenuItem>
+      <PopoverMenuItem
+        icon={<Icon name="fill/plus" size="sm" />}
+        onClick={() => {
+          close()
+          onNewSubteam()
+        }}
+      >
+        {copy.newSubteam}
       </PopoverMenuItem>
     </PopoverMenu>
   )

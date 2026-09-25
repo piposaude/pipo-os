@@ -51,6 +51,7 @@ export default function TeamPage() {
     openSaveView,
     viewerId,
     groupWrites,
+    newSubteam,
   } = useDesk()
   const navigate = useNavigate()
   const [adding, setAdding] = useState(false)
@@ -181,7 +182,11 @@ export default function TeamPage() {
               </Heading>
             )}
             {canEdit && !renaming && (
-              <TeamMenu name={group.name} onRename={() => setRenaming(true)} />
+              <TeamMenu
+                name={group.name}
+                onRename={() => setRenaming(true)}
+                onNewSubteam={newSubteam}
+              />
             )}
           </div>
           <Text variant="bodySmall" className={styles.sub}>

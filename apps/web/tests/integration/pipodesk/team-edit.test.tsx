@@ -62,6 +62,11 @@ async function renderTeam(
         )
         return { status: 200, body: { groupId, ...group.members.find((m) => m.userId === userId) } }
       },
+      'POST /api/groups': (body: { name: string; parentId: string }) => {
+        const created = { ...body, id: `group-new-${groups.length}`, companyIds: [], members: [] }
+        groups = [...groups, created as ApiGroup]
+        return { status: 201, body: created }
+      },
       'PATCH /api/groups/:id': (body: { name?: string }, path: string) => {
         const group = groups.find((candidate) => candidate.id === path.split('/')[3])!
         Object.assign(group, body)
@@ -417,5 +422,66 @@ describe('renomear o time', () => {
     ).not.toBeInTheDocument()
     await user.dblClick(titleText())
     expect(screen.queryByRole('textbox', { name: 'Renomear POD 1' })).not.toBeInTheDocument()
+  })
+})
+
+describe('novo subtime', () => {
+  const header = () => screen.getByRole('heading', { level: 1 }).closest('header')!
+  const sidebar = () => screen.getByRole('navigation', { name: /pipodesk/i })
+  const created = () =>
+    desk.calls.filter((call) => call.method === 'POST' && call.path === '/api/groups')
+
+  it('should create a subteam under the root from the … of the team', async () => {
+    await renderTeam('/teams/pod-1')
+    const user = userEvent.setup()
+
+    await user.click(within(header()).getByRole('button', { name: 'Ações de POD 1' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Novo subtime' }))
+
+    expect(
+      await within(sidebar()).findByRole('button', { name: 'Expandir Novo subtime' }),
+    ).toBeInTheDocument()
+    expect(created()).toEqual([
+      {
+        method: 'POST',
+        path: '/api/groups',
+        body: { name: 'Novo subtime', parentId: 'group-geben' },
+      },
+    ])
+  })
+
+  /** One level of subteam, not free hierarchy: the tree's width is budgeted
+   *  for it, so a subteam made from a pod still hangs from the root. */
+  it('should hang the subteam from the root even when made from a pod row in the tree', async () => {
+    await renderTeam('/teams/pod-1')
+    const user = userEvent.setup()
+
+    await user.click(within(sidebar()).getByRole('button', { name: 'Ações de POD 2' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Novo subtime' }))
+
+    await waitFor(() =>
+      expect(created()).toEqual([
+        {
+          method: 'POST',
+          path: '/api/groups',
+          body: { name: 'Novo subtime', parentId: 'group-geben' },
+        },
+      ]),
+    )
+  })
+
+  it('should say so when the API refuses the new subteam', async () => {
+    await renderTeam('/teams/pod-1', {
+      writes: { 'POST /api/groups': () => ({ status: 422, body: { message: 'recusado' } }) },
+    })
+    const user = userEvent.setup()
+
+    await user.click(within(header()).getByRole('button', { name: 'Ações de POD 1' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Novo subtime' }))
+
+    expect(await screen.findByText(queueConstants.writeFailed)).toBeInTheDocument()
+    expect(
+      within(sidebar()).queryByRole('button', { name: 'Expandir Novo subtime' }),
+    ).not.toBeInTheDocument()
   })
 })

@@ -10,10 +10,11 @@ export interface RowMenuProps {
   label: string
   onRename?: () => void
   onNewView?: () => void
+  onNewSubteam?: () => void
   onDelete?: () => void
 }
 
-export function RowMenu({ label, onRename, onNewView, onDelete }: RowMenuProps) {
+export function RowMenu({ label, onRename, onNewView, onNewSubteam, onDelete }: RowMenuProps) {
   const [open, setOpen] = useState(false)
   const close = () => setOpen(false)
 
@@ -62,6 +63,17 @@ export function RowMenu({ label, onRename, onNewView, onDelete }: RowMenuProps) 
             }}
           >
             {copy.newView}
+          </PopoverMenuItem>
+        )}
+        {onNewSubteam && (
+          <PopoverMenuItem
+            icon={<Icon name="fill/plus" size="sm" />}
+            onClick={() => {
+              close()
+              onNewSubteam()
+            }}
+          >
+            {copy.newSubteam}
           </PopoverMenuItem>
         )}
         {onDelete && (

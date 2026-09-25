@@ -14,6 +14,7 @@ export interface NewMembership {
 
 export interface GroupWrites {
   renameGroup: (groupId: string, name: string) => void
+  createGroup: (name: string, parentId: string) => void
   addMembers: (memberships: NewMembership[]) => void
   setMemberRole: (groupId: string, userId: string, role: MemberRole) => void
   removeMember: (groupId: string, userId: string) => void
@@ -76,6 +77,13 @@ export function useGroupWrites(onFail: () => void): GroupWrites {
           },
         )
       },
+
+      createGroup: (name, parentId) =>
+        write(
+          () => {},
+          () => client.POST('/api/groups', { body: { name, parentId } }),
+          () => {},
+        ),
 
       addMembers: (memberships) => {
         void (async () => {

@@ -29,6 +29,7 @@ import { GROUPS_KEY, useGroupWrites } from './use-group-writes'
 import { displayNameFromEmail, initialsOf } from '@/lib/pipodesk/format'
 import { logout } from '@/lib/auth'
 import queueConstants from '@/constants/pages/pipodesk/queue'
+import sidebarConstants from '@/constants/pipodesk/sidebar'
 import { useSessionStore } from '@/stores/session'
 import { api, client } from '@/lib/api'
 import { structureFromApi, type ApiQueue } from '@/lib/pipodesk/structure-from-api'
@@ -450,6 +451,13 @@ export function DeskShell() {
     [structure, view.nodeId, sections, selectNode, queryClient],
   )
 
+  /* One level of subteam, not free hierarchy: whatever row it comes from, it
+     hangs from the root — the tree's width is budgeted for that. */
+  const newSubteam = useCallback(() => {
+    const root = rootGroupOf(structure)
+    if (root) groupWrites.createGroup(sidebarConstants.rowMenu.newSubteamName, root.id)
+  }, [structure, groupWrites])
+
   const [saveView, setSaveView] = useState<{ lockedTo: string | null } | null>(null)
   const openSaveView = useCallback(
     (groupId?: string) => setSaveView({ lockedTo: groupId ?? null }),
@@ -500,10 +508,12 @@ export function DeskShell() {
       toggleSidebar,
       openSaveView,
       groupWrites,
+      newSubteam,
     }),
     [
       openSaveView,
       groupWrites,
+      newSubteam,
       sections,
       view,
       dispatch,
@@ -552,6 +562,7 @@ export function DeskShell() {
               onDeleteView={deleteView}
               onNewView={onQueue ? openSaveView : undefined}
               onRenameGroup={groupWrites.renameGroup}
+              onNewSubteam={newSubteam}
               viewerInitials={initialsOf(viewerName)}
               viewerName={viewerName}
               viewerEmail={email}

@@ -33,6 +33,7 @@ export interface QueueSidebarProps {
   onDeleteView: (queueId: string) => void
   onNewView?: (groupId: string) => void
   onRenameGroup: (groupId: string, name: string) => void
+  onNewSubteam: () => void
   /** Viewer initials for the footer. */
   viewerInitials: string
   viewerName: string
@@ -138,6 +139,7 @@ interface NodeProps {
   onDeleteView: (queueId: string) => void
   onNewView?: (groupId: string) => void
   onRenameGroup: (groupId: string, name: string) => void
+  onNewSubteam: () => void
 }
 
 const openMenuOnRightClick = (event: MouseEvent<HTMLDivElement>) => {
@@ -158,6 +160,7 @@ function Node(props: NodeProps) {
     onDeleteView,
     onNewView,
     onRenameGroup,
+    onNewSubteam,
   } = props
   const style = { '--depth': node.depth } as CSSProperties
   const isActive = node.id === activeId
@@ -330,6 +333,7 @@ function Node(props: NodeProps) {
             label={node.label}
             onRename={() => setRenaming(true)}
             onNewView={onNewView && (() => onNewView(nodeGroup.id))}
+            onNewSubteam={onNewSubteam}
           />
         )}
         {isContainer ? null : <span className={styles.count}>{formatCount(node.count)}</span>}
@@ -442,6 +446,7 @@ export function QueueSidebar({
   onDeleteView,
   onNewView,
   onRenameGroup,
+  onNewSubteam,
   viewerInitials,
   viewerName,
   viewerEmail,
@@ -504,6 +509,7 @@ export function QueueSidebar({
                     onDeleteView={onDeleteView}
                     onNewView={onNewView}
                     onRenameGroup={onRenameGroup}
+                    onNewSubteam={onNewSubteam}
                   />
                 ))
               )}
