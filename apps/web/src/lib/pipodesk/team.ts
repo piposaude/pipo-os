@@ -67,6 +67,9 @@ function assigneesByCompany(rows: TicketRow[]): Map<string, Set<string>> {
 const sharedAmong = (companyIds: string[], byCompany: Map<string, Set<string>>): number =>
   companyIds.filter((companyId) => (byCompany.get(companyId)?.size ?? 0) > 1).length
 
+const coordinationFirst = (a: { role: MemberRole }, b: { role: MemberRole }): number =>
+  a.role === b.role ? 0 : a.role === 'admin' ? -1 : 1
+
 export interface MemberLoad {
   userId: string
   role: MemberRole
@@ -98,10 +101,7 @@ export function membersWithLoad(
       open: open.get(membership.userId) ?? 0,
       shared: sharedAmong(membership.companyIds ?? [], byCompany),
     }))
-    .sort((a, b) => {
-      if (a.role !== b.role) return a.role === 'admin' ? -1 : 1
-      return b.open - a.open
-    })
+    .sort((a, b) => coordinationFirst(a, b) || b.open - a.open)
 }
 
 export interface RosterLine extends MemberLoad {
@@ -154,11 +154,12 @@ export function operationRoster(
     line.shared = sharedAmong(portfolios.get(line.userId) ?? [], byCompany)
   }
 
-  return [...lines.values()].sort((a, b) => {
-    if (a.role !== b.role) return a.role === 'admin' ? -1 : 1
-    const pod = (a.pods[0]?.name ?? '').localeCompare(b.pods[0]?.name ?? '')
-    return pod !== 0 ? pod : nameOf(a.userId).localeCompare(nameOf(b.userId))
-  })
+  return [...lines.values()].sort(
+    (a, b) =>
+      coordinationFirst(a, b) ||
+      (a.pods[0]?.name ?? '').localeCompare(b.pods[0]?.name ?? '') ||
+      nameOf(a.userId).localeCompare(nameOf(b.userId)),
+  )
 }
 
 export interface Person {

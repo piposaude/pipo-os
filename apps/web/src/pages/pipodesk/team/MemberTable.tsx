@@ -15,7 +15,12 @@ import {
 import { Link } from '@tanstack/react-router'
 import { DeskIcon } from '@/components/pipodesk/icons'
 import { initialsOf } from '@/lib/pipodesk/format'
-import { membersWithLoad, operationRoster, type RosterLine } from '@/lib/pipodesk/team'
+import {
+  membersWithLoad,
+  operationRoster,
+  type MemberLoad,
+  type RosterLine,
+} from '@/lib/pipodesk/team'
 import type { Group, MemberRole, StructureState } from '@/lib/pipodesk/structure'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 import constants from '@/constants/pages/pipodesk/team'
@@ -105,15 +110,11 @@ export function MemberTable({
      edits live on its page, where the membership is one. */
   const withActions = canEdit && !isRoot
 
-  const lines = useMemo<RosterLine[]>(
+  const lines = useMemo<(MemberLoad & Partial<RosterLine>)[]>(
     () =>
       isRoot
         ? operationRoster(structure, rows, resolveName)
-        : membersWithLoad(structure, group.id, rows).map((line) => ({
-            ...line,
-            pods: [],
-            coordinatesOperation: false,
-          })),
+        : membersWithLoad(structure, group.id, rows),
     [isRoot, structure, rows, resolveName, group.id],
   )
 
@@ -163,7 +164,7 @@ export function MemberTable({
                   <span className={styles.muted}>{constants.allPods}</span>
                 ) : (
                   <span className={styles.pods}>
-                    {member.pods.map((pod) => (
+                    {member.pods?.map((pod) => (
                       <Link key={pod.id} to="/teams/$groupId" params={{ groupId: pod.id }}>
                         {pod.name}
                       </Link>
