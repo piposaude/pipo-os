@@ -8,6 +8,7 @@ import {
   submissionBodyOf,
   toggleDestination,
   toggleSplit,
+  withCompletionValue,
   withStatus,
   withText,
   type ComposerDraft,
@@ -158,5 +159,18 @@ describe('submissionBodyOf', () => {
         completion,
       ),
     ).toEqual({ submissionId: 'id-1', parts: [], status: { status: 'cancelled' } })
+  })
+})
+
+describe('withCompletionValue', () => {
+  it('should keep each completion field of the draft by its key', () => {
+    const draft = withCompletionValue(
+      withCompletionValue(EMPTY_DRAFT, 'endDate', '2026-08-31'),
+      'x',
+      '1',
+    )
+
+    expect(draft.completion).toEqual({ endDate: '2026-08-31', x: '1' })
+    expect(EMPTY_DRAFT.completion).toEqual({})
   })
 })

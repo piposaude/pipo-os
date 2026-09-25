@@ -58,7 +58,7 @@ function Fact({ label, value }: { label: string; value: string }) {
  * Ticket detail — the S3/PD-103 core. Person in the H1, copyable id below
  * (the analyst looks for the person; the number gets pasted elsewhere).
  * Priority and owner edit through the same patches as the queue. Missing:
- * completion form/gates, suggestions and attachments (PD-112).
+ * suggestions and attachments (PD-112).
  */
 export default function TicketPage() {
   const { id } = useParams({ from: '/_auth/_desk/tickets/$id' })

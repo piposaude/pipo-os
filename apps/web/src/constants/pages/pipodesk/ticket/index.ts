@@ -93,4 +93,27 @@ export default {
     } satisfies Record<CompletionBlock, string>,
     sendFailed: 'O envio não foi salvo.',
   },
+  conclusion: {
+    title: 'Concluir movimentação',
+    note: 'O que a operadora efetivou — a data solicitada na abertura fica ao lado, para comparar. Nada é gravado aqui: quem conclui é o',
+    noteAction: 'Enviar como Concluída',
+    group: 'Dados da conclusão',
+    life: (role: 'holder' | 'dependent', admission: string | null) =>
+      `${role === 'holder' ? 'Titular' : 'Dependente'}${admission ? ` · admissão ${admission}` : ''}`,
+    cardPlaceholder: 'Número na operadora',
+    floor: (date: string) => `A partir de ${date} — um mês antes da admissão`,
+    requested: (date: string) => `solicitada ${date}`,
+    allFilled: 'Tudo preenchido · o envio conclui o chamado',
+    back: 'Voltar ao envio',
+    summary: 'Dados da conclusão',
+    filled: (done: number, total: number) => `· ${done} de ${total} preenchidos`,
+    fill: 'Preencher',
+    review: 'Revisar',
+    rejected: {
+      required: 'Este campo é obrigatório para concluir.',
+      invalid: 'Esta data não existe.',
+      before_admission: 'Antes de um mês da admissão.',
+    } as Record<string, string>,
+    rejectedOther: 'A API recusou este valor.',
+  },
 }

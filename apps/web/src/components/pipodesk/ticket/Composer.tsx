@@ -4,12 +4,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { Ticket, components } from '@pipo-os/api-client'
 import { DeskIcon } from '@/components/pipodesk/icons'
 import { Popover } from '@/components/pipodesk/primitives'
-import { client } from '@/lib/api'
+import { ApiError, client } from '@/lib/api'
 import {
   closingFields,
   completionBlock,
+  completionBodyOf,
   describeMissing,
   missingClosing,
+  rejectedFields,
 } from '@/lib/pipodesk/closing'
 import {
   DESTINATION_ORDER,
@@ -21,18 +23,22 @@ import {
   submissionBodyOf,
   toggleDestination,
   toggleSplit,
+  withCompletionValue,
   withStatus,
   withText,
   type ComposerDraft,
 } from '@/lib/pipodesk/composer'
+import { completionSnapshotOf } from '@/lib/pipodesk/snapshot'
 import { isOpen, type ApiStatus } from '@/lib/pipodesk/status'
 import { statusCopyOf } from '@/constants/pipodesk/status'
 import constants from '@/constants/pages/pipodesk/ticket'
+import { ConclusionDrawer } from './ConclusionDrawer'
 import styles from './Composer.module.css'
 
 type SubmissionBody = components['schemas']['CreateSubmissionBodyInput']
 
 const copy = constants.composer
+const conclusionCopy = constants.conclusion
 
 export interface ComposerProps {
   ticket: Ticket
@@ -46,8 +52,16 @@ export function Composer({ ticket, status }: ComposerProps) {
   const blockedId = useId()
   const menuTrigger = useRef<HTMLButtonElement>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [rejected, setRejected] = useState<Record<string, string>>({})
   const [draft, setDraft] = useState<ComposerDraft>(EMPTY_DRAFT)
   const [submissionId, setSubmissionId] = useState(() => crypto.randomUUID())
+
+  const fields = useMemo(() => closingFields(ticket), [ticket])
+  const { admissionDate } = useMemo(
+    () => completionSnapshotOf(ticket.enrollmentSnapshot),
+    [ticket.enrollmentSnapshot],
+  )
 
   const submission = useMutation({
     mutationFn: async ({ body }: { body: SubmissionBody; sent: ComposerDraft }) => {
@@ -68,13 +82,20 @@ export function Composer({ ticket, status }: ComposerProps) {
         void queryClient.invalidateQueries({ queryKey })
       }
     },
+    onError: (error) => {
+      if (!(error instanceof ApiError) || error.status !== 422) return
+      const refused = rejectedFields(fields, error.details)
+      setRejected(refused)
+      if (Object.keys(refused).length > 0) setDrawerOpen(true)
+    },
   })
 
-  const fields = useMemo(() => closingFields(ticket), [ticket])
   const blocked = completionBlock(ticket, status)
   const change = statusChangeOf(draft, status)
   const sendStatus = draft.status ?? status
-  const missing = change === 'completed' ? missingClosing(fields, {}) : []
+  const completing = change === 'completed' && fields.length > 0
+  const missing = completing ? missingClosing(fields, draft.completion) : []
+  const emptyCount = missing.filter((item) => item.reason === 'empty').length
   const parts = partsOf(draft)
   const canSend =
     (parts.length > 0 || change !== null) && missing.length === 0 && !submission.isPending
@@ -82,12 +103,29 @@ export function Composer({ ticket, status }: ComposerProps) {
   const split = draft.split !== null
   const hint = draft.destinations.includes('platform') ? copy.hint.platform : copy.hint.internal
 
-  const send = () =>
-    submission.mutate({ body: submissionBodyOf(draft, status, submissionId), sent: draft })
+  const send = () => {
+    const completion = completing ? completionBodyOf(fields, draft.completion) : undefined
+    setRejected({})
+    submission.mutate({
+      body: submissionBodyOf(draft, status, submissionId, completion),
+      sent: draft,
+    })
+  }
 
   const pick = (next: ApiStatus) => {
     setDraft((current) => withStatus(current, next))
     setMenuOpen(false)
+    if (next === 'completed' && next !== status && fields.length > 0) setDrawerOpen(true)
+  }
+
+  const changeValue = (key: string, value: string) => {
+    setDraft((current) => withCompletionValue(current, key, value))
+    setRejected((current) => {
+      if (!(key in current)) return current
+      const next = { ...current }
+      delete next[key]
+      return next
+    })
   }
 
   return (
@@ -157,7 +195,22 @@ export function Composer({ ticket, status }: ComposerProps) {
         </div>
       )}
 
-      {missing.length > 0 && <p className={styles.missing}>{`${describeMissing(missing)}.`}</p>}
+      {completing && (
+        <div className={styles.summary}>
+          <p className={styles.summaryTitle}>
+            {conclusionCopy.summary}
+            <small>{conclusionCopy.filled(fields.length - emptyCount, fields.length)}</small>
+            <button
+              type="button"
+              className={`${styles.destination} ${styles.summaryOpen}`}
+              onClick={() => setDrawerOpen(true)}
+            >
+              {missing.length > 0 ? conclusionCopy.fill : conclusionCopy.review}
+            </button>
+          </p>
+          {missing.length > 0 && <p className={styles.missing}>{`${describeMissing(missing)}.`}</p>}
+        </div>
+      )}
       {submission.isError && (
         <p role="alert" className={styles.hint}>
           {copy.sendFailed}
@@ -217,6 +270,16 @@ export function Composer({ ticket, status }: ComposerProps) {
           )}
         </span>
       </div>
+      <ConclusionDrawer
+        open={drawerOpen && completing}
+        onClose={() => setDrawerOpen(false)}
+        fields={fields}
+        values={draft.completion}
+        onChange={changeValue}
+        missing={missing}
+        rejected={rejected}
+        admissionDate={admissionDate}
+      />
     </div>
   )
 }

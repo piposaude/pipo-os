@@ -246,14 +246,18 @@ const family = {
   benefit_data: { requested_start_date: '2026-07-01' },
 }
 
-async function openTicket(overrides: Parameters<typeof apiTicket>[0]) {
+type Answer = (body: { submissionId: string }) => { status: number; body: unknown }
+
+async function openTicket(overrides: Parameters<typeof apiTicket>[0], answer?: Answer) {
   const ticket = apiTicket({ id: 'T-1', enrollmentSnapshot: family, ...overrides })
   await mount({
     '/api/tickets/T-1': ticket,
-    'POST /api/tickets/T-1/submissions': (body: { submissionId: string }) => ({
-      status: 201,
-      body: { submissionId: body.submissionId, ticket, comments: [] },
-    }),
+    'POST /api/tickets/T-1/submissions':
+      answer ??
+      ((body: { submissionId: string }) => ({
+        status: 201,
+        body: { submissionId: body.submissionId, ticket, comments: [] },
+      })),
   })
   await renderAt('/tickets/T-1')
   await screen.findByRole('group', { name: copy.destinationsLabel })
@@ -361,6 +365,7 @@ describe('composer do chamado — Enviar como ⌄', () => {
     await user.click(
       within(await statusMenu(user)).getByRole('button', { name: 'Enviar como Concluída' }),
     )
+    await user.keyboard('{Escape}')
 
     expect(sendButton()).toHaveAccessibleName('Enviar como Concluída')
     expect(sendButton()).toBeDisabled()
@@ -386,6 +391,146 @@ describe('composer do chamado — Enviar como ⌄', () => {
     expect(submissions('/api/tickets/T-1/submissions')[0].body).toMatchObject({
       parts: [],
       status: { status: 'completed' },
+    })
+  })
+})
+
+const drawerCopy = constants.conclusion
+
+const pickCompleted = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(
+    within(await statusMenu(user)).getByRole('button', { name: 'Enviar como Concluída' }),
+  )
+  return screen.getByRole('dialog', { name: drawerCopy.title })
+}
+
+async function fillFamily(user: ReturnType<typeof userEvent.setup>, drawer: HTMLElement) {
+  await user.type(within(drawer).getByLabelText('Carteirinha · Ana'), '9912')
+  await user.type(within(drawer).getByLabelText('Início da vigência · Ana'), '2026-07-01')
+  await user.type(within(drawer).getByLabelText('Carteirinha · Léo'), '9913')
+  await user.type(within(drawer).getByLabelText('Início da vigência · Léo'), '2026-07-01')
+}
+
+describe('composer do chamado — conclusão', () => {
+  it('should open the completion drawer when Concluída is picked, with a row per life', async () => {
+    const user = await openTicket({ status: 'carrier-processing' })
+
+    const drawer = await pickCompleted(user)
+
+    expect(within(drawer).getByText('Ana Souza')).toBeInTheDocument()
+    expect(within(drawer).getByText('Léo Souza')).toBeInTheDocument()
+    expect(within(drawer).getByText(drawerCopy.life('holder', '10/03/26'))).toBeInTheDocument()
+    expect(within(drawer).getByText(drawerCopy.life('dependent', '10/03/26'))).toBeInTheDocument()
+    expect(within(drawer).getByLabelText('Início da vigência · Ana')).toHaveAttribute(
+      'min',
+      '2026-02-10',
+    )
+    expect(within(drawer).getAllByText(drawerCopy.requested('01/07/26'))).toHaveLength(2)
+  })
+
+  it('should say in the footer what is missing, and when everything is filled', async () => {
+    const user = await openTicket({ status: 'carrier-processing' })
+
+    const drawer = await pickCompleted(user)
+    expect(
+      within(drawer).getAllByText(
+        'Faltam Carteirinha · Ana, Início da vigência · Ana, Carteirinha · Léo, Início da vigência · Léo.',
+      ).length,
+    ).toBeGreaterThan(0)
+
+    await fillFamily(user, drawer)
+
+    expect(within(drawer).getByText(drawerCopy.allFilled)).toBeInTheDocument()
+  })
+
+  it('should flag a start earlier than a month before the admission', async () => {
+    const user = await openTicket({ status: 'carrier-processing' })
+
+    const drawer = await pickCompleted(user)
+    await user.type(within(drawer).getByLabelText('Início da vigência · Ana'), '2026-01-05')
+
+    expect(within(drawer).getByLabelText('Início da vigência · Ana')).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    )
+  })
+
+  it('should complete an inclusion with the card and the start of each life', async () => {
+    const user = await openTicket({ status: 'carrier-processing' })
+
+    const drawer = await pickCompleted(user)
+    await fillFamily(user, drawer)
+    await user.click(within(drawer).getByRole('button', { name: drawerCopy.back }))
+
+    expect(screen.queryByRole('dialog', { name: drawerCopy.title })).not.toBeInTheDocument()
+    expect(screen.getByText(drawerCopy.filled(4, 4))).toBeInTheDocument()
+    await user.click(sendButton())
+
+    await waitFor(() => expect(submissions('/api/tickets/T-1/submissions')).toHaveLength(1))
+    expect(submissions('/api/tickets/T-1/submissions')[0].body).toMatchObject({
+      parts: [],
+      status: {
+        status: 'completed',
+        completion: {
+          members: [
+            { taxId: ANA, idCardNumber: '9912', startDate: '2026-07-01' },
+            { taxId: LEO, idCardNumber: '9913', startDate: '2026-07-01' },
+          ],
+        },
+      },
+    })
+  })
+
+  it('should reopen the drawer from the summary in the composer', async () => {
+    const user = await openTicket({ status: 'carrier-processing' })
+
+    const drawer = await pickCompleted(user)
+    await user.click(within(drawer).getByRole('button', { name: drawerCopy.back }))
+    expect(screen.getByText(drawerCopy.filled(0, 4))).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: drawerCopy.fill }))
+
+    expect(screen.getByRole('dialog', { name: drawerCopy.title })).toBeInTheDocument()
+  })
+
+  it('should show in the field what the API refused, keeping everything typed', async () => {
+    const user = await openTicket({ status: 'carrier-processing' }, () => ({
+      status: 422,
+      body: {
+        error: 'Unprocessable Entity',
+        message: 'recusado',
+        details: [{ field: `members[${LEO}].startDate`, code: 'before_admission', message: 'x' }],
+      },
+    }))
+
+    const drawer = await pickCompleted(user)
+    await fillFamily(user, drawer)
+    await user.click(within(drawer).getByRole('button', { name: drawerCopy.back }))
+    await user.click(sendButton())
+
+    const reopened = await screen.findByRole('dialog', { name: drawerCopy.title })
+    const start = within(reopened).getByLabelText('Início da vigência · Léo')
+    expect(start).toHaveAttribute('aria-invalid', 'true')
+    expect(start).toHaveAccessibleDescription(drawerCopy.rejected.before_admission)
+    expect(start).toHaveValue('2026-07-01')
+    expect(screen.getByText(copy.sendFailed)).toBeInTheDocument()
+  })
+
+  it('should ask a single end date on an exclusion, with the requested end beside it', async () => {
+    const user = await openTicket({
+      status: 'carrier-processing',
+      enrollmentType: 'exclusion',
+      enrollmentSnapshot: { ...family, benefit_data: { requested_end_date: '2026-08-31' } },
+    })
+
+    const drawer = await pickCompleted(user)
+    await user.type(within(drawer).getByLabelText('Data de fim da vigência'), '2026-08-31')
+    expect(within(drawer).getByText(drawerCopy.requested('31/08/26'))).toBeInTheDocument()
+    await user.click(within(drawer).getByRole('button', { name: drawerCopy.back }))
+    await user.click(sendButton())
+
+    await waitFor(() => expect(submissions('/api/tickets/T-1/submissions')).toHaveLength(1))
+    expect(submissions('/api/tickets/T-1/submissions')[0].body).toMatchObject({
+      status: { status: 'completed', completion: { endDate: '2026-08-31' } },
     })
   })
 })

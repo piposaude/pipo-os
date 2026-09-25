@@ -244,3 +244,33 @@
   color: var(--pipo-text-secondary);
   font-size: var(--pipo-fs-xxsmall);
 }
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: var(--pipo-space-xsmall);
+  border-top: var(--pipo-border-width-small) solid var(--pipo-border);
+  font-size: var(--pipo-fs-xsmall);
+  line-height: 20px;
+}
+
+.summaryTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--pipo-space-xxsmall);
+  margin: 0;
+  color: var(--desk-pill-text-strong);
+  font-weight: var(--pipo-fw-semibold);
+}
+
+.summaryTitle small {
+  color: var(--pipo-text-secondary);
+  font-size: inherit;
+  font-weight: var(--pipo-fw-regular);
+}
+
+.summaryOpen {
+  height: 22px;
+  margin-left: auto;
+}

@@ -19,6 +19,7 @@ export interface ComposerDraft {
   split: Texts | null
   stashed: { texts: Texts; single: Destination } | null
   status: ApiStatus | null
+  completion: Record<string, string>
 }
 
 export const EMPTY_DRAFT: ComposerDraft = {
@@ -27,6 +28,7 @@ export const EMPTY_DRAFT: ComposerDraft = {
   split: null,
   stashed: null,
   status: null,
+  completion: {},
 }
 
 export const SEND_STATUSES: readonly ApiStatus[] = [
@@ -96,6 +98,12 @@ export const withStatus = (draft: ComposerDraft, status: ApiStatus): ComposerDra
   ...draft,
   status,
 })
+
+export const withCompletionValue = (
+  draft: ComposerDraft,
+  key: string,
+  value: string,
+): ComposerDraft => ({ ...draft, completion: { ...draft.completion, [key]: value } })
 
 export const statusChangeOf = (draft: ComposerDraft, current: ApiStatus): ApiStatus | null =>
   draft.status !== null && draft.status !== current ? draft.status : null

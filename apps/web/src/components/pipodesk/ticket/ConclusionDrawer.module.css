@@ -1,0 +1,107 @@
+.note {
+  margin: 0;
+  color: var(--pipo-text-secondary);
+  font-size: var(--pipo-fs-xsmall);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: var(--pipo-space-medium);
+  font-size: var(--pipo-fs-xsmall);
+  line-height: 20px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) minmax(150px, 1fr) minmax(150px, 1fr);
+  gap: 2px var(--pipo-space-medium);
+  align-items: start;
+}
+
+.row:not(:has(.life)) {
+  grid-template-columns: minmax(150px, 1fr) 2fr;
+}
+
+.life {
+  padding-top: 20px;
+  color: var(--desk-pill-text-strong);
+}
+
+.life small {
+  display: block;
+  color: var(--pipo-text-secondary);
+  font-size: inherit;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.field label {
+  color: var(--pipo-text-secondary);
+}
+
+.field input {
+  min-width: 0;
+  height: 32px;
+  padding: 0 var(--pipo-space-xsmall);
+  border: var(--desk-hairline) solid var(--pipo-border-strong);
+  border-radius: var(--pipo-radius-xsmall);
+  background: var(--pipo-surface);
+  color: var(--desk-pill-text-strong);
+  font: inherit;
+}
+
+.field input:focus-visible {
+  outline: 2px solid var(--pipo-text-primary);
+  outline-offset: 1px;
+}
+
+.field input[aria-invalid='true'] {
+  border-color: var(--pipo-danger-dark);
+}
+
+.requested {
+  color: var(--pipo-text-secondary);
+}
+
+.refusal,
+.missing {
+  margin: 0;
+  color: var(--pipo-danger-dark);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pipo-space-medium);
+}
+
+.count {
+  color: var(--pipo-text-secondary);
+  font-size: var(--pipo-fs-xsmall);
+}
+
+.back {
+  height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--pipo-radius-pill);
+  background: var(--pipo-brand-primary);
+  color: var(--pipo-surface);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-xsmall);
+  font-weight: var(--pipo-fw-medium);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.back:focus-visible {
+  outline: 2px solid var(--pipo-text-primary);
+  outline-offset: 2px;
+}

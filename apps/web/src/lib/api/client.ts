@@ -1,5 +1,13 @@
 import { createApiClient } from '@pipo-os/api-client'
-import { ApiError } from './errors'
+import { ApiError, type ApiErrorDetail } from './errors'
+
+const isDetail = (value: unknown): value is ApiErrorDetail =>
+  typeof value === 'object' &&
+  value !== null &&
+  'field' in value &&
+  typeof value.field === 'string' &&
+  'code' in value &&
+  typeof value.code === 'string'
 
 // Central HTTP wrapper: the single point for base URL, auth headers and error
 // normalization. Every server call goes through this client — inline fetch()
@@ -21,19 +29,17 @@ client.use({
       return response
     }
     let message = response.statusText
+    let details: ApiErrorDetail[] = []
     try {
       const body: unknown = await response.clone().json()
-      if (
-        typeof body === 'object' &&
-        body !== null &&
-        'message' in body &&
-        typeof body.message === 'string'
-      ) {
-        message = body.message
+      if (typeof body === 'object' && body !== null) {
+        if ('message' in body && typeof body.message === 'string') message = body.message
+        if ('details' in body && Array.isArray(body.details))
+          details = body.details.filter(isDetail)
       }
     } catch {
       // Non-JSON error body — keep the status text.
     }
-    throw new ApiError(response.status, message)
+    throw new ApiError(response.status, message, details)
   },
 })
