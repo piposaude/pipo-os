@@ -30,6 +30,17 @@ import type { TicketRow } from './ticket-row'
  *  three here detaches it, and the pod silently loses the cut. */
 const MOV_LABELS = { clt: 'MOV CLT', pj: 'MOV PJ', mb: 'MOV MB' } as const
 
+const POD_CUT_NAMES: ReadonlySet<string> = new Set(Object.values(MOV_LABELS))
+
+export function isPodCut(
+  queue: Pick<Queue, 'name' | 'ownerId' | 'groupId'>,
+  structure: StructureState,
+): boolean {
+  if (queue.ownerId !== null || !POD_CUT_NAMES.has(queue.name)) return false
+  const root = rootGroupOf(structure)
+  return root !== null && childGroupsOf(structure, root.id).some((pod) => pod.id === queue.groupId)
+}
+
 export const FUTURE_NODE_ID = 'node-futuras'
 
 /** The triage node — tickets of companies with no portfolio. Exported so the
@@ -525,6 +536,26 @@ export function buildTree(tickets: TicketRow[], options: BuildTreeOptions): Tree
     { title: 'Grupos', nodes: geben },
   ]
 }
+
+/** Node by id, at any depth of the three sections. */
+export function findNode(sections: TreeSection[], id: string): TreeNode | null {
+  const walk = (nodes: TreeNode[]): TreeNode | null => {
+    for (const node of nodes) {
+      if (node.id === id) return node
+      const found = walk(node.children)
+      if (found) return found
+    }
+    return null
+  }
+  for (const section of sections) {
+    const found = walk(section.nodes)
+    if (found) return found
+  }
+  return null
+}
+
+export const listNodeIdOf = (groupId: string, root: { id: string } | null): string =>
+  groupId === root?.id ? `node-${groupId}` : `node-${groupId}-chamados`
 
 /** Top-bar pills: the active node's siblings. A node WITH children returns
  *  its children ("what is inside this"), not its siblings; a childless

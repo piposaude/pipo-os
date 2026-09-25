@@ -52,10 +52,15 @@ function toQueue(row: Selectable<TicketQueues>, favorite: boolean): Queue {
   }
 }
 
+export interface StoredView extends ViewOwnership {
+  name: string
+}
+
 export interface QueuesRepositoryPort {
   create(data: CreateQueueBody, createdBy: string): Promise<Queue>
   findById(id: string, viewerId: string): Promise<Queue | undefined>
-  findOwnership(id: string): Promise<ViewOwnership | undefined>
+  findOwnership(id: string): Promise<StoredView | undefined>
+  isNameTaken(groupId: string, name: string, exceptId?: string): Promise<boolean>
   findMany(query: ListQueuesQuery, viewerId: string): Promise<{ data: Queue[]; total: number }>
   findByIds(ids: readonly string[], viewerId: string): Promise<Queue[]>
   update(id: string, data: UpdateQueueBody, updatedBy: string): Promise<Queue | undefined>
@@ -107,14 +112,27 @@ export class QueuesRepository implements QueuesRepositoryPort {
 
   // Deliberately without visibleTo: adding it here turns every 403 on someone
   // else's personal view into a 404.
-  async findOwnership(id: string): Promise<ViewOwnership | undefined> {
+  async findOwnership(id: string): Promise<StoredView | undefined> {
     const row = await this.db
       .selectFrom('ticket_queues')
-      .select(['owner_id', 'group_id'])
+      .select(['name', 'owner_id', 'group_id'])
       .where('id', '=', id)
       .executeTakeFirst()
 
-    return row ? { ownerId: row.owner_id, groupId: row.group_id } : undefined
+    return row ? { name: row.name, ownerId: row.owner_id, groupId: row.group_id } : undefined
+  }
+
+  async isNameTaken(groupId: string, name: string, exceptId?: string): Promise<boolean> {
+    const row = await this.db
+      .selectFrom('ticket_queues')
+      .select('id')
+      .where('group_id', '=', groupId)
+      .where('owner_id', 'is', null)
+      .where('name', '=', name)
+      .$if(exceptId !== undefined, (q) => q.where('id', '!=', exceptId!))
+      .executeTakeFirst()
+
+    return row !== undefined
   }
 
   async findByIds(ids: readonly string[], viewerId: string): Promise<Queue[]> {

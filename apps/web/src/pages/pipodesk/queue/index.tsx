@@ -49,6 +49,7 @@ export default function QueuePage() {
     viewerId,
     resolveName,
     applyPatch,
+    openSaveView,
   } = useDesk()
 
   /* Node base: scope + window, before the filter — what the panel counts
@@ -174,6 +175,7 @@ export default function QueuePage() {
         onExitSearch={
           isSearchNode(view.nodeId) ? () => dispatch({ type: 'exit-search' }) : undefined
         }
+        onSaveView={() => openSaveView()}
         base={base}
         filter={view.filter}
         viewerId={viewerId}

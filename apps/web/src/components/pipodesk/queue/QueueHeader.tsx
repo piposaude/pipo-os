@@ -28,6 +28,7 @@ export interface QueueHeaderProps {
   /** Set only when the queue came from search — the one queue with no lit
    *  sidebar node, so the only one needing its own exit. */
   onExitSearch?: () => void
+  onSaveView: () => void
   /* Filter panel. */
   base: TicketRow[]
   filter: TicketFilter
@@ -56,6 +57,7 @@ export function QueueHeader({
   activeNodeId,
   onSelectPill,
   onExitSearch,
+  onSaveView,
   base,
   filter,
   viewerId,
@@ -133,9 +135,9 @@ export function QueueHeader({
         <button
           type="button"
           className={styles.pillAdd}
-          disabled
           aria-label={constants.saveView}
-          title={constants.saveViewPending}
+          title={constants.saveView}
+          onClick={onSaveView}
         >
           +
         </button>

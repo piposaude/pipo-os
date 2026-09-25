@@ -1,12 +1,15 @@
-import { useState, type CSSProperties, useRef } from 'react'
+import { useState, type CSSProperties, type MouseEvent, useRef } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Button, Text } from '@piposaude/design-system'
 import { PipoOsWordmark } from '@/components/pipodesk/shell/PipoOsWordmark'
 import { Popover } from '@/components/pipodesk/primitives'
 import constants from '@/constants/pipodesk/sidebar'
 import { formatCount, shortSidebarLabel } from '@/lib/pipodesk/format'
+import { canEditQueue, canEditStructure } from '@/lib/pipodesk/permissions'
 import type { StructureState } from '@/lib/pipodesk/structure'
-import type { TreeNode, TreeSection } from '@/lib/pipodesk/tree'
+import { isPodCut, sourceQueueIdOf, type TreeNode, type TreeSection } from '@/lib/pipodesk/tree'
+import { InlineRename } from './InlineRename'
+import { RowMenu } from './RowMenu'
 import { SidebarIcon } from './SidebarIcon'
 import { sidebarIconKindFor } from './sidebar-icon-kind'
 import styles from './QueueSidebar.module.css'
@@ -16,8 +19,8 @@ import styles from './QueueSidebar.module.css'
  * look like detail and are not: (1) a group row never navigates — it expands;
  * the child "Chamados" opens the list; (2) subteams do not collapse with the
  * group's items; (3) containers draw no count — a number the click cannot
- * open is a broken promise. Missing: inline rename, row menu, favorite star
- * (PD-104/105).
+ * open is a broken promise. Missing: the group items of the row menu (PD-105)
+ * and the favorite star (PD-109).
  */
 
 export interface QueueSidebarProps {
@@ -25,6 +28,10 @@ export interface QueueSidebarProps {
   activeId: string
   onSelect: (node: TreeNode) => void
   structure: StructureState
+  viewerId: string
+  onRenameView: (queueId: string, name: string) => void
+  onDeleteView: (queueId: string) => void
+  onNewView?: (groupId: string) => void
   /** Viewer initials for the footer. */
   viewerInitials: string
   viewerName: string
@@ -120,17 +127,27 @@ const ADMIN_LINKS = [
 const groupOfNode = (nodeId: string, structure: StructureState) =>
   structure.groups.find((group) => `node-${group.id}` === nodeId)
 
-function Node({
-  node,
-  activeId,
-  onSelect,
-  structure,
-}: {
+interface NodeProps {
   node: TreeNode
   activeId: string
   onSelect: (node: TreeNode) => void
   structure: StructureState
-}) {
+  viewerId: string
+  onRenameView: (queueId: string, name: string) => void
+  onDeleteView: (queueId: string) => void
+  onNewView?: (groupId: string) => void
+}
+
+const openMenuOnRightClick = (event: MouseEvent<HTMLDivElement>) => {
+  const trigger = event.currentTarget.querySelector<HTMLButtonElement>('[data-row-menu]')
+  if (!trigger) return
+  event.preventDefault()
+  trigger.click()
+}
+
+function Node(props: NodeProps) {
+  const { node, activeId, onSelect, structure, viewerId, onRenameView, onDeleteView, onNewView } =
+    props
   const style = { '--depth': node.depth } as CSSProperties
   const isActive = node.id === activeId
   const nodeGroup = groupOfNode(node.id, structure)
@@ -141,6 +158,11 @@ function Node({
   /** Only "Meus tickets" opens by default — GEBEN open would push the
    *  analyst's daily section off screen. */
   const [open, setOpen] = useState(() => node.depth <= 0 && nodeGroup === undefined)
+  const [renaming, setRenaming] = useState(false)
+  const queueId = sourceQueueIdOf(node.id) ?? node.id
+  const queue = structure.queues.find((saved) => saved.id === queueId)
+  const canRename =
+    queue !== undefined && !isPodCut(queue, structure) && canEditQueue(queue, structure, viewerId)
 
   const activate = () => {
     if (isContainer) {
@@ -161,6 +183,50 @@ function Node({
       </span>
     </>
   )
+
+  if (node.children.length === 0 && queue !== undefined) {
+    return (
+      <div
+        className={styles.row}
+        style={style}
+        onClick={activate}
+        onDoubleClick={() => {
+          if (canRename) setRenaming(true)
+        }}
+        onContextMenu={openMenuOnRightClick}
+      >
+        {renaming ? (
+          <div className={`${styles.item} ${styles.renaming}`}>
+            {iconKind && <SidebarIcon kind={iconKind} />}
+            <InlineRename
+              value={node.label}
+              onCommit={(name) => {
+                setRenaming(false)
+                if (name !== node.label) onRenameView(queue.id, name)
+              }}
+              onCancel={() => setRenaming(false)}
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            className={`${styles.item} ${styles.branch}`}
+            aria-current={isActive ? 'page' : undefined}
+          >
+            {iconAndLabel}
+          </button>
+        )}
+        {canRename && !renaming && (
+          <RowMenu
+            label={node.label}
+            onRename={() => setRenaming(true)}
+            onDelete={() => onDeleteView(queue.id)}
+          />
+        )}
+        <span className={styles.count}>{formatCount(node.count)}</span>
+      </div>
+    )
+  }
 
   if (node.children.length === 0) {
     return (
@@ -189,7 +255,12 @@ function Node({
     <div className={node.crossCut ? styles.crossCut : undefined} style={style}>
       {/* Chevron and label are siblings — button-in-button is invalid HTML. The
                  row owns selection; the chevron stops propagation to only toggle. */}
-      <div className={styles.row} style={style} onClick={activate}>
+      <div
+        className={styles.row}
+        style={style}
+        onClick={activate}
+        onContextMenu={openMenuOnRightClick}
+      >
         <button
           type="button"
           className={`${styles.item} ${styles.branch}`}
@@ -224,6 +295,11 @@ function Node({
             />
           </svg>
         </button>
+        {onNewView &&
+          nodeGroup !== undefined &&
+          canEditStructure(structure, viewerId, nodeGroup.id) && (
+            <RowMenu label={node.label} onNewView={() => onNewView(nodeGroup.id)} />
+          )}
         {isContainer ? null : <span className={styles.count}>{formatCount(node.count)}</span>}
       </div>
 
@@ -259,13 +335,7 @@ function Node({
       {open && items.length > 0 && (
         <div className={styles.children} style={style}>
           {items.map((child) => (
-            <Node
-              key={child.id}
-              node={child}
-              activeId={activeId}
-              onSelect={onSelect}
-              structure={structure}
-            />
+            <Node key={child.id} {...props} node={child} />
           ))}
         </div>
       )}
@@ -275,13 +345,7 @@ function Node({
       {subGroups.length > 0 && (
         <div className={styles.children} style={style}>
           {subGroups.map((child) => (
-            <Node
-              key={child.id}
-              node={child}
-              activeId={activeId}
-              onSelect={onSelect}
-              structure={structure}
-            />
+            <Node key={child.id} {...props} node={child} />
           ))}
         </div>
       )}
@@ -341,6 +405,10 @@ export function QueueSidebar({
   activeId,
   onSelect,
   structure,
+  viewerId,
+  onRenameView,
+  onDeleteView,
+  onNewView,
   viewerInitials,
   viewerName,
   viewerEmail,
@@ -398,6 +466,10 @@ export function QueueSidebar({
                     activeId={activeId}
                     onSelect={onSelect}
                     structure={structure}
+                    viewerId={viewerId}
+                    onRenameView={onRenameView}
+                    onDeleteView={onDeleteView}
+                    onNewView={onNewView}
                   />
                 ))
               )}

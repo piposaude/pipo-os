@@ -13,4 +13,11 @@ export default {
    *  avatar. */
   account: (name: string) => `Conta de ${name}`,
   logout: 'Sair',
+  rowMenu: {
+    trigger: (label: string) => `Ações de ${label}`,
+    rename: 'Renomear',
+    renameField: (label: string) => `Renomear ${label}`,
+    newView: 'Nova view aqui',
+    deleteView: 'Apagar view',
+  },
 }

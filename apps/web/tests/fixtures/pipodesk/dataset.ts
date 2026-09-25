@@ -56,6 +56,9 @@ export const companiesFixture: Company[] = data.companies
 
 export const structureFixture: StructureState = data.structure
 
+export const ROOT_GROUP_ID =
+  structureFixture.groups.find((group) => group.parentId === null)?.id ?? 'group-geben'
+
 export const VIEWER_GROUP_ID =
   structureFixture.memberships.find((membership) => membership.userId === VIEWER_ID)?.groupId ??
   'pod-5'

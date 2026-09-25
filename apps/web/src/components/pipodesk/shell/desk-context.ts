@@ -4,6 +4,17 @@ import type { TicketPatch } from '@/lib/pipodesk/patches'
 import type { TreeSection } from '@/lib/pipodesk/tree'
 import type { StructureState } from '@/lib/pipodesk/structure'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
+import type { TicketFilter } from '@/lib/pipodesk/filter'
+import type { TicketSort } from '@/lib/pipodesk/sort'
+import type { GroupBy } from '@/lib/pipodesk/group'
+
+export interface NewView {
+  name: string
+  groupId: string
+  filter: TicketFilter
+  sort: TicketSort
+  groupBy: GroupBy
+}
 
 /**
  * What the shell holds and every screen reads. Sidebar and queue are the same
@@ -37,6 +48,7 @@ export interface DeskContextValue {
    *  real PATCH exists, when this becomes optimistic cache. */
   applyPatch: (ids: string[], patch: TicketPatch) => void
   patchRow: (row: TicketRow) => TicketRow
+  openSaveView: (groupId?: string) => void
 }
 
 export const DeskContext = createContext<DeskContextValue | null>(null)

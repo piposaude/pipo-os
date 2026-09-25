@@ -40,6 +40,17 @@ export function mockApi(
       const body = typeof raw === 'string' && raw !== '' ? JSON.parse(raw) : null
       calls.push({ method, path: pathname, body })
 
+      const handler =
+        routes[`${method} ${pathname}`] ??
+        routes[`${method} ${pathname.replace(/\/[^/]+$/, '/:id')}`]
+      if (typeof handler === 'function') {
+        const answer = (await handler(body, pathname)) as { status: number; body?: unknown }
+        return new Response(answer.body === undefined ? null : JSON.stringify(answer.body), {
+          status: answer.status,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+
       const status = writes[`${method} ${pathname}`] ?? writes[method] ?? 204
       // A write the server accepted has to show up on the next read, or the
       // screen would be tested against a server that forgets.

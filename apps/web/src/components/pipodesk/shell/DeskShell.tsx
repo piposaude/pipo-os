@@ -3,7 +3,15 @@ import { Outlet, useNavigate, useRouterState, useSearch } from '@tanstack/react-
 import { SidebarMainLayout } from '@piposaude/design-system'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { QueueSidebar } from '@/components/pipodesk/sidebar/QueueSidebar'
-import { HOME_NODE_ID, buildTree, type TreeNode, type TreeSection } from '@/lib/pipodesk/tree'
+import {
+  HOME_NODE_ID,
+  buildTree,
+  findNode,
+  listNodeIdOf,
+  sourceQueueIdOf,
+  type TreeNode,
+  type TreeSection,
+} from '@/lib/pipodesk/tree'
 import {
   INITIAL_VIEW,
   fromSearch,
@@ -14,41 +22,28 @@ import {
 import { applyPatches, ticketFieldsBody, type TicketPatch } from '@/lib/pipodesk/patches'
 import { SearchPalette } from '@/components/pipodesk/queue/SearchPalette'
 import { companyRegistryOf } from '@/lib/pipodesk/search'
+import { SaveViewDialog } from '@/components/pipodesk/queue/SaveViewDialog'
+import { rootGroupOf } from '@/lib/pipodesk/permissions'
 import { toQueueNode } from '@/lib/pipodesk/queue-node'
-import { DeskContext } from './desk-context'
+import { DeskContext, type NewView } from './desk-context'
 import { displayNameFromEmail } from '@/lib/pipodesk/format'
 import { logout } from '@/lib/auth'
 import queueConstants from '@/constants/pages/pipodesk/queue'
 import { useSessionStore } from '@/stores/session'
 import { api, client } from '@/lib/api'
-import { structureFromApi } from '@/lib/pipodesk/structure-from-api'
+import { structureFromApi, type ApiQueue } from '@/lib/pipodesk/structure-from-api'
 import { rowsFromApi } from '@/lib/pipodesk/rows-from-api'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 import { businessToday } from '@/lib/date'
 import '@/styles/pipodesk-tokens.css'
 
 const DETAIL_KEY = ['get', '/api/tickets/{id}']
+const QUEUES_KEY = ['get', '/api/queues', 'all']
 
 /**
  * The Pipodesk shell: tree left, content right. `.desk-root` scopes the
  * operation tokens (login carries none).
  */
-/** Node by id, at any depth of the three sections. */
-function findNode(sections: TreeSection[], id: string): TreeNode | null {
-  const walk = (nodes: TreeNode[]): TreeNode | null => {
-    for (const node of nodes) {
-      if (node.id === id) return node
-      const found = walk(node.children)
-      if (found) return found
-    }
-    return null
-  }
-  for (const section of sections) {
-    const found = walk(section.nodes)
-    if (found) return found
-  }
-  return null
-}
 
 /** Global key, not per person: collapsing the menu is a preference of the
  *  screen space, not of the account. */
@@ -245,7 +240,7 @@ export function DeskShell() {
     staleTime: STRUCTURE_STALE_MS,
   })
   const queuesQuery = useQuery({
-    queryKey: ['get', '/api/queues', 'all'],
+    queryKey: QUEUES_KEY,
     queryFn: () =>
       allPages(async (page) => {
         const { data } = await client.GET('/api/queues', {
@@ -257,6 +252,53 @@ export function DeskShell() {
   })
 
   const companies = useMemo(() => companyRegistryOf(rows), [rows])
+
+  const createView = useCallback(
+    async (draft: NewView): Promise<boolean> => {
+      try {
+        await client.POST('/api/queues', {
+          body: {
+            name: draft.name,
+            groupId: draft.groupId,
+            ownerId: viewerId,
+            filters: draft.filter,
+            sort: draft.sort,
+            groupBy: draft.groupBy,
+          },
+        })
+      } catch {
+        return false
+      }
+      await queryClient.invalidateQueries({ queryKey: QUEUES_KEY })
+      return true
+    },
+    [viewerId, queryClient],
+  )
+
+  const renameView = useCallback(
+    (id: string, name: string) => {
+      void (async () => {
+        await queryClient.cancelQueries({ queryKey: QUEUES_KEY })
+        const previous = queryClient
+          .getQueryData<ApiQueue[]>(QUEUES_KEY)
+          ?.find((queue) => queue.id === id)?.name
+        const named = (to: string) => (current: ApiQueue[] | undefined) =>
+          current?.map((queue) => (queue.id === id ? { ...queue, name: to } : queue))
+        queryClient.setQueryData<ApiQueue[]>(QUEUES_KEY, named(name))
+        try {
+          await client.PATCH('/api/queues/{id}', { params: { path: { id } }, body: { name } })
+        } catch {
+          if (previous !== undefined) {
+            queryClient.setQueryData<ApiQueue[]>(QUEUES_KEY, named(previous))
+          }
+          setWriteFailed(true)
+        }
+        await queryClient.invalidateQueries({ queryKey: QUEUES_KEY })
+      })()
+    },
+    [queryClient],
+  )
+
   const structure = useMemo(
     () => structureFromApi(groupsQuery.data ?? [], queuesQuery.data ?? [], viewerId),
     [groupsQuery.data, queuesQuery.data, viewerId],
@@ -371,6 +413,45 @@ export function DeskShell() {
     [dispatch, navigate],
   )
 
+  const deleteView = useCallback(
+    (id: string) => {
+      const doomed = structure.queues.find((queue) => queue.id === id)
+      if (!doomed) return
+      if (view.nodeId === id || sourceQueueIdOf(view.nodeId) === id) {
+        const landing = findNode(sections, listNodeIdOf(doomed.groupId, rootGroupOf(structure)))
+        if (landing) selectNode(landing)
+      }
+      void (async () => {
+        await queryClient.cancelQueries({ queryKey: QUEUES_KEY })
+        const before = queryClient.getQueryData<ApiQueue[]>(QUEUES_KEY) ?? []
+        const at = before.findIndex((queue) => queue.id === id)
+        queryClient.setQueryData<ApiQueue[]>(QUEUES_KEY, (current) =>
+          current?.filter((queue) => queue.id !== id),
+        )
+        try {
+          await client.DELETE('/api/queues/{id}', { params: { path: { id } } })
+        } catch {
+          if (at !== -1) {
+            queryClient.setQueryData<ApiQueue[]>(QUEUES_KEY, (current) =>
+              current?.some((queue) => queue.id === id)
+                ? current
+                : current && [...current.slice(0, at), before[at], ...current.slice(at)],
+            )
+          }
+          setWriteFailed(true)
+        }
+        await queryClient.invalidateQueries({ queryKey: QUEUES_KEY })
+      })()
+    },
+    [structure, view.nodeId, sections, selectNode, queryClient],
+  )
+
+  const [saveView, setSaveView] = useState<{ lockedTo: string | null } | null>(null)
+  const openSaveView = useCallback(
+    (groupId?: string) => setSaveView({ lockedTo: groupId ?? null }),
+    [setSaveView],
+  )
+
   /* `async` behind a `() => void` prop would leave the promise floating — the
      repo's eslint is not type-checked, so nothing would catch it. */
   const handleLogout = () => {
@@ -412,8 +493,10 @@ export function DeskShell() {
       resolveName,
       sidebarCollapsed,
       toggleSidebar,
+      openSaveView,
     }),
     [
+      openSaveView,
       sections,
       view,
       dispatch,
@@ -456,6 +539,10 @@ export function DeskShell() {
               activeId={view.nodeId}
               onSelect={selectNode}
               structure={structure}
+              viewerId={viewerId}
+              onRenameView={renameView}
+              onDeleteView={deleteView}
+              onNewView={onQueue ? openSaveView : undefined}
               viewerInitials={iniciaisDe(viewerName)}
               viewerName={viewerName}
               viewerEmail={email}
@@ -471,6 +558,17 @@ export function DeskShell() {
             </div>
           }
         />
+        {saveView && (
+          <SaveViewDialog
+            scopeId={saveView.lockedTo ?? view.groupId}
+            lockScope={saveView.lockedTo !== null}
+            filter={view.filter}
+            sort={view.sort}
+            groupBy={view.groupBy}
+            onSave={createView}
+            onClose={() => setSaveView(null)}
+          />
+        )}
         {/* Mounted only while open: closing unmounts, so reopening resets query and
             cursor without an effect. */}
         {searchOpen && (
