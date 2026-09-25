@@ -1,5 +1,5 @@
 import type { components } from '@pipo-os/api-client'
-import { API_STATUSES, DISPLAY_STATUSES, toDisplayStatus, type ApiStatus } from './status'
+import { API_STATUSES, DISPLAY_STATUSES, isOpen, toDisplayStatus, type ApiStatus } from './status'
 
 type SubmissionBody = components['schemas']['CreateSubmissionBodyInput']
 type SubmissionPart = SubmissionBody['parts'][number]
@@ -101,7 +101,7 @@ export const withCompletionValue = (
 ): ComposerDraft => ({ ...draft, completion: { ...draft.completion, [key]: value } })
 
 export const statusChangeOf = (draft: ComposerDraft, current: ApiStatus): ApiStatus | null =>
-  draft.status !== null && draft.status !== current ? draft.status : null
+  draft.status !== null && draft.status !== current && isOpen(current) ? draft.status : null
 
 export function sameSubmission(a: ComposerDraft, b: ComposerDraft, current: ApiStatus): boolean {
   if (statusChangeOf(a, current) !== statusChangeOf(b, current)) return false

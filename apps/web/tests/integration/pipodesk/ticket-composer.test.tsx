@@ -633,6 +633,41 @@ describe('composer do chamado — conclusão', () => {
     expect(sendButton()).toBeEnabled()
   })
 
+  it('should reload the ticket and lock the completion, saying why, when the API refuses a status that moved', async () => {
+    const ticket = apiTicket({
+      id: 'T-1',
+      enrollmentSnapshot: family,
+      status: 'carrier-processing',
+    })
+    let moved = false
+    await mount({
+      '/api/tickets/T-1': () => (moved ? { ...ticket, status: 'broker-processing' } : ticket),
+      'POST /api/tickets/T-1/submissions': () => {
+        moved = true
+        return {
+          status: 422,
+          body: {
+            error: 'Unprocessable Entity',
+            message: 'recusado',
+            details: [{ field: 'status', code: 'invalid_status', message: 'x' }],
+          },
+        }
+      },
+    })
+    await renderAt('/tickets/T-1')
+    await destinations()
+    const user = userEvent.setup()
+
+    const drawer = await pickCompleted(user)
+    await fillFamily(user, drawer)
+    await user.click(within(drawer).getByRole('button', { name: drawerCopy.back }))
+    await user.click(sendButton())
+
+    expect(await screen.findByText(copy.completionBlocked.status)).toBeInTheDocument()
+    expect(sendButton()).toBeDisabled()
+    expect(screen.queryByRole('dialog', { name: drawerCopy.title })).not.toBeInTheDocument()
+  })
+
   it('should ask a single end date on an exclusion, with the requested end beside it', async () => {
     const user = await openTicket({
       status: 'carrier-processing',

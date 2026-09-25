@@ -93,12 +93,14 @@ export function Composer({ ticket, status }: ComposerProps) {
       const refused = rejectedFields(fields, error.details)
       setRejected(refused)
       if (Object.keys(refused).length > 0) setDrawerOpen(true)
+      else void queryClient.invalidateQueries({ queryKey: ['get', '/api/tickets/{id}', ticket.id] })
     },
   })
 
   const blocked = useMemo(() => completionBlock(ticket, status), [ticket, status])
   const change = statusChangeOf(draft, status)
-  const sendStatus = draft.status ?? status
+  const sendStatus = change ?? status
+  const unavailable = change === 'completed' ? blocked : null
   const completing = change === 'completed' && fields.length > 0
   const missing = completing ? missingClosing(fields, draft.completion) : []
   const emptyCount = missing.filter((item) => item.reason === 'empty').length
@@ -110,6 +112,7 @@ export function Composer({ ticket, status }: ComposerProps) {
     (parts.length > 0 || change !== null) &&
     missing.length === 0 &&
     refused.length === 0 &&
+    unavailable === null &&
     !submission.isPending
 
   const split = draft.split !== null
@@ -237,6 +240,9 @@ export function Composer({ ticket, status }: ComposerProps) {
       )}
       <div className={styles.actions}>
         {!isOpen(status) && <p className={styles.hint}>{copy.closed(statusCopyOf(status))}</p>}
+        {unavailable !== null && (
+          <p className={styles.hint}>{copy.completionBlocked[unavailable]}</p>
+        )}
         <span className={styles.menuAnchor}>
           <span className={styles.send} data-disabled={!canSend || undefined}>
             <button type="button" className={styles.sendGo} disabled={!canSend} onClick={send}>

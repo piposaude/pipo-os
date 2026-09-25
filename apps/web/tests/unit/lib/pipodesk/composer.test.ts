@@ -121,6 +121,11 @@ describe('statusChangeOf', () => {
       'missing-documents',
     )
   })
+
+  it('should carry no change once the ticket is closed, whatever was picked before', () => {
+    expect(statusChangeOf(withStatus(EMPTY_DRAFT, 'completed'), 'cancelled')).toBeNull()
+    expect(statusChangeOf(withStatus(EMPTY_DRAFT, 'carrier-processing'), 'completed')).toBeNull()
+  })
 })
 
 describe('submissionBodyOf', () => {
