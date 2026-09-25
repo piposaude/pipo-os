@@ -109,7 +109,11 @@ export function MemberTable({
     () =>
       isRoot
         ? operationRoster(structure, rows, resolveName)
-        : membersWithLoad(structure, group.id, rows).map((line) => ({ ...line, pods: [] })),
+        : membersWithLoad(structure, group.id, rows).map((line) => ({
+            ...line,
+            pods: [],
+            coordinatesOperation: false,
+          })),
     [isRoot, structure, rows, resolveName, group.id],
   )
 
@@ -155,7 +159,7 @@ export function MemberTable({
             </TableCell>
             {isRoot && (
               <TableCell>
-                {member.role === 'admin' ? (
+                {member.coordinatesOperation ? (
                   <span className={styles.muted}>{constants.allPods}</span>
                 ) : (
                   <span className={styles.pods}>

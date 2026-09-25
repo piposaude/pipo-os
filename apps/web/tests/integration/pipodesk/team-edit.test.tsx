@@ -43,13 +43,19 @@ async function renderTeam(
     writes = {},
     prepare = () => {},
   }: {
-    viewer?: 'coordination' | 'analyst'
+    viewer?: 'coordination' | 'pod-coordination' | 'analyst'
     writes?: Record<string, unknown>
     prepare?: (seeded: ApiGroup[]) => void
   } = {},
 ) {
   groups = structuredClone((fixtureStructureRoutes()['/api/groups'] as { data: ApiGroup[] }).data)
   prepare(groups)
+  if (viewer === 'pod-coordination') {
+    const pod = groups.find((group) => group.id === 'pod-1')!
+    pod.members = pod.members.map((member) =>
+      member.userId === ANALYST_ID ? { ...member, role: 'admin' } : member,
+    )
+  }
   desk = (await import('../../helpers/desk')).mountDeskFixture(
     {},
     {
@@ -90,10 +96,14 @@ async function renderTeam(
       ...writes,
     },
   )
-  if (viewer === 'coordination') {
+  if (viewer !== 'analyst') {
     useSessionStore.setState({
       status: 'authenticated',
-      user: { ...useSessionStore.getState().user!, sub: COORDINATION_ID, groups: [] },
+      user: {
+        ...useSessionStore.getState().user!,
+        sub: viewer === 'coordination' ? COORDINATION_ID : ANALYST_ID,
+        groups: [],
+      },
     })
   }
   const router = createRouter({
@@ -209,6 +219,15 @@ describe('papel e saída do time', () => {
     expect(
       within(screen.getByRole('table')).queryByRole('button', { name: /^Ações de/ }),
     ).not.toBeInTheDocument()
+  })
+
+  it('should list the pod of someone who coordinates only that pod, not all of them', async () => {
+    await renderTeam('/teams/group-geben', { viewer: 'pod-coordination' })
+
+    const line = rowOf(ANALYST)!
+    expect(within(line).getByText('Coordenação')).toBeInTheDocument()
+    expect(within(line).getByRole('link', { name: 'POD 1' })).toBeInTheDocument()
+    expect(within(line).queryByText('Todos os pods')).not.toBeInTheDocument()
   })
 })
 

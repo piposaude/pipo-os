@@ -107,13 +107,13 @@ export function membersWithLoad(
 export interface RosterLine extends MemberLoad {
   /** The pods the person is in, by name. Never the root. */
   pods: Group[]
+  coordinatesOperation: boolean
 }
 
 /**
  * The operation's page lists people, not the root's memberships: the root only
  * holds coordination. One line per person, admin anywhere reading as
- * coordination — the same climb `canEditStructure` does. Coordination first,
- * then analysts by pod, then by name.
+ * coordination. Coordination first, then analysts by pod, then by name.
  */
 export function operationRoster(
   structure: StructureState,
@@ -135,8 +135,10 @@ export function operationRoster(
       open: open.get(membership.userId) ?? 0,
       shared: 0,
       pods: [],
+      coordinatesOperation: false,
     }
     if (membership.role === 'admin') line.role = 'admin'
+    if (membership.role === 'admin' && group.parentId === null) line.coordinatesOperation = true
     line.companies += (membership.companyIds ?? []).length
     portfolios.set(membership.userId, [
       ...(portfolios.get(membership.userId) ?? []),

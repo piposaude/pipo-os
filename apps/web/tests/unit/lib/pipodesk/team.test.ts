@@ -182,6 +182,23 @@ describe('operationRoster', () => {
     expect(operationRoster(operation, [], nameOf)[0]).toMatchObject({
       role: 'admin',
       pods: [{ id: 'pod-1' }],
+      coordinatesOperation: true,
+    })
+  })
+
+  it('should keep the pods of someone who coordinates only a pod, without reading as the whole operation', () => {
+    const podOnly: StructureState = {
+      ...operation,
+      memberships: [
+        { userId: 'dani@pipo', groupId: 'pod-1', role: 'admin' },
+        { userId: 'dani@pipo', groupId: 'pod-2', role: 'member', companyIds: ['e'] },
+      ],
+    }
+
+    expect(operationRoster(podOnly, [], nameOf)[0]).toMatchObject({
+      role: 'admin',
+      coordinatesOperation: false,
+      pods: [{ id: 'pod-1' }, { id: 'pod-2' }],
     })
   })
 
