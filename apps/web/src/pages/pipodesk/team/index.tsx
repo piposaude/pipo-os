@@ -1,48 +1,36 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
-  Avatar,
-  Badge,
   Breadcrumb,
   BreadcrumbItem,
   Button,
   Heading,
   Loading,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
   Text,
 } from '@piposaude/design-system'
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { useDesk } from '@/components/pipodesk/shell/desk-context'
 import { SidebarToggle } from '@/components/pipodesk/shell/SidebarToggle'
-import { ancestorsOf, rootGroupOf } from '@/lib/pipodesk/permissions'
+import { ancestorsOf, canEditStructure, rootGroupOf } from '@/lib/pipodesk/permissions'
 import { findNode, listNodeIdOf } from '@/lib/pipodesk/tree'
 import { toQueueNode } from '@/lib/pipodesk/queue-node'
-import { membersWithLoad, unownedCompaniesOf } from '@/lib/pipodesk/team'
+import { unownedCompaniesOf } from '@/lib/pipodesk/team'
 import type { LabelContext } from '@/lib/pipodesk/filter-copy'
 import { CarteirasTab } from './CarteirasTab'
+import { MemberTable } from './MemberTable'
+import { AddPersonModal } from './AddPersonModal'
+import { TeamMenu } from './TeamMenu'
+import { InlineRename } from '@/components/pipodesk/sidebar/InlineRename'
 import { ViewsTab } from './ViewsTab'
 import { windowOf } from '@/lib/pipodesk/filter'
 import constants from '@/constants/pages/pipodesk/team'
 import sidebarConstants from '@/constants/pipodesk/sidebar'
 import styles from './style.module.css'
 
-/** Up to two initials for the avatar, from the first two words of the name. */
-const initialsOf = (name: string): string =>
-  name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('')
-
 /**
  * A pod's Home: who is on the team, with how much portfolio and load. The
  * unowned-companies warning sits ABOVE the table — it is the group's one
  * coordination debt, and a warning inside the tab you already opened warns
- * nobody. Read-only; editing is the rest of PD-105.
+ * nobody.
  */
 export default function TeamPage() {
   const { groupId } = useParams({ from: '/_auth/_desk/teams/$groupId' })
@@ -60,8 +48,13 @@ export default function TeamPage() {
     sections,
     dispatch,
     openSaveView,
+    viewerId,
+    groupWrites,
+    newSubteam,
   } = useDesk()
   const navigate = useNavigate()
+  const [adding, setAdding] = useState(false)
+  const [renaming, setRenaming] = useState(false)
 
   const group = structure.groups.find((candidate) => candidate.id === groupId)
 
@@ -77,15 +70,13 @@ export default function TeamPage() {
     [rows, groupId, today],
   )
 
-  const openCount = inGroup.length
+  /* At the root the roster is every pod's people, so their load is too. */
+  const awake = useMemo(() => windowOf(rows, 'awake', today), [rows, today])
+
   /* Memoized like `inGroup` they derive from: both walk the structure and the
      pod's open tickets, and the page re-renders on every context change. */
   const unowned = useMemo(
     () => unownedCompaniesOf(structure, groupId, inGroup),
-    [structure, groupId, inGroup],
-  )
-  const members = useMemo(
-    () => membersWithLoad(structure, groupId, inGroup),
     [structure, groupId, inGroup],
   )
 
@@ -111,6 +102,10 @@ export default function TeamPage() {
       </div>
     )
   }
+
+  const isRoot = group.parentId === null
+  const canEdit = canEditStructure(structure, viewerId, group.id)
+  const open = isRoot ? awake : inGroup
 
   const startNewView = () => {
     const node = findNode(sections, listNodeIdOf(group.id, rootGroupOf(structure)))
@@ -161,15 +156,50 @@ export default function TeamPage() {
 
       <header className={styles.pagehead}>
         <div className={styles.titulo}>
-          <Heading level="h1">{group.name}</Heading>
+          <div className={styles.nome}>
+            {renaming ? (
+              <InlineRename
+                className={styles.rename}
+                value={group.name}
+                onCommit={(name) => {
+                  setRenaming(false)
+                  if (name !== group.name) groupWrites.renameGroup(group.id, name)
+                }}
+                onCancel={() => setRenaming(false)}
+              />
+            ) : (
+              <Heading level="h1">
+                <span
+                  onDoubleClick={() => {
+                    if (canEdit) setRenaming(true)
+                  }}
+                >
+                  {group.name}
+                </span>
+              </Heading>
+            )}
+            {canEdit && !renaming && (
+              <TeamMenu
+                name={group.name}
+                onRename={() => setRenaming(true)}
+                onNewSubteam={newSubteam}
+              />
+            )}
+          </div>
           <Text variant="bodySmall" className={styles.sub}>
-            {constants.open(openCount)}
+            {constants.open(open.length)}
           </Text>
         </div>
         {tab === 'views' ? (
           <div className={styles.acao}>
             <Button variant="primary" onClick={startNewView}>
               {constants.newView}
+            </Button>
+          </div>
+        ) : tab === 'home' && canEdit ? (
+          <div className={styles.acao}>
+            <Button variant="primary" onClick={() => setAdding(true)}>
+              {constants.addPerson.button}
             </Button>
           </div>
         ) : (
@@ -198,55 +228,16 @@ export default function TeamPage() {
 
       <div className={styles.secao}>
         {tab === 'home' && (
-          <>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableHeaderCell>{constants.table.person}</TableHeaderCell>
-                  <TableHeaderCell>{constants.table.role}</TableHeaderCell>
-                  <TableHeaderCell>{constants.table.portfolio}</TableHeaderCell>
-                  <TableHeaderCell align="right">{constants.table.open}</TableHeaderCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {members.map((member) => (
-                  <TableRow key={member.userId}>
-                    <TableCell>
-                      <span className={styles.person}>
-                        {/* alt="" on purpose: the name renders next to it in the same cell — an
-                                                   alt would read the person twice. The queue's owner
-                                                   column is the opposite: there the avatar is alone. */}
-                        <Avatar size="sm" text={initialsOf(resolveName(member.userId))} alt="" />
-                        {resolveName(member.userId)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {/* `tertiary`, not `primary`: solid green with light text reads as a
-                                               button, not an attribute, in a 20px badge. */}
-                      <Badge
-                        variant={member.role === 'admin' ? 'tertiary' : 'neutral'}
-                        size="small"
-                      >
-                        {constants.roles[member.role]}
-                      </Badge>
-                    </TableCell>
-                    {/* Coordination without portfolio is "not applicable", not zero — a `0`
-                                           would read as an empty portfolio to fill. */}
-                    <TableCell>
-                      {member.companies === 0 && member.role === 'admin' ? (
-                        <span className={styles.muted}>{constants.noPortfolio}</span>
-                      ) : (
-                        constants.portfolio(member.companies)
-                      )}
-                    </TableCell>
-                    <TableCell align="right" className={styles.num}>
-                      {member.open}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </>
+          <MemberTable
+            group={group}
+            isRoot={isRoot}
+            structure={structure}
+            rows={open}
+            resolveName={resolveName}
+            canEdit={canEdit}
+            onSetRole={(userId, role) => groupWrites.setMemberRole(group.id, userId, role)}
+            onRemove={(userId) => groupWrites.removeMember(group.id, userId)}
+          />
         )}
         {tab === 'portfolios' && (
           <CarteirasTab
@@ -261,6 +252,7 @@ export default function TeamPage() {
           <ViewsTab structure={structure} groupId={groupId} rows={inGroup} ctx={ctx} />
         )}
       </div>
+      {adding && <AddPersonModal group={group} isRoot={isRoot} onClose={() => setAdding(false)} />}
     </div>
   )
 }

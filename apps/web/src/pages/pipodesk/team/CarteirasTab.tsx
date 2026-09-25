@@ -23,7 +23,7 @@ const SEARCH_ID = 'carteira-busca'
  * Carteiras tab — the company as the primary noun. Here the row is the company
  * and the question is "who answers for it"; Home is the same relation read
  * from the person's side. Unowned first, always: it is the group's
- * coordination debt. Editing is the rest of PD-105.
+ * coordination debt. Editing is PD-108.
  */
 export function CarteirasTab({
   structure,

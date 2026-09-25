@@ -7,6 +7,8 @@ import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 import type { TicketFilter } from '@/lib/pipodesk/filter'
 import type { TicketSort } from '@/lib/pipodesk/sort'
 import type { GroupBy } from '@/lib/pipodesk/group'
+import type { GroupWrites } from './use-group-writes'
+import type { Person } from '@/lib/pipodesk/team'
 
 export interface NewView {
   name: string
@@ -42,6 +44,10 @@ export interface DeskContextValue {
   today: string
   viewerId: string
   resolveName: (userId: string) => string
+  /** Everyone who can be put in a pod, as `GET /api/users` lists them. */
+  people: Person[]
+  peopleStatus: 'pending' | 'error' | 'success'
+  reloadPeople: () => void
   sidebarCollapsed: boolean
   toggleSidebar: () => void
   /** Applies a patch to tickets — the prototype's mutation model until the
@@ -49,6 +55,10 @@ export interface DeskContextValue {
   applyPatch: (ids: string[], patch: TicketPatch) => void
   patchRow: (row: TicketRow) => TicketRow
   openSaveView: (groupId?: string) => void
+  /** Pods and memberships, written optimistically over the API. */
+  groupWrites: GroupWrites
+  /** A subteam under the root, with the default name. */
+  newSubteam?: () => void
 }
 
 export const DeskContext = createContext<DeskContextValue | null>(null)

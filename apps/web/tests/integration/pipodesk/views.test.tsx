@@ -447,11 +447,12 @@ describe('criar visão a partir da página do time', () => {
 
   it('should not offer Nova view aqui in the sidebar while the team page is open', async () => {
     await renderDesk({}, 'coordination', `/teams/${VIEWER_GROUP_ID}?tab=views`)
+    const user = userEvent.setup()
 
     await screen.findByRole('button', { name: '+ Nova view' })
-    expect(
-      within(sidebar()).queryByRole('button', { name: /^Ações de POD/ }),
-    ).not.toBeInTheDocument()
+    await user.click(within(sidebar()).getAllByRole('button', { name: /^Ações de POD/ })[0])
+    const items = await screen.findAllByRole('menuitem')
+    expect(items.map((item) => item.textContent)).toEqual(['Renomear', 'Novo subtime'])
   })
 })
 

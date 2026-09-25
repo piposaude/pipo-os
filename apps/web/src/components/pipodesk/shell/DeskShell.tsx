@@ -23,12 +23,14 @@ import { applyPatches, ticketFieldsBody, type TicketPatch } from '@/lib/pipodesk
 import { SearchPalette } from '@/components/pipodesk/queue/SearchPalette'
 import { companyRegistryOf } from '@/lib/pipodesk/search'
 import { SaveViewDialog } from '@/components/pipodesk/queue/SaveViewDialog'
-import { rootGroupOf } from '@/lib/pipodesk/permissions'
+import { canEditStructure, rootGroupOf } from '@/lib/pipodesk/permissions'
 import { toQueueNode } from '@/lib/pipodesk/queue-node'
 import { DeskContext, type NewView } from './desk-context'
-import { displayNameFromEmail } from '@/lib/pipodesk/format'
+import { GROUPS_KEY, useGroupWrites } from './use-group-writes'
+import { displayNameFromEmail, initialsOf } from '@/lib/pipodesk/format'
 import { logout } from '@/lib/auth'
 import queueConstants from '@/constants/pages/pipodesk/queue'
+import sidebarConstants from '@/constants/pipodesk/sidebar'
 import { useSessionStore } from '@/stores/session'
 import { api, client } from '@/lib/api'
 import { structureFromApi, type ApiQueue } from '@/lib/pipodesk/structure-from-api'
@@ -48,13 +50,6 @@ const QUEUES_KEY = ['get', '/api/queues', 'all']
 /** Global key, not per person: collapsing the menu is a preference of the
  *  screen space, not of the account. */
 const SIDEBAR_KEY = 'pipodesk:sidebar-collapsed'
-
-const iniciaisDe = (name: string): string =>
-  name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('')
 
 const STRUCTURE_STALE_MS = 5 * 60 * 1000
 const MAX_PAGE_SIZE = 100
@@ -135,6 +130,9 @@ export function DeskShell() {
   const inboxQuery = api.useQuery('get', '/api/tickets/inbox', {}, { staleTime: 30_000 })
   const usersQuery = api.useQuery('get', '/api/users', {}, { staleTime: STRUCTURE_STALE_MS })
 
+  const { refetch: refetchPeople } = usersQuery
+  const reloadPeople = useCallback(() => void refetchPeople(), [refetchPeople])
+
   const namesByEmail = useMemo(
     () => new Map((usersQuery.data?.data ?? []).map((person) => [person.email, person.name])),
     [usersQuery.data],
@@ -142,6 +140,14 @@ export function DeskShell() {
   const resolveName = useMemo(
     () => (userId: string) => namesByEmail.get(userId)?.trim() || displayNameFromEmail(userId),
     [namesByEmail],
+  )
+  const people = useMemo(
+    () =>
+      (usersQuery.data?.data ?? []).map((person) => ({
+        id: person.email,
+        name: resolveName(person.email),
+      })),
+    [usersQuery.data, resolveName],
   )
 
   /* Prototype model: the base never changes; actions become patches applied
@@ -162,6 +168,8 @@ export function DeskShell() {
   )
 
   const [writeFailed, setWriteFailed] = useState(false)
+  const failWrite = useCallback(() => setWriteFailed(true), [])
+  const groupWrites = useGroupWrites(failWrite)
   const { refetch: refetchRows, dataUpdatedAt: rowsUpdatedAt, isError: rowsFailed } = rowsQuery
   const { refetch: refetchInbox, dataUpdatedAt: inboxUpdatedAt, isError: inboxFailed } = inboxQuery
 
@@ -229,7 +237,7 @@ export function DeskShell() {
   )
 
   const groupsQuery = useQuery({
-    queryKey: ['get', '/api/groups', 'all'],
+    queryKey: GROUPS_KEY,
     queryFn: () =>
       allPages(async (page) => {
         const { data } = await client.GET('/api/groups', {
@@ -446,6 +454,14 @@ export function DeskShell() {
     [structure, view.nodeId, sections, selectNode, queryClient],
   )
 
+  /* One level of subteam, not free hierarchy: whatever row it comes from, it
+     hangs from the root — the tree's width is budgeted for that. */
+  const newSubteam = useMemo(() => {
+    const root = rootGroupOf(structure)
+    if (!root || !canEditStructure(structure, viewerId, root.id)) return undefined
+    return () => groupWrites.createGroup(sidebarConstants.rowMenu.newSubteamName, root.id)
+  }, [structure, viewerId, groupWrites])
+
   const [saveView, setSaveView] = useState<{ lockedTo: string | null } | null>(null)
   const openSaveView = useCallback(
     (groupId?: string) => setSaveView({ lockedTo: groupId ?? null }),
@@ -491,12 +507,19 @@ export function DeskShell() {
       rowsTruncated,
       viewerId,
       resolveName,
+      people,
+      peopleStatus: usersQuery.status,
+      reloadPeople,
       sidebarCollapsed,
       toggleSidebar,
       openSaveView,
+      groupWrites,
+      newSubteam,
     }),
     [
       openSaveView,
+      groupWrites,
+      newSubteam,
       sections,
       view,
       dispatch,
@@ -512,6 +535,9 @@ export function DeskShell() {
       viewerId,
       today,
       resolveName,
+      people,
+      usersQuery.status,
+      reloadPeople,
       sidebarCollapsed,
       toggleSidebar,
     ],
@@ -543,7 +569,9 @@ export function DeskShell() {
               onRenameView={renameView}
               onDeleteView={deleteView}
               onNewView={onQueue ? openSaveView : undefined}
-              viewerInitials={iniciaisDe(viewerName)}
+              onRenameGroup={groupWrites.renameGroup}
+              onNewSubteam={newSubteam}
+              viewerInitials={initialsOf(viewerName)}
               viewerName={viewerName}
               viewerEmail={email}
               onLogout={handleLogout}

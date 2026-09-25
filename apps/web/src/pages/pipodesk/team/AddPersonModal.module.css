@@ -1,0 +1,91 @@
+/* The add-person form, ported from the prototype's team.css (team-form). */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pipo-space-medium);
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pipo-space-xsmall);
+}
+
+.step h3 {
+  margin: 0;
+  font-size: var(--pipo-fs-small);
+  font-weight: var(--pipo-fw-semibold);
+  color: var(--pipo-neutral-darkest);
+}
+
+/* Capped and scrolling: the operation has dozens of people, and the list must
+   not push the footer out of the modal. */
+.people {
+  display: flex;
+  max-height: 240px;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.option {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--pipo-space-xsmall);
+  padding: var(--pipo-space-xxsmall) var(--pipo-space-xsmall);
+  border: none;
+  border-radius: var(--pipo-radius-small);
+  background: transparent;
+  color: var(--pipo-neutral-darkest);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.option:hover {
+  background: var(--pipo-neutral-lightest);
+}
+
+.option[aria-pressed='true'] {
+  background: var(--pipo-neutral-light);
+  font-weight: var(--pipo-fw-semibold);
+}
+
+.option:focus-visible {
+  outline: none;
+  box-shadow: var(--pipo-shadow-focus-primary);
+}
+
+.hint {
+  margin: 0;
+  color: var(--pipo-text-secondary);
+  font-size: var(--pipo-fs-small);
+}
+
+.retry {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--pipo-neutral-darkest);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.retry:focus-visible {
+  outline: none;
+  box-shadow: var(--pipo-shadow-focus-primary);
+}
+
+.srOnly {
+  position: absolute;
+  overflow: hidden;
+  clip-path: inset(50%);
+  width: 1px;
+  height: 1px;
+  white-space: nowrap;
+}

@@ -19,6 +19,7 @@ import {
   prazoVariant,
   shortSidebarLabel,
   slaOf,
+  initialsOf,
 } from '@/lib/pipodesk/format'
 
 const TODAY = '2026-08-31'
@@ -297,5 +298,12 @@ describe('formatNumericDate', () => {
     // Midnight UTC is still the evening before in São Paulo.
     expect(formatNumericDate('2026-07-12T00:00:00.000Z')).toBe('11/07/26')
     expect(formatNumericDate(null)).toBe('—')
+  })
+})
+
+describe('initialsOf', () => {
+  it('should take the first letter of the first two words, uppercased', () => {
+    expect(initialsOf('carla antônia souza')).toBe('CA')
+    expect(initialsOf('Bruno')).toBe('B')
   })
 })
