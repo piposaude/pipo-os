@@ -47,7 +47,7 @@ async function mount(routes: Record<string, unknown> = {}) {
           authorType: 'user',
           createdAt: '2026-08-06T10:00:00.000Z',
           type: 'comment',
-          channel: part.channel === 'platform' ? 'public' : 'internal',
+          channel: 'internal',
           visibility: part.channel === 'platform' ? 'public' : 'private',
           body: part.body,
         })),
@@ -132,6 +132,23 @@ describe('composer do chamado', () => {
 
     expect(await screen.findByText('Liguei na operadora, protocolo 123.')).toBeInTheDocument()
     expect(field).toHaveValue('')
+  })
+
+  it('should show the part for Plataforma do RH as a public comment in the timeline', async () => {
+    await renderAt(`/tickets/${TICKET}`)
+    const user = userEvent.setup()
+
+    await user.click(
+      within(await destinations()).getByRole('button', { name: copy.destination.platform }),
+    )
+    await user.type(screen.getByRole('textbox', { name: copy.field }), 'Carteirinha enviada.')
+    await user.click(sendButton())
+
+    const entries = await screen.findAllByText('Carteirinha enviada.')
+    expect(entries.map((entry) => entry.closest('li')?.textContent)).toEqual([
+      expect.stringContaining('Anotação interna'),
+      expect.stringContaining('Comentário público'),
+    ])
   })
 
   it('should keep the draft and say so when the submission is refused, and retry with the same id', async () => {
