@@ -378,6 +378,40 @@
             "type": "string",
             "format": "uuid",
             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "pendencies": {
+            "type": "object",
+            "properties": {
+              "opened": {
+                "default": [],
+                "description": "Itens cobrados pela primeira vez, ou de novo",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "reopened": {
+                "default": [],
+                "description": "Itens resolvidos antes que voltaram a faltar",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "resolved": {
+                "default": [],
+                "description": "Itens que chegaram",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "additionalProperties": false,
+            "description": "Pendências marcadas no envio; só junto de parts ou status"
           }
         },
         "required": [
@@ -1682,7 +1716,8 @@
                   "priority_changed",
                   "action_date_changed",
                   "moved",
-                  "document_attached"
+                  "document_attached",
+                  "pendency_changed"
                 ]
               },
               {
@@ -3115,7 +3150,8 @@
               "priority_changed",
               "action_date_changed",
               "moved",
-              "document_attached"
+              "document_attached",
+              "pendency_changed"
             ]
           },
           "body": {

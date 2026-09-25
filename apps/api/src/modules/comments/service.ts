@@ -88,6 +88,12 @@ export class CommentsService {
         { field: 'inReplyTo', message, code: 'unknown_submission' },
       ])
     }
+    if (result.kind === 'invalid-pendencies') {
+      throw new ValidationFailedError(
+        `Ticket ${ticketId} cannot record these pendencies`,
+        result.failures,
+      )
+    }
     if (result.kind === 'reply-to-reply') {
       const message = 'inReplyTo is itself a reply: answer the submission that opened the thread'
       throw new ValidationFailedError(message, [

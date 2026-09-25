@@ -2968,6 +2968,24 @@ export interface components {
              * @description O envio que abriu a conversa, no mesmo chamado; só junto de parts
              */
             inReplyTo?: string;
+            /** @description Pendências marcadas no envio; só junto de parts ou status */
+            pendencies?: {
+                /**
+                 * @description Itens cobrados pela primeira vez, ou de novo
+                 * @default []
+                 */
+                opened: string[];
+                /**
+                 * @description Itens resolvidos antes que voltaram a faltar
+                 * @default []
+                 */
+                reopened: string[];
+                /**
+                 * @description Itens que chegaram
+                 * @default []
+                 */
+                resolved: string[];
+            };
         };
         CreateTicketBodyInput: {
             /** Format: uuid */
@@ -3234,7 +3252,7 @@ export interface components {
             channel: "internal" | "email";
             /** @enum {string} */
             visibility: "public" | "private";
-            eventType: ("hr_platform_reply" | "enrollment_cancellation_requested" | "document_signature_sent" | "contractor_document_failed" | "internal_note" | "assigned" | "priority_changed" | "action_date_changed" | "moved" | "document_attached") | null;
+            eventType: ("hr_platform_reply" | "enrollment_cancellation_requested" | "document_signature_sent" | "contractor_document_failed" | "internal_note" | "assigned" | "priority_changed" | "action_date_changed" | "moved" | "document_attached" | "pendency_changed") | null;
             authorId: string | null;
             /** @enum {string} */
             authorType: "user" | "service" | "system";
@@ -3463,7 +3481,7 @@ export interface components {
             /** @constant */
             type: "event";
             /** @enum {string} */
-            eventType: "hr_platform_reply" | "enrollment_cancellation_requested" | "document_signature_sent" | "contractor_document_failed" | "internal_note" | "assigned" | "priority_changed" | "action_date_changed" | "moved" | "document_attached";
+            eventType: "hr_platform_reply" | "enrollment_cancellation_requested" | "document_signature_sent" | "contractor_document_failed" | "internal_note" | "assigned" | "priority_changed" | "action_date_changed" | "moved" | "document_attached" | "pendency_changed";
             body: string;
             metadata: {
                 [key: string]: unknown;

@@ -103,6 +103,20 @@ const submissionPartSchema = z
   })
   .strict()
 
+export const PENDENCY_ACTIONS = ['opened', 'reopened', 'resolved'] as const
+
+export type PendencyAction = (typeof PENDENCY_ACTIONS)[number]
+
+const pendencyItemIdsSchema = z.array(z.string().min(1)).default([])
+
+const submissionPendenciesSchema = z
+  .object({
+    opened: pendencyItemIdsSchema.describe('Itens cobrados pela primeira vez, ou de novo'),
+    reopened: pendencyItemIdsSchema.describe('Itens resolvidos antes que voltaram a faltar'),
+    resolved: pendencyItemIdsSchema.describe('Itens que chegaram'),
+  })
+  .strict()
+
 export const createSubmissionBodySchema = z
   .object({
     submissionId: z
@@ -118,9 +132,25 @@ export const createSubmissionBodySchema = z
       .uuid()
       .optional()
       .describe('O envio que abriu a conversa, no mesmo chamado; só junto de parts'),
+    pendencies: submissionPendenciesSchema
+      .describe('Pendências marcadas no envio; só junto de parts ou status')
+      .optional(),
   })
   .strict()
   .superRefine((body, ctx) => {
+    const named = new Set<string>()
+    for (const action of PENDENCY_ACTIONS) {
+      body.pendencies?.[action].forEach((itemId, index) => {
+        if (named.has(itemId)) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['pendencies', action, index],
+            message: `Pendency item ${itemId} appears more than once`,
+          })
+        }
+        named.add(itemId)
+      })
+    }
     if (body.parts.length === 0 && body.status === undefined) {
       ctx.addIssue({
         code: 'custom',

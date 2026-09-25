@@ -96,6 +96,31 @@ describe('the body of POST /tickets/:id/submissions', () => {
     ).toEqual([['inReplyTo']])
   })
 
+  it('takes pendencies next to the text, one list per action', () => {
+    const parsed = createSubmissionBodySchema.parse({
+      submissionId,
+      parts: [{ channel: 'platform', body: 'faltam documentos' }],
+      pendencies: { opened: ['rg', 'cpf'] },
+    })
+
+    expect(parsed.pendencies).toEqual({ opened: ['rg', 'cpf'], reopened: [], resolved: [] })
+  })
+
+  it('refuses pendencies with neither text nor status, which leave no submission to replay by', () => {
+    expect(pathsOf({ pendencies: { opened: ['rg'] } })).toEqual([['parts']])
+  })
+
+  it('refuses an item named twice in one submission', () => {
+    const parts = [{ channel: 'internal', body: 'oi' }]
+
+    expect(pathsOf({ parts, pendencies: { opened: ['rg'], resolved: ['rg'] } })).toEqual([
+      ['pendencies', 'resolved', 0],
+    ])
+    expect(pathsOf({ parts, pendencies: { opened: ['rg', 'rg'] } })).toEqual([
+      ['pendencies', 'opened', 1],
+    ])
+  })
+
   it('refuses a field it does not know', () => {
     const parts = [{ channel: 'internal', body: 'oi' }]
 
