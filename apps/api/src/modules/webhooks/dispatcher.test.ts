@@ -103,6 +103,7 @@ describe('webhook dispatcher', () => {
       payload?: object
       answer?: string
       attemptCount?: number
+      configId?: string
     } = {},
   ): Promise<string> => {
     if (values.answer) {
@@ -126,7 +127,7 @@ describe('webhook dispatcher', () => {
       .values({
         ticket_id: ticketId,
         status_history_id: history.id,
-        webhook_config_id: configId,
+        webhook_config_id: values.configId ?? configId,
         target_url: 'http://127.0.0.1:1/pipodesk-webhook',
         payload: JSON.stringify(values.payload ?? { to_status: 'broker-processing' }),
         status: values.status ?? 'pending',
@@ -177,6 +178,24 @@ describe('webhook dispatcher', () => {
 
       expect(ids(await claimDue(app.db, 2)).sort()).toEqual([oldest, middle].sort())
       expect(ids(await claimDue(app.db, 2))).toEqual([newest])
+    })
+
+    it('leaves out a deactivated destination without holding up the others', async () => {
+      const other = await app.db
+        .insertInto('webhook_configs')
+        .values({ name: 'other', target_url: 'http://127.0.0.1:1/other', secret: 's' })
+        .returning('id')
+        .executeTakeFirstOrThrow()
+      const kept = await seed({ dueIn: -10, configId: other.id })
+      await seed({ dueIn: -30 })
+      await seed({ dueIn: -20 })
+      await app.db
+        .updateTable('webhook_configs')
+        .set({ active: false })
+        .where('id', '=', configId)
+        .execute()
+
+      expect(ids(await claimDue(app.db, 2))).toEqual([kept])
     })
 
     it('does not reserve again a delivery whose lease still holds', async () => {

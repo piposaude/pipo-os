@@ -35,6 +35,9 @@ export async function claimDue(db: Kysely<Database>, limit = CLAIM_LIMIT): Promi
         .select('id')
         .where('status', 'in', ['pending', 'failed'])
         .where('next_attempt_at', '<=', sql<Date>`now()`)
+        .where('webhook_config_id', 'in', (sub) =>
+          sub.selectFrom('webhook_configs').select('id').where('active', '=', true),
+        )
         .where((w) =>
           w.or([
             w('locked_at', 'is', null),
