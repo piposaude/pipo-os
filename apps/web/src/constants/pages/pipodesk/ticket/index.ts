@@ -1,5 +1,6 @@
 import { ENROLLMENT_TYPE_COPY } from '@/constants/pipodesk/domain'
-import type { CommentChannel } from '@/lib/pipodesk/timeline'
+import type { CompletionBlock } from '@/lib/pipodesk/closing'
+import type { Destination } from '@/lib/pipodesk/composer'
 
 export default {
   notFound: (id: string) => `Não existe chamado com o id ${id}.`,
@@ -56,31 +57,64 @@ export default {
   },
   timeline: {
     heading: 'Linha do tempo',
-    channelGroup: 'Canal do comentário',
-    /** The field's accessible name — a placeholder is not one. */
-    label: {
-      internal: 'Anotação interna',
-      public: 'Comentário público',
-      email: 'E-mail ao RH',
-    } satisfies Record<CommentChannel, string>,
-    /** Keyed by channel, not `x` plus `xEmail`: the pair of ternaries this
-     *  replaced could only ever pick the non-e-mail side, because the parked
-     *  channel never becomes the active one. */
-    placeholder: {
-      internal: 'Escreva…',
-      public: 'Escreva…',
-      email: 'Escreva o e-mail ao RH…',
-    } satisfies Record<CommentChannel, string>,
-    submit: {
-      internal: 'Comentar',
-      public: 'Comentar',
-      email: 'Enviar e-mail',
-    } satisfies Record<CommentChannel, string>,
-    /** E-mail is Phase 6 (PD-112): the backend answers 501 until then, and
-     *  faking the send would teach a gesture that does not exist. */
-    emailPending: 'O e-mail ao RH chega com a Fase 6 (PD-112).',
     loadFailed: 'Não foi possível carregar a linha do tempo.',
-    sendFailed: 'O comentário não foi salvo.',
     now: 'agora',
+  },
+  composer: {
+    destinationsLabel: 'Este texto vai para',
+    destination: {
+      internal: 'Interno',
+      platform: 'Plataforma do RH',
+      email: 'E-mail para o RH',
+    } satisfies Record<Destination, string>,
+    hint: {
+      internal: 'Não sai do chamado.',
+      platform: 'Vira a última atualização que o RH vê na plataforma.',
+    },
+    emailParked: 'O e-mail ao RH chega com a Fase 6 (PD-112).',
+    split: {
+      open: 'Escrever diferente para cada um',
+      close: 'Voltar a um texto só',
+      needsTwo: 'Só faz sentido com mais de um destino ligado',
+      openHint: 'Abre uma caixa por destino, quando o mesmo texto não serve para todos',
+      closeHint: 'Volta a um texto só. Os textos por destino ficam guardados até você reabrir.',
+    },
+    field: 'Escrever uma mensagem',
+    placeholder: 'Escrever…',
+    fieldFor: (destination: string) => `Texto para ${destination}`,
+    placeholderFor: (destination: string) => `Escrever para ${destination.toLowerCase()}…`,
+    submitAs: (situation: string) => `Enviar como ${situation}`,
+    changeStatus: (situation: string) => `Enviar como ${situation}. Trocar a situação`,
+    statusMenu: 'Situação do envio',
+    closed: (situation: string) => `${situation} não reabre. O envio entra como registro.`,
+    completionBlocked: {
+      status: 'Só conclui a partir de Na operadora, Com o cliente ou Pendência interna.',
+      lives: 'O chamado não identifica pelo CPF todas as vidas da movimentação.',
+    } satisfies Record<CompletionBlock, string>,
+    sendFailed: 'O envio não foi salvo.',
+  },
+  conclusion: {
+    title: 'Concluir movimentação',
+    note: 'O que a operadora efetivou — a data solicitada na abertura fica ao lado, para comparar. Nada é gravado aqui: quem conclui é o',
+    noteAction: 'Enviar como Concluída',
+    group: 'Dados da conclusão',
+    life: (role: 'holder' | 'dependent', admission: string | null) =>
+      `${role === 'holder' ? 'Titular' : 'Dependente'}${admission ? ` · admissão ${admission}` : ''}`,
+    cardPlaceholder: 'Número na operadora',
+    floor: (date: string) => `A partir de ${date} — um mês antes da admissão`,
+    requested: (date: string) => `solicitada ${date}`,
+    allFilled: 'Tudo preenchido · o envio conclui o chamado',
+    back: 'Voltar ao envio',
+    summary: 'Dados da conclusão',
+    filled: (done: number, total: number) => `· ${done} de ${total} preenchidos`,
+    fill: 'Preencher',
+    review: 'Revisar',
+    rejected: {
+      required: 'Este campo é obrigatório para concluir.',
+      invalid: 'Esta data não existe.',
+      before_admission: 'Antes de um mês da admissão.',
+    } as Record<string, string>,
+    rejectedOther: 'A API recusou este valor.',
+    refused: (labels: string[]) => `A API recusou ${labels.join(', ')}.`,
   },
 }

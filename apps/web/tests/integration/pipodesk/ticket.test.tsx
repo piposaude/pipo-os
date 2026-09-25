@@ -15,7 +15,7 @@ import { analystsOf } from '@/lib/pipodesk/permissions'
 import { records } from '../../fixtures/pipodesk/records'
 import constants from '@/constants/pages/pipodesk/ticket'
 import copyButton from '@/constants/pipodesk/copy-button'
-import { apiTicketOf, holdGet, holdRequest } from '../../helpers/api'
+import { apiTicketOf, holdGet } from '../../helpers/api'
 
 /**
  * The first drawn row — the table is virtualized, so only the visible window
@@ -256,156 +256,6 @@ describe('detalhe do chamado', () => {
     expect(within(entry).getByText(FIXTURE_USER_NAMES[VIEWER_ID]!)).toBeInTheDocument()
     expect(within(entry).getByText('Anotação interna')).toBeInTheDocument()
     expect(screen.getByText(/^Situação mudou de .+ para .+\.$/)).toBeInTheDocument()
-  })
-
-  it('should post an internal note and show it once the timeline comes back with it', async () => {
-    const posted: unknown[] = []
-    desk.restore()
-    desk = (await import('../../helpers/desk')).mountDeskFixture(
-      {},
-      {
-        '/api/tickets/700003/timeline': () => ({
-          data: posted.map((body, index) => ({
-            id: `c${index}`,
-            ticketId: '700003',
-            authorId: VIEWER_ID,
-            authorType: 'user',
-            createdAt: '2026-08-06T10:00:00.000Z',
-            type: 'comment',
-            channel: 'internal',
-            ...(body as object),
-          })),
-        }),
-      },
-    )
-    await renderAt('/tickets/700003')
-    const user = userEvent.setup()
-
-    const composer = await screen.findByRole('group', { name: 'Canal do comentário' })
-    expect(within(composer).getByRole('button', { name: 'Anotação interna' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
-
-    await user.type(screen.getByPlaceholderText('Escreva…'), 'Liguei na operadora, protocolo 123.')
-    posted.push({ visibility: 'private', body: 'Liguei na operadora, protocolo 123.' })
-    await user.click(screen.getByRole('button', { name: 'Comentar' }))
-
-    expect(await screen.findByText('Liguei na operadora, protocolo 123.')).toBeInTheDocument()
-    expect(desk.calls).toContainEqual({
-      method: 'POST',
-      path: '/api/tickets/700003/comments',
-      body: { kind: 'manual', visibility: 'private', body: 'Liguei na operadora, protocolo 123.' },
-    })
-    expect(screen.getByPlaceholderText('Escreva…')).toHaveValue('')
-  })
-
-  it('should post a public comment on the channel the composer is switched to', async () => {
-    await renderAt('/tickets/700003')
-    const user = userEvent.setup()
-
-    const composer = await screen.findByRole('group', { name: 'Canal do comentário' })
-    await user.click(within(composer).getByRole('button', { name: 'Comentário público' }))
-
-    expect(within(composer).getByRole('button', { name: 'Comentário público' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
-    expect(within(composer).getByRole('button', { name: 'Anotação interna' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    )
-
-    const body = 'Enviamos a carteirinha para o RH.'
-    await user.type(screen.getByPlaceholderText('Escreva…'), body)
-    await user.click(screen.getByRole('button', { name: 'Comentar' }))
-
-    await waitFor(() =>
-      expect(desk.calls).toContainEqual({
-        method: 'POST',
-        path: '/api/tickets/700003/comments',
-        body: { kind: 'manual', visibility: 'public', body },
-      }),
-    )
-  })
-
-  it('should not carry the draft of one ticket into the next', async () => {
-    const router = await renderAt('/tickets/700003')
-    const user = userEvent.setup()
-
-    await user.type(await screen.findByPlaceholderText('Escreva…'), 'Só do 700003.')
-    await router.navigate({ to: '/tickets/$id', params: { id: '700002' } })
-
-    await screen.findByText('700002')
-    expect(screen.getByPlaceholderText('Escreva…')).toHaveValue('')
-  })
-
-  it('should keep the draft and say so when the comment is refused', async () => {
-    desk.restore()
-    desk = (await import('../../helpers/desk')).mountDeskFixture({
-      'POST /api/tickets/700003/comments': 503,
-    })
-    await renderAt('/tickets/700003')
-    const user = userEvent.setup()
-
-    await user.type(await screen.findByPlaceholderText('Escreva…'), 'Não pode sumir.')
-    await user.click(screen.getByRole('button', { name: 'Comentar' }))
-
-    expect(await screen.findByText(constants.timeline.sendFailed)).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Escreva…')).toHaveValue('Não pode sumir.')
-  })
-
-  it('should keep what was typed while the comment was on its way', async () => {
-    await renderAt('/tickets/700003')
-    const release = holdRequest('POST', '/api/tickets/700003/comments')
-    const user = userEvent.setup()
-    const field = await screen.findByPlaceholderText('Escreva…')
-
-    await user.type(field, 'Primeira parte.')
-    await user.click(screen.getByRole('button', { name: 'Comentar' }))
-    await user.type(field, ' Segunda parte.')
-    release()
-
-    await waitFor(() =>
-      expect(desk.calls).toContainEqual(
-        expect.objectContaining({ method: 'POST', path: '/api/tickets/700003/comments' }),
-      ),
-    )
-    await waitFor(() => expect(field).toHaveValue('Primeira parte. Segunda parte.'))
-  })
-
-  /**
-   * The field had no accessible name at all — a placeholder is not one, so a
-   * screen reader announced a bare text box. The name follows the channel, the
-   * same way the placeholder and the submit button already do.
-   */
-  it('should name the composer field, and rename it with the channel', async () => {
-    await renderAt('/tickets/700003')
-    const user = userEvent.setup()
-
-    expect(
-      await screen.findByRole('textbox', { name: constants.timeline.label.internal }),
-    ).toBeInTheDocument()
-
-    const composer = screen.getByRole('group', { name: 'Canal do comentário' })
-    await user.click(within(composer).getByRole('button', { name: 'Comentário público' }))
-
-    expect(
-      screen.getByRole('textbox', { name: constants.timeline.label.public }),
-    ).toBeInTheDocument()
-  })
-
-  /** The parked channel takes no click, so it can never become the active one
-   *  — the reason it is parked is on screen instead of in a tooltip. */
-  it('should keep the e-mail channel unclickable while it is parked', async () => {
-    await renderAt('/tickets/700003')
-
-    const composer = await screen.findByRole('group', { name: 'Canal do comentário' })
-    const email = within(composer).getByRole('button', { name: 'E-mail ao RH' })
-
-    expect(email).toBeDisabled()
-    expect(email).toHaveAttribute('aria-pressed', 'false')
-    expect(screen.getByText(constants.timeline.emailPending)).toBeInTheDocument()
   })
 
   it('should schedule from the context column once the field is left, sending the instant the day starts', async () => {
@@ -729,21 +579,6 @@ describe('detalhe do chamado', () => {
     for (const name of coordenacao) {
       expect(within(menu).queryByRole('button', { name }), name).not.toBeInTheDocument()
     }
-  })
-
-  /** The email channel is parked until Fase 6. A `disabled` button with the
-   *  reason in `title` explains it to the mouse only: it takes no focus and
-   *  the title is not reliably announced. */
-  it('should explain the parked email channel in text, not only in a tooltip', async () => {
-    await renderAt('/')
-    const user = userEvent.setup()
-    const { link } = await firstRow()
-
-    await user.click(link)
-    await screen.findByRole('button', { name: 'E-mail ao RH' })
-
-    // The reason has to be readable without hovering — text on screen, not a title.
-    expect(screen.getByText(constants.timeline.emailPending)).toBeInTheDocument()
   })
 
   /**

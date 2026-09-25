@@ -1,6 +1,6 @@
 // @vitest-environment node
 import type { components } from '@pipo-os/api-client'
-import { commentBodyOf, timelineFromApi } from '@/lib/pipodesk/timeline'
+import { timelineFromApi } from '@/lib/pipodesk/timeline'
 import type { TicketRow } from '@/lib/pipodesk/ticket-row'
 
 const row = (overrides: Partial<TicketRow> & Pick<TicketRow, 'id'>): TicketRow => ({
@@ -227,20 +227,5 @@ describe('timelineFromApi', () => {
       '1-created',
       'a',
     ])
-  })
-})
-
-describe('commentBodyOf', () => {
-  it('should write an internal note as private and a public comment as public', () => {
-    expect(commentBodyOf('internal', 'x')).toEqual({
-      kind: 'manual',
-      visibility: 'private',
-      body: 'x',
-    })
-    expect(commentBodyOf('public', 'y')).toEqual({
-      kind: 'manual',
-      visibility: 'public',
-      body: 'y',
-    })
   })
 })

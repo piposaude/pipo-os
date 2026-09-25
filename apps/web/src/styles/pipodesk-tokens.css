@@ -44,6 +44,18 @@
   --desk-shadow-menu:
     0 6px 18px 0 rgb(0 0 0 / 2%), 0 3px 9px 0 rgb(0 0 0 / 4%), 0 1px 1px 0 rgb(0 0 0 / 4%);
 
+  --desk-pill-text: #5c5c5e;
+  --desk-pill-text-strong: #1b1b1b;
+  --desk-pill-on: #ececed;
+  --desk-pill-ring:
+    0 0 0 0.5px rgb(0 0 0 / 9%), 0 3px 6px -2px rgb(0 0 0 / 2%), 0 1px 1px rgb(0 0 0 / 4%);
+  --desk-pill-ring-hover:
+    0 0 0 0.5px rgb(0 0 0 / 15%), 0 3px 6px -2px rgb(0 0 0 / 2%), 0 1px 1px rgb(0 0 0 / 4%);
+  --desk-pill-ring-on: 0 0 0 0.5px rgb(0 0 0 / 9%);
+  --desk-send-divider: rgb(255 255 255 / 25%);
+  --desk-send-hover: rgb(255 255 255 / 12%);
+  --desk-composer-focus: #d3d3d3;
+
   /* Logical 1px, 0.5px on high-dpi — a dense table grid gets too heavy otherwise. */
   --desk-hairline: 1px;
 

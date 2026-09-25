@@ -1,63 +1,43 @@
+// @vitest-environment node
+import type { Ticket } from '@pipo-os/api-client'
 import {
   EFFECTIVE_KEY,
   END_KEY,
   cardKey,
   closingFields,
+  completionBlock,
+  completionBodyOf,
   describeMissing,
   fieldLabel,
-  livesOf,
   missingClosing,
   oneMonthBefore,
+  rejectedFields,
   startKey,
 } from '@/lib/pipodesk/closing'
-import type { TicketRow } from '@/lib/pipodesk/ticket-row'
-import { link, person, recordsWith } from '../../../helpers/records'
+import { apiTicket } from '../../../helpers/ticket'
 
-const ticket = (enrollmentType: string): TicketRow =>
-  ({ id: 'T-1', enrollmentType }) as unknown as TicketRow
+const ANA = '11122233344'
+const LEO = '55566677788'
 
-const family = () =>
-  recordsWith({
-    beneficiaries: [
-      person('holder', {
-        name: 'Ana Souza',
-        link: link({ admissionDate: '2023-11-22' }),
-      }),
-      person('dep', { role: 'dependent', holderId: 'holder' }),
-      person('out', { role: 'dependent', holderId: 'holder' }),
-    ],
-    // `Movement.id` is the ticket id: the record indexes movements by it.
-    tickets: [
-      {
-        id: 'T-1',
-        beneficiaryId: 'holder',
-        dependentIds: ['dep'],
-        policyId: 'policy-1',
-        pendingDocumentation: null,
-      },
-    ],
-  })
+const person = (taxId: string, name: string) => ({ profile: { tax_id: taxId, name } })
 
-const namesakes = (depName = 'Daniel Jardim Hoffmann') =>
-  recordsWith({
-    beneficiaries: [
-      person('holder', { name: 'Daniel Guedes Hoffmann', cpf: '951.244.843-80' }),
-      person('dep', {
-        name: depName,
-        cpf: '217.267.240-33',
-        role: 'dependent',
-        holderId: 'holder',
-      }),
-    ],
-    tickets: [
-      {
-        id: 'T-1',
-        beneficiaryId: 'holder',
-        dependentIds: ['dep'],
-        policyId: 'policy-1',
-        pendingDocumentation: null,
-      },
-    ],
+const family = (overrides: Record<string, unknown> = {}) => ({
+  primary: { ...person(ANA, 'Ana Souza'), employment: { admission_date: '2023-11-22' } },
+  dependents: [person(LEO, 'Léo Souza')],
+  benefit_data: { requested_start_date: '2023-12-01', requested_end_date: '2024-02-01' },
+  alteration_data: [{ requested_start_date: '2024-03-01' }],
+  ...overrides,
+})
+
+const subject = (enrollmentType: string, overrides: Partial<Ticket> = {}): Ticket =>
+  apiTicket({ enrollmentType, enrollmentSnapshot: family(), ...overrides })
+
+const namesakes = (depName: string) =>
+  subject('inclusion', {
+    enrollmentSnapshot: {
+      primary: person('95124484380', 'Daniel Guedes Hoffmann'),
+      dependents: [person('21726724033', depName)],
+    },
   })
 
 describe('oneMonthBefore', () => {
@@ -65,40 +45,67 @@ describe('oneMonthBefore', () => {
     expect(oneMonthBefore('2023-11-22')).toBe('2023-10-22')
   })
 
-  /** The engine floors a 31 March admission at 2 March, and a front that
-   *  clamped to 29 February would greenlight a start the API refuses. */
   it('should overshoot a short month exactly as the engine does', () => {
     expect(oneMonthBefore('2024-03-31')).toBe('2024-03-02')
     expect(oneMonthBefore('2023-10-31')).toBe('2023-10-01')
   })
 })
 
-describe('livesOf', () => {
-  it('should take the holder first and only the dependents of this movement', () => {
-    expect(livesOf(ticket('inclusion'), family()).map((life) => life.id)).toEqual(['holder', 'dep'])
-  })
-
-  it('should take no life when the movement is not an inclusion', () => {
-    expect(livesOf(ticket('exclusion'), family())).toEqual([])
-  })
-})
-
 describe('closingFields', () => {
-  it('should ask a card and a start per life on an inclusion', () => {
-    const fields = closingFields(ticket('inclusion'), family())
+  it('should ask a card and a start per life on an inclusion, keyed as the API names the field', () => {
+    const fields = closingFields(subject('inclusion'))
 
     expect(fields.map((field) => field.key)).toEqual([
-      cardKey('holder'),
-      startKey('holder'),
-      cardKey('dep'),
-      startKey('dep'),
+      `members[${ANA}].idCardNumber`,
+      `members[${ANA}].startDate`,
+      `members[${LEO}].idCardNumber`,
+      `members[${LEO}].startDate`,
     ])
-    expect(fields[1].floor).toBe('2023-10-22')
+    expect(fields.map((field) => field.key)).toEqual([
+      cardKey(ANA),
+      startKey(ANA),
+      cardKey(LEO),
+      startKey(LEO),
+    ])
+  })
+
+  it('should floor every start at a month before the admission of the holder', () => {
+    const fields = closingFields(subject('inclusion'))
+
+    expect(fields.filter((field) => field.kind === 'date').map((field) => field.floor)).toEqual([
+      '2023-10-22',
+      '2023-10-22',
+    ])
     expect(fields[0].floor).toBeUndefined()
   })
 
+  it('should leave the start without a floor when the admission is not a real date', () => {
+    const ticket = subject('inclusion', {
+      enrollmentSnapshot: family({
+        primary: { ...person(ANA, 'Ana Souza'), employment: { admission_date: '2023-02-31' } },
+      }),
+    })
+
+    expect(closingFields(ticket)[1].floor).toBeUndefined()
+  })
+
+  it('should carry the start the HR requested next to each start', () => {
+    const fields = closingFields(subject('inclusion'))
+
+    expect(fields[1].requested).toBe('2023-12-01')
+    expect(fields[0].requested).toBeUndefined()
+  })
+
+  it('should ask a life once when the snapshot carries its tax id twice', () => {
+    const ticket = subject('inclusion', {
+      enrollmentSnapshot: family({ dependents: [person('111.222.333-44', 'Ana de novo')] }),
+    })
+
+    expect(closingFields(ticket).map((field) => field.key)).toEqual([cardKey(ANA), startKey(ANA)])
+  })
+
   it('should name a life in full when another life of the movement answers to the same first name', () => {
-    expect(closingFields(ticket('inclusion'), namesakes()).map(fieldLabel)).toEqual([
+    expect(closingFields(namesakes('Daniel Jardim Hoffmann')).map(fieldLabel)).toEqual([
       'Carteirinha · Daniel Guedes Hoffmann',
       'Início da vigência · Daniel Guedes Hoffmann',
       'Carteirinha · Daniel Jardim Hoffmann',
@@ -107,9 +114,7 @@ describe('closingFields', () => {
   })
 
   it('should fall to the tail of the CPF when the whole name repeats too', () => {
-    expect(
-      closingFields(ticket('inclusion'), namesakes('Daniel Guedes Hoffmann')).map(fieldLabel),
-    ).toEqual([
+    expect(closingFields(namesakes('Daniel Guedes Hoffmann')).map(fieldLabel)).toEqual([
       'Carteirinha · Daniel Guedes Hoffmann (CPF 843-80)',
       'Início da vigência · Daniel Guedes Hoffmann (CPF 843-80)',
       'Carteirinha · Daniel Guedes Hoffmann (CPF 240-33)',
@@ -117,78 +122,162 @@ describe('closingFields', () => {
     ])
   })
 
-  it('should ask only the end date on an exclusion', () => {
-    expect(closingFields(ticket('exclusion'), family()).map((field) => field.key)).toEqual([
-      END_KEY,
+  it('should ask only the end date on an exclusion, with the end the HR requested', () => {
+    expect(closingFields(subject('exclusion'))).toEqual([
+      expect.objectContaining({ key: END_KEY, requested: '2024-02-01' }),
     ])
   })
 
-  it('should ask only the new effective date on a plan change', () => {
-    expect(closingFields(ticket('plan_change'), family()).map((field) => field.key)).toEqual([
-      EFFECTIVE_KEY,
+  it('should ask only the new effective date on a plan change, with the date the HR requested', () => {
+    expect(closingFields(subject('plan_change'))).toEqual([
+      expect.objectContaining({ key: EFFECTIVE_KEY, requested: '2024-03-01' }),
     ])
   })
 
-  it('should ask nothing for a type the rule does not cover', () => {
-    expect(closingFields(ticket('registration_data_change'), family())).toEqual([])
-    expect(closingFields(ticket('combined_change'), family())).toEqual([])
+  it('should ask nothing for a type the rule exempts', () => {
+    expect(closingFields(subject('registration_data_change'))).toEqual([])
+    expect(closingFields(subject('combined_change'))).toEqual([])
+  })
+
+  it('should ask nothing when the ticket is set to complete without the data', () => {
+    expect(closingFields(subject('inclusion', { forceCompletion: true }))).toEqual([])
+  })
+})
+
+describe('completionBlock', () => {
+  it('should let an inclusion complete from the carrier and from each pending state', () => {
+    for (const status of [
+      'carrier-processing',
+      'missing-documents',
+      'incorrect-data',
+      'broker-open-issue',
+    ] as const) {
+      expect(completionBlock(subject('inclusion'), status)).toBeNull()
+    }
+  })
+
+  it('should block a completion from a state the API does not complete from', () => {
+    expect(completionBlock(subject('inclusion'), 'broker-processing')).toBe('status')
+    expect(completionBlock(subject('exclusion'), 'submitted-cancellation')).toBe('status')
+  })
+
+  it('should block an inclusion whose lives the snapshot does not identify', () => {
+    const unnamed = subject('inclusion', {
+      enrollmentSnapshot: family({ dependents: [{ profile: { name: 'Sem CPF' } }] }),
+    })
+    const empty = subject('inclusion', { enrollmentSnapshot: {} })
+
+    expect(completionBlock(unnamed, 'carrier-processing')).toBe('lives')
+    expect(completionBlock(empty, 'carrier-processing')).toBe('lives')
+  })
+
+  it('should not look at the lives of an exclusion', () => {
+    expect(
+      completionBlock(subject('exclusion', { enrollmentSnapshot: {} }), 'carrier-processing'),
+    ).toBeNull()
+  })
+
+  it('should let an exempt type or a forced ticket complete from any state', () => {
+    expect(completionBlock(subject('registration_data_change'), 'broker-processing')).toBeNull()
+    expect(
+      completionBlock(subject('inclusion', { forceCompletion: true }), 'broker-processing'),
+    ).toBeNull()
   })
 })
 
 describe('missingClosing', () => {
+  const filled = {
+    [cardKey(ANA)]: '9912',
+    [startKey(ANA)]: '2023-10-22',
+    [cardKey(LEO)]: '9913',
+    [startKey(LEO)]: '2024-01-01',
+  }
+
   it('should report every empty field at once, not only the first', () => {
-    const fields = closingFields(ticket('inclusion'), family())
-    const missing = missingClosing(fields, { [cardKey('holder')]: '  ' })
+    const missing = missingClosing(closingFields(subject('inclusion')), { [cardKey(ANA)]: '  ' })
 
     expect(missing.map((item) => item.key)).toEqual([
-      cardKey('holder'),
-      startKey('holder'),
-      cardKey('dep'),
-      startKey('dep'),
+      cardKey(ANA),
+      startKey(ANA),
+      cardKey(LEO),
+      startKey(LEO),
     ])
     expect(missing.every((item) => item.reason === 'empty')).toBe(true)
   })
 
   it('should refuse a start earlier than a month before the admission', () => {
-    const fields = closingFields(ticket('inclusion'), family())
-    const missing = missingClosing(fields, {
-      [cardKey('holder')]: '9912',
-      [startKey('holder')]: '2023-10-21',
-      [cardKey('dep')]: '9913',
-      [startKey('dep')]: '2024-01-01',
+    const missing = missingClosing(closingFields(subject('inclusion')), {
+      ...filled,
+      [startKey(ANA)]: '2023-10-21',
     })
 
     expect(missing).toEqual([
-      { key: startKey('holder'), label: 'Início da vigência · Ana', reason: 'early' },
+      { key: startKey(ANA), label: 'Início da vigência · Ana', reason: 'early' },
     ])
   })
 
-  it('should take a date that is not a zero-padded ISO day as no value, instead of comparing it with the floor as a string', () => {
-    const fields = closingFields(ticket('inclusion'), family())
-    const missing = missingClosing(fields, {
-      [cardKey('holder')]: '9912',
-      // Lexicographically above the floor `2023-10-22` — `'9' > '1'` — and
-      // months earlier than it.
-      [startKey('holder')]: '2023-9-5',
-      [cardKey('dep')]: '9913',
-      [startKey('dep')]: '2024-01-01',
+  it('should take a date the calendar does not have as no value, as the API does', () => {
+    const missing = missingClosing(closingFields(subject('inclusion')), {
+      ...filled,
+      [startKey(LEO)]: '2024-02-31',
     })
 
     expect(missing).toEqual([
-      { key: startKey('holder'), label: 'Início da vigência · Ana', reason: 'empty' },
+      { key: startKey(LEO), label: 'Início da vigência · Léo', reason: 'empty' },
     ])
   })
 
   it('should accept the floor itself', () => {
-    const fields = closingFields(ticket('inclusion'), family())
-    const missing = missingClosing(fields, {
-      [cardKey('holder')]: '9912',
-      [startKey('holder')]: '2023-10-22',
-      [cardKey('dep')]: '9913',
-      [startKey('dep')]: '2024-01-01',
-    })
+    expect(missingClosing(closingFields(subject('inclusion')), filled)).toEqual([])
+  })
+})
 
-    expect(missing).toEqual([])
+describe('completionBodyOf', () => {
+  it('should answer each life of an inclusion by its tax id, trimmed', () => {
+    const fields = closingFields(subject('inclusion'))
+
+    expect(
+      completionBodyOf(fields, {
+        [cardKey(ANA)]: ' 9912 ',
+        [startKey(ANA)]: '2023-12-01',
+        [cardKey(LEO)]: '9913',
+        [startKey(LEO)]: '2024-01-01',
+      }),
+    ).toEqual({
+      members: [
+        { taxId: ANA, idCardNumber: '9912', startDate: '2023-12-01' },
+        { taxId: LEO, idCardNumber: '9913', startDate: '2024-01-01' },
+      ],
+    })
+  })
+
+  it('should send only the end date of an exclusion', () => {
+    expect(
+      completionBodyOf(closingFields(subject('exclusion')), { [END_KEY]: '2024-02-01' }),
+    ).toEqual({ endDate: '2024-02-01' })
+  })
+
+  it('should send only the new effective date of a plan change', () => {
+    expect(
+      completionBodyOf(closingFields(subject('plan_change')), { [EFFECTIVE_KEY]: '2024-03-01' }),
+    ).toEqual({ effectiveDate: '2024-03-01' })
+  })
+
+  it('should send no block when the rule asks for nothing', () => {
+    expect(completionBodyOf(closingFields(subject('registration_data_change')), {})).toBeUndefined()
+  })
+})
+
+describe('rejectedFields', () => {
+  it('should pin each refusal of the API on the field it names', () => {
+    const fields = closingFields(subject('inclusion'))
+
+    expect(
+      rejectedFields(fields, [
+        { field: `members[${LEO}].startDate`, code: 'before_admission', message: '' },
+        { field: 'status', code: 'invalid_status', message: '' },
+      ]),
+    ).toEqual({ [startKey(LEO)]: 'before_admission' })
   })
 })
 

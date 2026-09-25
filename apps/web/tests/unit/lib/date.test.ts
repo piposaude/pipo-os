@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { businessDay, formatDateTime, startOfBusinessDay } from '@/lib/date'
+import { businessDay, formatDateTime, isRealDay, startOfBusinessDay } from '@/lib/date'
 
 describe('formatDateTime', () => {
   it('should format a valid ISO date as pt-BR date and time in America/Sao_Paulo', () => {
@@ -41,5 +41,22 @@ describe('startOfBusinessDay', () => {
     for (const day of ['2026-01-01', '2026-02-28', '2026-12-31']) {
       expect(businessDay(startOfBusinessDay(day))).toBe(day)
     }
+  })
+})
+
+describe('isRealDay', () => {
+  it('should take a zero-padded day that exists in the calendar', () => {
+    expect(isRealDay('2024-02-29')).toBe(true)
+  })
+
+  it('should refuse a day the calendar does not have', () => {
+    expect(isRealDay('2023-02-29')).toBe(false)
+    expect(isRealDay('2026-02-31')).toBe(false)
+  })
+
+  it('should refuse a day that is not written as YYYY-MM-DD', () => {
+    expect(isRealDay('2023-9-5')).toBe(false)
+    expect(isRealDay('2023-09-05T00:00:00Z')).toBe(false)
+    expect(isRealDay('')).toBe(false)
   })
 })
