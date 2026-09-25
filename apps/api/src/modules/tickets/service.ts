@@ -9,7 +9,6 @@ import { canonicalEnrollmentType, parseAlterationType } from './enrollment-type.
 import type { TicketRowsQuery } from './rows-schema.js'
 import type { TicketsRepositoryPort } from './repository.js'
 import {
-  CLOSED_STATUSES,
   type CreateTicketBody,
   type ListTicketsQuery,
   type Ticket,
@@ -80,17 +79,13 @@ export class TicketsService {
   }
 
   async changeStatus(id: string, data: UpdateTicketStatusBody, authorId: string): Promise<Ticket> {
-    const isClosed = CLOSED_STATUSES.has(data.status)
-    const closedAt = isClosed ? new Date().toISOString() : null
-
-    const result = await this.repository.changeStatus(
-      id,
-      data.status,
-      closedAt,
+    const result = await this.repository.changeStatus({
+      ticketId: id,
+      toStatus: data.status,
       authorId,
-      data.reason,
-      data.completion,
-    )
+      reason: data.reason,
+      completion: data.completion,
+    })
 
     if (result.kind === 'not-found') throw new NotFoundError(`Ticket ${id} not found`)
     if (result.kind === 'already-closed')

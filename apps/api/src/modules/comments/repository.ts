@@ -4,9 +4,10 @@ import type { Database } from '../../infrastructure/db.js'
 import type { TicketComments } from '../../infrastructure/db-types.js'
 import type { Author } from '../auth/authenticate.js'
 import type { TicketEventType } from './event-types.js'
-import type { Comment, CreateCommentBody, TimelineItem } from './schemas.js'
+import type { Comment, CreateCommentBody, CreateSubmissionBody, TimelineItem } from './schemas.js'
+import { submit, type SubmitResult } from './submission.js'
 
-function toComment(row: Selectable<TicketComments>): Comment {
+export function toComment(row: Selectable<TicketComments>): Comment {
   return {
     id: row.id,
     ticketId: row.ticket_id,
@@ -155,6 +156,8 @@ interface TimelineRow {
   to_status: string | null
   reason: string | null
   author_type: string | null
+  submission_id: string | null
+  in_reply_to: string | null
 }
 
 function toTimelineItem(row: TimelineRow): TimelineItem {
@@ -165,6 +168,7 @@ function toTimelineItem(row: TimelineRow): TimelineItem {
     // Both tables have the column NOT NULL with the same CHECK; the union's
     // row type cannot say so, the way it cannot for `channel` below.
     authorType: row.author_type as TimelineItem['authorType'],
+    submissionId: row.submission_id,
     createdAt: row.created_at.toISOString(),
   }
 
@@ -195,6 +199,7 @@ function toTimelineItem(row: TimelineRow): TimelineItem {
     channel: row.channel as Extract<TimelineItem, { type: 'comment' }>['channel'],
     visibility: row.visibility as Extract<TimelineItem, { type: 'comment' }>['visibility'],
     body: row.body!,
+    inReplyTo: row.in_reply_to,
   }
 }
 
@@ -211,6 +216,7 @@ export interface TimelinePage {
 
 export interface CommentsRepositoryPort {
   create(ticketId: string, data: CreateCommentBody, author: Author): Promise<WrittenComment>
+  submit(ticketId: string, data: CreateSubmissionBody, author: Author): Promise<SubmitResult>
   findMany(ticketId: string): Promise<Comment[]>
   findTimeline(
     ticketId: string,
@@ -233,8 +239,6 @@ export class CommentsRepository implements CommentsRepositoryPort {
       .values({
         ticket_id: ticketId,
         kind: 'manual',
-        // Still the only channel anyone writes. `platform` — the HR side of the
-        // composer — comes with the submission, in the second half of PD-040.
         channel: 'internal',
         visibility: data.visibility,
         body: data.body,
@@ -248,6 +252,10 @@ export class CommentsRepository implements CommentsRepositoryPort {
       .executeTakeFirstOrThrow()
 
     return { comment: toComment(row), created: true }
+  }
+
+  submit(ticketId: string, data: CreateSubmissionBody, author: Author): Promise<SubmitResult> {
+    return submit(this.db, ticketId, data, author)
   }
 
   async findMany(ticketId: string): Promise<Comment[]> {
@@ -295,7 +303,8 @@ export class CommentsRepository implements CommentsRepositoryPort {
         select 'status' as source, id, ticket_id, author_id, created_at,
                null as kind, null as channel, null as visibility,
                null as event_type, null as body, null as metadata,
-               from_status, to_status, reason, author_type
+               from_status, to_status, reason, author_type,
+               submission_id, null as in_reply_to
           from ticket_status_history
          where ticket_id = ${ticketId}`
 
@@ -304,7 +313,7 @@ export class CommentsRepository implements CommentsRepositoryPort {
         select 'comment' as source, id, ticket_id, author_id, created_at,
                kind, channel, visibility, event_type, body, metadata,
                null as from_status, null as to_status, null as reason,
-               author_type
+               author_type, submission_id, in_reply_to
           from ticket_comments
          where ticket_id = ${ticketId} ${publicComments}
         ${historyBranch}
