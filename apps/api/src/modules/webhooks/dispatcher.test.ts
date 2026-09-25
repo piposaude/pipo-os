@@ -449,18 +449,38 @@ describe('webhook dispatcher', () => {
       expect(await row(id)).toMatchObject({ status: 'delivered', locked_at: null })
     })
 
-    it('stops the rounds on close', async () => {
+    const recorder = () => {
       const failures: string[] = []
       const log = {
         info: () => undefined,
         warn: () => undefined,
         error: (_context: unknown, message?: string) => void failures.push(message ?? ''),
       }
+      return { failures, log }
+    }
+
+    it('stops the rounds on close', async () => {
+      const { failures, log } = recorder()
       const api = await subject({ rounds: { intervalMs: 200, log } })
       await pause(50)
 
       await api.close()
       await pause(400)
+
+      expect(failures).toEqual([])
+    })
+
+    it('does not schedule another round when the close arrives mid-round', async () => {
+      const { failures, log } = recorder()
+      await seed({ answer: 'hang' })
+      const api = await subject({ rounds: { intervalMs: 20, log } })
+      for (let waited = 0; received.length === 0 && waited < 2000; waited += 10) await pause(10)
+
+      const closed = api.close()
+      await pause(50)
+      releaseHung()
+      await closed
+      await pause(200)
 
       expect(failures).toEqual([])
     })
