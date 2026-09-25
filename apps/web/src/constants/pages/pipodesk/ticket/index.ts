@@ -1,4 +1,5 @@
 import { ENROLLMENT_TYPE_COPY } from '@/constants/pipodesk/domain'
+import type { CompletionBlock } from '@/lib/pipodesk/closing'
 import type { Destination } from '@/lib/pipodesk/composer'
 
 export default {
@@ -82,7 +83,14 @@ export default {
     placeholder: 'Escrever…',
     fieldFor: (destination: string) => `Texto para ${destination}`,
     placeholderFor: (destination: string) => `Escrever para ${destination.toLowerCase()}…`,
-    submit: 'Enviar',
+    submitAs: (situation: string) => `Enviar como ${situation}`,
+    changeStatus: (situation: string) => `Enviar como ${situation}. Trocar a situação`,
+    statusMenu: 'Situação do envio',
+    closed: (situation: string) => `${situation} não reabre. O envio entra como registro.`,
+    completionBlocked: {
+      status: 'Só conclui a partir de Na operadora, Com o cliente ou Pendência interna.',
+      lives: 'O chamado não identifica pelo CPF todas as vidas da movimentação.',
+    } satisfies Record<CompletionBlock, string>,
     sendFailed: 'O envio não foi salvo.',
   },
 }

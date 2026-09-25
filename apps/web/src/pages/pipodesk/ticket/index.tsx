@@ -131,7 +131,8 @@ function TicketDetail({ id }: { id: string }) {
     [structure, ticket?.groupId],
   )
 
-  if (!ticket || !records) {
+  const detail = ticketQuery.data
+  if (!ticket || !records || !detail) {
     return (
       <div className={`${styles.screen} ${styles.missing}`}>
         {ticketQuery.isPending ? (
@@ -258,7 +259,7 @@ function TicketDetail({ id }: { id: string }) {
         ))}
       </ol>
 
-      <Composer ticketId={ticket.id} />
+      <Composer ticket={detail} status={ticket.status} />
     </section>
   )
 

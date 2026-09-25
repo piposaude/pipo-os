@@ -1,9 +1,14 @@
 // @vitest-environment node
+import { API_STATUSES } from '@/lib/pipodesk/status'
 import {
   EMPTY_DRAFT,
+  SEND_STATUSES,
   partsOf,
+  statusChangeOf,
+  submissionBodyOf,
   toggleDestination,
   toggleSplit,
+  withStatus,
   withText,
   type ComposerDraft,
 } from '@/lib/pipodesk/composer'
@@ -84,5 +89,74 @@ describe('toggleSplit', () => {
       internal: 'Editado com as caixas fechadas.',
       platform: 'Só para o RH.',
     })
+  })
+})
+
+describe('SEND_STATUSES', () => {
+  it('should offer every status of the API, each reason next to its screen state', () => {
+    expect([...SEND_STATUSES].sort()).toEqual([...API_STATUSES].sort())
+    expect(SEND_STATUSES.slice(0, 3)).toEqual([
+      'broker-processing',
+      'broker-open-issue',
+      'carrier-processing',
+    ])
+  })
+})
+
+describe('statusChangeOf', () => {
+  it('should carry no change while the situation was not picked', () => {
+    expect(statusChangeOf(EMPTY_DRAFT, 'carrier-processing')).toBeNull()
+  })
+
+  it('should carry no change when the picked situation is the current one', () => {
+    expect(
+      statusChangeOf(withStatus(EMPTY_DRAFT, 'carrier-processing'), 'carrier-processing'),
+    ).toBeNull()
+  })
+
+  it('should carry the situation picked by hand', () => {
+    expect(statusChangeOf(withStatus(EMPTY_DRAFT, 'missing-documents'), 'carrier-processing')).toBe(
+      'missing-documents',
+    )
+  })
+})
+
+describe('submissionBodyOf', () => {
+  it('should carry the parts alone when the situation does not change', () => {
+    expect(submissionBodyOf(withText(EMPTY_DRAFT, 'Oi.'), 'carrier-processing', 'id-1')).toEqual({
+      submissionId: 'id-1',
+      parts: [{ channel: 'internal', body: 'Oi.' }],
+    })
+  })
+
+  it('should carry the new situation next to the parts', () => {
+    const draft = withStatus(withText(EMPTY_DRAFT, 'Oi.'), 'missing-documents')
+
+    expect(submissionBodyOf(draft, 'carrier-processing', 'id-1')).toEqual({
+      submissionId: 'id-1',
+      parts: [{ channel: 'internal', body: 'Oi.' }],
+      status: { status: 'missing-documents' },
+    })
+  })
+
+  it('should carry the completion block only with a completion', () => {
+    const completion = { endDate: '2026-10-01' }
+
+    expect(
+      submissionBodyOf(
+        withStatus(EMPTY_DRAFT, 'completed'),
+        'carrier-processing',
+        'id-1',
+        completion,
+      ),
+    ).toEqual({ submissionId: 'id-1', parts: [], status: { status: 'completed', completion } })
+    expect(
+      submissionBodyOf(
+        withStatus(EMPTY_DRAFT, 'cancelled'),
+        'carrier-processing',
+        'id-1',
+        completion,
+      ),
+    ).toEqual({ submissionId: 'id-1', parts: [], status: { status: 'cancelled' } })
   })
 })

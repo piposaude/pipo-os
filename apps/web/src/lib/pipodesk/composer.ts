@@ -1,6 +1,9 @@
 import type { components } from '@pipo-os/api-client'
+import type { ApiStatus } from './status'
 
-type SubmissionPart = components['schemas']['CreateSubmissionBodyInput']['parts'][number]
+type SubmissionBody = components['schemas']['CreateSubmissionBodyInput']
+type SubmissionPart = SubmissionBody['parts'][number]
+type CompletionBody = components['schemas']['TicketCompletionBodyInput']
 
 export type Destination = 'internal' | 'platform' | 'email'
 
@@ -15,6 +18,7 @@ export interface ComposerDraft {
   text: string
   split: Texts | null
   stashed: { texts: Texts; single: Destination } | null
+  status: ApiStatus | null
 }
 
 export const EMPTY_DRAFT: ComposerDraft = {
@@ -22,7 +26,19 @@ export const EMPTY_DRAFT: ComposerDraft = {
   text: '',
   split: null,
   stashed: null,
+  status: null,
 }
+
+export const SEND_STATUSES: readonly ApiStatus[] = [
+  'broker-processing',
+  'broker-open-issue',
+  'carrier-processing',
+  'missing-documents',
+  'incorrect-data',
+  'submitted-cancellation',
+  'completed',
+  'cancelled',
+]
 
 export function toggleDestination(draft: ComposerDraft, destination: Destination): ComposerDraft {
   if (PARKED_DESTINATIONS.has(destination)) return draft
@@ -74,4 +90,25 @@ export function partsOf(draft: ComposerDraft): SubmissionPart[] {
     const body = textFor(draft, destination)
     return body === '' ? [] : [{ channel: destination, body }]
   })
+}
+
+export const withStatus = (draft: ComposerDraft, status: ApiStatus): ComposerDraft => ({
+  ...draft,
+  status,
+})
+
+export const statusChangeOf = (draft: ComposerDraft, current: ApiStatus): ApiStatus | null =>
+  draft.status !== null && draft.status !== current ? draft.status : null
+
+export function submissionBodyOf(
+  draft: ComposerDraft,
+  current: ApiStatus,
+  submissionId: string,
+  completion?: CompletionBody,
+): SubmissionBody {
+  const body: SubmissionBody = { submissionId, parts: partsOf(draft) }
+  const status = statusChangeOf(draft, current)
+  if (status === null) return body
+  body.status = status === 'completed' && completion ? { status, completion } : { status }
+  return body
 }

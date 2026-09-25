@@ -5,6 +5,7 @@ import { routeTree } from '@/routeTree.gen'
 import { VIEWER_ID, queueSeed } from '../../fixtures/pipodesk/dataset'
 import constants from '@/constants/pages/pipodesk/ticket'
 import { apiTicketOf, holdRequest, type ApiMock } from '../../helpers/api'
+import { apiTicket } from '../../helpers/ticket'
 
 configure({ asyncUtilTimeout: 3000 })
 
@@ -77,8 +78,9 @@ async function renderAt(path: string) {
 }
 
 const destinations = () => screen.findByRole('group', { name: copy.destinationsLabel })
-const submissions = () =>
-  desk.calls.filter((call) => call.method === 'POST' && call.path === SUBMISSIONS)
+const submissions = (path = SUBMISSIONS) =>
+  desk.calls.filter((call) => call.method === 'POST' && call.path === path)
+const sendButton = () => screen.getByRole('button', { name: /^Enviar como [^.]+$/ })
 
 describe('composer do chamado', () => {
   it('should start on the internal note, with the e-mail parked and its reason on screen', async () => {
@@ -107,7 +109,7 @@ describe('composer do chamado', () => {
     )
     expect(screen.getByText(copy.hint.platform)).toBeInTheDocument()
     await user.type(screen.getByRole('textbox', { name: copy.field }), 'Carteirinha enviada.')
-    await user.click(screen.getByRole('button', { name: copy.submit }))
+    await user.click(sendButton())
 
     await waitFor(() => expect(submissions()).toHaveLength(1))
     expect(submissions()[0].body).toEqual({
@@ -126,7 +128,7 @@ describe('composer do chamado', () => {
     const field = await screen.findByRole('textbox', { name: copy.field })
 
     await user.type(field, 'Liguei na operadora, protocolo 123.')
-    await user.click(screen.getByRole('button', { name: copy.submit }))
+    await user.click(sendButton())
 
     expect(await screen.findByText('Liguei na operadora, protocolo 123.')).toBeInTheDocument()
     expect(field).toHaveValue('')
@@ -138,13 +140,13 @@ describe('composer do chamado', () => {
     const user = userEvent.setup()
 
     await user.type(await screen.findByRole('textbox', { name: copy.field }), 'Não pode sumir.')
-    await user.click(screen.getByRole('button', { name: copy.submit }))
+    await user.click(sendButton())
 
     expect(await screen.findByText(copy.sendFailed)).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: copy.field })).toHaveValue('Não pode sumir.')
 
     answer = 201
-    await user.click(screen.getByRole('button', { name: copy.submit }))
+    await user.click(sendButton())
 
     await waitFor(() => expect(submissions()).toHaveLength(2))
     const [first, second] = submissions().map(
@@ -159,10 +161,10 @@ describe('composer do chamado', () => {
     const field = await screen.findByRole('textbox', { name: copy.field })
 
     await user.type(field, 'Primeiro.')
-    await user.click(screen.getByRole('button', { name: copy.submit }))
+    await user.click(sendButton())
     await screen.findByText('Primeiro.')
     await user.type(field, 'Segundo.')
-    await user.click(screen.getByRole('button', { name: copy.submit }))
+    await user.click(sendButton())
 
     await waitFor(() => expect(submissions()).toHaveLength(2))
     const [first, second] = submissions().map(
@@ -178,7 +180,7 @@ describe('composer do chamado', () => {
     const field = await screen.findByRole('textbox', { name: copy.field })
 
     await user.type(field, 'Primeira parte.')
-    await user.click(screen.getByRole('button', { name: copy.submit }))
+    await user.click(sendButton())
     await user.type(field, ' Segunda parte.')
     release()
 
@@ -202,7 +204,7 @@ describe('composer do chamado', () => {
     expect(internal).toHaveValue('Rascunho.')
     await user.clear(platform)
     await user.type(platform, 'Só para o RH.')
-    await user.click(screen.getByRole('button', { name: copy.submit }))
+    await user.click(sendButton())
 
     await waitFor(() => expect(submissions()).toHaveLength(1))
     expect((submissions()[0].body as { parts: Part[] }).parts).toEqual([
@@ -217,7 +219,7 @@ describe('composer do chamado', () => {
 
     await user.type(await screen.findByRole('textbox', { name: copy.field }), '   ')
 
-    expect(screen.getByRole('button', { name: copy.submit })).toBeDisabled()
+    expect(sendButton()).toBeDisabled()
   })
 
   it('should not carry the draft of one ticket into the next', async () => {
@@ -229,5 +231,161 @@ describe('composer do chamado', () => {
 
     await screen.findByText('700002')
     expect(screen.getByRole('textbox', { name: copy.field })).toHaveValue('')
+  })
+})
+
+const ANA = '11122233344'
+const LEO = '55566677788'
+
+const family = {
+  primary: {
+    profile: { tax_id: ANA, name: 'Ana Souza' },
+    employment: { admission_date: '2026-03-10' },
+  },
+  dependents: [{ profile: { tax_id: LEO, name: 'Léo Souza' } }],
+  benefit_data: { requested_start_date: '2026-07-01' },
+}
+
+async function openTicket(overrides: Parameters<typeof apiTicket>[0]) {
+  const ticket = apiTicket({ id: 'T-1', enrollmentSnapshot: family, ...overrides })
+  await mount({
+    '/api/tickets/T-1': ticket,
+    'POST /api/tickets/T-1/submissions': (body: { submissionId: string }) => ({
+      status: 201,
+      body: { submissionId: body.submissionId, ticket, comments: [] },
+    }),
+  })
+  await renderAt('/tickets/T-1')
+  await screen.findByRole('group', { name: copy.destinationsLabel })
+  return userEvent.setup()
+}
+
+const statusMenu = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(screen.getByRole('button', { name: /Trocar a situação$/ }))
+  return screen.getByRole('dialog', { name: copy.statusMenu })
+}
+
+describe('composer do chamado — Enviar como ⌄', () => {
+  it('should name the situation the send carries, starting at the current one', async () => {
+    await openTicket({ status: 'carrier-processing' })
+
+    expect(sendButton()).toHaveAccessibleName('Enviar como Na operadora')
+    expect(sendButton()).toBeDisabled()
+  })
+
+  it('should send only the situation when it is picked by hand, with no text', async () => {
+    const user = await openTicket({ status: 'carrier-processing' })
+
+    const menu = await statusMenu(user)
+    await user.click(
+      within(menu).getByRole('button', { name: 'Enviar como Com o cliente · Falta documento' }),
+    )
+    expect(sendButton()).toHaveAccessibleName('Enviar como Com o cliente · Falta documento')
+    await user.click(sendButton())
+
+    await waitFor(() => expect(submissions('/api/tickets/T-1/submissions')).toHaveLength(1))
+    expect(submissions('/api/tickets/T-1/submissions')[0].body).toEqual({
+      submissionId: expect.stringMatching(UUID),
+      parts: [],
+      status: { status: 'missing-documents' },
+    })
+  })
+
+  it('should send the text and the situation in the same submission', async () => {
+    const user = await openTicket({ status: 'carrier-processing' })
+
+    await user.type(screen.getByRole('textbox', { name: copy.field }), 'Operadora pediu o RG.')
+    await user.click(
+      within(await statusMenu(user)).getByRole('button', {
+        name: 'Enviar como Com o cliente · Falta documento',
+      }),
+    )
+    await user.click(sendButton())
+
+    await waitFor(() => expect(submissions('/api/tickets/T-1/submissions')).toHaveLength(1))
+    expect(submissions('/api/tickets/T-1/submissions')[0].body).toMatchObject({
+      parts: [{ channel: 'internal', body: 'Operadora pediu o RG.' }],
+      status: { status: 'missing-documents' },
+    })
+  })
+
+  it('should mark the situation the send carries in the menu', async () => {
+    const user = await openTicket({ status: 'carrier-processing' })
+
+    const menu = await statusMenu(user)
+
+    expect(within(menu).getByRole('button', { name: 'Enviar como Na operadora' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(within(menu).getByRole('button', { name: 'Enviar como Cancelada' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+  })
+
+  it('should not offer another situation on a closed ticket, and say why on screen', async () => {
+    await openTicket({ status: 'completed', closedAt: '2026-08-12T10:00:00.000Z' })
+
+    expect(screen.queryByRole('button', { name: /Trocar a situação$/ })).not.toBeInTheDocument()
+    expect(screen.getByText(copy.closed('Concluída'))).toBeInTheDocument()
+  })
+
+  it('should keep Concluída unavailable from Com a Pipo, with the reason in the menu', async () => {
+    const user = await openTicket({ status: 'broker-processing' })
+
+    const menu = await statusMenu(user)
+    const completed = within(menu).getByRole('button', { name: 'Enviar como Concluída' })
+
+    expect(completed).toBeDisabled()
+    expect(completed).toHaveAccessibleDescription(copy.completionBlocked.status)
+  })
+
+  it('should keep Concluída unavailable when the ticket does not identify every life by CPF', async () => {
+    const user = await openTicket({
+      status: 'carrier-processing',
+      enrollmentSnapshot: { ...family, dependents: [{ profile: { name: 'Sem CPF' } }] },
+    })
+
+    const completed = within(await statusMenu(user)).getByRole('button', {
+      name: 'Enviar como Concluída',
+    })
+
+    expect(completed).toBeDisabled()
+    expect(completed).toHaveAccessibleDescription(copy.completionBlocked.lives)
+  })
+
+  it('should hold the completion of an inclusion until its data is filled, saying what is missing', async () => {
+    const user = await openTicket({ status: 'carrier-processing' })
+
+    await user.click(
+      within(await statusMenu(user)).getByRole('button', { name: 'Enviar como Concluída' }),
+    )
+
+    expect(sendButton()).toHaveAccessibleName('Enviar como Concluída')
+    expect(sendButton()).toBeDisabled()
+    expect(
+      screen.getByText(
+        'Faltam Carteirinha · Ana, Início da vigência · Ana, Carteirinha · Léo, Início da vigência · Léo.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('should complete a type the rule exempts with no data', async () => {
+    const user = await openTicket({
+      status: 'broker-processing',
+      enrollmentType: 'registration_data_change',
+    })
+
+    await user.click(
+      within(await statusMenu(user)).getByRole('button', { name: 'Enviar como Concluída' }),
+    )
+    await user.click(sendButton())
+
+    await waitFor(() => expect(submissions('/api/tickets/T-1/submissions')).toHaveLength(1))
+    expect(submissions('/api/tickets/T-1/submissions')[0].body).toMatchObject({
+      parts: [],
+      status: { status: 'completed' },
+    })
   })
 })

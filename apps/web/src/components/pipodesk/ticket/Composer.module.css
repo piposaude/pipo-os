@@ -141,3 +141,106 @@
   align-items: center;
   gap: var(--pipo-space-xsmall);
 }
+
+.missing {
+  margin: 0;
+  color: var(--pipo-danger-dark);
+  font-size: var(--pipo-fs-xsmall);
+}
+
+.send {
+  display: inline-flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  border-radius: var(--pipo-radius-pill);
+  background: var(--pipo-brand-primary);
+  color: var(--pipo-surface);
+}
+
+.send[data-disabled] {
+  opacity: 0.4;
+}
+
+.sendGo,
+.sendMore {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: var(--pipo-font-ui);
+  cursor: pointer;
+}
+
+.sendGo {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--pipo-radius-pill) 0 0 var(--pipo-radius-pill);
+  font-size: var(--pipo-fs-xsmall);
+  font-weight: var(--pipo-fw-medium);
+  white-space: nowrap;
+}
+
+.sendGo:only-child {
+  border-radius: var(--pipo-radius-pill);
+}
+
+.sendMore {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 var(--pipo-space-xxsmall) 0 4px;
+  border-left: var(--pipo-border-width-small) solid var(--desk-send-divider);
+  border-radius: 0 var(--pipo-radius-pill) var(--pipo-radius-pill) 0;
+}
+
+.sendGo:disabled {
+  cursor: default;
+}
+
+.sendGo:focus-visible,
+.sendMore:focus-visible {
+  outline: 2px solid var(--pipo-text-primary);
+  outline-offset: 2px;
+}
+
+.menuAnchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.menuItem {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--pipo-space-xxsmall);
+  padding: var(--pipo-space-xxsmall) var(--pipo-space-xsmall);
+  border: none;
+  border-radius: var(--pipo-radius-xsmall);
+  background: transparent;
+  color: var(--pipo-neutral-darkest);
+  font-family: var(--pipo-font-ui);
+  font-size: var(--pipo-fs-xsmall);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.menuItem:hover:not(:disabled) {
+  background: var(--pipo-neutral-lightest);
+}
+
+.menuItem:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.menuItem[aria-pressed='false'] .menuCheck {
+  opacity: 0;
+}
+
+.menuReason {
+  max-width: 32ch;
+  margin: 0;
+  padding: 0 var(--pipo-space-xsmall) var(--pipo-space-xxsmall) 26px;
+  color: var(--pipo-text-secondary);
+  font-size: var(--pipo-fs-xxsmall);
+}
