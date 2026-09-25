@@ -114,10 +114,29 @@ describe('membersWithLoad', () => {
     ]
 
     expect(membersWithLoad(structure, 'pod-1', rows)).toEqual([
-      { userId: 'bruno@pipo', role: 'admin', companies: 0, open: 0 },
-      { userId: 'tainá@pipo', role: 'member', companies: 1, open: 2 },
-      { userId: 'carla@pipo', role: 'member', companies: 2, open: 1 },
+      { userId: 'bruno@pipo', role: 'admin', companies: 0, open: 0, shared: 0 },
+      { userId: 'tainá@pipo', role: 'member', companies: 1, open: 2, shared: 0 },
+      { userId: 'carla@pipo', role: 'member', companies: 2, open: 1, shared: 1 },
     ])
+  })
+})
+
+describe('shared companies', () => {
+  /** From November each client has a single analyst; the page warns about the
+   *  clients that still have more than one, it does not block. */
+  it('should count the companies of a person that another analyst also holds open work for', () => {
+    const rows = [
+      row({ id: '1', companyId: 'a', assigneeId: 'carla@pipo' }),
+      row({ id: '2', companyId: 'a', assigneeId: 'tainá@pipo' }),
+      row({ id: '3', companyId: 'b', assigneeId: 'carla@pipo' }),
+      // Closed work is not "holding" the client.
+      row({ id: '4', companyId: 'b', assigneeId: 'tainá@pipo', closedAt: '2026-08-10T10:00:00Z' }),
+    ]
+
+    const load = membersWithLoad(structure, 'pod-1', rows)
+    expect(load.find((line) => line.userId === 'carla@pipo')?.shared).toBe(1)
+    // `c` is Tainá's portfolio, and nobody else works it.
+    expect(load.find((line) => line.userId === 'tainá@pipo')?.shared).toBe(0)
   })
 })
 

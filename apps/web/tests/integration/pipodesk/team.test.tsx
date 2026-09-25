@@ -99,6 +99,17 @@ describe('home do pod', () => {
     expect(within(rows[rows.length - 1]).getByText('Analista')).toBeInTheDocument()
   })
 
+  /** From November each client has a single analyst: the table warns about the
+   *  clients that still have more than one, it does not block. */
+  it('should mark on the portfolio how many clients of the person another analyst also works', async () => {
+    await renderAt('/teams/pod-1')
+
+    const table = await screen.findByRole('table')
+    const marks = within(table).getAllByText(/têm mais de um analista hoje/)
+    expect(marks.length).toBeGreaterThan(0)
+    expect(marks[0].closest('td')).toHaveTextContent(/\d+ empresas.*\d+/)
+  })
+
   it('should be reachable from the Home link of the pod in the sidebar', async () => {
     const router = await renderAt('/')
     const user = userEvent.setup()

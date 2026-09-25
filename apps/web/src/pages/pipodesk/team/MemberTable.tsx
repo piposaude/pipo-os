@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import {
   Avatar,
   Badge,
+  Icon,
   Table,
   TableBody,
   TableCell,
@@ -98,7 +99,16 @@ export function MemberTable({ group, isRoot, structure, rows, resolveName }: Mem
               {member.companies === 0 && member.role === 'admin' ? (
                 <span className={styles.muted}>{constants.noPortfolio}</span>
               ) : (
-                constants.portfolio(member.companies)
+                <span className={styles.portfolio}>
+                  {constants.portfolio(member.companies)}
+                  {member.shared > 0 && (
+                    <span className={styles.shared} title={constants.shared(member.shared)}>
+                      <Icon name="fill/alert" size="xs" />
+                      {member.shared}
+                      <span className={styles.srOnly}>{constants.shared(member.shared)}</span>
+                    </span>
+                  )}
+                </span>
               )}
             </TableCell>
             <TableCell align="right" className={styles.num}>

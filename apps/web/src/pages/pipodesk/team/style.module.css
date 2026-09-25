@@ -118,6 +118,22 @@
   gap: var(--pipo-space-xxsmall) var(--pipo-space-xsmall);
 }
 
+.portfolio {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pipo-space-xsmall);
+}
+
+/* A warning, not an error: coordination decides, the screen does not block. */
+.shared {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--pipo-warning-dark);
+  font-size: var(--pipo-fs-xsmall);
+  font-variant-numeric: tabular-nums;
+}
+
 .muted {
   color: var(--pipo-text-secondary);
 }

@@ -30,6 +30,8 @@ export default {
   },
   portfolio: (count: number) => `${count} ${count === 1 ? 'empresa' : 'empresas'}`,
   noPortfolio: '—',
+  shared: (count: number) =>
+    `${count} ${count === 1 ? 'destes clientes tem' : 'destes clientes têm'} mais de um analista hoje. A partir de novembro cada cliente tem analista único.`,
   notFound: 'Não encontramos esse time.',
   newView: '+ Nova view',
   editableBy: (group: string) => `Só a coordenação de ${group} edita carteira e membros.`,

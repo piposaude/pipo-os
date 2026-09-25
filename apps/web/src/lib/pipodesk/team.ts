@@ -52,12 +52,29 @@ function openByAssignee(rows: TicketRow[]): Map<string, number> {
   return open
 }
 
+function assigneesByCompany(rows: TicketRow[]): Map<string, Set<string>> {
+  const byCompany = new Map<string, Set<string>>()
+  for (const row of rows) {
+    if (row.assigneeId === null || row.closedAt !== null) continue
+    const assignees = byCompany.get(row.companyId) ?? new Set<string>()
+    assignees.add(row.assigneeId)
+    byCompany.set(row.companyId, assignees)
+  }
+  return byCompany
+}
+
+const sharedAmong = (companyIds: string[], byCompany: Map<string, Set<string>>): number =>
+  companyIds.filter((companyId) => (byCompany.get(companyId)?.size ?? 0) > 1).length
+
 export interface MemberLoad {
   userId: string
   role: MemberRole
   companies: number
   /** OPEN tickets with the person — the column asks about load right now. */
   open: number
+  /** Companies of the portfolio with open work held by more than one person:
+   *  from November each client has a single analyst. */
+  shared: number
 }
 
 /**
@@ -70,6 +87,7 @@ export function membersWithLoad(
   rows: TicketRow[],
 ): MemberLoad[] {
   const open = openByAssignee(rows)
+  const byCompany = assigneesByCompany(rows)
 
   return membersOf(structure, groupId)
     .map((membership) => ({
@@ -77,6 +95,7 @@ export function membersWithLoad(
       role: membership.role,
       companies: (membership.companyIds ?? []).length,
       open: open.get(membership.userId) ?? 0,
+      shared: sharedAmong(membership.companyIds ?? [], byCompany),
     }))
     .sort((a, b) => {
       if (a.role !== b.role) return a.role === 'admin' ? -1 : 1
@@ -101,7 +120,9 @@ export function operationRoster(
   nameOf: (userId: string) => string,
 ): RosterLine[] {
   const open = openByAssignee(rows)
+  const byCompany = assigneesByCompany(rows)
   const lines = new Map<string, RosterLine>()
+  const portfolios = new Map<string, string[]>()
 
   for (const membership of structure.memberships) {
     const group = structure.groups.find((candidate) => candidate.id === membership.groupId)
@@ -111,16 +132,24 @@ export function operationRoster(
       role: 'member' as MemberRole,
       companies: 0,
       open: open.get(membership.userId) ?? 0,
+      shared: 0,
       pods: [],
     }
     if (membership.role === 'admin') line.role = 'admin'
     line.companies += (membership.companyIds ?? []).length
+    portfolios.set(membership.userId, [
+      ...(portfolios.get(membership.userId) ?? []),
+      ...(membership.companyIds ?? []),
+    ])
     if (group.parentId !== null) line.pods.push(group)
     lines.set(membership.userId, line)
   }
 
   const byName = (a: Group, b: Group) => a.name.localeCompare(b.name)
-  for (const line of lines.values()) line.pods.sort(byName)
+  for (const line of lines.values()) {
+    line.pods.sort(byName)
+    line.shared = sharedAmong(portfolios.get(line.userId) ?? [], byCompany)
+  }
 
   return [...lines.values()].sort((a, b) => {
     if (a.role !== b.role) return a.role === 'admin' ? -1 : 1
